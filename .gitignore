@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Ficheiros temporários do Office (documento aberto no Word/PowerPoint)
+~$*
+.~lock.*
+
+# Rascunhos de trabalho (apagados no fim)
+_rascunho/
+
+# Sistema e editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Node (se algum exemplo o usar)
+node_modules/
