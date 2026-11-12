@@ -1,0 +1,255 @@
+{
+  "module_num": "04",
+  "module_title": "Arrays e Coleções",
+  "module_dir": "04-Arrays-e-Colecoes",
+  "lesson_num": "04",
+  "lesson_slug": "Sets-e-Maps",
+  "kind": "aula",
+  "title": "Set, Map, WeakSet e WeakMap",
+  "filename_base": "04-Sets-e-Maps",
+  "subtitle": "Coleções modernas para valores únicos e pares chave-valor, sem fugas de memória.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Criar e manipular um Set para garantir valores únicos numa coleção.",
+    "Remover duplicados de um array de forma simples com Set.",
+    "Usar Map para associar valores a chaves de qualquer tipo, não só strings.",
+    "Iterar um Map com for...of e convertê-lo de e para array e objeto.",
+    "Saber quando escolher Map em vez de um objeto literal simples.",
+    "Compreender, em preview, como WeakSet e WeakMap evitam bloquear o garbage collector."
+  ],
+  "sections": [
+    {
+      "heading": "Set: coleções de valores únicos",
+      "body": [
+        "Um Set é uma coleção de valores em que cada valor só pode aparecer uma vez. Ao contrário de um array, não existem índices nem posições: o que importa é apenas se um determinado valor pertence ou não à coleção. A comparação entre valores é feita de forma muito semelhante ao operador de igualdade estrita, com uma exceção notável: dentro de um Set, NaN é considerado igual a si próprio, pelo que só pode existir uma ocorrência de NaN na coleção.",
+        "Um Set cria-se com new Set(), opcionalmente a partir de qualquer iterável, como um array, uma string ou outro Set. Os métodos principais são add() para inserir um valor, has() para verificar se um valor existe, delete() para o remover, e a propriedade size, que devolve o número de elementos, tal como length num array. Um Set é também iterável, pelo que funciona diretamente com for...of e com o operador de espalhamento."
+      ],
+      "code": "const numeros = new Set();\nnumeros.add(1);\nnumeros.add(2);\nnumeros.add(2); // ignorado, já existe\nnumeros.add(3);\n\nconsole.log(numeros.size); // 3\nconsole.log(numeros.has(2)); // true\n\nnumeros.delete(2);\nconsole.log(numeros.has(2)); // false\n\nconsole.log([...numeros]); // [1, 3]",
+      "callout_kind": "NOTA",
+      "callout_text": "No Set (e também no Map), o valor NaN é considerado igual a si próprio para efeitos de unicidade, ao contrário do operador ===, onde NaN === NaN é false. Já +0 e -0 são tratados como o mesmo valor.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧺",
+          "text": "Set guarda apenas valores únicos"
+        },
+        {
+          "icon": "➕",
+          "text": "add(), has(), delete(), size"
+        },
+        {
+          "icon": "🔁",
+          "text": "É iterável, tal como um array"
+        }
+      ]
+    },
+    {
+      "heading": "Remover duplicados de um array com Set",
+      "body": [
+        "Um dos usos mais comuns de Set é eliminar valores repetidos de um array de forma simples e legível. Como o Set só aceita cada valor uma vez, basta construir um Set a partir do array e depois convertê-lo de novo num array, com o operador de espalhamento ou com Array.from. O resultado mantém a ordem original da primeira ocorrência de cada valor.",
+        "Esta técnica funciona muito bem com valores primitivos, como números, strings ou booleanos, porque a comparação de igualdade que o Set usa compara os próprios valores. Já com objetos ou arrays, a comparação é feita por referência: dois objetos com o mesmo conteúdo mas criados separadamente contam como valores diferentes, pelo que este truque só remove duplicados literais, isto é, a mesma instância repetida."
+      ],
+      "code": "function removerDuplicados(array) {\n  return [...new Set(array)];\n}\n\nconst numeros = [1, 2, 2, 3, 4, 4, 4, 5];\nconsole.log(removerDuplicados(numeros)); // [1, 2, 3, 4, 5]\n\nconst nomes = ['Ana', 'Bruno', 'Ana', 'Carla'];\nconsole.log(new Set(nomes).size); // 3, número de nomes distintos",
+      "callout_kind": "DICA",
+      "callout_text": "Se precisar de remover duplicados de objetos com base num campo, por exemplo o id, um Set de valores primitivos não chega: nesse caso combine um Map ou filter com uma chave derivada do objeto.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧹",
+          "text": "[...new Set(array)] remove duplicados"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Objetos comparam-se por referência"
+        }
+      ]
+    },
+    {
+      "heading": "Map: pares chave-valor com qualquer tipo de chave",
+      "body": [
+        "Um Map guarda uma coleção de pares chave-valor, semelhante a um objeto, mas com uma diferença fundamental: a chave de um Map pode ser de qualquer tipo, um número, uma string, um booleano, um objeto, uma função ou até outro Map. Num objeto literal, em contraste, as chaves são sempre strings ou symbols, o que impede, por exemplo, usar um objeto inteiro como chave sem perder a sua identidade.",
+        "As operações básicas de um Map são set(chave, valor) para inserir ou atualizar, get(chave) para ler, has(chave) para verificar existência, e delete(chave) para remover; a propriedade size indica quantos pares existem. A comparação de chaves segue o mesmo critério de igualdade já visto no Set, incluindo o caso especial de NaN."
+      ],
+      "code": "const utilizador = { nome: 'Rita' };\nconst contadorAcessos = new Map();\n\ncontadorAcessos.set(utilizador, 0);\ncontadorAcessos.set('convidado', 0);\ncontadorAcessos.set(42, 'chave numérica');\n\ncontadorAcessos.set(utilizador, contadorAcessos.get(utilizador) + 1);\n\nconsole.log(contadorAcessos.get(utilizador)); // 1\nconsole.log(contadorAcessos.has('convidado')); // true\nconsole.log(contadorAcessos.size); // 3\n\ncontadorAcessos.delete(42);",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🗺️",
+          "text": "Map guarda pares chave-valor"
+        },
+        {
+          "icon": "🔑",
+          "text": "Qualquer valor pode ser chave"
+        },
+        {
+          "icon": "⚙️",
+          "text": "set(), get(), has(), delete(), size"
+        }
+      ]
+    },
+    {
+      "heading": "Iterar e converter um Map",
+      "body": [
+        "Um Map mantém sempre a ordem de inserção das suas chaves, e é diretamente iterável: um ciclo for...of sobre um Map devolve, em cada iteração, um array com dois elementos, [chave, valor], que se pode desestruturar de imediato. Além disso, existem os métodos keys(), values() e entries() para obter apenas as chaves, apenas os valores, ou os pares completos, cada um devolvendo um iterador.",
+        "Para converter um Map num array, basta usar o operador de espalhamento ou Array.from, já que qualquer iterável se converte assim. No sentido inverso, um array de pares [chave, valor] transforma-se num Map passando-o ao construtor new Map(array). Quando as chaves são todas strings, Object.fromEntries(map) converte o Map diretamente num objeto literal comum."
+      ],
+      "code": "const precos = new Map([\n  ['pão', 1.2],\n  ['leite', 0.95],\n  ['ovos', 2.5],\n]);\n\nfor (const [produto, preco] of precos) {\n  console.log(`${produto}: ${preco.toFixed(2)} €`);\n}\n\nconsole.log([...precos.keys()]);   // ['pão', 'leite', 'ovos']\nconsole.log([...precos.values()]); // [1.2, 0.95, 2.5]\n\nconst objetoPrecos = Object.fromEntries(precos);\nconsole.log(objetoPrecos['pão']); // 1.2",
+      "callout_kind": "NOTA",
+      "callout_text": "Iterar um Map com for...of é equivalente a iterar map.entries(): ambos percorrem exatamente a mesma sequência de pares [chave, valor].",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔄",
+          "text": "for...of devolve pares [chave, valor]"
+        },
+        {
+          "icon": "📋",
+          "text": "keys(), values(), entries()"
+        },
+        {
+          "icon": "🔀",
+          "text": "Object.fromEntries converte Map em objeto"
+        }
+      ]
+    },
+    {
+      "heading": "Map vs objeto literal: qual escolher",
+      "body": [
+        "Um objeto literal continua a ser a estrutura mais natural para representar um registo com propriedades fixas e conhecidas antecipadamente, como o modelo de um utilizador ou uma configuração. Um Map é preferível quando as chaves só são conhecidas em tempo de execução, quando podem mudar de tipo, quando é preciso saber rapidamente o número de entradas, ou quando as chaves precisam de ser valores não-string, como objetos.",
+        "Há ainda diferenças práticas relevantes: um objeto literal herda propriedades do seu protótipo, Object.prototype, o que pode causar colisões inesperadas com chaves como toString ou constructor; um Map começa sempre completamente vazio, sem esse risco. Por outro lado, só os objetos literais e os arrays são suportados nativamente por JSON.stringify e JSON.parse; um Map tem de ser convertido primeiro, normalmente com Object.fromEntries ou com [...map.entries()]."
+      ],
+      "code": "const configuracao = {};\nconsole.log(typeof configuracao.toString); // \"function\" - propriedade herdada, não undefined\n\nconst opcoes = new Map();\nconsole.log(opcoes.get('toString')); // undefined - Map não tem esta armadilha\nconsole.log(opcoes.size); // 0",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Se as chaves de um objeto vierem de uma fonte externa, por exemplo dados introduzidos pelo utilizador, evite usar esse objeto diretamente como dicionário: chaves como __proto__ ou constructor podem interagir com o protótipo. Um Map elimina este risco por completo.",
+      "table_headers": [
+        "Aspeto",
+        "Map",
+        "Objeto literal"
+      ],
+      "table_rows": [
+        [
+          "Tipos de chave aceites",
+          "Qualquer valor: objetos, funções, números, etc.",
+          "Apenas strings e symbols"
+        ],
+        [
+          "Ordem de iteração",
+          "Sempre a ordem de inserção",
+          "Ordem de inserção, exceto chaves numéricas que vêm sempre primeiro"
+        ],
+        [
+          "Saber o tamanho",
+          "Propriedade size direta",
+          "Object.keys(obj).length"
+        ],
+        [
+          "Iterável com for...of",
+          "Sim, diretamente",
+          "Não, precisa de Object.entries/keys/values"
+        ],
+        [
+          "Propriedades herdadas",
+          "Nenhuma, começa vazio",
+          "Herda de Object.prototype"
+        ],
+        [
+          "Suporte nativo em JSON.stringify",
+          "Não",
+          "Sim"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "⚖️",
+          "text": "Map vs objeto: quando usar cada um"
+        },
+        {
+          "icon": "🚫",
+          "text": "Objetos herdam propriedades do protótipo"
+        },
+        {
+          "icon": "📦",
+          "text": "Só objetos suportam JSON.stringify direto"
+        }
+      ]
+    },
+    {
+      "heading": "WeakSet e WeakMap: referências fracas (preview)",
+      "body": [
+        "WeakSet e WeakMap são versões especializadas de Set e Map com duas restrições importantes: só aceitam objetos como valores, no caso do WeakSet, ou como chaves, no caso do WeakMap, nunca primitivos, e guardam essas referências de forma fraca. Isto significa que, se não existir mais nenhuma outra referência a esse objeto no resto do programa, o motor de JavaScript pode recolhê-lo da memória mesmo estando ainda dentro do WeakSet ou do WeakMap: a entrada correspondente desaparece automaticamente, sem que seja preciso remover nada manualmente.",
+        "Por causa desta natureza fraca, um WeakSet e um WeakMap não são iteráveis, não têm propriedade size e não expõem keys(), values() ou entries(): se fossem iteráveis, seria possível observar exatamente quando o garbage collector atua, o que quebraria as garantias da linguagem. Os métodos disponíveis reduzem-se a add()/has()/delete() no WeakSet e set()/get()/has()/delete() no WeakMap. Este comportamento é útil para associar dados extra a objetos sem impedir a sua libertação de memória quando deixam de ser usados; o tema será aprofundado no módulo 11, com Symbols e Proxy/Reflect."
+      ],
+      "code": "let nodo = { id: 'no-1' }; // representa, por exemplo, um nó associado à interface\n\nconst metadados = new WeakMap();\nmetadados.set(nodo, { cliques: 0 });\nmetadados.get(nodo).cliques++;\nconsole.log(metadados.get(nodo)); // { cliques: 1 }\n\nconst jaProcessados = new WeakSet();\njaProcessados.add(nodo);\nconsole.log(jaProcessados.has(nodo)); // true\n\n// quando deixar de haver qualquer outra referência a \"nodo\"...\nnodo = null;\n// ...as entradas de \"nodo\" no WeakMap e no WeakSet tornam-se elegíveis\n// para recolha de lixo, sem necessidade de as remover manualmente",
+      "callout_kind": "NOTA",
+      "callout_text": "WeakSet e WeakMap não aceitam strings, números nem outros primitivos como chave ou valor, só objetos. Este é apenas um primeiro contacto: o porquê da gestão de memória e os casos de uso avançados, como dados privados ou caches, são explorados em detalhe no módulo 11.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "👻",
+          "text": "Chaves são referências fracas a objetos"
+        },
+        {
+          "icon": "🗑️",
+          "text": "Não impedem o garbage collector"
+        },
+        {
+          "icon": "🔒",
+          "text": "Sem iteração, sem size, só objetos"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Contar duplicados com Set",
+      "difficulty": "Iniciante",
+      "statement": "Escreva uma função contarDuplicados(array) que recebe um array de números e devolve quantos elementos duplicados existem, ou seja, a diferença entre o comprimento do array original e o número de valores distintos que ele contém. Use um Set para determinar os valores únicos.",
+      "hint": "Lembre-se que um Set só guarda cada valor uma vez e tem uma propriedade size que indica quantos elementos distintos contém.",
+      "solution_code": "function contarDuplicados(array) {\n  const valoresUnicos = new Set(array);\n  return array.length - valoresUnicos.size;\n}\n\nconsole.log(contarDuplicados([1, 2, 2, 3, 4, 4, 4])); // 3",
+      "solution_explanation": "Ao construir um Set a partir do array, todas as repetições colapsam em valores únicos, pelo que valoresUnicos.size dá o número de valores distintos. A diferença entre o comprimento original e esse número corresponde exatamente ao número de ocorrências duplicadas."
+    },
+    {
+      "title": "Agrupar valores por tipo com Map",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função agruparPorTipo(itens) que recebe um array com valores de tipos variados (números, strings, booleanos, objetos, etc.) e devolve um Map em que cada chave é o tipo do valor, obtido com typeof, e o valor associado é um array com todos os itens desse tipo, pela ordem em que aparecem no array original.",
+      "hint": "Para cada item, verifique se a chave typeof já existe no Map com has(); se não existir, crie primeiro um array vazio com set() antes de lhe fazer push().",
+      "solution_code": "function agruparPorTipo(itens) {\n  const grupos = new Map();\n\n  for (const item of itens) {\n    const tipo = typeof item;\n    if (!grupos.has(tipo)) {\n      grupos.set(tipo, []);\n    }\n    grupos.get(tipo).push(item);\n  }\n\n  return grupos;\n}\n\nconst resultado = agruparPorTipo([1, 'a', true, 2, 'b', { x: 1 }]);\nconsole.log(resultado.get('number'));  // [1, 2]\nconsole.log(resultado.get('string'));  // ['a', 'b']\nconsole.log(resultado.get('boolean')); // [true]",
+      "solution_explanation": "O Map é ideal aqui porque as chaves (os tipos encontrados) só se sabem em tempo de execução. has() evita sobrescrever um array já existente, e get(tipo).push(item) acrescenta o item ao array correto guardado nesse par chave-valor."
+    },
+    {
+      "title": "Palavra mais frequente",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função palavraMaisFrequente(texto) que recebe uma frase, conta quantas vezes cada palavra aparece (ignorando maiúsculas e minúsculas) usando um Map, e devolve a palavra mais frequente. Assuma que as palavras na frase estão separadas por espaços simples e sem pontuação.",
+      "hint": "Percorra as palavras com um ciclo e use contagens.get(palavra) ?? 0 para obter a contagem atual antes de a incrementar; no fim, itere o Map com for...of para encontrar o maior valor.",
+      "solution_code": "function palavraMaisFrequente(texto) {\n  const contagens = new Map();\n\n  for (const palavra of texto.toLowerCase().split(' ')) {\n    contagens.set(palavra, (contagens.get(palavra) ?? 0) + 1);\n  }\n\n  let melhorPalavra = null;\n  let maiorContagem = 0;\n\n  for (const [palavra, contagem] of contagens) {\n    if (contagem > maiorContagem) {\n      maiorContagem = contagem;\n      melhorPalavra = palavra;\n    }\n  }\n\n  return melhorPalavra;\n}\n\nconsole.log(palavraMaisFrequente('o gato e o cão e o gato dormem'));\n// \"o\"",
+      "solution_explanation": "O Map acumula, para cada palavra distinta, o número de ocorrências, usando ?? 0 para tratar a primeira aparição de cada palavra. Depois, um segundo ciclo com for...of percorre os pares [palavra, contagem] do Map, guardando sempre a palavra com maior contagem vista até ao momento."
+    },
+    {
+      "title": "Contar nós num grafo com referências circulares",
+      "difficulty": "Avancado",
+      "statement": "Tem uma estrutura de objetos que representam nós de uma árvore ou grafo, em que cada nó tem uma propriedade filhos (um array de outros nós) e pode conter referências circulares. Escreva uma função contarNos(raiz) que percorre a estrutura a partir de raiz e devolve o número de nós distintos alcançáveis, garantindo que nunca entra num ciclo infinito. Use uma WeakSet para marcar os nós já visitados, em vez de um Set normal.",
+      "hint": "Uma WeakSet serve exatamente para marcar objetos como já vistos, sem criar uma referência forte que possa impedir a sua recolha de lixo mais tarde, ao contrário de um Set normal.",
+      "solution_code": "function contarNos(raiz) {\n  const visitados = new WeakSet();\n\n  function visitar(atual) {\n    if (visitados.has(atual)) {\n      return 0;\n    }\n    visitados.add(atual);\n\n    let total = 1;\n    for (const filho of atual.filhos ?? []) {\n      total += visitar(filho);\n    }\n    return total;\n  }\n\n  return visitar(raiz);\n}\n\nconst folhaA = { filhos: [] };\nconst folhaB = { filhos: [] };\nconst ramo = { filhos: [folhaA, folhaB] };\nramo.filhos.push(ramo); // referência circular, aponta para si próprio\n\nconsole.log(contarNos(ramo)); // 3 (ramo, folhaA, folhaB)",
+      "solution_explanation": "A WeakSet visitados funciona como um Set normal para marcar 'já visto' e evitar o ciclo infinito causado pela referência circular de ramo para si próprio. A vantagem de usar WeakSet em vez de Set nota-se quando esta estrutura de controlo sobrevive a uma única chamada, por exemplo se fosse reutilizada em travessias sucessivas: um Set normal manteria uma referência forte a cada nó enquanto o próprio Set existisse, impedindo a sua recolha pelo garbage collector, enquanto o WeakSet permite libertar ramo, folhaA ou folhaB assim que deixem de existir outras referências a eles."
+    }
+  ],
+  "summary": [
+    "Set guarda valores únicos e é a forma mais direta de remover duplicados de um array com [...new Set(array)].",
+    "Map guarda pares chave-valor e aceita qualquer tipo como chave, ao contrário dos objetos literais, que só aceitam strings e symbols.",
+    "Map mantém a ordem de inserção, tem a propriedade size e é diretamente iterável com for...of, que devolve pares [chave, valor].",
+    "Um objeto literal continua a ser preferível para estruturas de dados fixas e simples que serão serializadas em JSON; um Map é melhor quando as chaves são dinâmicas, variam de tipo ou mudam com frequência.",
+    "WeakSet e WeakMap só aceitam objetos como chaves e guardam-nos com referências fracas, o que permite ao garbage collector libertar essa memória assim que não existam outras referências, por isso não são iteráveis nem têm size.",
+    "Este comportamento de WeakSet e WeakMap será aprofundado no módulo 11, quando se explorar gestão de memória mais avançada com Symbols e Proxy/Reflect."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 05",
+  "next_label": "Aula 05 → Iteradores e o Protocolo Iterável",
+  "_stage": "revisao"
+}

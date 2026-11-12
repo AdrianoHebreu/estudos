@@ -1,0 +1,300 @@
+{
+  "module_num": "02",
+  "module_title": "Objetos, Interfaces e Type Aliases",
+  "module_dir": "02-Objetos-Interfaces-e-Type-Aliases",
+  "lesson_num": "04",
+  "lesson_slug": "Extensao-e-Composicao-de-Tipos",
+  "kind": "aula",
+  "title": "Extensão e Composição de Tipos",
+  "filename_base": "04-Extensao-e-Composicao-de-Tipos",
+  "subtitle": "Herdar com extends, somar com &, e o conflito que só um dos dois denuncia",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Estender uma interface com extends, incluindo estender várias ao mesmo tempo",
+    "Compor type aliases com interseção e ver onde isso equivale a extends",
+    "Perceber porque extends acusa um conflito de propriedades e a interseção não",
+    "Montar tipos grandes a partir de blocos pequenos e reutilizáveis",
+    "Misturar interfaces e type aliases nas duas direções",
+    "Escolher entre estender e compor com um critério objetivo"
+  ],
+  "sections": [
+    {
+      "heading": "Herdar a forma com extends",
+      "body": [
+        "Uma interface pode declarar que inclui a forma de outra com extends. Tudo o que a interface de base tem passa a fazer parte da nova, sem ser reescrito, e o que a nova declara é acrescentado por cima.",
+        "Depois da vírgula podem vir mais interfaces: uma interface estende quantas quiser e o resultado é uma só forma com a soma de todos os membros. Ao contrário da herança de classes, isto não cria relação nenhuma em tempo de execução. Aqui extends é apenas uma instrução ao compilador sobre a forma esperada."
+      ],
+      "code": "interface Pessoa {\n  nome: string;\n  idade: number;\n}\n\n// Funcionario tem tudo o que Pessoa tem, mais o que acrescenta\ninterface Funcionario extends Pessoa {\n  salario: number;\n}\n\ninterface Auditavel {\n  criadoEm: string;\n}\n\n// uma interface pode estender várias ao mesmo tempo, separadas por vírgula\ninterface FuncionarioRegistado extends Pessoa, Auditavel {\n  salario: number;\n}\n\nconst ana: Funcionario = { nome: \"Ana\", idade: 34, salario: 1800 };\n\nconst bruno: FuncionarioRegistado = {\n  nome: \"Bruno\",\n  idade: 41,\n  salario: 2100,\n  criadoEm: \"2024-03-01\",\n};\n\n// @ts-expect-error falta idade, que vem herdada de Pessoa\nconst incompleto: Funcionario = { nome: \"Carla\", salario: 1500 };\n\nconsole.log(ana.nome, ana.salario); // \"Ana\" 1800\nconsole.log(bruno.criadoEm, bruno.idade); // \"2024-03-01\" 41\nconsole.log(typeof incompleto); // \"object\"",
+      "callout_kind": "NOTA",
+      "callout_text": "extends numa interface não gera código nenhum. Desaparece na compilação, tal como o resto das anotações de tipo.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧬",
+          "text": "extends herda toda a forma da interface de base"
+        },
+        {
+          "icon": "➕",
+          "text": "Uma interface pode estender várias, separadas por vírgula"
+        },
+        {
+          "icon": "🧊",
+          "text": "Não existe em runtime: é só informação de tipo"
+        }
+      ]
+    },
+    {
+      "heading": "Compor com a interseção",
+      "body": [
+        "A interseção com & faz pelos type aliases o que extends faz pelas interfaces: junta formas. Um valor do tipo composto tem de cumprir os requisitos de todas as partes ao mesmo tempo.",
+        "Nos casos simples, sem propriedades repetidas, os dois caminhos produzem o mesmo tipo e são intermutáveis. O compilador compara tipos de objeto pela estrutura, por isso um valor declarado com o alias serve onde se pede a interface, e ao contrário."
+      ],
+      "code": "type Pessoa = {\n  nome: string;\n  idade: number;\n};\n\ntype ComEmail = {\n  email: string;\n};\n\n// a interseção soma as duas formas: o valor tem de cumprir as duas\ntype Contacto = Pessoa & ComEmail;\n\nconst ana: Contacto = { nome: \"Ana\", idade: 34, email: \"ana@exemplo.pt\" };\n\n// o mesmo resultado prático pelo caminho das interfaces\ninterface PessoaI {\n  nome: string;\n  idade: number;\n}\n\ninterface ContactoI extends PessoaI {\n  email: string;\n}\n\nconst bruno: ContactoI = { nome: \"Bruno\", idade: 41, email: \"bruno@exemplo.pt\" };\n\n// os dois tipos são intermutáveis: a estrutura é a mesma\nconst comoAlias: Contacto = bruno;\nconst comoInterface: ContactoI = ana;\n\nconsole.log(comoAlias.email); // \"bruno@exemplo.pt\"\nconsole.log(comoInterface.email); // \"ana@exemplo.pt\"",
+      "callout_kind": "DICA",
+      "callout_text": "Quando os dois caminhos servem igualmente bem, a interface costuma dar mensagens de erro mais curtas: o compilador mostra o nome da interface em vez de expandir a composição inteira.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔗",
+          "text": "A interseção exige as duas formas ao mesmo tempo"
+        },
+        {
+          "icon": "⚖️",
+          "text": "Sem propriedades repetidas, dá o mesmo que extends"
+        },
+        {
+          "icon": "🔄",
+          "text": "Alias e interface trocam livremente entre si"
+        }
+      ]
+    },
+    {
+      "heading": "O conflito: extends acusa, a interseção cala-se",
+      "body": [
+        "É aqui que os dois caminhos deixam de ser equivalentes. Se a interface nova declarar uma propriedade que já existe na base com um tipo incompatível, extends dá erro na própria declaração. O compilador exige que a forma derivada continue a servir em todo o lado onde a base é pedida.",
+        "A interseção não faz essa verificação. Quando a mesma propriedade aparece dos dois lados com primitivos incompatíveis, o tipo dessa propriedade passa a ser number & string, que se reduz a never. O tipo composto continua a existir e a declaração passa sem uma única queixa.",
+        "O erro só aparece mais tarde e longe da causa, quando alguém tenta criar um valor: nenhum valor pertence a never. É por isso que um conflito escondido numa interseção pode ficar meses no código até alguém tropeçar nele."
+      ],
+      "code": "interface Produto {\n  preco: number;\n}\n\n// @ts-expect-error extends recusa logo aqui: preco string não é compatível com preco number\ninterface ProdutoMau extends Produto {\n  preco: string;\n}\n\ntype ProdutoT = { preco: number };\n\n// a interseção não se queixa: preco passou a ser number & string, ou seja never\ntype ProdutoComposto = ProdutoT & { preco: string };\n\nfunction lerPreco(p: ProdutoComposto): never {\n  return p.preco;\n}\n\n// @ts-expect-error o erro só aparece agora: nenhum valor é atribuível a never\nconst tentativa: ProdutoComposto = { preco: 10 };\n\nconsole.log(typeof lerPreco, typeof tentativa); // \"function\" \"object\"",
+      "callout_kind": "ATENCAO",
+      "callout_text": "A redução a never só acontece entre primitivos incompatíveis. Se um dos lados for um objeto, como em string & Date, o tipo não fica never, mas continua a não existir valor nenhum que o satisfaça. O sintoma é igual: o erro cai onde se cria o valor, não onde está o problema.",
+      "table_headers": [
+        "Situação",
+        "Com extends",
+        "Com interseção"
+      ],
+      "table_rows": [
+        [
+          "Propriedades diferentes nos dois lados",
+          "Compila e herda",
+          "Compila e soma"
+        ],
+        [
+          "Mesma propriedade, tipo mais restrito no lado novo",
+          "Compila: continua a ser um subtipo válido",
+          "Compila: fica o tipo mais restrito"
+        ],
+        [
+          "Mesma propriedade, primitivos incompatíveis",
+          "Erro imediato na declaração",
+          "Sem erro: a propriedade fica never"
+        ],
+        [
+          "Onde o problema se manifesta",
+          "Na linha do extends",
+          "Só ao criar ou atribuir um valor"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🚨",
+          "text": "extends rejeita a propriedade incompatível na hora"
+        },
+        {
+          "icon": "🤐",
+          "text": "A interseção aceita e transforma a propriedade em never"
+        },
+        {
+          "icon": "📍",
+          "text": "Com never, o erro cai longe da causa real"
+        }
+      ]
+    },
+    {
+      "heading": "Blocos pequenos em vez de um tipo grande",
+      "body": [
+        "Um tipo grande escrito de uma assentada só serve para uma coisa. Os mesmos campos partidos em blocos pequenos, cada um com nome, servem para várias e ainda dizem alguma coisa sobre o domínio: o que é identificável, o que é datado, o que tem autor.",
+        "A vantagem prática aparece nas funções. Uma função que só precisa do identificador pode pedir o bloco Identificavel em vez do tipo inteiro, e passa a aceitar tudo o que o inclua. O tipo do parâmetro passa a dizer exatamente aquilo de que a função depende, nem mais nem menos."
+      ],
+      "code": "type Identificavel = { id: string };\ntype ComTempo = { criadoEm: string; atualizadoEm: string };\ntype ComAutor = { autorId: string };\ntype Publicavel = { publicado: boolean };\n\ntype Artigo = Identificavel & ComTempo & ComAutor & Publicavel & {\n  titulo: string;\n  corpo: string;\n};\n\ntype Comentario = Identificavel & ComTempo & ComAutor & {\n  artigoId: string;\n  texto: string;\n};\n\nconst artigo: Artigo = {\n  id: \"a1\",\n  criadoEm: \"2024-01-10\",\n  atualizadoEm: \"2024-01-12\",\n  autorId: \"u7\",\n  publicado: true,\n  titulo: \"Compor tipos\",\n  corpo: \"Peças pequenas montam-se de muitas maneiras.\",\n};\n\nconst comentario: Comentario = {\n  id: \"c1\",\n  criadoEm: \"2024-01-11\",\n  atualizadoEm: \"2024-01-11\",\n  autorId: \"u9\",\n  artigoId: \"a1\",\n  texto: \"Muito útil.\",\n};\n\n// uma função que só precisa do bloco Identificavel aceita os dois\nfunction chave(x: Identificavel): string {\n  return x.id;\n}\n\nconsole.log(chave(artigo), chave(comentario)); // \"a1\" \"c1\"\nconsole.log(artigo.publicado, comentario.artigoId); // true \"a1\"",
+      "callout_kind": "DICA",
+      "callout_text": "Um bloco bem escolhido costuma corresponder a uma responsabilidade. Se não lhe consegue dar um nome, provavelmente não é um bloco: são campos que calharam ficar juntos.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧱",
+          "text": "Blocos com nome reutilizam-se em vários tipos"
+        },
+        {
+          "icon": "🎯",
+          "text": "A função pede só o bloco de que precisa"
+        },
+        {
+          "icon": "📐",
+          "text": "Menos repetição e mais intenção no tipo"
+        }
+      ]
+    },
+    {
+      "heading": "Interfaces e aliases misturam-se",
+      "body": [
+        "As duas formas não vivem em mundos separados. Uma interface pode estender um type alias, desde que o alias descreva uma forma de objeto, e um alias pode fazer interseção com interfaces. Dá para começar por um lado e continuar pelo outro sem converter nada.",
+        "O limite está no extends: só aceita formas de objeto com membros conhecidos. Uma união não serve, porque não há uma forma única a herdar, e o compilador diz isso com todas as letras."
+      ],
+      "code": "type Coordenadas = {\n  latitude: number;\n  longitude: number;\n};\n\n// uma interface pode estender um type alias de objeto\ninterface Morada extends Coordenadas {\n  rua: string;\n  cidade: string;\n}\n\ninterface Contactavel {\n  telefone: string;\n}\n\n// e um type alias pode fazer interseção com interfaces\ntype Loja = Morada & Contactavel & { nome: string };\n\nconst loja: Loja = {\n  latitude: 41.54,\n  longitude: -8.42,\n  rua: \"Rua Central 10\",\n  cidade: \"Braga\",\n  telefone: \"253000000\",\n  nome: \"Casa do Café\",\n};\n\ntype Resposta = string | number;\n\n// @ts-expect-error uma interface só estende formas de objeto, nunca uma união\ninterface RespostaI extends Resposta {\n  ok: boolean;\n}\n\nconsole.log(loja.cidade, loja.nome); // \"Braga\" \"Casa do Café\"\nconsole.log(loja.latitude, loja.telefone); // 41.54 \"253000000\"",
+      "callout_kind": "NOTA",
+      "callout_text": "Um alias que já seja ele próprio uma interseção de objetos também pode ser estendido por uma interface. O que nunca serve como base de extends é uma união ou um primitivo.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔀",
+          "text": "Interface estende alias de objeto sem problema"
+        },
+        {
+          "icon": "🧷",
+          "text": "Alias faz interseção com interfaces na mesma linha"
+        },
+        {
+          "icon": "⛔",
+          "text": "Uma união nunca pode ser base de extends"
+        }
+      ]
+    },
+    {
+      "heading": "A composição é rasa",
+      "body": [
+        "Juntar dois tipos não funde os objetos aninhados campo a campo. Se os dois blocos tiverem uma propriedade servidor, a propriedade resultante é a interseção dos dois objetos aninhados, e o valor tem de cumprir os dois de uma vez.",
+        "Isto costuma ser o que se quer, mas surpreende quem espera uma fusão profunda ao estilo do spread em tempo de execução. Não há fusão nenhuma: há requisitos que se acumulam, nível a nível, até ao fundo da estrutura."
+      ],
+      "code": "type ConfigBase = {\n  servidor: { host: string; porta: number };\n  debug: boolean;\n};\n\ntype ConfigRetry = {\n  servidor: { timeout: number };\n};\n\n// servidor não é fundido campo a campo: fica { host, porta } & { timeout }\ntype Config = ConfigBase & ConfigRetry;\n\nconst completa: Config = {\n  servidor: { host: \"localhost\", porta: 8080, timeout: 3000 },\n  debug: false,\n};\n\nconst parcial: Config = {\n  // @ts-expect-error falta timeout: o objeto aninhado tem de cumprir os dois blocos\n  servidor: { host: \"localhost\", porta: 8080 },\n  debug: true,\n};\n\nconsole.log(completa.servidor.timeout, completa.debug); // 3000 false\nconsole.log(typeof parcial); // \"object\"",
+      "callout_kind": "ATENCAO",
+      "callout_text": "A interseção acumula requisitos em profundidade. Não escolhe um dos lados nem substitui o outro: a única maneira de satisfazer o tipo é ter tudo o que os dois pedem.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🪜",
+          "text": "Objetos aninhados não se fundem campo a campo"
+        },
+        {
+          "icon": "📦",
+          "text": "O nível de baixo tem de cumprir os dois blocos"
+        },
+        {
+          "icon": "❗",
+          "text": "Nada substitui nada: os requisitos somam-se"
+        }
+      ]
+    },
+    {
+      "heading": "Estender ou compor: o critério",
+      "body": [
+        "O critério não é de gosto pessoal. Se o tipo novo é uma versão especializada de um tipo existente, e faz sentido dizer que um é um do outro, use extends: a relação fica explícita e o compilador valida a compatibilidade logo na declaração.",
+        "Se o que está a fazer é somar capacidades independentes, que também aparecem noutros tipos sem relação entre si, use a interseção: as peças combinam-se em qualquer ordem e não obrigam a inventar uma hierarquia. Quando os dois servem igualmente bem, prefira extends pelo erro imediato em caso de conflito."
+      ],
+      "code": "interface Utilizador {\n  id: string;\n  email: string;\n}\n\n// extends: Administrador é um Utilizador especializado\ninterface Administrador extends Utilizador {\n  permissoes: string[];\n}\n\n// interseção: capacidades independentes, somadas onde fizerem falta\ntype ComAuditoria = { criadoPor: string; criadoEm: string };\n\ntype AdministradorAuditado = Administrador & ComAuditoria;\ntype UtilizadorAuditado = Utilizador & ComAuditoria;\n\nconst admin: AdministradorAuditado = {\n  id: \"u1\",\n  email: \"admin@exemplo.pt\",\n  permissoes: [\"ler\", \"escrever\"],\n  criadoPor: \"sistema\",\n  criadoEm: \"2024-05-02\",\n};\n\nconst normal: UtilizadorAuditado = {\n  id: \"u2\",\n  email: \"leitor@exemplo.pt\",\n  criadoPor: \"admin@exemplo.pt\",\n  criadoEm: \"2024-05-03\",\n};\n\nconsole.log(admin.permissoes.length, admin.criadoPor); // 2 \"sistema\"\nconsole.log(normal.email, normal.criadoEm); // \"leitor@exemplo.pt\" \"2024-05-03\"",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Pegue num tipo grande que já tenha escrito e tente parti-lo em dois ou três blocos com nome. Se algum desses blocos puder ser usado noutro tipo do mesmo projeto, a divisão valeu a pena.",
+      "table_headers": [
+        "Quando",
+        "Preferir",
+        "Porquê"
+      ],
+      "table_rows": [
+        [
+          "O tipo novo é uma especialização de um existente",
+          "extends",
+          "A relação fica explícita e o conflito aparece na declaração"
+        ],
+        [
+          "Somar capacidades independentes e reutilizáveis",
+          "Interseção com &",
+          "As peças combinam-se em qualquer ordem, sem hierarquia"
+        ],
+        [
+          "O ponto de partida é uma união ou um tipo que não é objeto",
+          "Interseção com &",
+          "extends só aceita formas de objeto"
+        ],
+        [
+          "Os dois servem igualmente bem",
+          "extends",
+          "Falha cedo em vez de produzir uma propriedade never"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧭",
+          "text": "Especialização pede extends, soma de peças pede &"
+        },
+        {
+          "icon": "⏱️",
+          "text": "Em caso de dúvida, extends falha mais cedo"
+        },
+        {
+          "icon": "🧩",
+          "text": "Hierarquia só quando ela existe mesmo"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Uma base e três especializações",
+      "difficulty": "Iniciante",
+      "statement": "Declare a interface Veiculo com marca do tipo string e ano do tipo number. A partir dela, declare Carro com portas do tipo number e Mota com cilindrada do tipo number, ambas por extends. Depois declare CarroEletrico, que estende Carro e acrescenta autonomiaKm do tipo number. Crie um valor de cada um dos três tipos e escreva a função descrever, que recebe um Veiculo e devolve a marca e o ano numa string.",
+      "hint": "Uma interface pode estender outra que já estende uma terceira. E a função deve pedir apenas Veiculo, nunca os tipos derivados.",
+      "solution_code": "interface Veiculo {\n  marca: string;\n  ano: number;\n}\n\ninterface Carro extends Veiculo {\n  portas: number;\n}\n\ninterface Mota extends Veiculo {\n  cilindrada: number;\n}\n\ninterface CarroEletrico extends Carro {\n  autonomiaKm: number;\n}\n\nconst carro: Carro = { marca: \"Fiat\", ano: 2020, portas: 5 };\nconst mota: Mota = { marca: \"Honda\", ano: 2019, cilindrada: 600 };\nconst eletrico: CarroEletrico = {\n  marca: \"Nissan\",\n  ano: 2023,\n  portas: 5,\n  autonomiaKm: 380,\n};\n\nfunction descrever(v: Veiculo): string {\n  return `${v.marca} de ${v.ano}`;\n}\n\nconsole.log(descrever(carro), carro.portas); // \"Fiat de 2020\" 5\nconsole.log(descrever(mota), mota.cilindrada); // \"Honda de 2019\" 600\nconsole.log(descrever(eletrico), eletrico.autonomiaKm); // \"Nissan de 2023\" 380",
+      "solution_explanation": "Cada extends acrescenta campos à forma herdada, e CarroEletrico mostra que a cadeia pode ter mais do que um nível. Como a função descrever pede apenas Veiculo, aceita os três valores sem saber nada dos campos extra."
+    },
+    {
+      "title": "Compor a partir de blocos",
+      "difficulty": "Intermedio",
+      "statement": "Declare três type aliases pequenos: Identificavel com id do tipo string, Datado com criadoEm do tipo string e Nomeado com nome do tipo string. Componha Cliente como a interseção dos três mais email do tipo string, e Etiqueta como a interseção apenas de Identificavel e Nomeado. Crie um valor de cada e escreva a função rotular, que aceita qualquer coisa que tenha id e nome e devolve os dois numa string.",
+      "hint": "O parâmetro de rotular não precisa de um alias novo: pode ser escrito como a interseção dos dois blocos ali mesmo.",
+      "solution_code": "type Identificavel = { id: string };\ntype Datado = { criadoEm: string };\ntype Nomeado = { nome: string };\n\ntype Cliente = Identificavel & Datado & Nomeado & { email: string };\ntype Etiqueta = Identificavel & Nomeado;\n\nconst cliente: Cliente = {\n  id: \"c1\",\n  criadoEm: \"2024-06-01\",\n  nome: \"Ana Dias\",\n  email: \"ana@exemplo.pt\",\n};\n\nconst etiqueta: Etiqueta = { id: \"e1\", nome: \"urgente\" };\n\nfunction rotular(x: Identificavel & Nomeado): string {\n  return `${x.id}: ${x.nome}`;\n}\n\nconsole.log(rotular(cliente)); // \"c1: Ana Dias\"\nconsole.log(rotular(etiqueta)); // \"e1: urgente\"\nconsole.log(cliente.email, cliente.criadoEm); // \"ana@exemplo.pt\" \"2024-06-01\"",
+      "solution_explanation": "Os três blocos combinam-se de maneiras diferentes para formar dois tipos sem repetir campos. A função rotular pede só os blocos de que depende, por isso aceita tanto Cliente como Etiqueta sem existir relação nenhuma entre esses dois tipos."
+    },
+    {
+      "title": "O conflito visto dos dois lados",
+      "difficulty": "Intermedio",
+      "statement": "Parta da interface Encomenda com codigo do tipo number. Mostre primeiro a via do extends: declare EncomendaMa com codigo do tipo string e marque a declaração com um comentário de erro esperado, porque o compilador rejeita-a de imediato. Depois mostre a via da interseção: declare o alias equivalente e componha-o com um bloco que tem codigo do tipo string. Prove que a propriedade ficou never escrevendo uma função que devolve never a partir dela, e tente criar um valor, marcando também essa linha como erro esperado. Por fim corrija o modelo, dando um nome próprio à propriedade nova.",
+      "hint": "A interseção de number com string reduz-se a never, e uma função cujo tipo de retorno é never aceita devolver um valor desse tipo. A correção não passa por mudar tipos, passa por mudar o nome da propriedade.",
+      "solution_code": "interface Encomenda {\n  codigo: number;\n}\n\n// @ts-expect-error extends recusa de imediato: codigo string contra codigo number\ninterface EncomendaMa extends Encomenda {\n  codigo: string;\n}\n\ntype EncomendaT = { codigo: number };\n\n// a interseção compila em silêncio: codigo ficou number & string, ou seja never\ntype EncomendaComposta = EncomendaT & { codigo: string };\n\nfunction lerCodigo(e: EncomendaComposta): never {\n  return e.codigo;\n}\n\n// @ts-expect-error nenhum valor pertence a never, nem 1 nem \"1\"\nconst impossivel: EncomendaComposta = { codigo: 1 };\n\n// correção: a propriedade nova passa a ter um nome próprio\ntype EncomendaBoa = EncomendaT & { codigoExterno: string };\n\nconst boa: EncomendaBoa = { codigo: 1, codigoExterno: \"EXT-0001\" };\n\nconsole.log(typeof lerCodigo, typeof impossivel); // \"function\" \"object\"\nconsole.log(boa.codigo, boa.codigoExterno); // 1 \"EXT-0001\"",
+      "solution_explanation": "A versão com extends nem chega a existir: o erro aparece na declaração. A versão com interseção declara-se sem queixas e só rebenta na criação do valor, porque a propriedade codigo passou a never. Renomear a propriedade nova para codigoExterno resolve o conflito e mantém os dois dados."
+    },
+    {
+      "title": "Notificações compostas com configuração aninhada",
+      "difficulty": "Avancado",
+      "statement": "Declare os blocos Identificavel com id do tipo string, Datado com criadoEm do tipo string e Destinatario com paraEmail do tipo string. Declare a interface Canal, que estende Identificavel e acrescenta nome do tipo string. Componha NotificacaoEmail juntando Canal, Datado, Destinatario e um bloco com assunto e corpo, ambos string, e crie um valor. Em seguida declare ConfigBase com envio a conter tentativas do tipo number e ConfigRetry com envio a conter intervaloMs do tipo number, e componha as duas. Crie uma configuração válida e mostre, com um comentário de erro esperado, que um objeto envio só com tentativas é recusado. Acrescente ainda a função resumo, que aceita qualquer coisa identificável e datada.",
+      "hint": "Repare onde cai o erro do objeto aninhado: não é na linha da constante, é na propriedade envio. O comentário de erro esperado tem de ficar imediatamente antes dessa propriedade.",
+      "solution_code": "type Identificavel = { id: string };\ntype Datado = { criadoEm: string };\ntype Destinatario = { paraEmail: string };\n\ninterface Canal extends Identificavel {\n  nome: string;\n}\n\ntype NotificacaoEmail = Canal & Datado & Destinatario & {\n  assunto: string;\n  corpo: string;\n};\n\nconst aviso: NotificacaoEmail = {\n  id: \"n1\",\n  nome: \"email-transacional\",\n  criadoEm: \"2024-08-15\",\n  paraEmail: \"cliente@exemplo.pt\",\n  assunto: \"Encomenda enviada\",\n  corpo: \"A sua encomenda saiu do armazém.\",\n};\n\ntype ConfigBase = { envio: { tentativas: number } };\ntype ConfigRetry = { envio: { intervaloMs: number } };\ntype Config = ConfigBase & ConfigRetry;\n\nconst config: Config = { envio: { tentativas: 3, intervaloMs: 500 } };\n\nconst configParcial: Config = {\n  // @ts-expect-error a composição é rasa: envio tem de cumprir os dois blocos de uma vez\n  envio: { tentativas: 3 },\n};\n\nfunction resumo(n: Identificavel & Datado): string {\n  return `${n.id} em ${n.criadoEm}`;\n}\n\nconsole.log(resumo(aviso), aviso.assunto); // \"n1 em 2024-08-15\" \"Encomenda enviada\"\nconsole.log(config.envio.tentativas, config.envio.intervaloMs); // 3 500\nconsole.log(typeof configParcial); // \"object\"",
+      "solution_explanation": "A notificação mistura os dois estilos: uma interface que estende um alias e depois entra numa interseção com outros blocos. A configuração mostra a composição rasa em ação, porque a propriedade envio tem de cumprir os dois blocos ao mesmo tempo. A função resumo confirma outra vez a vantagem de pedir apenas os blocos usados."
+    }
+  ],
+  "summary": [
+    "extends herda a forma de uma ou mais interfaces e não gera código nenhum",
+    "A interseção compõe aliases e, sem conflitos, dá o mesmo resultado que extends",
+    "Com a mesma propriedade em tipos incompatíveis, extends erra logo e a interseção produz never",
+    "Blocos pequenos com nome reutilizam-se e deixam as funções pedir só o que usam",
+    "Interfaces e aliases misturam-se nas duas direções, com o limite das uniões",
+    "A composição é rasa: objetos aninhados acumulam requisitos em vez de se fundirem"
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 05",
+  "next_label": "Aula 05 → Tipagem Estrutural e Excess Property Checks"
+}

@@ -1,0 +1,249 @@
+{
+  "module_num": "11",
+  "module_title": "JavaScript Avançado",
+  "module_dir": "11-JavaScript-Avancado",
+  "lesson_num": "03",
+  "lesson_slug": "WeakMap-WeakSet-e-Gestao-de-Memoria",
+  "kind": "aula",
+  "title": "WeakMap, WeakSet e Gestão de Memória",
+  "filename_base": "03-WeakMap-WeakSet-e-Gestao-de-Memoria",
+  "subtitle": "Como o garbage collector decide o que recolher, e como usar WeakMap e WeakSet sem fugas.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Perceber, a grandes traços, como o garbage collector decide o que pode ser recolhido (alcançabilidade e mark-and-sweep).",
+    "Usar WeakMap para associar metadados ou estado auxiliar a objetos sem impedir a sua recolha de lixo.",
+    "Usar WeakSet para marcar a pertença de objetos a um grupo (por exemplo, \"já processados\") sem causar fugas de memória.",
+    "Distinguir Map/Set de WeakMap/WeakSet e saber justificar quando cada um é a escolha correta.",
+    "Conhecer WeakRef e FinalizationRegistry, e reconhecer porque são APIs avançadas de uso raro, sem garantias de tempo."
+  ],
+  "sections": [
+    {
+      "heading": "Alcançabilidade e mark-and-sweep: como o motor decide o que recolher",
+      "body": [
+        "O garbage collector de um motor de JavaScript não decide o que apagar da memória com base em quando um valor foi criado ou há quanto tempo não é usado; decide com base em alcançabilidade. O motor mantém um conjunto de raízes - as variáveis globais, as variáveis ainda ativas na pilha de chamadas e tudo o que closures em execução continuam a referenciar - e considera alcançável qualquer objeto para o qual exista uma cadeia de referências a partir de alguma raiz. Tudo o que deixa de ser alcançável a partir de qualquer raiz é, por definição, lixo, mesmo que os próprios objetos ainda se refiram uns aos outros.",
+        "O algoritmo tipicamente usado para aplicar esta ideia chama-se mark-and-sweep: o motor percorre o grafo de referências a partir das raízes e marca cada objeto alcançável; depois varre toda a memória e liberta tudo o que não ficou marcado. Isto resolve de forma natural o problema clássico da contagem de referências (uma técnica mais antiga, ainda usada como otimização pontual nalguns motores): dois objetos que se referenciam mutuamente, mas que já não são alcançáveis a partir de nenhuma raiz, nunca chegariam a uma contagem de referências igual a zero, mas o mark-and-sweep recolhe-os na mesma, porque não depende de contar referências, depende de alcançabilidade real. Motores como o V8 (usado no Chrome e no Node.js) ainda otimizam isto com recolha geracional, tratando de forma diferente objetos recém-criados (normalmente de vida curta) e objetos mais antigos, mas o princípio de fundo mantém-se o mesmo."
+      ],
+      "code": "function criarPar() {\n  const a = {};\n  const b = {};\n  a.outro = b;\n  b.outro = a; // referência cíclica entre a e b\n  return \"par criado\";\n}\n\ncriarPar();\n// depois desta chamada, nem \"a\" nem \"b\" têm qualquer variável que lhes\n// chegue a partir de uma raiz (nem global, nem na pilha, nem em closure).\n// Uma contagem de referências ingénua nunca chegaria a zero (a referencia\n// b e b referencia a), mas o mark-and-sweep usado pelos motores atuais\n// não depende disso: como nenhum dos dois é alcançável a partir das\n// raízes, ambos são marcados como lixo e recolhidos.",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🗑️",
+          "text": "GC recolhe o que deixa de ser alcançável a partir das raízes"
+        },
+        {
+          "icon": "🔗",
+          "text": "Mark-and-sweep resolve referências cíclicas"
+        },
+        {
+          "icon": "⚙️",
+          "text": "Motores modernos usam recolha geracional"
+        }
+      ]
+    },
+    {
+      "heading": "WeakMap: chaves fracas para metadados sem fugas de memória",
+      "body": [
+        "Um WeakMap oferece a mesma interface básica de um Map - set, get, has, delete - mas com duas restrições estruturais que mudam tudo. Primeiro, as chaves têm obrigatoriamente de ser objetos (não é possível usar um número, uma string ou outro valor primitivo como chave). Segundo, e mais importante, a referência que o WeakMap guarda para cada chave é fraca: não conta para o grafo de alcançabilidade que o garbage collector usa. Isto significa que, se a única referência restante a um objeto for como chave dentro de um WeakMap, esse objeto continua elegível para recolha de lixo exatamente como se o WeakMap não existisse, e a entrada correspondente (chave e valor) desaparece silenciosamente do WeakMap quando isso acontece.",
+        "O caso de uso típico é associar dados auxiliares a um objeto cujo ciclo de vida o código não controla diretamente, sem criar uma fuga de memória e sem ter de fazer limpeza manual. Em vez de acrescentar uma propriedade extra diretamente ao objeto (o que poderia colidir com outras propriedades, alterar o resultado de Object.keys ou de JSON.stringify, ou simplesmente não ser apropriado se o objeto não for seu), guarda-se essa informação à parte, num WeakMap indexado pelo próprio objeto. É o padrão clássico para caches associadas a um objeto de entrada, para contadores ou flags internas de uma biblioteca, ou para estado privado ligado a instâncias antes de existirem os campos privados de classe."
+      ],
+      "code": "const metadados = new WeakMap();\n\nclass Sessao {\n  constructor(utilizador) {\n    this.utilizador = utilizador;\n  }\n}\n\nlet sessaoAtual = new Sessao(\"adriano\");\nmetadados.set(sessaoAtual, { criadaEm: Date.now(), tentativasLogin: 0 });\n\nconsole.log(metadados.get(sessaoAtual).tentativasLogin); // 0\n\n// quando a única referência forte à sessão desaparece...\nsessaoAtual = null;\n// ...o objeto Sessao fica elegível para recolha de lixo, e a entrada\n// correspondente no WeakMap desaparece com ele - sem chamar\n// metadados.delete(...) manualmente, e sem qualquer fuga de memória.",
+      "callout_kind": "DICA",
+      "callout_text": "Antes de existirem os campos privados de classe (#campo), este era o padrão idiomático para guardar estado privado ligado a um objeto vindo de fora do módulo. Continua a ser a escolha certa quando o dono desse objeto não é o seu próprio código.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔑",
+          "text": "Chaves de WeakMap têm de ser objetos"
+        },
+        {
+          "icon": "🪶",
+          "text": "Referências fracas não impedem a recolha de lixo"
+        },
+        {
+          "icon": "🏷️",
+          "text": "Ideal para metadados ligados a um objeto"
+        }
+      ]
+    },
+    {
+      "heading": "WeakSet: marcar pertença a um grupo sem prender objetos",
+      "body": [
+        "O WeakSet é para conjuntos de objetos o que o WeakMap é para associações chave-valor: guarda apenas objetos (nunca valores primitivos), cada elemento só pode existir uma vez no conjunto, e a referência que o WeakSet mantém para cada elemento é fraca. Os métodos disponíveis são um subconjunto dos de um Set normal - add, has e delete - propositadamente sem forma de percorrer ou contar os elementos.",
+        "O uso mais comum é marcar que um determinado objeto já passou por um certo tratamento, sem ter de alterar o próprio objeto (por exemplo, acrescentando-lhe uma propriedade tipo jáProcessado) e sem impedir que esse objeto seja recolhido quando deixar de ser necessário em qualquer outro lugar. É a técnica típica para evitar reprocessar o mesmo item, para evitar recursão infinita ao percorrer estruturas com ciclos, ou para controlar que duas operações concorrentes não tratem o mesmo objeto ao mesmo tempo."
+      ],
+      "code": "const jaProcessados = new WeakSet();\n\nfunction processar(item) {\n  if (jaProcessados.has(item)) {\n    return; // já foi tratado, evita reprocessar\n  }\n\n  jaProcessados.add(item);\n  console.log(`a processar item #${item.id}`);\n}\n\nlet tarefa = { id: 1 };\nprocessar(tarefa);\nprocessar(tarefa); // ignorado, já está no WeakSet\n\ntarefa = null;\n// assim que \"tarefa\" deixar de ter outras referências, o motor pode\n// recolhê-la, e a entrada correspondente desaparece do WeakSet sozinha.",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Tente reescrever o exemplo acima substituindo o WeakSet por um Set normal. Pense em que situações reais isso passaria a causar uma fuga de memória silenciosa.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "WeakSet guarda objetos, sem duplicados"
+        },
+        {
+          "icon": "🚫",
+          "text": "Não impede a recolha de lixo dos elementos"
+        },
+        {
+          "icon": "✅",
+          "text": "Útil para marcar \"já visto\" ou \"já processado\""
+        }
+      ]
+    },
+    {
+      "heading": "Map/Set versus WeakMap/WeakSet: o que se perde e porquê",
+      "body": [
+        "À primeira vista, WeakMap e WeakSet parecem apenas versões limitadas de Map e Set, mas as limitações são intencionais e diretamente ligadas à natureza fraca das suas referências. Não é possível percorrer um WeakMap ou um WeakSet (não existe .keys(), .values(), .entries() nem suporte para for-of), e nenhum dos dois tem propriedade .size.",
+        "A razão é a não determinismo da recolha de lixo: se fosse possível enumerar as entradas de um WeakMap, o conteúdo visível dessa coleção poderia mudar em qualquer momento, mesmo sem o seu código executar nenhuma instrução, apenas porque o motor decidiu correr o garbage collector entretanto. Isso tornaria os programas não reprodutíveis e dependentes de detalhes de implementação do motor. Ao proibir a enumeração e a contagem, a especificação esconde deliberadamente essa não determinismo da superfície visível da API."
+      ],
+      "code": "",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [
+        "Característica",
+        "Map / Set",
+        "WeakMap / WeakSet"
+      ],
+      "table_rows": [
+        [
+          "Chaves/elementos permitidos",
+          "Qualquer valor",
+          "Apenas objetos"
+        ],
+        [
+          "Tipo de referência",
+          "Forte (impede o GC)",
+          "Fraca (não impede o GC)"
+        ],
+        [
+          "Iterável (for-of, .entries()...)",
+          "Sim",
+          "Não"
+        ],
+        [
+          "Propriedade .size",
+          "Sim",
+          "Não existe"
+        ],
+        [
+          "Caso de uso típico",
+          "Coleções de dados a percorrer",
+          "Metadados/estado ligado a objetos"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📊",
+          "text": "Map/Set são iteráveis e têm .size"
+        },
+        {
+          "icon": "🙈",
+          "text": "WeakMap/WeakSet não são iteráveis nem têm .size"
+        }
+      ]
+    },
+    {
+      "heading": "WeakRef: uma referência que não prende o objeto vivo",
+      "body": [
+        "Um WeakRef, introduzido no ES2021, envolve um objeto numa referência fraca isolada, fora do contexto de um WeakMap ou WeakSet. Cria-se com new WeakRef(objeto), e para aceder ao objeto original chama-se .deref(), que devolve o próprio objeto se ainda estiver vivo, ou undefined se já tiver sido recolhido pelo garbage collector.",
+        "É uma API de baixo nível e de uso pouco frequente na maior parte do código de aplicação; existe sobretudo para autores de bibliotecas construírem estruturas como caches avançadas, onde se quer guardar uma referência a um objeto grande sem, só por isso, garantir que ele nunca é libertado. O ponto crucial é que o momento em que .deref() passa a devolver undefined não é previsível nem controlável - depende inteiramente de quando o motor decide recolher o objeto, que pode ser imediatamente, muito mais tarde, ou nunca dentro do tempo de vida do programa."
+      ],
+      "code": "class CacheDeImagem {\n  #referencia;\n\n  constructor(imagem) {\n    this.#referencia = new WeakRef(imagem);\n  }\n\n  obter() {\n    const imagem = this.#referencia.deref();\n    if (imagem === undefined) {\n      console.log(\"a imagem já foi recolhida, é preciso recarregar\");\n      return null;\n    }\n    return imagem;\n  }\n}\n\nlet imagemGrande = { largura: 4000, altura: 3000, pixels: new Uint8Array(1e7) };\nconst cache = new CacheDeImagem(imagemGrande);\n\nconsole.log(cache.obter()); // devolve o objeto, ainda está vivo\n\nimagemGrande = null;\n// nalgum momento posterior, indeterminado, o garbage collector pode\n// recolher o objeto; só a partir daí cache.obter() passa a devolver null.",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Nunca escreva lógica que dependa de saber exatamente quando .deref() passa a devolver undefined. O momento da recolha de lixo não é especificado nem garantido, e pode variar entre motores, versões do mesmo motor e execuções do mesmo programa.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧵",
+          "text": "WeakRef aponta para um objeto sem o prender"
+        },
+        {
+          "icon": "🎲",
+          "text": "deref() devolve o objeto ou undefined"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Uso raro; o momento do GC é imprevisível"
+        }
+      ]
+    },
+    {
+      "heading": "FinalizationRegistry: reagir (sem garantias) à recolha de um objeto",
+      "body": [
+        "O FinalizationRegistry, também do ES2021, é o complemento natural do WeakRef: permite registar um callback de limpeza associado a um objeto, para correr depois de esse objeto ter sido recolhido pelo garbage collector. Cria-se com new FinalizationRegistry(callback), e regista-se um objeto com registo.register(objeto, valorDeAcompanhamento), em que valorDeAcompanhamento é o dado que o callback recebe mais tarde (nunca o próprio objeto, que já foi recolhido).",
+        "A especificação é explícita quanto às suas limitações: não há qualquer garantia de que o callback corra, nem de quando corre. Pode nunca ser chamado (por exemplo, se o processo terminar antes de o garbage collector passar por esse objeto), pode demorar muito tempo, e várias chamadas podem ser agrupadas ou adiadas pelo motor. Por isso, esta API destina-se apenas a otimizações auxiliares - tipicamente libertar um recurso externo associado a um objeto JavaScript, como fechar um handle nativo - e nunca deve ser o único mecanismo responsável por libertar algo crítico; para isso, continua a ser preferível expor um método explícito de fecho ou libertação que o próprio código chame de forma determinística."
+      ],
+      "code": "const registoDeLimpeza = new FinalizationRegistry((valorDeAcompanhamento) => {\n  console.log(`recurso \"${valorDeAcompanhamento}\" foi libertado pelo GC`);\n});\n\nfunction criarRecurso(nome) {\n  const recurso = { nome, bufferExterno: new ArrayBuffer(1024 * 1024) };\n  registoDeLimpeza.register(recurso, nome);\n  return recurso;\n}\n\nlet recurso = criarRecurso(\"ligacao-temporaria\");\nrecurso = null;\n// em algum momento, sem garantia de quando (ou se) isso acontece antes\n// de o programa terminar, o motor invoca o callback registado acima.",
+      "callout_kind": "ATENCAO",
+      "callout_text": "O callback de um FinalizationRegistry pode nunca chegar a correr (por exemplo, se o processo terminar primeiro) e nunca deve ser a única forma de libertar um recurso importante. Use sempre um método explícito de fecho ou libertação como mecanismo principal, e trate isto apenas como uma rede de segurança adicional.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔔",
+          "text": "Callback chamado depois da recolha do objeto"
+        },
+        {
+          "icon": "⏳",
+          "text": "Sem garantia de quando (ou se) corre"
+        },
+        {
+          "icon": "🚧",
+          "text": "Nunca usar para lógica crítica"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Metadados de utilizadores sem fugas de memória",
+      "difficulty": "Iniciante",
+      "statement": "Crie um WeakMap chamado registoDeAcessos. Escreva uma função registarAcesso(utilizador) que, para um objeto utilizador, incremente um contador de acessos guardado no WeakMap (o contador deve começar em 1 no primeiro acesso desse utilizador). Escreva também uma função obterAcessos(utilizador) que devolva o número atual de acessos desse utilizador, ou 0 se esse utilizador nunca tiver sido registado. Teste as duas funções com dois objetos utilizador diferentes.",
+      "hint": "O método .get() de um WeakMap devolve undefined quando a chave ainda não existe - trate esse caso antes de incrementar o contador.",
+      "solution_code": "const registoDeAcessos = new WeakMap();\n\nfunction registarAcesso(utilizador) {\n  const atual = registoDeAcessos.get(utilizador) ?? 0;\n  registoDeAcessos.set(utilizador, atual + 1);\n}\n\nfunction obterAcessos(utilizador) {\n  return registoDeAcessos.get(utilizador) ?? 0;\n}\n\nconst ana = { nome: \"Ana\" };\nconst bruno = { nome: \"Bruno\" };\n\nregistarAcesso(ana);\nregistarAcesso(ana);\nregistarAcesso(bruno);\n\nconsole.log(obterAcessos(ana));   // 2\nconsole.log(obterAcessos(bruno)); // 1",
+      "solution_explanation": "O operador ?? trata o caso em que a chave ainda não existe no WeakMap, tratando-o como zero acessos. O contador fica associado diretamente ao objeto utilizador, sem exigir nenhuma propriedade extra nele nem limpeza manual quando esse objeto deixar de ser usado."
+    },
+    {
+      "title": "Evitar processamento concorrente duplicado com WeakSet",
+      "difficulty": "Intermedio",
+      "statement": "Tem uma função calcularResumoAsync(documento), que devolve uma Promise e simula um cálculo pesado e demorado sobre um documento. Usando um WeakSet chamado documentosEmProcessamento, escreva uma função assíncrona processarDocumento(documento) que evite processar o mesmo documento duas vezes em simultâneo: se o documento já estiver no WeakSet, deve apenas mostrar \"já em processamento, ignorado\" e terminar; caso contrário, deve adicionar o documento ao WeakSet, aguardar (await) o resultado de calcularResumoAsync(documento), remover o documento do WeakSet e devolver o resumo. Teste chamando processarDocumento(documento) duas vezes seguidas, sem aguardar a primeira chamada, para confirmar que a segunda é ignorada.",
+      "hint": "Adicione o documento ao WeakSet antes do await e só o remova depois - enquanto a Promise não resolve, o documento continua dentro do conjunto.",
+      "solution_code": "function calcularResumoAsync(documento) {\n  return new Promise((resolve) => {\n    console.log(`a processar \"${documento.titulo}\"...`);\n    setTimeout(() => resolve(`resumo de ${documento.titulo}`), 100);\n  });\n}\n\nconst documentosEmProcessamento = new WeakSet();\n\nasync function processarDocumento(documento) {\n  if (documentosEmProcessamento.has(documento)) {\n    console.log(\"já em processamento, ignorado\");\n    return;\n  }\n\n  documentosEmProcessamento.add(documento);\n  const resumo = await calcularResumoAsync(documento);\n  documentosEmProcessamento.delete(documento);\n  return resumo;\n}\n\nconst relatorio = { titulo: \"Relatório Anual\" };\nprocessarDocumento(relatorio);\nprocessarDocumento(relatorio); // \"já em processamento, ignorado\"",
+      "solution_explanation": "A primeira chamada adiciona o documento ao WeakSet antes de suspender em await, por isso a segunda chamada, ao correr antes da Promise resolver, encontra o documento já marcado e desiste imediatamente. Usar WeakSet em vez de Set evita que este mecanismo de controlo de concorrência, por si só, prenda o documento na memória para sempre."
+    },
+    {
+      "title": "Cache de resultados computacionais associados a objetos de entrada",
+      "difficulty": "Avancado",
+      "statement": "Implemente uma função criarCacheComputado(funcaoCara) que recebe uma função pesada (que aceita um objeto e devolve um valor calculado) e devolve uma nova função memorizada. A função devolvida deve aceitar um objeto de entrada; se já existir um resultado guardado em cache para esse objeto exato, deve devolvê-lo sem voltar a chamar funcaoCara; caso contrário, deve calcular o resultado, guardá-lo associado a esse objeto e devolvê-lo. Teste com uma função que soma todos os números de um array, usando um contador de chamadas para confirmar que a função pesada só é executada uma vez por objeto distinto.",
+      "hint": "Use um WeakMap interno na clausura devolvida por criarCacheComputado, com o objeto de entrada como chave e o resultado calculado como valor.",
+      "solution_code": "function criarCacheComputado(funcaoCara) {\n  const cache = new WeakMap();\n\n  return function (entrada) {\n    if (cache.has(entrada)) {\n      return cache.get(entrada);\n    }\n\n    const resultado = funcaoCara(entrada);\n    cache.set(entrada, resultado);\n    return resultado;\n  };\n}\n\nlet chamadas = 0;\n\nfunction somarArray(array) {\n  chamadas++;\n  return array.reduce((total, atual) => total + atual, 0);\n}\n\nconst somarComCache = criarCacheComputado(somarArray);\n\nconst numeros = [1, 2, 3, 4, 5];\n\nconsole.log(somarComCache(numeros)); // 15\nconsole.log(somarComCache(numeros)); // 15, vindo do cache\nconsole.log(chamadas);               // 1\n\nconsole.log(somarComCache([1, 2, 3])); // 6, objeto diferente\nconsole.log(chamadas);                 // 2",
+      "solution_explanation": "O WeakMap usa o próprio array como chave, por isso chamadas repetidas com o mesmo objeto reaproveitam o resultado guardado, enquanto um array diferente (mesmo com o mesmo conteúdo) gera uma nova entrada. Como as chaves são fracas, se \"numeros\" deixar de ter outras referências no programa, a entrada correspondente no cache desaparece sozinha, sem crescer indefinidamente como aconteceria com um Map normal."
+    },
+    {
+      "title": "Registo de sessões com WeakRef e FinalizationRegistry",
+      "difficulty": "Avancado",
+      "statement": "Crie uma função criarRegistoDeSessoes() que devolva um objeto com dois métodos: registar(sessao, idSessao) e obterAtivas(). Internamente, mantenha um Map normal chamado referencias que associa cada idSessao a um WeakRef do objeto sessao correspondente, e um FinalizationRegistry que, quando uma sessão for recolhida pelo garbage collector, remova a entrada correspondente de referencias (o valor de acompanhamento passado ao registo deve ser o idSessao). O método obterAtivas() deve percorrer referencias, chamar .deref() em cada WeakRef e devolver um array apenas com os idSessao cujas sessões ainda estão vivas, removendo de referencias as entradas cujo .deref() já devolveu undefined. Acrescente um comentário no código a explicar porque este padrão nunca deve ser a única forma de garantir a libertação de um recurso importante.",
+      "hint": "FinalizationRegistry.register(objeto, valorDeAcompanhamento) aceita um terceiro argumento opcional de cancelamento que pode ser omitido aqui; nunca assuma que o callback do registo corre num momento previsível.",
+      "solution_code": "function criarRegistoDeSessoes() {\n  const referencias = new Map(); // idSessao -> WeakRef(sessao)\n\n  const registoDeLimpeza = new FinalizationRegistry((idSessao) => {\n    referencias.delete(idSessao);\n  });\n\n  function registar(sessao, idSessao) {\n    referencias.set(idSessao, new WeakRef(sessao));\n    registoDeLimpeza.register(sessao, idSessao);\n  }\n\n  function obterAtivas() {\n    const ativas = [];\n\n    for (const [idSessao, referencia] of referencias) {\n      const sessao = referencia.deref();\n      if (sessao === undefined) {\n        referencias.delete(idSessao);\n      } else {\n        ativas.push(idSessao);\n      }\n    }\n\n    return ativas;\n  }\n\n  return { registar, obterAtivas };\n}\n\nconst registo = criarRegistoDeSessoes();\n\nlet sessaoA = { utilizador: \"ana\" };\nregisto.registar(sessaoA, \"sessao-a\");\n\nconsole.log(registo.obterAtivas()); // [\"sessao-a\"]\n\n// tanto o callback do FinalizationRegistry como a auto-limpeza feita\n// em obterAtivas() dependem de quando (ou se) o motor decide recolher\n// sessaoA - não há qualquer garantia de tempo, por isso este padrão\n// serve apenas para poupar memória, nunca para lógica que precise de\n// correr num momento certo (ex.: fechar uma ligação de rede a tempo)",
+      "solution_explanation": "O WeakRef guarda uma referência que não impede a recolha da sessão, e obterAtivas() usa .deref() para se defender mesmo que o callback do FinalizationRegistry ainda não tenha corrido. O FinalizationRegistry acrescenta uma limpeza automática do Map referencias assim que o motor recolher a sessão, mas ambos os mecanismos são apresentados explicitamente como otimizações sem garantias de tempo, nunca como mecanismo principal de libertação de recursos."
+    }
+  ],
+  "summary": [
+    "O garbage collector recolhe o que deixa de ser alcançável a partir das raízes (globais, pilha de chamadas e closures ativas), usando mark-and-sweep, o que resolve referências cíclicas que uma simples contagem de referências não resolveria.",
+    "WeakMap e WeakSet guardam chaves e elementos com referências fracas: não impedem a recolha de lixo dos objetos que contêm, e por isso não são iteráveis nem têm .size, para não expor esse não determinismo na API.",
+    "O caso de uso clássico de WeakMap/WeakSet é associar metadados, estado auxiliar ou marcas de \"já processado\" a objetos cujo ciclo de vida o código não controla, sem correr o risco de fugas de memória e sem precisar de limpeza manual.",
+    "WeakRef permite guardar uma referência a um objeto sem impedir a sua recolha, acedendo a ele através de .deref(), que devolve o objeto ou undefined consoante ainda esteja vivo ou já tenha sido recolhido.",
+    "FinalizationRegistry regista callbacks de limpeza executados depois da recolha de um objeto, mas sem qualquer garantia de quando (ou mesmo se) isso acontece - serve apenas como otimização auxiliar, nunca como mecanismo principal de libertação de recursos.",
+    "WeakRef e FinalizationRegistry são APIs avançadas e de uso raro no código de aplicação do dia a dia; WeakMap e WeakSet, esses sim, são ferramentas do quotidiano sempre que se precisa de ligar dados a objetos sem lhes alterar o ciclo de vida."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 04",
+  "next_label": "Aula 04 → Recursos Modernos: ES2020+",
+  "_stage": "autoria"
+}

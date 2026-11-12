@@ -1,0 +1,313 @@
+{
+  "module_num": "06",
+  "module_title": "Tipos Avançados",
+  "module_dir": "06-Tipos-Avancados",
+  "lesson_num": "05",
+  "lesson_slug": "infer-e-Tipos-Recursivos",
+  "kind": "aula",
+  "title": "infer e Tipos Recursivos",
+  "filename_base": "05-infer-e-Tipos-Recursivos",
+  "subtitle": "Pattern matching ao nível dos tipos e tipos que se chamam a si próprios",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Usar infer para declarar uma variável de tipo dentro de um conditional type",
+    "Extrair o elemento de um array, o retorno e os parâmetros de uma função e o valor de uma promessa",
+    "Decompor strings ao nível dos tipos com infer em template literal types",
+    "Perceber como a posição do infer decide entre união e interseção",
+    "Escrever tipos recursivos sobre objetos e tuplas sem rebentar o compilador"
+  ],
+  "sections": [
+    {
+      "heading": "infer: apanhar um tipo dentro de um padrão",
+      "body": [
+        "Um conditional type já sabia perguntar se um tipo encaixa noutro. Com infer passa a poder dar um nome ao que está dentro do encaixe. A palavra infer só aparece do lado direito de um extends, e o nome que declara só existe no ramo verdadeiro.",
+        "A intuição certa é pattern matching: escreve-se a forma do tipo que se procura e deixa-se um buraco com nome onde o compilador deve preencher. Se a forma não encaixar, é o ramo falso que toma conta, e aí o nome não existe.",
+        "Para arrays já havia uma maneira mais curta de fazer o mesmo, o indexed access T[number] da Aula 01. A diferença está no alcance: T[number] serve arrays e tuplas, enquanto o padrão do infer descreve qualquer forma, incluindo tipos genéricos escritos por outra pessoa."
+      ],
+      "code": "// (infer E)[] lê-se: \"um array de qualquer coisa; chama E a essa coisa\".\ntype ElementoDe<T> = T extends readonly (infer E)[] ? E : never;\n\ntype E1 = ElementoDe<number[]>; // number\ntype E2 = ElementoDe<(string | boolean)[]>; // string | boolean\nconst e1: E1 = 10;\nconst e2: E2 = true;\n\n// Para arrays e tuplas, T[number] da Aula 01 faz o mesmo e lê-se melhor.\nconst cores = [\"vermelho\", \"verde\"] as const;\ntype Cor = (typeof cores)[number]; // \"vermelho\" | \"verde\"\nconst cor: Cor = \"verde\";\n\n// Mas T[number] só funciona em tipos indexáveis por número.\n// O padrão do infer pode ser qualquer forma, inclusive um genérico alheio.\ntype ConteudoDoConjunto<T> = T extends Set<infer E> ? E : never;\ntype E3 = ConteudoDoConjunto<Set<Date>>; // Date\nconst e3: E3 = new Date(2026, 0, 1);\n\n// @ts-expect-error E1 é number, não string\nconst errado: E1 = \"10\";\nconsole.log(e1, e2, cor, e3, errado);",
+      "callout_kind": "DICA",
+      "callout_text": "Para tirar o elemento de um array ou de uma tupla, T[number] é mais curto e lê-se melhor. Guarde o infer para as formas que o indexed access não alcança.",
+      "table_headers": [
+        "Técnica",
+        "Funciona sobre",
+        "Quando escolher"
+      ],
+      "table_rows": [
+        [
+          "T[number]",
+          "arrays e tuplas",
+          "quando basta o elemento e a leitura importa"
+        ],
+        [
+          "T extends (infer E)[] ? E : never",
+          "arrays",
+          "quando o resultado tem de ser never se T não for array"
+        ],
+        [
+          "T extends Contentor<infer E> ? E : never",
+          "qualquer genérico",
+          "quando o contentor não é indexável por número"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔍",
+          "text": "infer dá um nome a uma parte do padrão"
+        },
+        {
+          "icon": "📐",
+          "text": "Só vive do lado direito do extends"
+        },
+        {
+          "icon": "🚪",
+          "text": "Só se pode usar no ramo verdadeiro"
+        },
+        {
+          "icon": "🧩",
+          "text": "T[number] continua a ser a via curta para arrays"
+        }
+      ]
+    },
+    {
+      "heading": "Retorno e parâmetros de uma função",
+      "body": [
+        "O padrão não tem de ser um contentor: pode ser uma assinatura de função. Pondo o infer no lugar do retorno, obtém-se o tipo que a função devolve sem o escrever à mão nem o repetir. Combinado com o operador de tipo typeof da Aula 01, isto liga o mundo dos valores ao dos tipos.",
+        "Pondo o infer no lugar da lista de parâmetros, o resultado é uma tupla com todos eles, e os nomes dos parâmetros sobrevivem como rótulos dessa tupla. A tupla pode depois ser reencaminhada para outra função com o operador de propagação.",
+        "Repare na restrição do padrão, (...args: never[]) => infer R. O never no lugar dos parâmetros aceita qualquer assinatura sem recorrer a any, porque os parâmetros são contravariantes e never encaixa em tudo."
+      ],
+      "code": "// O padrão é uma assinatura de função; o infer fica no lugar do retorno.\ntype TipoDeRetorno<F> = F extends (...args: never[]) => infer R ? R : never;\n\n// Aqui o infer fica no lugar da lista de parâmetros e devolve uma tupla.\ntype TiposDosParametros<F> = F extends (...args: infer P) => unknown ? P : never;\n\nfunction criarArtigo(titulo: string, palavras: number) {\n  return { titulo, palavras, publicado: false };\n}\n\ntype Artigo = TipoDeRetorno<typeof criarArtigo>;\n// { titulo: string; palavras: number; publicado: boolean }\n\ntype ArgsCriar = TiposDosParametros<typeof criarArtigo>;\n// [titulo: string, palavras: number] — os nomes dos parâmetros sobrevivem\n\nconst artigo: Artigo = { titulo: \"infer\", palavras: 900, publicado: false };\nconst args: ArgsCriar = [\"infer\", 900];\nconst primeiro: ArgsCriar[0] = \"outro título\";\n\n// @ts-expect-error o segundo parâmetro é number\nconst mau: ArgsCriar[1] = \"novecentas\";\nconsole.log(artigo, args, primeiro, mau);",
+      "callout_kind": "NOTA",
+      "callout_text": "Uma função sobrecarregada tem várias assinaturas, mas o infer só consegue apanhar a última da lista. É uma limitação conhecida do compilador, não um erro de quem escreve o padrão.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "↩️",
+          "text": "infer no retorno: o tipo que a função devolve"
+        },
+        {
+          "icon": "📦",
+          "text": "infer nos parâmetros: uma tupla com rótulos"
+        },
+        {
+          "icon": "🔗",
+          "text": "Com typeof, liga valores já existentes a tipos"
+        }
+      ]
+    },
+    {
+      "heading": "Desembrulhar promessas, uma camada de cada vez",
+      "body": [
+        "Uma promessa é só mais um contentor genérico, por isso o mesmo padrão serve para lhe tirar o valor de dentro. O ramo falso é que faz a diferença aqui: devolver T em vez de never deixa passar intactos os tipos que nunca foram promessas.",
+        "Uma única passagem só retira uma camada. Se o tipo for uma promessa dentro de outra promessa, o resultado ainda é uma promessa. A solução está em o alias chamar-se a si próprio no ramo verdadeiro: cada volta tira uma camada até deixar de encaixar no padrão.",
+        "É um tipo recursivo na sua forma mais simples. Repare que a recursão pára sozinha, porque o ramo falso não volta a chamar nada."
+      ],
+      "code": "type ValorDaPromessa<T> = T extends Promise<infer V> ? V : T;\n\ntype V1 = ValorDaPromessa<Promise<string>>; // string\ntype V2 = ValorDaPromessa<number>; // number (não era promessa, passa intacto)\ntype V3 = ValorDaPromessa<Promise<Promise<boolean>>>; // Promise<boolean>\n\n// A versão recursiva chama-se a si própria enquanto encontrar uma promessa.\ntype ValorFinal<T> = T extends Promise<infer V> ? ValorFinal<V> : T;\ntype V4 = ValorFinal<Promise<Promise<boolean>>>; // boolean\n\nconst v1: V1 = \"pronto\";\nconst v2: V2 = 7;\nconst v3: V3 = Promise.resolve(true);\nconst v4: V4 = true;\n\n// @ts-expect-error V3 ainda é uma promessa: só foi retirada uma camada\nconst mau: V3 = true;\nconsole.log(v1, v2, v3, v4, mau);",
+      "callout_kind": "NOTA",
+      "callout_text": "Em tempo de execução o await já achata promessas aninhadas sozinho. A versão recursiva do tipo serve para o sistema de tipos contar a mesma história que o motor conta.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎁",
+          "text": "Promise é só mais um contentor a abrir"
+        },
+        {
+          "icon": "🔁",
+          "text": "O alias chama-se a si próprio para ir ao fundo"
+        },
+        {
+          "icon": "🛑",
+          "text": "O ramo falso é o travão da recursão"
+        }
+      ]
+    },
+    {
+      "heading": "infer dentro de template literal types",
+      "body": [
+        "Aqui está o exemplo mais forte da técnica. Um template literal type da Aula 04 já descrevia a forma de uma string; juntando-lhe infer, o compilador passa a saber parti-la. Separar utilizador:criado em recurso e acção deixa de ser trabalho de tempo de execução.",
+        "Com recursão, o mesmo padrão percorre uma rota inteira e recolhe todos os parâmetros numa união. Esse resultado pode depois alimentar um mapped type, e a assinatura da função passa a exigir exatamente as chaves que a rota declara, nem mais nem menos.",
+        "Repare ainda que o compilador escolhe a correspondência mais à esquerda possível para o primeiro infer, ou seja, não é gulosa. Quando há várias maneiras de partir a mesma string, é essa a que ganha."
+      ],
+      "code": "// Uma string ao nível dos tipos também é um padrão com buracos.\ntype Recurso<E extends string> = E extends `${infer R}:${string}` ? R : never;\ntype Accao<E extends string> = E extends `${string}:${infer A}` ? A : never;\n\ntype R1 = Recurso<\"utilizador:criado\">; // \"utilizador\"\ntype A1 = Accao<\"utilizador:criado\">; // \"criado\"\nconst r1: R1 = \"utilizador\";\nconst a1: A1 = \"criado\";\n\n// Com recursão dá para percorrer uma rota inteira e recolher os parâmetros.\ntype ParametrosDaRota<S extends string> =\n  S extends `${string}:${infer Nome}/${infer Resto}`\n    ? Nome | ParametrosDaRota<`/${Resto}`>\n    : S extends `${string}:${infer Nome}`\n      ? Nome\n      : never;\n\ntype ParamsArtigo = ParametrosDaRota<\"/artigos/:id/comentarios/:comentarioId\">;\n// \"id\" | \"comentarioId\"\nconst p: ParamsArtigo = \"comentarioId\";\n\nfunction construirUrl<S extends string>(\n  rota: S,\n  valores: { [K in ParametrosDaRota<S>]: string },\n): string {\n  return Object.entries(valores).reduce<string>(\n    (url, [chave, valor]) => url.replace(`:${chave}`, String(valor)),\n    rota,\n  );\n}\n\nconsole.log(construirUrl(\"/artigos/:id\", { id: \"7\" })); // \"/artigos/7\"\n\n// @ts-expect-error falta o parâmetro comentarioId no objeto de valores\nconstruirUrl(\"/artigos/:id/comentarios/:comentarioId\", { id: \"7\" });\nconsole.log(r1, a1, p);",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Mude a rota literal passada a construirUrl e veja o editor a exigir outras chaves no segundo argumento, sem que nenhuma linha de código tenha sido tocada.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "✂️",
+          "text": "Partir strings sem correr uma linha de código"
+        },
+        {
+          "icon": "🗺️",
+          "text": "Rotas tipadas a partir do literal da própria rota"
+        },
+        {
+          "icon": "⬅️",
+          "text": "A correspondência é a mais à esquerda possível"
+        }
+      ]
+    },
+    {
+      "heading": "A posição do infer e o infer com constraint",
+      "body": [
+        "Quando o mesmo nome de infer aparece em vários sítios do padrão, o compilador junta os candidatos, e a maneira de os juntar depende da posição. Em posição covariante, tipicamente o retorno de uma função, o resultado é a união dos candidatos. Em posição contravariante, tipicamente um parâmetro, o resultado é a interseção.",
+        "Não é um capricho: é a única maneira de o resultado continuar seguro. Um valor devolvido pode ser qualquer um dos candidatos, logo união. Um argumento aceite tem de servir a todos os consumidores, logo interseção.",
+        "Desde o TypeScript 4.8, o infer pode levar uma constraint com extends. Isso filtra logo o candidato e, no caso particular de extends number, converte um literal de string no literal numérico correspondente, coisa que mais nenhuma construção do sistema de tipos faz."
+      ],
+      "code": "// Dois infer com o mesmo nome em posição de RETORNO (covariante): união.\ntype RetornoComum<T> = T extends { a: () => infer R; b: () => infer R } ? R : never;\ntype U = RetornoComum<{ a: () => string; b: () => number }>; // string | number\nconst u1: U = \"texto\";\nconst u2: U = 42;\n// @ts-expect-error U é a união string | number, não aceita boolean\nconst u3: U = true;\n\n// Dois infer com o mesmo nome em posição de PARÂMETRO (contravariante): interseção.\ntype ParametroComum<T> = T extends { a: (x: infer P) => void; b: (x: infer P) => void }\n  ? P\n  : never;\ntype I = ParametroComum<{ a: (x: { nome: string }) => void; b: (x: { idade: number }) => void }>;\n// { nome: string } & { idade: number }\nconst i1: I = { nome: \"Ana\", idade: 30 };\n// @ts-expect-error a interseção exige as duas propriedades\nconst i2: I = { nome: \"Ana\" };\n\n// infer X extends ... restringe o candidato e, com number, converte o literal.\ntype PrimeiroInteiro<S extends string> = S extends `${infer N extends number}${string}`\n  ? N\n  : never;\ntype N1 = PrimeiroInteiro<\"7 dias\">; // 7 (número, não \"7\")\n\ntype Porta<S extends string> = S extends `${string}:${infer P extends number}` ? P : never;\ntype N2 = Porta<\"localhost:8080\">; // 8080\nconst n1: N1 = 7;\nconst n2: N2 = 8080;\n// @ts-expect-error o literal inferido é o número 8080, não a string\nconst n3: N2 = \"8080\";\nconsole.log(u1, u2, u3, i1, i2, n1, n2, n3);",
+      "callout_kind": "ATENCAO",
+      "callout_text": "A constraint do infer não é o mesmo que testar depois. Escrita como infer N extends number, ela participa na inferência e converte o literal; um teste feito a seguir limitava-se a aceitar ou rejeitar o que já tinha sido inferido.",
+      "table_headers": [
+        "Posição do infer",
+        "Exemplo",
+        "Candidatos combinados em"
+      ],
+      "table_rows": [
+        [
+          "Covariante (retorno)",
+          "() => infer R",
+          "união"
+        ],
+        [
+          "Contravariante (parâmetro)",
+          "(x: infer P) => void",
+          "interseção"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔀",
+          "text": "Retorno: os candidatos dão a união"
+        },
+        {
+          "icon": "🔗",
+          "text": "Parâmetro: os candidatos dão a interseção"
+        },
+        {
+          "icon": "🎯",
+          "text": "infer X extends filtra e converte literais"
+        }
+      ]
+    },
+    {
+      "heading": "Tipos recursivos sobre objetos",
+      "body": [
+        "Um alias de tipo pode referir-se a si próprio desde que a recursão passe por um objeto, um array ou uma união. Isso chega para descrever estruturas de profundidade desconhecida, como um valor JSON qualquer, que de outra forma só se conseguiria aproximar com unknown.",
+        "A mesma ideia aplica-se aos mapped types da Aula 03: em vez de mapear cada propriedade para um tipo fixo, mapeia-se para uma nova aplicação do próprio alias. Assim o readonly ou o opcional descem por toda a estrutura em vez de ficarem pelo primeiro nível.",
+        "O cuidado obrigatório é travar a recursão antes das funções. Uma função satisfaz T extends object, e um mapped type sobre uma função apaga-lhe a assinatura e devolve um objeto vazio. Os arrays, esses, portam-se bem: um mapped type homomórfico sobre um array devolve um array, já com o modificador aplicado."
+      ],
+      "code": "// Um alias pode referir-se a si próprio desde que haja um ramo que pare.\ntype ValorJson =\n  | string\n  | number\n  | boolean\n  | null\n  | ValorJson[]\n  | { [chave: string]: ValorJson };\n\nconst config: ValorJson = {\n  nome: \"loja\",\n  porta: 8080,\n  ativo: true,\n  etiquetas: [\"beta\", \"interno\"],\n  base: { host: \"localhost\", replicas: null },\n};\n\n// @ts-expect-error uma função não é um valor JSON válido\nconst mau: ValorJson = { aoArrancar: () => 1 };\n\n// O primeiro ramo trava a recursão nas funções; sem ele o mapped type\n// destruiria a assinatura e deixaria um objeto vazio.\ntype ProfundamenteSoLeitura<T> = T extends (...args: never[]) => unknown\n  ? T\n  : T extends object\n    ? { readonly [K in keyof T]: ProfundamenteSoLeitura<T[K]> }\n    : T;\n\ntype ProfundamenteOpcional<T> = T extends (...args: never[]) => unknown\n  ? T\n  : T extends object\n    ? { [K in keyof T]?: ProfundamenteOpcional<T[K]> }\n    : T;\n\ntype Definicoes = {\n  janela: { largura: number; titulo: string };\n  atalhos: string[];\n  aoFechar: () => void;\n};\n\nconst base: Definicoes = {\n  janela: { largura: 1024, titulo: \"Loja\" },\n  atalhos: [\"ctrl+s\"],\n  aoFechar: () => console.log(\"fechado\"),\n};\n\nconst fixas: ProfundamenteSoLeitura<Definicoes> = base;\n// @ts-expect-error a propriedade aninhada passou a só de leitura\nfixas.janela.largura = 800;\n// @ts-expect-error o mapped type é homomórfico: o array virou readonly string[]\nfixas.atalhos.push(\"ctrl+q\");\n\nconst remendo: ProfundamenteOpcional<Definicoes> = { janela: { titulo: \"Loja Beta\" } };\nconsole.log(config, mau, fixas.janela.titulo, remendo);",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Sem o primeiro ramo a apanhar as funções, ProfundamenteSoLeitura transformava aoFechar num objeto vazio e a chamada deixava de compilar. Verifique sempre o caso das funções num tipo recursivo sobre objetos.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🌳",
+          "text": "Um alias pode referir-se a si próprio"
+        },
+        {
+          "icon": "🧊",
+          "text": "Mapped type recursivo desce por toda a estrutura"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Travar antes das funções ou a assinatura desaparece"
+        }
+      ]
+    },
+    {
+      "heading": "Recursão sobre tuplas e o limite de profundidade",
+      "body": [
+        "As tuplas são a estrutura onde a recursão ao nível dos tipos rende mais. O padrão é sempre o mesmo: separar a cabeça da cauda com infer e o operador de propagação, tratar a cabeça e voltar a chamar o alias com a cauda. Inverter, tirar a cauda ou juntar strings são variações disso.",
+        "O compilador tem um limite de profundidade. Quando é ultrapassado, surge o erro TS2589, com a mensagem Type instantiation is excessively deep and possibly infinite. Há porém uma diferença enorme entre duas maneiras de escrever a recursão: quando a chamada recursiva é a última coisa que o tipo faz, com o resultado parcial a viajar num acumulador, o TypeScript 4.5 e posteriores tratam-na como recursão em cauda e aguentam perto de mil níveis. Se a chamada estiver embrulhada noutra coisa, por exemplo dentro de uma tupla que se está a construir, o tecto é bastante mais baixo.",
+        "A regra prática é simples: se a recursão tem de percorrer mais do que umas poucas dezenas de elementos, vale a pena reescrevê-la com acumulador; se mesmo assim se aproxima das centenas, o problema provavelmente não pertence ao sistema de tipos."
+      ],
+      "code": "// Padrão clássico: cabeça e cauda, como numa lista ligada.\ntype Inverter<T extends readonly unknown[]> = T extends readonly [infer Cabeca, ...infer Resto]\n  ? [...Inverter<Resto>, Cabeca]\n  : [];\ntype I1 = Inverter<[1, 2, 3]>; // [3, 2, 1]\nconst i1: I1 = [3, 2, 1];\n\ntype Cauda<T extends readonly unknown[]> = T extends readonly [unknown, ...infer R] ? R : [];\ntype C1 = Cauda<[string, number, boolean]>; // [number, boolean]\nconst c1: C1 = [7, true];\n\n// Recursão em cauda: o resultado parcial vai num acumulador e a chamada\n// recursiva é a última coisa que o tipo faz. O compilador otimiza este caso.\ntype Juntar<\n  T extends readonly string[],\n  Sep extends string,\n  Acc extends string = \"\",\n> = T extends readonly [infer P extends string, ...infer R extends string[]]\n  ? Juntar<R, Sep, Acc extends \"\" ? P : `${Acc}${Sep}${P}`>\n  : Acc;\n\ntype J1 = Juntar<[\"artigos\", \":id\", \"comentarios\"], \"/\">; // \"artigos/:id/comentarios\"\nconst j1: J1 = \"artigos/:id/comentarios\";\n// @ts-expect-error o literal produzido é exatamente \"artigos/:id/comentarios\"\nconst j2: J1 = \"artigos/:id\";\n\ntype Contar<N extends number, Acc extends unknown[] = []> = Acc[\"length\"] extends N\n  ? Acc\n  : Contar<N, [...Acc, unknown]>;\nconst duzentos: Contar<200>[\"length\"] = 200; // em cauda, 200 níveis passam\n\n// @ts-expect-error TS2589: mesmo em cauda existe um tecto, perto dos mil níveis\ntype DemasiadoFundo = Contar<2000>;\nconsole.log(i1, c1, j1, j2, duzentos);",
+      "callout_kind": "ATENCAO",
+      "callout_text": "O TS2589 não é um aviso decorativo: o tipo passa a any e todas as garantias que dependiam dele desaparecem em silêncio. Se o erro aparecer, reescreva o tipo em vez de o ignorar.",
+      "table_headers": [
+        "Forma da recursão",
+        "Como se reconhece",
+        "Profundidade aproximada"
+      ],
+      "table_rows": [
+        [
+          "Embrulhada",
+          "a chamada está dentro de uma tupla ou de um template",
+          "poucas dezenas de níveis"
+        ],
+        [
+          "Em cauda",
+          "a chamada é o resultado direto do ramo, com acumulador",
+          "perto de mil níveis"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧵",
+          "text": "Cabeça e cauda com infer e propagação"
+        },
+        {
+          "icon": "🏃",
+          "text": "O acumulador transforma a recursão em cauda"
+        },
+        {
+          "icon": "🚧",
+          "text": "TS2589 devolve any e cala as garantias"
+        },
+        {
+          "icon": "⏱️",
+          "text": "Estes tipos custam tempo de compilação"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Elemento e primeiro de uma sequência",
+      "difficulty": "Iniciante",
+      "statement": "Escreva dois tipos. ElementoDe<T> devolve o tipo dos elementos quando T for um array, incluindo arrays só de leitura e tuplas, e never nos restantes casos. PrimeiroDe<T> devolve o tipo do primeiro elemento de uma tupla, e never se a tupla estiver vazia ou T não for uma tupla. Confirme o resultado com uma tupla só de leitura, com um array normal e com um tipo que não é array.",
+      "hint": "Um padrão escrito com readonly (infer E)[] também apanha os arrays mutáveis, mas o contrário não acontece. Para o primeiro elemento, o resto da tupla apanha-se com o operador de propagação.",
+      "solution_code": "type ElementoDe<T> = T extends readonly (infer E)[] ? E : never;\ntype PrimeiroDe<T> = T extends readonly [infer P, ...unknown[]] ? P : never;\n\ntype A = ElementoDe<string[]>; // string\ntype B = ElementoDe<readonly [1, 2, 3]>; // 1 | 2 | 3\ntype C = PrimeiroDe<[boolean, string]>; // boolean\ntype D = ElementoDe<number>; // never (number não é um array)\n\nconst a: A = \"olá\";\nconst b: B = 2;\nconst c: C = false;\nconst d: D[] = [];\n\n// @ts-expect-error B só admite os literais 1, 2 ou 3\nconst mau: B = 4;\nconsole.log(a, b, c, d, mau);",
+      "solution_explanation": "O readonly no padrão de ElementoDe torna-o mais permissivo, porque um array mutável é atribuível a um array só de leitura e não ao contrário. Em PrimeiroDe, o ...unknown[] absorve tudo o que venha a seguir à cabeça, seja qual for o comprimento da tupla. Nos dois casos o ramo falso devolve never, que é o resultado honesto quando o padrão não encaixa."
+    },
+    {
+      "title": "Retorno resolvido de uma função assíncrona",
+      "difficulty": "Intermedio",
+      "statement": "Escreva RetornoResolvido<F> que, dada uma função, devolve o tipo que ela realmente entrega depois de esperada: se o retorno for uma promessa, o valor de dentro, e se forem promessas aninhadas, o valor que está no fundo. Se F não for uma função, o resultado deve ser never. Teste com uma função assíncrona e com uma função declarada a devolver uma promessa dentro de outra promessa.",
+      "hint": "São dois tipos, não um: um que desembrulha promessas recursivamente e outro que apanha o retorno da função e o entrega ao primeiro.",
+      "solution_code": "type ValorFinal<T> = T extends Promise<infer V> ? ValorFinal<V> : T;\ntype RetornoResolvido<F> = F extends (...args: never[]) => infer R ? ValorFinal<R> : never;\n\nasync function obterArtigo(id: number) {\n  return { id, titulo: \"infer\", palavras: 900 };\n}\n\ndeclare function obterEtiquetas(): Promise<Promise<string[]>>;\n\ntype Artigo = RetornoResolvido<typeof obterArtigo>;\n// { id: number; titulo: string; palavras: number }\ntype Etiquetas = RetornoResolvido<typeof obterEtiquetas>; // string[]\n\nconst artigo: Artigo = { id: 1, titulo: \"infer\", palavras: 900 };\nconst etiquetas: Etiquetas = [\"ts\", \"tipos\"];\n\n// @ts-expect-error Artigo já não é uma promessa\nconst mau: Artigo = Promise.resolve(artigo);\nconsole.log(artigo, etiquetas, mau);",
+      "solution_explanation": "RetornoResolvido faz uma coisa só, apanhar o retorno, e delega o resto em ValorFinal, que se chama a si próprio enquanto houver promessa. Separar as duas responsabilidades é o que permite reutilizar ValorFinal noutros sítios. O padrão (...args: never[]) aceita qualquer assinatura sem recorrer a any."
+    },
+    {
+      "title": "Descrever um ponto final a partir do literal",
+      "difficulty": "Intermedio",
+      "statement": "Dada uma string no formato método, espaço e caminho, por exemplo GET /artigos/:id/comentarios/:comentarioId, escreva Descricao<S> com três propriedades: metodo com o literal do método, caminho com o literal do caminho e parametros com um array cujos elementos são a união dos nomes dos parâmetros da rota. Implemente também a função descrever, que devolve esse objeto em tempo de execução, e confirme que o método inferido é mesmo o literal e não string.",
+      "hint": "São três tipos independentes sobre a mesma string. Os parâmetros exigem recursão: depois de apanhar um nome até à barra, volte a aplicar o tipo ao resto do caminho.",
+      "solution_code": "type Metodo<S extends string> = S extends `${infer M} ${string}` ? M : never;\ntype Caminho<S extends string> = S extends `${string} ${infer C}` ? C : never;\ntype ParametrosDaRota<S extends string> =\n  S extends `${string}:${infer N}/${infer R}`\n    ? N | ParametrosDaRota<`/${R}`>\n    : S extends `${string}:${infer N}`\n      ? N\n      : never;\n\ntype Descricao<S extends string> = {\n  metodo: Metodo<S>;\n  caminho: Caminho<S>;\n  parametros: ParametrosDaRota<S>[];\n};\n\nfunction descrever<S extends string>(entrada: S): Descricao<S> {\n  const [metodo, caminho] = entrada.split(\" \");\n  const parametros = caminho\n    .split(\"/\")\n    .filter((parte) => parte.startsWith(\":\"))\n    .map((parte) => parte.slice(1));\n  return { metodo, caminho, parametros } as Descricao<S>;\n}\n\nconst d = descrever(\"GET /artigos/:id/comentarios/:comentarioId\");\nconst metodo: \"GET\" = d.metodo;\nconst parametros: (\"id\" | \"comentarioId\")[] = d.parametros;\n\n// @ts-expect-error o método inferido é o literal \"GET\"\nconst mau: \"POST\" = d.metodo;\nconsole.log(metodo, d.caminho, parametros, mau);\n// GET /artigos/:id/comentarios/:comentarioId [ 'id', 'comentarioId' ] GET",
+      "solution_explanation": "Cada tipo escolhe o buraco que lhe interessa no mesmo padrão: Metodo fica com a parte antes do espaço e Caminho com a de depois. ParametrosDaRota recorre, acrescentando ao resto uma barra inicial para que o padrão volte a encaixar na volta seguinte. A implementação precisa de uma asserção final, porque o compilador não consegue provar sozinho que o split respeita a forma prometida."
+    },
+    {
+      "title": "Dividir e voltar a juntar uma string, em cauda",
+      "difficulty": "Avancado",
+      "statement": "Escreva Dividir<S, Sep>, que transforma um literal de string numa tupla de literais cortando pelo separador, e Juntar<T, Sep>, que faz o caminho inverso a partir de uma tupla de strings. Os dois têm de ser escritos com acumulador, ou seja, com a chamada recursiva como resultado direto do ramo. Verifique que aplicar Juntar ao resultado de Dividir devolve exatamente o literal de partida e escreva também a função dividir, tipada com o primeiro deles.",
+      "hint": "No acumulador de Juntar, o separador só deve entrar a partir do segundo elemento. Comparar o acumulador com a string vazia distingue a primeira volta das restantes.",
+      "solution_code": "type Dividir<\n  S extends string,\n  Sep extends string,\n  Acc extends string[] = [],\n> = S extends `${infer Cabeca}${Sep}${infer Resto}`\n  ? Dividir<Resto, Sep, [...Acc, Cabeca]>\n  : [...Acc, S];\n\ntype Juntar<\n  T extends readonly string[],\n  Sep extends string,\n  Acc extends string = \"\",\n> = T extends readonly [infer P extends string, ...infer R extends string[]]\n  ? Juntar<R, Sep, Acc extends \"\" ? P : `${Acc}${Sep}${P}`>\n  : Acc;\n\ntype Partes = Dividir<\"api.artigos.criado\", \".\">; // [\"api\", \"artigos\", \"criado\"]\nconst partes: Partes = [\"api\", \"artigos\", \"criado\"];\n\ntype Volta = Juntar<Partes, \".\">; // \"api.artigos.criado\"\nconst volta: Volta = \"api.artigos.criado\";\n\n// @ts-expect-error a tupla tem exatamente três elementos, nesta ordem\nconst mau: Partes = [\"api\", \"artigos\"];\n\nfunction dividir<S extends string, Sep extends string>(\n  texto: S,\n  separador: Sep,\n): Dividir<S, Sep> {\n  return texto.split(separador) as Dividir<S, Sep>;\n}\n\nconsole.log(dividir(\"api.artigos.criado\", \".\")); // [ 'api', 'artigos', 'criado' ]\nconsole.log(partes, volta, mau);",
+      "solution_explanation": "Nos dois tipos a chamada recursiva é a expressão inteira do ramo verdadeiro, o que permite ao compilador tratá-la como recursão em cauda e ir muito mais fundo do que iria com a versão embrulhada. Em Dividir o acumulador é uma tupla que vai crescendo e o ramo falso acrescenta o último pedaço; em Juntar o acumulador é o próprio literal em construção. O infer P extends string garante que os elementos da tupla são strings e podem entrar num template literal type."
+    }
+  ],
+  "summary": [
+    "O infer declara uma variável de tipo dentro do padrão de um conditional type e só existe no ramo verdadeiro.",
+    "Serve para tirar o elemento de um array, o retorno e os parâmetros de uma função e o valor de uma promessa.",
+    "Com template literal types parte strings ao nível dos tipos e permite tipar rotas e eventos a partir do próprio literal.",
+    "O mesmo nome de infer em posição de retorno dá a união dos candidatos; em posição de parâmetro dá a interseção.",
+    "Um alias de tipo pode chamar-se a si próprio, desde que haja sempre um ramo que pare e um travão antes das funções.",
+    "A recursão em cauda com acumulador vai muito mais fundo; passado o limite surge o TS2589 e o tipo passa a any."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para o Módulo 07",
+  "next_label": "Aula 01 → Partial, Required e Readonly"
+}

@@ -1,0 +1,241 @@
+{
+  "module_num": "02",
+  "module_title": "Estruturas de Controlo",
+  "module_dir": "02-Estruturas-de-Controlo",
+  "lesson_num": "01",
+  "lesson_slug": "Condicionais-if-else-e-switch",
+  "kind": "aula",
+  "title": "Condicionais: if, else e switch",
+  "filename_base": "01-Condicionais-if-else-e-switch",
+  "subtitle": "Domine if, else e switch para controlar o fluxo do seu código com clareza",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Escrever decisões com if, else if e else, percebendo a ordem de avaliação das condições.",
+    "Reconhecer como os blocos { } de um if criam escopo próprio para let e const.",
+    "Usar switch com fallthrough intencional, cláusulas case agrupadas e break.",
+    "Perceber que o switch compara valores com igualdade estrita (===) e evitar erros de tipo.",
+    "Decidir quando um switch é mais legível do que uma cadeia de if/else if.",
+    "Aplicar guard clauses para simplificar funções com condições aninhadas."
+  ],
+  "sections": [
+    {
+      "heading": "if, else if e else: a base da decisão",
+      "body": [
+        "A instrução if avalia uma expressão e, se o resultado for convertido para true, executa o bloco associado; caso contrário, salta esse bloco. Quando se encadeiam vários if e else if, o motor avalia as condições pela ordem em que aparecem no código e executa apenas o bloco da primeira que for verdadeira - todas as condições seguintes deixam de ser avaliadas, mesmo que também fossem verdadeiras. O else final, quando existe, funciona como o caso remanescente: só corre quando nenhuma das condições anteriores foi satisfeita.",
+        "A expressão testada não precisa de ser um booleano literal; o JavaScript converte-a implicitamente com as regras de coerção para boolean, já vistas no módulo de Fundamentos da Linguagem. Aqui importa reter o efeito prático: valores como 0, \"\", null, undefined e NaN tornam o bloco associado inacessível, enquanto qualquer outro valor - incluindo um array vazio ou um objeto vazio - conta como verdadeiro. Por isso é boa prática escrever condições explícitas, como lista.length > 0 em vez de apenas lista, sempre que a intenção não for óbvia."
+      ],
+      "code": "function classificarIdade(idade) {\n  if (idade < 0) {\n    return \"Idade inválida\";\n  } else if (idade < 13) {\n    return \"Criança\";\n  } else if (idade < 18) {\n    return \"Adolescente\";\n  } else if (idade < 65) {\n    return \"Adulto\";\n  } else {\n    return \"Idoso\";\n  }\n}\n\nconsole.log(classificarIdade(30)); // \"Adulto\"\nconsole.log(classificarIdade(-5)); // \"Idade inválida\"",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔀",
+          "text": "if / else if / else decide entre ramos"
+        },
+        {
+          "icon": "✅",
+          "text": "só o primeiro ramo verdadeiro executa"
+        },
+        {
+          "icon": "🧮",
+          "text": "a condição é sempre convertida para boolean"
+        }
+      ]
+    },
+    {
+      "heading": "Blocos e escopo dentro do if",
+      "body": [
+        "Cada bloco delimitado por chavetas num if, else if ou else define o seu próprio escopo para declarações feitas com let ou const: uma variável declarada dentro do bloco não existe fora dele, e pode ter o mesmo nome de uma variável externa sem entrar em conflito, criando shadowing - dentro do bloco, o nome passa a referir-se à variável interna, sem alterar a externa. Já var não respeita este escopo de bloco: uma variável var declarada dentro de um if fica visível em toda a função (ou no escopo global, fora de funções), o que pode causar variáveis a escapar do bloco onde pareciam estar confinadas.",
+        "Quando o corpo de um if tem apenas uma instrução, as chavetas podem ser omitidas e o if aplica-se só a essa instrução seguinte. Este atalho é uma fonte comum de erros de manutenção: se mais tarde se acrescentar uma segunda linha a pensar que ainda está dentro da condição, essa linha passa a executar sempre, independentemente do resultado do if. Por segurança, escreva sempre chavetas, mesmo quando o bloco tem uma única instrução."
+      ],
+      "code": "let estado = \"pendente\";\n\nif (estado === \"pendente\") {\n  let mensagem = \"A aguardar aprovação\";\n  console.log(mensagem);\n}\n// console.log(mensagem); // ReferenceError: mensagem não existe fora do bloco\n\nlet contador = 1;\nif (true) {\n  let contador = 100; // shadowing: nova variável, só válida dentro deste bloco\n  console.log(contador); // 100\n}\nconsole.log(contador); // 1 - a variável externa não foi tocada\n\nif (true) {\n  var escapouDoBloco = \"só var faz isto\";\n}\nconsole.log(escapouDoBloco); // \"só var faz isto\" - var ignora o escopo de bloco",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Um if sem chavetas só abrange a instrução seguinte. Se mais tarde acrescentar uma segunda linha a pensar que ainda está dentro do bloco, ela vai executar sempre, independentemente da condição. Use sempre chavetas, mesmo para um bloco de uma linha só.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "cada bloco { } cria escopo próprio com let/const"
+        },
+        {
+          "icon": "👻",
+          "text": "var ignora o escopo de bloco do if"
+        },
+        {
+          "icon": "🎭",
+          "text": "shadowing: a variável interna esconde a externa"
+        }
+      ]
+    },
+    {
+      "heading": "switch: sintaxe, fallthrough e break",
+      "body": [
+        "O switch compara o valor de uma expressão com os valores indicados em cada cláusula case e transfere a execução para a primeira que corresponder. A partir daí, o código continua a correr sequencialmente através das cláusulas seguintes - incluindo o default, se por acaso vier antes de outro case - até encontrar uma instrução break, um return, ou até chegar ao fim do switch. Este comportamento chama-se fallthrough e é a razão pela qual quase todos os case terminam com break: sem ele, o fluxo continua para o bloco seguinte mesmo que o valor não corresponda.",
+        "O fallthrough nem sempre é um erro - é frequentemente usado de propósito para agrupar vários valores que devem produzir o mesmo resultado, encadeando vários case seguidos sem código nem break entre eles, como no exemplo ao lado. A cláusula default, por convenção colocada no fim, trata qualquer valor que não tenha correspondido a nenhum case; a sua posição no código não é obrigatória, mas colocá-la no fim torna a leitura mais previsível."
+      ],
+      "code": "function descreverDia(diaSemana) {\n  let tipo;\n  switch (diaSemana) {\n    case \"sábado\":\n    case \"domingo\":\n      tipo = \"fim de semana\";\n      break;\n    case \"segunda\":\n    case \"terça\":\n    case \"quarta\":\n    case \"quinta\":\n    case \"sexta\":\n      tipo = \"dia útil\";\n      break;\n    default:\n      tipo = \"dia inválido\";\n  }\n  return tipo;\n}\n\nconsole.log(descreverDia(\"sábado\")); // \"fim de semana\"\nconsole.log(descreverDia(\"quarta\")); // \"dia útil\"",
+      "callout_kind": "NOTA",
+      "callout_text": "Todas as cláusulas de um mesmo switch partilham um único bloco de escopo, a menos que envolva cada case nas suas próprias chavetas. Declarar let ou const com o mesmo nome em dois case diferentes, sem chavetas próprias, causa um SyntaxError por redeclaração.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔁",
+          "text": "case sem break cai para o seguinte (fallthrough)"
+        },
+        {
+          "icon": "🧩",
+          "text": "agrupar vários case partilha o mesmo bloco"
+        },
+        {
+          "icon": "🛑",
+          "text": "break termina o switch nesse ponto"
+        }
+      ]
+    },
+    {
+      "heading": "Comparação estrita no switch",
+      "body": [
+        "O switch decide qual case corresponde usando o mesmo algoritmo de igualdade estrita do operador ===: compara o valor sem tentar converter tipos. Isto significa que switch (numero) nunca corresponde a case \"5\" se numero for o número 5, e vice-versa - ao contrário do que a coerção automática do if, com uma comparação menos cuidada, poderia sugerir.",
+        "Este é um dos erros mais comuns ao passar valores entre partes do código: um número que chega como texto, vindo por exemplo de uma leitura externa ou de uma concatenação, faz o switch cair sempre no default, sem qualquer aviso em tempo de execução. A correção passa por garantir explicitamente o tipo antes do switch, normalmente com Number(...), String(...) ou Boolean(...), conforme o tipo esperado pelos case."
+      ],
+      "code": "const codigoEstado = \"2\"; // por exemplo, veio de uma origem que só devolve strings\n\nswitch (codigoEstado) {\n  case 1:\n    console.log(\"Ativo\");\n    break;\n  case 2:\n    console.log(\"Inativo\");\n    break;\n  default:\n    console.log(\"Estado desconhecido\"); // é isto que corre: \"2\" !== 2\n}\n\n// correção: converter para o mesmo tipo dos case\nswitch (Number(codigoEstado)) {\n  case 1:\n    console.log(\"Ativo\");\n    break;\n  case 2:\n    console.log(\"Inativo\"); // agora corre corretamente\n    break;\n  default:\n    console.log(\"Estado desconhecido\");\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "O switch nunca converte tipos: se a expressão for uma string e os case forem números (ou vice-versa), nenhum case corresponde e cai sempre no default. Converta explicitamente o tipo antes do switch sempre que a origem do valor não for garantida.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⚖️",
+          "text": "switch compara com === (sem conversão de tipo)"
+        },
+        {
+          "icon": "⚠️",
+          "text": "\"2\" nunca é igual a 2 num case"
+        }
+      ]
+    },
+    {
+      "heading": "switch vs. if/else if: qual escolher",
+      "body": [
+        "Um switch tende a ser mais legível do que uma cadeia de if/else if quando se está a comparar uma única expressão com várias alternativas de igualdade exata - por exemplo, um código de estado, uma tecla premida ou uma categoria em texto. A estrutura deixa claro, de forma visual, que se trata sempre da mesma variável a ser testada, e escala melhor à medida que se acrescentam mais alternativas.",
+        "Uma cadeia de if/else if continua a ser a escolha certa quando as condições envolvem intervalos, como nota >= 10, combinações de várias variáveis diferentes, ou expressões booleanas compostas com && e ||, porque o switch só compara igualdade estrita e não avalia esse tipo de expressão diretamente na cláusula case. Para mapeamentos simples de valor para resultado existe ainda uma terceira alternativa - usar um objeto como tabela de pesquisa em vez de switch ou if/else - que será aprofundada no módulo de Objetos e Orientação a Objetos."
+      ],
+      "code": "// cadeia de if/else - fica longa quando há muitas alternativas exatas\nfunction corDoEstado(estado) {\n  if (estado === \"novo\") return \"azul\";\n  else if (estado === \"em progresso\") return \"amarelo\";\n  else if (estado === \"concluído\") return \"verde\";\n  else if (estado === \"cancelado\") return \"vermelho\";\n  else return \"cinzento\";\n}\n\n// o mesmo com switch - mais legível quando há muitas alternativas exatas\nfunction corDoEstadoSwitch(estado) {\n  switch (estado) {\n    case \"novo\":\n      return \"azul\";\n    case \"em progresso\":\n      return \"amarelo\";\n    case \"concluído\":\n      return \"verde\";\n    case \"cancelado\":\n      return \"vermelho\";\n    default:\n      return \"cinzento\";\n  }\n}",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [
+        "Critério",
+        "if / else if",
+        "switch"
+      ],
+      "table_rows": [
+        [
+          "Tipo de condição",
+          "Expressões booleanas, intervalos, várias variáveis diferentes",
+          "Um único valor comparado a várias alternativas exatas"
+        ],
+        [
+          "Legibilidade com muitas alternativas",
+          "Degrada-se com muitos else if seguidos",
+          "Mantém-se clara mesmo com muitos case"
+        ],
+        [
+          "Tipo de comparação",
+          "Qualquer expressão: ==, ===, <, >=, && e ||...",
+          "Sempre igualdade estrita (===) com a expressão do switch"
+        ],
+        [
+          "Agrupar vários valores no mesmo resultado",
+          "Precisa de || ou de repetir o bloco",
+          "Basta encadear vários case sem break entre eles"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🗂️",
+          "text": "switch brilha com muitas alternativas exatas"
+        },
+        {
+          "icon": "🌡️",
+          "text": "if/else vence em intervalos e condições compostas"
+        }
+      ]
+    },
+    {
+      "heading": "Guard clauses: simplificar com saídas antecipadas",
+      "body": [
+        "Uma guard clause é um if colocado no início de uma função, ou de um bloco de código, que testa uma condição de invalidação e termina de imediato com return, break, continue ou throw quando essa condição se verifica. Em vez de envolver o caminho normal dentro de sucessivos else, cada guard clause trata um caso de saída isoladamente, e o código que seria o ramo else acaba simplesmente por vir a seguir, sem aninhamento.",
+        "Este padrão reduz o número de níveis de indentação e deixa o caso de sucesso isolado e visível no final da função, o que facilita muito a leitura em funções com várias validações sequenciais. É uma das formas mais eficazes de simplificar código que, de outra forma, acumularia if dentro de else dentro de if."
+      ],
+      "code": "// com guard clauses: sem aninhamento, cada condição de erro sai logo\nfunction calcularDesconto(cliente) {\n  if (!cliente) {\n    return 0;\n  }\n  if (!cliente.ativo) {\n    return 0;\n  }\n  if (cliente.pontos < 100) {\n    return 0;\n  }\n  return cliente.pontos * 0.01;\n}\n\n// a mesma lógica sem guard clauses, para comparação (mais aninhada)\nfunction calcularDescontoAninhado(cliente) {\n  let desconto = 0;\n  if (cliente) {\n    if (cliente.ativo) {\n      if (cliente.pontos >= 100) {\n        desconto = cliente.pontos * 0.01;\n      }\n    }\n  }\n  return desconto;\n}",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Pegue numa função sua com vários if aninhados e reescreva-a com guard clauses: valide primeiro as condições que levam a uma saída rápida (erro ou caso trivial) e deixe o caminho principal isolado no final, sem aninhamento.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🚪",
+          "text": "guard clause sai cedo quando a condição falha"
+        },
+        {
+          "icon": "📉",
+          "text": "reduz aninhamento e aumenta legibilidade"
+        },
+        {
+          "icon": "🏁",
+          "text": "o caso de sucesso fica isolado no fim"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Classificar uma nota",
+      "difficulty": "Iniciante",
+      "statement": "Escreva uma função classificarNota(nota) que recebe um número entre 0 e 20 e devolve uma string com a classificação, segundo estas regras: devolve \"Nota inválida\" se nota for menor que 0 ou maior que 20; \"Excelente\" se nota for maior ou igual a 18; \"Muito Bom\" se nota for maior ou igual a 16; \"Bom\" se nota for maior ou igual a 13; \"Suficiente\" se nota for maior ou igual a 10; e \"Reprovado\" nos restantes casos. Use uma cadeia de if / else if / else.",
+      "hint": "Avalie as condições da nota mais alta para a mais baixa (depois de tratar os valores fora do intervalo); assim que uma condição de um else if é verdadeira, as seguintes deixam de ser avaliadas.",
+      "solution_code": "function classificarNota(nota) {\n  if (nota < 0 || nota > 20) {\n    return \"Nota inválida\";\n  } else if (nota >= 18) {\n    return \"Excelente\";\n  } else if (nota >= 16) {\n    return \"Muito Bom\";\n  } else if (nota >= 13) {\n    return \"Bom\";\n  } else if (nota >= 10) {\n    return \"Suficiente\";\n  } else {\n    return \"Reprovado\";\n  }\n}\n\nconsole.log(classificarNota(19)); // \"Excelente\"\nconsole.log(classificarNota(9));  // \"Reprovado\"\nconsole.log(classificarNota(25)); // \"Nota inválida\"",
+      "solution_explanation": "A validação do intervalo válido (0 a 20) é feita em primeiro lugar, para eliminar valores fora de gama antes de qualquer classificação. As restantes condições estão ordenadas da nota mais alta para a mais baixa, o que garante que cada valor cai exatamente numa categoria, já que a execução para no primeiro else if verdadeiro."
+    },
+    {
+      "title": "Estações do ano com fallthrough",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função obterEstacao(mes) que recebe um número de mês (1 a 12, correspondendo a janeiro-dezembro) e devolve a estação do ano em Portugal continental: \"Inverno\" para dezembro, janeiro e fevereiro; \"Primavera\" para março, abril e maio; \"Verão\" para junho, julho e agosto; \"Outono\" para setembro, outubro e novembro. Use um switch em que vários case partilhem o mesmo bloco de código através de fallthrough (sem break entre eles), e trate qualquer valor fora do intervalo 1-12 com um default que devolve \"Mês inválido\".",
+      "hint": "Coloque os case correspondentes ao mesmo grupo seguidos uns dos outros, sem instrução break entre eles - dessa forma todos caem (fazem fallthrough) até encontrarem um return.",
+      "solution_code": "function obterEstacao(mes) {\n  switch (mes) {\n    case 12:\n    case 1:\n    case 2:\n      return \"Inverno\";\n    case 3:\n    case 4:\n    case 5:\n      return \"Primavera\";\n    case 6:\n    case 7:\n    case 8:\n      return \"Verão\";\n    case 9:\n    case 10:\n    case 11:\n      return \"Outono\";\n    default:\n      return \"Mês inválido\";\n  }\n}\n\nconsole.log(obterEstacao(1));  // \"Inverno\"\nconsole.log(obterEstacao(7));  // \"Verão\"\nconsole.log(obterEstacao(13)); // \"Mês inválido\"",
+      "solution_explanation": "Como cada return termina imediatamente a função, não é necessário break: os case 12, 1 e 2 partilham o mesmo return por estarem encadeados sem código entre eles, e o mesmo se repete nos outros três grupos. O default apanha qualquer mês fora do intervalo 1-12."
+    },
+    {
+      "title": "Depurar um switch que ignora sempre os casos",
+      "difficulty": "Intermedio",
+      "statement": "Tem a seguinte função, que deveria devolver o nome de um nível de dificuldade a partir de um código, mas está sempre a devolver \"Nível desconhecido\":\n\nfunction obterNomeNivel(codigo) {\n  switch (codigo) {\n    case 1:\n      return \"Fácil\";\n    case 2:\n      return \"Médio\";\n    case 3:\n      return \"Difícil\";\n    default:\n      return \"Nível desconhecido\";\n  }\n}\n\nA função é sempre chamada assim: obterNomeNivel(pedirCodigoAoUtilizador()), e pedirCodigoAoUtilizador() devolve sempre uma string, por exemplo \"1\", \"2\" ou \"3\", nunca um número. Explique, com base na forma como o switch compara valores, porque é que a função falha sempre, e reescreva-a para funcionar corretamente independentemente de o código chegar como string ou como número.",
+      "hint": "Lembre-se de que o switch compara o valor da expressão com os valores dos case usando o mesmo mecanismo do operador ===, que nunca converte tipos.",
+      "solution_code": "function obterNomeNivel(codigo) {\n  switch (Number(codigo)) {\n    case 1:\n      return \"Fácil\";\n    case 2:\n      return \"Médio\";\n    case 3:\n      return \"Difícil\";\n    default:\n      return \"Nível desconhecido\";\n  }\n}\n\nconsole.log(obterNomeNivel(\"2\")); // \"Médio\"\nconsole.log(obterNomeNivel(3));   // \"Difícil\"",
+      "solution_explanation": "O switch original falhava porque \"1\" (string) nunca é === a 1 (número), pelo que a expressão caía sempre no default. Ao envolver a expressão comparada em Number(codigo), garante-se que a comparação é sempre feita entre números, quer o código chegue como string quer como número."
+    },
+    {
+      "title": "Refatorar validação de registo com guard clauses",
+      "difficulty": "Avancado",
+      "statement": "Tem a seguinte função de validação de registo, com if aninhados dentro de else:\n\nfunction validarRegisto(idade, email, aceitouTermos) {\n  let resultado;\n  if (idade !== undefined) {\n    if (idade >= 18) {\n      if (email && email.includes(\"@\")) {\n        if (aceitouTermos) {\n          resultado = \"Registo válido\";\n        } else {\n          resultado = \"Erro: tem de aceitar os termos\";\n        }\n      } else {\n        resultado = \"Erro: email inválido\";\n      }\n    } else {\n      resultado = \"Erro: idade mínima de 18 anos\";\n    }\n  } else {\n    resultado = \"Erro: idade em falta\";\n  }\n  return resultado;\n}\n\nReescreva esta função usando guard clauses (saídas antecipadas com return), eliminando todo o aninhamento e mantendo exatamente as mesmas mensagens e a mesma ordem de validação.",
+      "hint": "Em vez de aninhar if dentro de else, teste cada condição de erro isoladamente e faça return imediatamente quando ela falhar; só no fim, depois de todas as validações passarem, devolva o resultado positivo.",
+      "solution_code": "function validarRegisto(idade, email, aceitouTermos) {\n  if (idade === undefined) {\n    return \"Erro: idade em falta\";\n  }\n  if (idade < 18) {\n    return \"Erro: idade mínima de 18 anos\";\n  }\n  if (!email || !email.includes(\"@\")) {\n    return \"Erro: email inválido\";\n  }\n  if (!aceitouTermos) {\n    return \"Erro: tem de aceitar os termos\";\n  }\n  return \"Registo válido\";\n}\n\nconsole.log(validarRegisto(undefined, \"a@b.pt\", true)); // \"Erro: idade em falta\"\nconsole.log(validarRegisto(16, \"a@b.pt\", true));        // \"Erro: idade mínima de 18 anos\"\nconsole.log(validarRegisto(20, \"semarroba\", true));     // \"Erro: email inválido\"\nconsole.log(validarRegisto(20, \"a@b.pt\", false));        // \"Erro: tem de aceitar os termos\"\nconsole.log(validarRegisto(20, \"a@b.pt\", true));         // \"Registo válido\"",
+      "solution_explanation": "Cada guard clause trata uma condição de erro isoladamente e termina a função de imediato com return, eliminando a necessidade de aninhar if dentro de else. O fluxo fica linear e de leitura top-to-bottom, com o caso de sucesso isolado no final, sem alterar nenhuma mensagem nem a ordem de validação original."
+    }
+  ],
+  "summary": [
+    "if, else if e else executam apenas o primeiro bloco cuja condição seja verdadeira; as condições seguintes nem chegam a ser avaliadas.",
+    "let e const declarados dentro de um bloco só existem nesse bloco; var ignora o escopo de bloco e escapa para fora do if.",
+    "Sem break, o switch continua a executar as cláusulas seguintes (fallthrough); usa-se isso de propósito para agrupar vários case no mesmo bloco.",
+    "O switch compara sempre com igualdade estrita (===) e nunca converte tipos - um número e a string equivalente nunca correspondem ao mesmo case.",
+    "switch favorece muitas alternativas de igualdade exata sobre uma única expressão; if/else if favorece intervalos e condições compostas.",
+    "Guard clauses substituem if aninhados por saídas antecipadas, deixando o caso de sucesso isolado no fim da função."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 02",
+  "next_label": "Aula 02 → Operador Ternário e Curto-Circuito",
+  "_stage": "revisao"
+}

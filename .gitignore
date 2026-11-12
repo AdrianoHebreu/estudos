@@ -1,8 +1,11 @@
+# Dependências e ambientes
+node_modules/
+.venv/
+venv/
+
 # Python
 __pycache__/
 *.py[cod]
-.venv/
-venv/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -11,14 +14,15 @@ venv/
 ~$*
 .~lock.*
 
-# Rascunhos de trabalho (apagados no fim)
-_rascunho/
+# Imagens renderizadas para QA visual (geradas, ~24 MB)
+codex_studies/.qa/rendered/
+
+# Segredos
+.env
+.env.*
 
 # Sistema e editor
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
-
-# Node (se algum exemplo o usar)
-node_modules/

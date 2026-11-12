@@ -1,0 +1,283 @@
+{
+  "module_num": "10",
+  "module_title": "DOM e APIs do Navegador",
+  "module_dir": "10-DOM-e-APIs-do-Navegador",
+  "lesson_num": "04",
+  "lesson_slug": "Web-Storage-e-Outras-APIs",
+  "kind": "aula",
+  "title": "Web Storage e Outras APIs do Browser",
+  "filename_base": "04-Web-Storage-e-Outras-APIs",
+  "subtitle": "Guarde dados no browser, agende tarefas e formate valores como um profissional",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Distinguir localStorage de sessionStorage e saber quando usar cada um.",
+    "Guardar e recuperar dados estruturados (objetos e arrays) no Web Storage usando JSON.",
+    "Agendar e cancelar execucao de codigo com setTimeout, setInterval, clearTimeout e clearInterval.",
+    "Evitar temporizadores orfaos e fugas de memoria ao limpar corretamente os intervalos criados.",
+    "Criar copias profundas de estruturas de dados complexas com structuredClone.",
+    "Formatar datas, numeros e valores monetarios de forma localizada com o objeto Intl."
+  ],
+  "sections": [
+    {
+      "heading": "localStorage vs sessionStorage",
+      "body": [
+        "A Web Storage API disponibiliza dois objetos globais para guardar dados diretamente no browser: localStorage e sessionStorage. Ambos guardam pares chave-valor associados a origem da pagina (protocolo, dominio e porta), de forma totalmente separada dos cookies e sem que esses dados sejam enviados ao servidor em cada pedido.",
+        "A principal diferenca esta na persistencia e no ambito. O localStorage mantem os dados guardados indefinidamente, mesmo depois de fechar e reabrir o browser, ate que sejam explicitamente removidos por codigo ou pelo utilizador; e partilhado por todos os separadores e janelas da mesma origem. Ja o sessionStorage esta ligado ao ciclo de vida de um separador especifico: os dados sobrevivem a recarregar a pagina nesse separador, mas sao destruidos assim que o separador e fechado, e nunca sao partilhados com outros separadores, mesmo que abram a mesma origem.",
+        "Ambos os mecanismos sao sincronos, guardam apenas strings e tem uma capacidade tipica na ordem dos 5 a 10 MB por origem, dependendo do browser - por isso nao devem ser usados como substituto de uma base de dados real."
+      ],
+      "code": "localStorage.setItem('tema', 'escuro');\nconsole.log(localStorage.getItem('tema')); // 'escuro'\nlocalStorage.removeItem('tema');\nconsole.log(localStorage.getItem('tema')); // null\n\nsessionStorage.setItem('idSessao', 'abc123');\nconsole.log(sessionStorage.getItem('idSessao')); // 'abc123'\nsessionStorage.clear(); // remove tudo o que esta guardado neste separador",
+      "callout_kind": "NOTA",
+      "callout_text": "localStorage e sessionStorage sao sempre isolados por origem (protocolo + dominio + porta): um script em https://site-a.com nunca consegue aceder aos dados guardados por https://site-b.com, mesmo que ambos usem localStorage.",
+      "table_headers": [
+        "Caracteristica",
+        "localStorage",
+        "sessionStorage"
+      ],
+      "table_rows": [
+        [
+          "Persistencia",
+          "Mantem-se ate ser apagado explicitamente",
+          "Apaga-se quando o separador e fechado"
+        ],
+        [
+          "Ambito",
+          "Partilhado entre separadores da mesma origem",
+          "Isolado por separador, mesmo na mesma origem"
+        ],
+        [
+          "Sobrevive a recarregar a pagina",
+          "Sim",
+          "Sim"
+        ],
+        [
+          "Capacidade tipica",
+          "cerca de 5 a 10 MB por origem",
+          "cerca de 5 a 10 MB por origem"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "💾",
+          "text": "localStorage persiste; sessionStorage e temporario"
+        },
+        {
+          "icon": "🔒",
+          "text": "Isolados por origem: protocolo, dominio e porta"
+        },
+        {
+          "icon": "🗂️",
+          "text": "Guardam apenas pares chave-valor em texto"
+        }
+      ]
+    },
+    {
+      "heading": "Guardar dados estruturados com JSON",
+      "body": [
+        "O Web Storage so guarda strings: o metodo setItem converte automaticamente qualquer valor para texto (um numero vira '123', um booleano vira 'true'), pelo que tentar guardar diretamente um objeto ou array resulta na string inutil '[object Object]'. A solucao habitual e usar JSON.stringify para transformar o objeto ou array numa string antes de o guardar, e JSON.parse para o reconstruir quando e lido de volta.",
+        "Ao ler, e boa pratica verificar explicitamente se getItem devolveu null (chave ainda nao existente) antes de chamar JSON.parse, e envolver a leitura num try/catch caso os dados guardados tenham sido corrompidos ou alterados manualmente fora da aplicacao.",
+        "Vale a pena conhecer tambem o evento storage: quando o localStorage e alterado num separador, esse evento e disparado no objeto window de todos os outros separadores e janelas da mesma origem (nunca no separador que fez a alteracao), o que permite sincronizar interface entre varias abas abertas do mesmo site."
+      ],
+      "code": "function guardarPreferencias(prefs) {\n  try {\n    localStorage.setItem('preferencias', JSON.stringify(prefs));\n  } catch (erro) {\n    console.error('Nao foi possivel guardar preferencias:', erro);\n  }\n}\n\nfunction lerPreferencias() {\n  const dados = localStorage.getItem('preferencias');\n  return dados === null ? {} : JSON.parse(dados);\n}\n\nguardarPreferencias({ tema: 'escuro', idioma: 'pt-PT' });\nconsole.log(lerPreferencias()); // { tema: 'escuro', idioma: 'pt-PT' }\n\nwindow.addEventListener('storage', (evento) => {\n  console.log(`Chave \"${evento.key}\" mudou noutro separador`);\n  console.log('Novo valor:', evento.newValue);\n});",
+      "callout_kind": "ATENCAO",
+      "callout_text": "setItem pode lancar uma excecao (normalmente uma DOMException do tipo QuotaExceededError) se o limite de armazenamento da origem for ultrapassado. Em codigo que guarda dados com regularidade, envolva sempre a chamada num try/catch.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔤",
+          "text": "Web Storage so guarda strings"
+        },
+        {
+          "icon": "📦",
+          "text": "JSON.stringify para guardar, JSON.parse para ler"
+        },
+        {
+          "icon": "📡",
+          "text": "Evento storage avisa outros separadores da mudanca"
+        }
+      ]
+    },
+    {
+      "heading": "setTimeout e setInterval",
+      "body": [
+        "setTimeout(funcao, atraso, ...argumentos) agenda a execucao unica de funcao passados pelo menos atraso milissegundos. O atraso e um minimo, nunca uma garantia exata: como o JavaScript e single-threaded, o callback so corre quando a pilha de chamadas estiver vazia e o event loop chegar a essa tarefa, pelo que trabalho sincrono pesado pode atrasar a execucao. Argumentos extra passados a seguir ao atraso sao encaminhados diretamente para a funcao callback.",
+        "setInterval(funcao, intervalo, ...argumentos) funciona de forma semelhante, mas repete a execucao a cada intervalo milissegundos, indefinidamente, ate ser cancelado explicitamente. Se o callback demorar mais tempo do que o intervalo definido, as execucoes podem acumular-se ou sofrer desvio (drift); por isso, quando e preciso um espacamento mais previsivel entre execucoes, um padrao comum e usar setTimeout recursivo, agendando a proxima chamada apenas no fim da execucao atual, em vez de setInterval.",
+        "Um atraso de 0 milissegundos em setTimeout nao executa o callback de imediato: apenas o coloca na fila de tarefas para correr assim que o codigo sincrono atual e as microtarefas pendentes terminarem, ou seja, no proximo ciclo do event loop."
+      ],
+      "code": "console.log('inicio');\n\nsetTimeout(() => {\n  console.log('executado apos pelo menos 1 segundo');\n}, 1000);\n\nsetTimeout((nome) => {\n  console.log(`Ola, ${nome}!`);\n}, 500, 'Ana');\n\nconsole.log('fim (aparece antes dos setTimeout)');\n\nlet tiques = 0;\nconst idIntervalo = setInterval(() => {\n  tiques += 1;\n  console.log(`tique ${tiques}`);\n}, 1000);",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⏱️",
+          "text": "setTimeout: executa uma vez apos um atraso"
+        },
+        {
+          "icon": "🔁",
+          "text": "setInterval: repete a execucao periodicamente"
+        },
+        {
+          "icon": "🆔",
+          "text": "Ambos devolvem um id do temporizador"
+        }
+      ]
+    },
+    {
+      "heading": "Cancelar temporizadores: clearTimeout e clearInterval",
+      "body": [
+        "Tanto setTimeout como setInterval devolvem um id numerico que identifica esse temporizador especifico. Esse id tem de ser guardado e passado a clearTimeout (para um setTimeout ainda nao executado) ou a clearInterval (para parar as repeticoes de um setInterval). Depois de cancelado, chamar clearTimeout ou clearInterval outra vez com o mesmo id, ou com um id que nunca existiu, nao faz nada e nunca lanca erro.",
+        "Esquecer de limpar um setInterval e uma das causas mais comuns de processos 'orfaos' a correr em segundo plano: o intervalo continua ativo a consumir recursos e mantem vivas referencias a objetos ou elementos do DOM capturados na closure do callback, impedindo que sejam libertados da memoria. Isto e especialmente importante em componentes de interface que sao criados e destruidos varias vezes - a logica de limpeza desses componentes deve cancelar sempre qualquer temporizador que tenha criado."
+      ],
+      "code": "function iniciarRelogio() {\n  const id = setInterval(() => {\n    console.log(new Date().toLocaleTimeString('pt-PT'));\n  }, 1000);\n\n  return function pararRelogio() {\n    clearInterval(id);\n    console.log('Relogio parado');\n  };\n}\n\nconst pararRelogio = iniciarRelogio();\n// ... mais tarde, quando ja nao for preciso:\nsetTimeout(pararRelogio, 5000);\n\n// Cancelar um setTimeout antes de disparar:\nconst idAviso = setTimeout(() => console.log('Aviso!'), 3000);\nclearTimeout(idAviso); // o aviso nunca chega a ser mostrado",
+      "callout_kind": "DICA",
+      "callout_text": "Em codigo com componentes que aparecem e desaparecem (por exemplo, ao trocar de vista numa aplicacao), guarde sempre o id do temporizador e chame clearInterval ou clearTimeout na logica de limpeza desse componente, para nao deixar temporizadores orfaos a correr depois de o elemento ja nao existir no ecra.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🛑",
+          "text": "clearTimeout cancela um setTimeout pendente"
+        },
+        {
+          "icon": "🧹",
+          "text": "clearInterval para um setInterval a repetir"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Esquecer de limpar causa fugas de memoria"
+        }
+      ]
+    },
+    {
+      "heading": "structuredClone: copias profundas nativas",
+      "body": [
+        "Quando e preciso uma copia profunda de um objeto (sem partilhar referencias com os objetos ou arrays aninhados), uma solucao improvisada muito comum era JSON.parse(JSON.stringify(objeto)). Essa tecnica funciona para dados simples, mas tem varias limitacoes: perde funcoes e valores undefined silenciosamente, converte instancias de Date em strings, nao suporta Map, Set nem arrays tipados, e lanca erro perante referencias circulares.",
+        "structuredClone(valor) e uma funcao global disponivel nativamente nos browsers modernos e no Node.js, sem necessidade de importar nada, que resolve exatamente este problema: implementa o chamado structured clone algorithm (o mesmo mecanismo usado internamente por postMessage e IndexedDB) e devolve uma copia completamente independente do valor original, incluindo estruturas aninhadas, Date, Map, Set, RegExp, ArrayBuffer e arrays tipados, alem de lidar corretamente com referencias circulares.",
+        "Ainda assim, tem limites claros: nao consegue clonar funcoes (lanca um DataCloneError se tentar), e instancias de classes perdem a cadeia de prototipos no processo - a copia mantem as propriedades proprias mas passa a ser um objeto simples, sem os metodos definidos na classe original."
+      ],
+      "code": "const original = {\n  nome: 'Carrinho',\n  criadoEm: new Date(),\n  tags: new Set(['livros', 'tecnologia']),\n  itens: [{ nome: 'Livro', preco: 12.5 }]\n};\n\nconst copia = structuredClone(original);\n\ncopia.itens[0].preco = 99;\ncopia.tags.add('saldos');\n\nconsole.log(original.itens[0].preco); // 12.5 (nao foi afetado)\nconsole.log(original.tags.size); // 2 (nao foi afetado)\nconsole.log(copia.criadoEm instanceof Date); // true",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [
+        "Aspeto",
+        "structuredClone",
+        "JSON.stringify + JSON.parse"
+      ],
+      "table_rows": [
+        [
+          "Datas (Date)",
+          "Mantem-se como objeto Date",
+          "Convertida para string"
+        ],
+        [
+          "Map e Set",
+          "Suportado nativamente",
+          "Nao suportado, perde-se"
+        ],
+        [
+          "Referencias circulares",
+          "Suportado",
+          "Lanca erro"
+        ],
+        [
+          "Funcoes",
+          "Nao suportado, lanca erro",
+          "Sao omitidas silenciosamente"
+        ],
+        [
+          "Propriedades com undefined",
+          "Mantidas",
+          "Removidas"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧬",
+          "text": "structuredClone faz copias profundas nativas"
+        },
+        {
+          "icon": "📅",
+          "text": "Preserva Date, Map, Set e referencias circulares"
+        },
+        {
+          "icon": "🚫",
+          "text": "Nao clona funcoes nem metodos de classes"
+        }
+      ]
+    },
+    {
+      "heading": "Intl: formatar datas, numeros e moeda",
+      "body": [
+        "Intl e um objeto global nativo do JavaScript que fornece APIs de internacionalizacao para formatar valores - datas, numeros, percentagens, moeda - de acordo com as convencoes de uma lingua e regiao especificas (o chamado locale), sem ter de escrever logica de formatacao manual nem recorrer a bibliotecas externas. Os construtores mais usados sao Intl.DateTimeFormat, para datas e horas, e Intl.NumberFormat, para numeros, percentagens e valores monetarios.",
+        "Ambos recebem como primeiro argumento uma string de locale (por exemplo, 'pt-PT' para portugues europeu) e, como segundo, um objeto de opcoes que configura os detalhes da formatacao: Intl.DateTimeFormat aceita opcoes como dateStyle e timeStyle, ou campos individuais como day, month e year; Intl.NumberFormat aceita style igual a 'decimal', 'percent' ou 'currency' (associado a um codigo de moeda, como currency: 'EUR'). Depois de criado o formatador, o metodo .format(valor) devolve diretamente a string ja formatada, respeitando automaticamente detalhes como o separador decimal (virgula em pt-PT) e a posicao do simbolo da moeda."
+      ],
+      "code": "const dataFormatada = new Intl.DateTimeFormat('pt-PT', {\n  dateStyle: 'long',\n  timeStyle: 'short'\n}).format(new Date());\n\nconsole.log(dataFormatada); // ex.: '16 de setembro de 2026, 14:32'\n\nconst formatadorMoeda = new Intl.NumberFormat('pt-PT', {\n  style: 'currency',\n  currency: 'EUR'\n});\n\nconsole.log(formatadorMoeda.format(1234.5)); // ex.: '1234,50 €'\n\nconst formatadorPercentagem = new Intl.NumberFormat('pt-PT', {\n  style: 'percent',\n  minimumFractionDigits: 1\n});\n\nconsole.log(formatadorPercentagem.format(0.256)); // '25,6%'",
+      "callout_kind": "NOTA",
+      "callout_text": "O objeto Intl inclui ainda outros construtores, como Intl.RelativeTimeFormat (para frases do tipo 'ha 3 dias') e Intl.ListFormat (para listas em texto), que ficam fora do ambito desta introducao breve.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🌍",
+          "text": "Intl formata valores de acordo com o locale"
+        },
+        {
+          "icon": "📅",
+          "text": "Intl.DateTimeFormat para datas e horas"
+        },
+        {
+          "icon": "💶",
+          "text": "Intl.NumberFormat para numeros e moeda"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Contador de visitas com localStorage",
+      "difficulty": "Iniciante",
+      "statement": "Crie uma funcao chamada registarVisita, sem argumentos, que faz o seguinte sempre que e chamada: le o valor guardado em localStorage na chave 'visitas' (lembre-se de que o localStorage guarda sempre strings); se a chave ainda nao existir, considera o valor atual como 0; incrementa esse valor em 1; guarda o novo valor de volta em localStorage; e devolve o novo valor como numero. Teste a funcao chamando-a tres vezes seguidas e mostrando na consola o resultado de cada chamada.",
+      "hint": "localStorage.getItem devolve sempre uma string ou null (se a chave nao existir). Use Number(...) para converter antes de somar, e String(...) antes de voltar a guardar.",
+      "solution_code": "function registarVisita() {\n  const valorGuardado = localStorage.getItem('visitas');\n  const visitasAtuais = valorGuardado === null ? 0 : Number(valorGuardado);\n  const novasVisitas = visitasAtuais + 1;\n  localStorage.setItem('visitas', String(novasVisitas));\n  return novasVisitas;\n}\n\nconsole.log(registarVisita()); // 1\nconsole.log(registarVisita()); // 2\nconsole.log(registarVisita()); // 3",
+      "solution_explanation": "Como o localStorage so guarda strings, o valor lido e convertido para numero com Number antes de ser incrementado, e voltado a converter para string com String antes de ser guardado. O caso de a chave nao existir ainda (getItem devolve null) e tratado explicitamente com o valor 0."
+    },
+    {
+      "title": "Lista de tarefas persistente com JSON",
+      "difficulty": "Intermedio",
+      "statement": "Implemente duas funcoes que usam localStorage para guardar uma lista de tarefas na chave 'tarefas': listarTarefas(), que le a lista guardada e a devolve como array de objetos, devolvendo um array vazio se ainda nao existir nada guardado; e adicionarTarefa(texto), que le a lista atual (usando listarTarefas), acrescenta um novo objeto { texto, concluida: false } e guarda a lista atualizada de volta em localStorage. Use JSON.stringify e JSON.parse para converter entre o array e a string guardada.",
+      "hint": "Antes de fazer JSON.parse ao resultado de localStorage.getItem, verifique se esse resultado e null; nesse caso, comece com um array vazio em vez de tentar converter null.",
+      "solution_code": "function listarTarefas() {\n  const dadosGuardados = localStorage.getItem('tarefas');\n  return dadosGuardados === null ? [] : JSON.parse(dadosGuardados);\n}\n\nfunction adicionarTarefa(texto) {\n  const tarefas = listarTarefas();\n  tarefas.push({ texto, concluida: false });\n  localStorage.setItem('tarefas', JSON.stringify(tarefas));\n  return tarefas;\n}\n\nadicionarTarefa('Estudar Web Storage');\nadicionarTarefa('Praticar setInterval');\nconsole.log(listarTarefas());\n// [ { texto: 'Estudar Web Storage', concluida: false },\n//   { texto: 'Praticar setInterval', concluida: false } ]",
+      "solution_explanation": "JSON.stringify converte o array de objetos numa string que o localStorage consegue guardar, e JSON.parse faz o caminho inverso ao ler. O caso da primeira utilizacao (ainda sem nada guardado) e tratado devolvendo um array vazio em vez de tentar interpretar null como JSON."
+    },
+    {
+      "title": "Contagem decrescente cancelavel",
+      "difficulty": "Avancado",
+      "statement": "Escreva uma funcao iniciarContagemDecrescente(segundos, aoCadaSegundo, aoTerminar) que usa setInterval para decrementar um contador a partir de segundos, uma vez por segundo. A cada tique, deve chamar aoCadaSegundo(valorRestante) com o valor restante (o primeiro tique reporta segundos - 1). Quando o contador chegar a 0, deve parar o intervalo com clearInterval e chamar aoTerminar(), sem chamar aoCadaSegundo(0). A funcao iniciarContagemDecrescente deve devolver uma funcao cancelar que, se for chamada antes do fim, para a contagem imediatamente (tambem usando clearInterval) sem chamar aoTerminar.",
+      "hint": "Guarde o id devolvido por setInterval numa variavel de fecho (closure), para poder usa-lo tanto dentro do callback do intervalo como na funcao cancelar que e devolvida.",
+      "solution_code": "function iniciarContagemDecrescente(segundos, aoCadaSegundo, aoTerminar) {\n  let restante = segundos;\n\n  const idIntervalo = setInterval(() => {\n    restante -= 1;\n\n    if (restante <= 0) {\n      clearInterval(idIntervalo);\n      aoTerminar();\n      return;\n    }\n\n    aoCadaSegundo(restante);\n  }, 1000);\n\n  return function cancelar() {\n    clearInterval(idIntervalo);\n  };\n}\n\nconst cancelar = iniciarContagemDecrescente(\n  5,\n  (restante) => console.log(`Faltam ${restante} segundos`),\n  () => console.log('Tempo esgotado!')\n);\n\n// Para cancelar antes do fim: cancelar();",
+      "solution_explanation": "O id devolvido por setInterval fica guardado numa closure, acessivel tanto pelo callback do proprio intervalo (para se autocancelar ao chegar a 0) como pela funcao cancelar devolvida ao chamador. Isto garante que o temporizador e sempre limpo com clearInterval, quer termine naturalmente quer seja cancelado antes do tempo."
+    },
+    {
+      "title": "Carrinho de compras: clonar e formatar",
+      "difficulty": "Avancado",
+      "statement": "Dado o objeto const carrinho = { cliente: 'Ana', itens: [ { nome: 'Teclado', preco: 45.9, quantidade: 1 }, { nome: 'Rato', preco: 19.5, quantidade: 2 } ], criadoEm: new Date() };, escreva uma funcao aplicarDesconto(carrinhoOriginal, percentagem) que: cria uma copia profunda do carrinho original com structuredClone, sem alterar o objeto original; aplica o desconto indicado (por exemplo, 10 para 10%) ao preco de cada item na copia; e devolve um objeto com duas propriedades: carrinho (a copia com os precos ja alterados) e totalFormatado (uma string com o valor total do carrinho apos desconto, formatada como moeda em euros com Intl.NumberFormat e o locale 'pt-PT'). No final, confirme que o carrinho original nao foi alterado.",
+      "hint": "Use structuredClone(carrinhoOriginal) para obter a copia antes de qualquer alteracao; o total e a soma de preco multiplicado por quantidade de cada item, ja com o desconto aplicado.",
+      "solution_code": "const carrinho = {\n  cliente: 'Ana',\n  itens: [\n    { nome: 'Teclado', preco: 45.9, quantidade: 1 },\n    { nome: 'Rato', preco: 19.5, quantidade: 2 }\n  ],\n  criadoEm: new Date()\n};\n\nfunction aplicarDesconto(carrinhoOriginal, percentagem) {\n  const copia = structuredClone(carrinhoOriginal);\n\n  copia.itens.forEach((item) => {\n    item.preco = item.preco * (1 - percentagem / 100);\n  });\n\n  const total = copia.itens.reduce(\n    (soma, item) => soma + item.preco * item.quantidade,\n    0\n  );\n\n  const formatadorMoeda = new Intl.NumberFormat('pt-PT', {\n    style: 'currency',\n    currency: 'EUR'\n  });\n\n  return {\n    carrinho: copia,\n    totalFormatado: formatadorMoeda.format(total)\n  };\n}\n\nconst resultado = aplicarDesconto(carrinho, 10);\nconsole.log(resultado.totalFormatado);\nconsole.log(carrinho.itens[0].preco); // 45.9, o original nao foi alterado",
+      "solution_explanation": "structuredClone cria uma copia totalmente independente do carrinho, incluindo o array itens e a data criadoEm, por isso alterar os precos na copia nunca afeta o objeto original. O total, ja com desconto, e formatado com Intl.NumberFormat configurado para moeda e locale portugues, devolvendo uma string pronta a mostrar ao utilizador."
+    }
+  ],
+  "summary": [
+    "localStorage persiste entre sessoes do browser e e partilhado entre separadores da mesma origem; sessionStorage e limitado a um separador e desaparece quando este fecha.",
+    "O Web Storage so guarda strings: objetos e arrays tem de passar por JSON.stringify antes de guardar e por JSON.parse depois de ler.",
+    "setTimeout agenda uma execucao unica apos um atraso minimo; setInterval repete essa execucao periodicamente; ambos devolvem um id necessario para os cancelar.",
+    "clearTimeout e clearInterval cancelam temporizadores atraves do id devolvido; esquecer de os chamar e uma causa comum de processos orfaos e fugas de memoria.",
+    "structuredClone cria copias profundas nativas, incluindo Date, Map, Set e referencias circulares, sem as limitacoes do truque JSON.stringify mais JSON.parse.",
+    "O objeto Intl permite formatar datas, numeros e valores monetarios de acordo com o locale, sem bibliotecas externas."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para o Módulo 11",
+  "next_label": "Aula 01 → Symbols e Well-Known Symbols",
+  "_stage": "autoria"
+}

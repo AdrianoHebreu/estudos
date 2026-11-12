@@ -1,0 +1,250 @@
+{
+  "module_num": "08",
+  "module_title": "Módulos e Ecossistema",
+  "module_dir": "08-Modulos-e-Ecossistema",
+  "lesson_num": "04",
+  "lesson_slug": "Bundlers-e-Ferramentas-de-Build",
+  "kind": "aula",
+  "title": "Bundlers e Ferramentas de Build",
+  "filename_base": "04-Bundlers-e-Ferramentas-de-Build",
+  "subtitle": "Como Vite, webpack, esbuild, Babel, ESLint e Prettier preparam o código para produção",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Perceber porque as aplicações JavaScript modernas precisam de um passo de build antes de chegar ao browser.",
+    "Distinguir os papéis do Vite, do webpack e do esbuild no ecossistema atual de ferramentas.",
+    "Compreender como o Babel transpila sintaxe moderna para ambientes mais antigos, e o que fica fora do seu alcance.",
+    "Configurar o ESLint para detetar erros e más práticas através de análise estática.",
+    "Usar o Prettier para manter uma formatação de código consistente, sem discussões de estilo.",
+    "Reconhecer como bundler, transpilador, linter e formatador se encaixam no fluxo de trabalho de um projeto real."
+  ],
+  "sections": [
+    {
+      "heading": "O problema que os bundlers resolvem",
+      "body": [
+        "Quando um projeto JavaScript cresce, o código deixa de caber num único ficheiro e passa a estar organizado em dezenas ou centenas de módulos, cada um com uma responsabilidade própria, algo já visto nas aulas anteriores deste módulo sobre ES Modules e CommonJS. Se o browser tivesse de pedir cada um desses ficheiros individualmente, o número de pedidos de rede tornaria o carregamento da aplicação lento, e sintaxe recente do próprio JavaScript podia simplesmente não funcionar em browsers mais antigos ou em ambientes onde certas otimizações são obrigatórias antes de publicar.",
+        "Um bundler resolve este problema analisando o grafo de dependências da aplicação, a partir de um ou mais pontos de entrada, e produzindo um número reduzido de ficheiros finais, normalmente já minificados (sem espaços, comentários ou nomes de variáveis desnecessariamente longos). Uma das otimizações mais importantes chama-se tree-shaking: o bundler deteta, de forma estática, quais exportações de um módulo nunca são realmente importadas por nenhum outro ficheiro, e remove-as do resultado final, reduzindo o tamanho do bundle enviado ao utilizador."
+      ],
+      "code": "// math.js\nexport function soma(a, b) {\n  return a + b;\n}\n\nexport function multiplica(a, b) {\n  return a * b; // nunca é importada em lado nenhum\n}\n\n// main.js\nimport { soma } from './math.js';\n\nconsole.log(soma(2, 3));",
+      "callout_kind": "NOTA",
+      "callout_text": "O tree-shaking só é possível porque import e export do ES Modules são estáticos: o bundler consegue analisar as dependências sem executar o código. Com require do CommonJS, que é dinâmico, essa análise deixa de ser garantida e a otimização perde eficácia.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "Muitos módulos = muitos pedidos de rede"
+        },
+        {
+          "icon": "🌳",
+          "text": "Tree-shaking remove código nunca usado"
+        },
+        {
+          "icon": "📉",
+          "text": "Minificação reduz o tamanho do bundle"
+        }
+      ]
+    },
+    {
+      "heading": "Vite, webpack e esbuild: visão geral",
+      "body": [
+        "Estas três ferramentas resolvem o mesmo problema geral mas com prioridades diferentes. O webpack é o bundler mais antigo dos três e durante anos foi o standard de facto da comunidade: é extremamente configurável, tem um ecossistema enorme de plugins e loaders, e continua a ser a escolha certa em projetos legados ou com requisitos muito específicos de build. Em troca dessa flexibilidade, a configuração tende a ser mais verbosa e o tempo de arranque e de rebuild mais lento à medida que o projeto cresce.",
+        "O esbuild é um bundler e transpilador escrito em Go, focado quase obsessivamente em velocidade: processa milhares de ficheiros por segundo porque faz o trabalho pesado em paralelo, sem as camadas de abstração de ferramentas escritas em JavaScript puro. Raramente se usa sozinho como solução completa num projeto de aplicação grande, porque tem menos funcionalidades de alto nível, mas é frequentemente usado como motor interno de outras ferramentas.",
+        "É exatamente isso que o Vite faz: usa o esbuild para pré-processar dependências e transformar código durante o desenvolvimento, o que torna o arranque do servidor de desenvolvimento quase instantâneo, e usa o Rollup para produzir o build final de produção, já com tree-shaking e otimizações mais refinadas. Esta combinação tornou o Vite a escolha por omissão para a maioria dos projetos novos, sobretudo pela experiência de desenvolvimento, sem abdicar de um build de produção de qualidade."
+      ],
+      "code": "import { build } from 'esbuild';\n\nawait build({\n  entryPoints: ['src/main.js'],\n  bundle: true,\n  minify: true,\n  target: ['es2018'],\n  outfile: 'dist/main.js',\n});\n\nconsole.log('Bundle gerado em dist/main.js');",
+      "callout_kind": "DICA",
+      "callout_text": "Para um projeto novo, começar por Vite é normalmente a escolha mais pragmática: só vale a pena migrar para webpack quando um plugin ou integração muito específica o exigir.",
+      "table_headers": [
+        "Ferramenta",
+        "Papel principal",
+        "Ponto forte",
+        "Quando escolher"
+      ],
+      "table_rows": [
+        [
+          "Vite",
+          "Servidor de desenvolvimento + build de produção",
+          "Arranque quase instantâneo, boa experiência de desenvolvimento",
+          "Projetos novos, aplicações modernas"
+        ],
+        [
+          "webpack",
+          "Bundler configurável",
+          "Ecossistema de plugins muito maduro",
+          "Projetos legados ou com necessidades muito específicas"
+        ],
+        [
+          "esbuild",
+          "Bundler e transpilador minimalista",
+          "Velocidade bruta",
+          "Scripts de build simples ou motor interno de outra ferramenta"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "⚡",
+          "text": "esbuild: velocidade extrema, escrito em Go"
+        },
+        {
+          "icon": "🚀",
+          "text": "Vite: dev server instantâneo + build com Rollup"
+        },
+        {
+          "icon": "🧩",
+          "text": "webpack: máxima configurabilidade e plugins"
+        }
+      ]
+    },
+    {
+      "heading": "Transpilação com Babel",
+      "body": [
+        "Mesmo depois de um bundler juntar os módulos, o código resultante pode conter sintaxe demasiado recente para alguns motores JavaScript que a aplicação ainda precisa de suportar. O Babel resolve isto através de transpilação: lê código escrito com sintaxe moderna, como optional chaining, nullish coalescing ou campos privados de classes, e reescreve-o usando apenas construções equivalentes que motores mais antigos já entendem.",
+        "Isto configura-se, tipicamente, através do preset @babel/preset-env, indicando quais motores (browsers, versões do Node.js) precisam de ser suportados. O Babel consulta essa lista de alvos e decide, para cada funcionalidade, se é necessário transformá-la ou se pode deixá-la tal como está, evitando transformar sintaxe que os alvos já suportam nativamente."
+      ],
+      "code": "export default {\n  presets: [\n    ['@babel/preset-env', { targets: '> 0.5%, not dead' }],\n  ],\n};",
+      "callout_kind": "ATENCAO",
+      "callout_text": "O Babel transpila sintaxe, mas não adiciona APIs em falta. Se o alvo não tiver Promise, Array.prototype.flat ou fetch, por exemplo, é preciso um polyfill (como o core-js) além da transpilação - o Babel, por si só, não resolve funcionalidades ausentes do motor, só sintaxe.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔄",
+          "text": "Babel reescreve sintaxe nova em sintaxe antiga"
+        },
+        {
+          "icon": "🎯",
+          "text": "@babel/preset-env decide o que transformar"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Sintaxe não é o mesmo que APIs em falta"
+        }
+      ]
+    },
+    {
+      "heading": "ESLint: deteção de problemas no código",
+      "body": [
+        "O ESLint analisa o código estaticamente, sem o executar, e sinaliza padrões problemáticos: variáveis declaradas mas nunca usadas, comparações com == em vez de ===, blocos inacessíveis, importações que apontam para módulos inexistentes, entre muitos outros casos configuráveis através de regras. Cada regra pode estar desligada, gerar apenas um aviso (warn) ou falhar a verificação (error), o que permite adaptar o rigor às necessidades de cada projeto ou equipa.",
+        "Desde a versão 9, o ESLint usa por omissão o chamado flat config, um único ficheiro eslint.config.js que exporta um array de configurações em vez do antigo formato baseado em .eslintrc. Isto torna a configuração mais previsível: cada objeto do array aplica-se aos ficheiros que indicar, e a ordem determina como as regras se sobrepõem."
+      ],
+      "code": "import js from '@eslint/js';\n\nexport default [\n  js.configs.recommended,\n  {\n    rules: {\n      'no-var': 'error',\n      eqeqeq: 'error',\n      'no-unused-vars': 'warn',\n    },\n  },\n];",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔍",
+          "text": "Deteta erros e más práticas sem executar código"
+        },
+        {
+          "icon": "📐",
+          "text": "Regras configuráveis: off, warn ou error"
+        },
+        {
+          "icon": "🗂️",
+          "text": "eslint.config.js: um único ficheiro, um array"
+        }
+      ]
+    },
+    {
+      "heading": "Prettier: formatação automática e consistente",
+      "body": [
+        "Enquanto o ESLint se foca sobretudo em qualidade e correção do código, o Prettier resolve um problema diferente: a formatação visual. É um formatador automático e altamente opinativo, o que significa que tem poucas opções configuráveis de propósito, para acabar com discussões de equipa sobre aspas simples ou duplas, ponto e vírgula no final das linhas, ou onde quebrar uma linha demasiado longa.",
+        "Na prática, o Prettier costuma correr automaticamente ao gravar um ficheiro no editor e também como um passo de verificação no pipeline de integração contínua, para garantir que ninguém envia código com formatação inconsistente. Como algumas regras de estilo do ESLint podem entrar em conflito com o que o Prettier decide, é comum desativar essas regras específicas no ESLint, por exemplo com o pacote eslint-config-prettier, e deixar toda a responsabilidade de formatação para o Prettier."
+      ],
+      "code": "export default {\n  semi: true,\n  singleQuote: true,\n  trailingComma: 'all',\n  printWidth: 80,\n  tabWidth: 2,\n};",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Configura o teu editor para formatar automaticamente com o Prettier ao gravar (format on save) e corre o ESLint antes de cada commit; a combinação destas duas ferramentas praticamente elimina discussões de estilo e apanha erros antes de chegarem ao repositório.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎨",
+          "text": "Formatação automática e opinativa"
+        },
+        {
+          "icon": "🤝",
+          "text": "Elimina discussões de estilo em equipa"
+        },
+        {
+          "icon": "🧯",
+          "text": "eslint-config-prettier evita conflitos de regras"
+        }
+      ]
+    },
+    {
+      "heading": "Como tudo se encaixa num projeto real",
+      "body": [
+        "Num projeto JavaScript moderno, estas ferramentas raramente aparecem sozinhas: combinam-se num fluxo de trabalho. Durante o desenvolvimento, o Vite (ou outro bundler com dev server) serve a aplicação com hot module replacement, atualizando o browser em milissegundos a cada alteração guardada, sem exigir um build completo a cada linha escrita.",
+        "Antes de qualquer commit ou no pipeline de integração contínua, corre-se o ESLint para apanhar erros e o Prettier para garantir formatação consistente, muitas vezes através de um hook de pré-commit. Quando chega a altura de publicar a aplicação, o comando de build do bundler entra em ação: resolve todos os módulos, aplica tree-shaking e minificação, e, se necessário, usa o Babel, ou a transpilação equivalente já embutida em ferramentas como o esbuild, para gerar código compatível com os motores de destino definidos no projeto.",
+        "Na prática, um simples ficheiro package.json costuma centralizar todo este fluxo através de scripts nomeados, cada um invocando a ferramenta certa para a fase certa do desenvolvimento."
+      ],
+      "code": "const scripts = {\n  dev: 'vite',\n  build: 'vite build',\n  lint: 'eslint .',\n  format: 'prettier --write .',\n};\n\nconsole.log(Object.keys(scripts));",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🛠️",
+          "text": "dev: servidor rápido com hot reload"
+        },
+        {
+          "icon": "✅",
+          "text": "lint + format: qualidade antes do commit"
+        },
+        {
+          "icon": "📦",
+          "text": "build: bundle otimizado para produção"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "De CommonJS para ES Modules: preparar o tree-shaking",
+      "difficulty": "Iniciante",
+      "statement": "Tens um ficheiro utils.js escrito em CommonJS: module.exports = { formatarData, gerarId, registar }, onde formatarData, gerarId e registar são três funções. O ficheiro main.js faz const { formatarData, gerarId } = require('./utils.js') e usa apenas essas duas funções; registar nunca é chamada em lado nenhum do projeto. Reescreve os dois ficheiros (utils.js e main.js) usando import e export nativos do ES Modules, mantendo o mesmo comportamento, de forma a que um bundler moderno (como o Vite ou o esbuild) consiga detetar estaticamente que registar nunca é importada e a remova do bundle final de produção através de tree-shaking.",
+      "hint": "Lembra-te que o tree-shaking depende de o bundler conseguir ver, sem executar código, exatamente o que cada ficheiro importa e exporta - isso só é garantido com import/export estáticos, não com require dinâmico.",
+      "solution_code": "// utils.js\nexport function formatarData(data) {\n  return new Intl.DateTimeFormat('pt-PT').format(data);\n}\n\nexport function gerarId() {\n  return crypto.randomUUID();\n}\n\nexport function registar(mensagem) {\n  console.log(`[log] ${mensagem}`);\n}\n\n// main.js\nimport { formatarData, gerarId } from './utils.js';\n\nconsole.log(formatarData(new Date()));\nconsole.log(gerarId());",
+      "solution_explanation": "Ao trocar module.exports/require por export/import nativos, as dependências entre ficheiros tornam-se estáticas e visíveis em tempo de análise, sem executar nenhum código. Como main.js nunca importa registar, um bundler com tree-shaking (Vite, esbuild, webpack) consegue confirmar que essa função é código morto e excluí-la do bundle de produção, algo que não conseguiria garantir com segurança se o require fosse dinâmico."
+    },
+    {
+      "title": "Configurar o Babel para sintaxe moderna",
+      "difficulty": "Intermedio",
+      "statement": "A tua aplicação usa optional chaining (?.) e nullish coalescing (??), mas precisa de continuar a funcionar em motores JavaScript mais antigos que ainda representam uma fatia significativa dos utilizadores. Cria um ficheiro babel.config.js que use o preset @babel/preset-env configurado para ter como alvo motores que representem mais de 0.5% de utilização global e que ainda recebam atualizações de segurança (usa a string de targets '> 0.5%, not dead').",
+      "hint": "@babel/preset-env aceita um objeto de opções onde a propriedade targets pode ser diretamente uma string no formato do browserslist.",
+      "solution_code": "export default {\n  presets: [\n    ['@babel/preset-env', { targets: '> 0.5%, not dead' }],\n  ],\n};",
+      "solution_explanation": "O ficheiro babel.config.js exporta um objeto com a lista de presets a usar; ao passar um array [nome, opções] em vez de só o nome do preset, é possível configurar o @babel/preset-env com a string de targets pedida. Com esta configuração, o Babel transforma automaticamente construções como ?. e ?? em código equivalente compatível com os motores indicados, sem que seja preciso escolher manualmente cada plugin de transformação."
+    },
+    {
+      "title": "ESLint, Prettier e scripts de projeto",
+      "difficulty": "Avancado",
+      "statement": "Cria um ficheiro eslint.config.js (no formato flat config) para um projeto que deve usar a configuração recomendada do ESLint (js.configs.recommended, do pacote @eslint/js) e, além disso, aplicar estas regras próprias: proibir totalmente o uso de var (erro), obrigar o uso de === em vez de == (erro) e apenas avisar (sem falhar) sobre variáveis declaradas e nunca usadas. De seguida, no mesmo ficheiro, cria um objeto scripts que representaria entradas do package.json, com dois comandos: lint, que corre 'eslint .', e format, que corre o Prettier em modo de escrita automática sobre todos os ficheiros ('prettier --write .').",
+      "hint": "js.configs.recommended pode ser colocado diretamente como um dos elementos do array exportado por eslint.config.js, e um segundo objeto do array pode acrescentar regras específicas.",
+      "solution_code": "import js from '@eslint/js';\n\nexport default [\n  js.configs.recommended,\n  {\n    rules: {\n      'no-var': 'error',\n      eqeqeq: 'error',\n      'no-unused-vars': 'warn',\n    },\n  },\n];\n\nconst scripts = {\n  lint: 'eslint .',\n  format: 'prettier --write .',\n};\n\nconsole.log(scripts);",
+      "solution_explanation": "O array exportado por eslint.config.js aplica primeiro a configuração recomendada do ESLint e depois um objeto adicional que acrescenta as três regras pedidas, cada uma com a severidade correta (error para as obrigatórias, warn para o aviso). O objeto scripts representa, de forma simplificada, o que normalmente estaria na secção scripts do package.json, mapeando o nome do comando ao comando de terminal que ele executa."
+    },
+    {
+      "title": "Build de produção com a API do esbuild",
+      "difficulty": "Avancado",
+      "statement": "Escreve um script build.js que use a API JavaScript do esbuild (import { build } from 'esbuild') para gerar um build de produção: o ponto de entrada é src/index.js, o resultado deve ser um único ficheiro dist/bundle.js, com bundle e minify ativados, e com o motor alvo definido como ['es2018']. A função build devolve uma Promise, por isso a chamada deve usar async/await dentro de uma função assíncrona chamada gerarBuild, que, depois do build terminar com sucesso, regista na consola a mensagem 'Build concluído com sucesso.'. Se o build falhar, o erro deve ser apanhado e registado na consola com console.error antes de o processo terminar com código de saída 1.",
+      "hint": "A chamada a build(...) é assíncrona e pode rejeitar; usa try/catch à volta do await e process.exit(1) no catch.",
+      "solution_code": "import { build } from 'esbuild';\n\nasync function gerarBuild() {\n  try {\n    await build({\n      entryPoints: ['src/index.js'],\n      outfile: 'dist/bundle.js',\n      bundle: true,\n      minify: true,\n      target: ['es2018'],\n    });\n    console.log('Build concluído com sucesso.');\n  } catch (erro) {\n    console.error('Falha no build:', erro);\n    process.exit(1);\n  }\n}\n\ngerarBuild();",
+      "solution_explanation": "A função build do esbuild devolve uma Promise, por isso gerarBuild é declarada como async e usa await para esperar que o processo de bundling e minificação termine antes de mostrar a mensagem de sucesso. O try/catch garante que qualquer erro durante o build é apanhado, registado com console.error, e termina o processo com um código de saída diferente de zero, sinalizando falha a quem estiver a correr o script, por exemplo num pipeline de integração contínua."
+    }
+  ],
+  "summary": [
+    "Bundlers como Vite, webpack e esbuild juntam módulos JavaScript num número reduzido de ficheiros otimizados para produção, aplicando tree-shaking e minificação.",
+    "O tree-shaking só funciona com sintaxe estática de import/export (ES Modules); código CommonJS dinâmico impede essa otimização.",
+    "Vite usa o esbuild para um dev server muito rápido e o Rollup para o build de produção; o webpack é mais configurável mas mais lento; o esbuild é o mais rápido, muitas vezes usado como motor interno de outras ferramentas.",
+    "O Babel transpila sintaxe moderna, como optional chaining, para versões mais antigas de JavaScript, mas não adiciona automaticamente APIs em falta - isso é trabalho de um polyfill.",
+    "O ESLint deteta erros e más práticas através de análise estática do código; o Prettier garante um estilo de formatação consistente e elimina discussões sobre convenções.",
+    "Num projeto real, estas ferramentas trabalham em conjunto: o dev server acelera o desenvolvimento, o linter e o formatador garantem qualidade antes do commit, e o bundler prepara o código final para produção."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para o Módulo 09",
+  "next_label": "Aula 01 → try, catch e finally",
+  "_stage": "autoria"
+}

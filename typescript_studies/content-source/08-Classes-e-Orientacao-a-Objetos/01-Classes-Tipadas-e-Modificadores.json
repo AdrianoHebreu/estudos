@@ -1,0 +1,274 @@
+{
+  "module_num": "08",
+  "module_title": "Classes e Orientação a Objetos",
+  "module_dir": "08-Classes-e-Orientacao-a-Objetos",
+  "lesson_num": "01",
+  "lesson_slug": "Classes-Tipadas-e-Modificadores",
+  "kind": "aula",
+  "title": "Classes Tipadas e Modificadores de Acesso",
+  "filename_base": "01-Classes-Tipadas-e-Modificadores",
+  "subtitle": "Campos e construtor tipados, os três modificadores de acesso, e o que private garante de facto",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Tipar os campos e o construtor de uma classe, tal como qualquer outra função",
+    "Distinguir public, private e protected e saber onde cada um é visível",
+    "Perceber que private é uma verificação do compilador, apagada no JavaScript emitido",
+    "Comparar private com o campo privado # já conhecido, que é imposto em runtime",
+    "Usar protected para partilhar um campo com subclasses sem o expor fora da hierarquia",
+    "Aplicar readonly a campos de classe, tipicamente inicializados no construtor"
+  ],
+  "sections": [
+    {
+      "heading": "Tipar o construtor e os campos",
+      "body": [
+        "Uma classe tipada não traz sintaxe nova para os campos nem para o construtor: cada campo leva a sua anotação de tipo, e cada parâmetro do construtor é tipado exatamente como o de qualquer outra função já vista nos módulos anteriores. O compilador verifica que o que é atribuído a this.nome ou this.preco corresponde ao tipo declarado.",
+        "A classe Produto abaixo declara dois campos tipados e um construtor que os inicializa. Não há aqui nada além da disciplina já conhecida de tipar parâmetros e propriedades, aplicada dentro de uma classe."
+      ],
+      "code": "class Produto {\n  nome: string;\n  preco: number;\n\n  constructor(nome: string, preco: number) {\n    this.nome = nome;\n    this.preco = preco;\n  }\n}\n\nconst caneca = new Produto(\"Caneca\", 8.5);\nconsole.log(caneca.nome); // Caneca\nconsole.log(caneca.preco); // 8.5\n\n// Um parâmetro do construtor com o tipo errado é recusado, como em qualquer função tipada.\n// @ts-expect-error preco tem de ser number, não uma string\nnew Produto(\"Copo\", \"8.5\");",
+      "callout_kind": "DICA",
+      "callout_text": "Um campo tipado sem valor inicial e sem atribuição no construtor dá erro de compilação: com strict ativado, o TypeScript não deixa uma propriedade ficar por inicializar.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏷️",
+          "text": "Campos de classe tipam-se como qualquer propriedade"
+        },
+        {
+          "icon": "🧱",
+          "text": "Parâmetros do construtor tipam-se como os de uma função"
+        },
+        {
+          "icon": "🚫",
+          "text": "Um valor do tipo errado no construtor é recusado"
+        },
+        {
+          "icon": "✅",
+          "text": "Sem sintaxe nova: é a mesma disciplina de sempre"
+        }
+      ]
+    },
+    {
+      "heading": "Três modificadores de acesso",
+      "body": [
+        "O TypeScript acrescenta três palavras que controlam onde um campo ou método pode ser referido no código-fonte: public, private e protected. Sem nenhuma delas, um membro é sempre public — é o valor por omissão, e escrever public à frente é só tornar explícito o que já acontecia.",
+        "private restringe o acesso à própria classe onde o membro é declarado: nem sequer uma subclasse lhe chega. protected alarga esse acesso às subclasses, mas continua a recusar código fora da hierarquia. public não restringe nada.",
+        "A classe ContaBancaria abaixo tem um campo de cada tipo. Dentro de resumo, um método da própria classe, os três são visíveis sem qualquer diferença. É só a partir de fora que a diferença aparece."
+      ],
+      "code": "class ContaBancaria {\n  public titular: string; // visível em qualquer lado; é o valor por omissão sem modificador\n  private saldo: number; // só dentro desta classe\n  protected numeroConta: string; // dentro desta classe e das subclasses\n\n  constructor(titular: string, saldo: number, numeroConta: string) {\n    this.titular = titular;\n    this.saldo = saldo;\n    this.numeroConta = numeroConta;\n  }\n\n  resumo(): string {\n    // dentro da própria classe, os três modificadores são visíveis.\n    return `${this.titular}: ${this.saldo} (conta ${this.numeroConta})`;\n  }\n}\n\nconst conta = new ContaBancaria(\"Ana\", 500, \"PT001\");\nconsole.log(conta.titular); // Ana\nconsole.log(conta.resumo()); // Ana: 500 (conta PT001)\n\n// @ts-expect-error saldo é private: só é visível dentro da própria classe\nconta.saldo;\n\n// @ts-expect-error numeroConta é protected: visível na classe e em subclasses, não fora\nconta.numeroConta;",
+      "callout_kind": "NOTA",
+      "callout_text": "Escrever public é sempre opcional. Muitos projetos nem o usam, e reservam a palavra-chave só para tornar uma intenção óbvia numa API pública.",
+      "table_headers": [
+        "Modificador",
+        "Na própria classe",
+        "Nas subclasses",
+        "Fora da classe"
+      ],
+      "table_rows": [
+        [
+          "public (omitir também)",
+          "sim",
+          "sim",
+          "sim"
+        ],
+        [
+          "private",
+          "sim",
+          "não",
+          "não"
+        ],
+        [
+          "protected",
+          "sim",
+          "sim",
+          "não"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🌐",
+          "text": "public é o valor por omissão, mesmo sem escrever a palavra"
+        },
+        {
+          "icon": "🔒",
+          "text": "private: só a própria classe, nem as subclasses"
+        },
+        {
+          "icon": "🛡️",
+          "text": "protected: a classe e as subclasses, não fora"
+        },
+        {
+          "icon": "📋",
+          "text": "A diferença só aparece fora da classe"
+        }
+      ]
+    },
+    {
+      "heading": "private é só o compilador: desaparece no JavaScript emitido",
+      "body": [
+        "Este é o ponto central da aula. private impede escrever o acesso no código-fonte que o TypeScript verifica — mas não existe forma nenhuma de private sobreviver à compilação. O JavaScript gerado tem uma propriedade normal, com o mesmo nome, sem qualquer marca de privacidade.",
+        "A consequência prática: um cast para any tira o valor do alcance do verificador de tipos, e o acesso passa a compilar. Como não há verificação nenhuma em runtime, esse acesso também funciona quando o programa corre — devolve o valor real, sem exceção nem aviso.",
+        "Isto não é um defeito nem uma falha de segurança do TypeScript: é o modelo da linguagem, que nunca introduz código extra no que emite. private é uma disciplina para quem escreve e lê o código dentro do próprio projeto, não uma barreira contra código externo hostil."
+      ],
+      "code": "class ContaPrivate {\n  private saldo: number;\n\n  constructor(saldo: number) {\n    this.saldo = saldo;\n  }\n}\n\nconst conta = new ContaPrivate(100);\n\n// @ts-expect-error saldo é private: o compilador recusa o acesso direto a partir de fora\nconsole.log(conta.saldo);\n\n// Um cast para any tira o compilador da jogada, e o acesso funciona em runtime.\nconsole.log((conta as any).saldo); // 100\n\n// A prova está no JavaScript emitido: \"private\" desaparece, fica só a propriedade normal.\n// class ContaPrivate {\n//     saldo;\n//     constructor(saldo) { this.saldo = saldo; }\n// }",
+      "callout_kind": "ATENCAO",
+      "callout_text": "private impede aceder ao campo no código-fonte verificado pelo compilador. Não impede aceder ao valor quando o programa corre: um cast para any, ou qualquer código em JavaScript puro que chame a mesma classe, passa por cima sem esforço.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "👻",
+          "text": "private não existe no JavaScript emitido"
+        },
+        {
+          "icon": "🎭",
+          "text": "Um cast para any faz o acesso compilar"
+        },
+        {
+          "icon": "▶️",
+          "text": "Esse acesso funciona também em runtime, sem erro"
+        },
+        {
+          "icon": "🧭",
+          "text": "É disciplina de compilação, não segurança em runtime"
+        }
+      ]
+    },
+    {
+      "heading": "O campo # continua privado quando o programa corre",
+      "body": [
+        "O campo privado # do JavaScript, já conhecido do curso anterior, resolve exatamente o que private não resolve: é imposto pelo motor de JavaScript, não só pelo compilador do TypeScript. Um campo #saldo não é uma propriedade com um nome estranho — é um mecanismo à parte, com o seu próprio espaço, ligado à classe exata que o declara.",
+        "Essa diferença aparece mesmo quando se tenta reproduzir o truque do cast para any. Para sequer escrever a expressão alvo.#saldo, o nome #saldo tem de estar declarado numa classe que envolva essa expressão lexicamente — não chega marcar o tipo como any. Por isso, a demonstração abaixo usa uma segunda classe, Intruso, que declara o seu próprio #saldo só para poder escrever a expressão.",
+        "Mesmo assim, o acesso falha, e falha em runtime: o motor de JavaScript sabe que o #saldo de ContaHash e o #saldo de Intruso são dois campos distintos, apesar do nome igual, e recusa a leitura com um erro real. Não há cast nem truque de tipos que mude este resultado."
+      ],
+      "code": "class ContaHash {\n  #saldo: number;\n\n  constructor(saldo: number) {\n    this.#saldo = saldo;\n  }\n}\n\n// Uma classe sem relação nenhuma com ContaHash, mas que também declara um campo #saldo.\n// É preciso declará-lo aqui para poder sequer escrever a sintaxe alvo.#saldo: um campo\n// com # só existe dentro do âmbito léxico da classe que o declara.\nclass Intruso {\n  #saldo = 0;\n\n  ler(alvo: object): number {\n    // @ts-expect-error alvo não é tipado como uma classe que tenha este #saldo\n    return alvo.#saldo;\n  }\n}\n\nconst conta = new ContaHash(100);\nconst intruso = new Intruso();\n\ntry {\n  console.log(intruso.ler(conta));\n} catch (erro) {\n  // O JavaScript real bloqueia o acesso: #saldo de ContaHash e #saldo de Intruso são\n  // campos distintos, mesmo com o mesmo nome.\n  console.log(\"erro em runtime:\", (erro as Error).message);\n  // erro em runtime: Cannot read private member #saldo from an object whose class did not declare it\n}",
+      "callout_kind": "NOTA",
+      "callout_text": "Uma tentativa mais direta, escrever conta.#saldo fora de qualquer classe, nem chega a compilar: o TypeScript recusa-a com um erro próprio, porque o nome #saldo não está declarado em nenhuma classe envolvente nesse ponto do código.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔐",
+          "text": "# é imposto pelo motor de JavaScript, não só pelo compilador"
+        },
+        {
+          "icon": "🧬",
+          "text": "Cada classe tem o seu próprio espaço de campos #"
+        },
+        {
+          "icon": "💥",
+          "text": "Aceder ao #campo errado lança um erro real em runtime"
+        },
+        {
+          "icon": "🚷",
+          "text": "Nenhum cast de tipos muda este resultado"
+        }
+      ]
+    },
+    {
+      "heading": "protected: visível na classe e nas subclasses",
+      "body": [
+        "protected funciona como private com uma exceção: além da própria classe, também as subclasses podem aceder ao membro. É a escolha certa para um campo que a classe base quer partilhar com quem a estende, mas que não deve ser mexido por código externo.",
+        "Na hierarquia abaixo, Veiculo declara matricula como protected. A subclasse Carro acede-lhe diretamente dentro de descricao, sem precisar de nenhum método auxiliar na classe base. Fora da hierarquia, o acesso continua recusado, tal como aconteceria com private."
+      ],
+      "code": "class Veiculo {\n  protected matricula: string;\n\n  constructor(matricula: string) {\n    this.matricula = matricula;\n  }\n}\n\nclass Carro extends Veiculo {\n  descricao(): string {\n    // protected é visível na própria classe e em qualquer subclasse.\n    return `Carro com matrícula ${this.matricula}`;\n  }\n}\n\nconst carro = new Carro(\"00-AA-00\");\nconsole.log(carro.descricao()); // Carro com matrícula 00-AA-00\n\n// @ts-expect-error matricula é protected: não é visível fora da hierarquia de classes\nconsole.log(carro.matricula);",
+      "callout_kind": "NOTA",
+      "callout_text": "Uma flag do compilador, noImplicitOverride, obriga a escrever override sempre que um método de uma subclasse substitui um método da superclasse. Este curso não a ativa, mas vale a pena conhecê-la num projeto real com hierarquias de classes.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🌳",
+          "text": "protected: a própria classe e as subclasses"
+        },
+        {
+          "icon": "🚗",
+          "text": "Carro acede a matricula sem métodos auxiliares"
+        },
+        {
+          "icon": "🚪",
+          "text": "Fora da hierarquia, o acesso continua recusado"
+        },
+        {
+          "icon": "🏷️",
+          "text": "noImplicitOverride obriga a anotar override"
+        }
+      ]
+    },
+    {
+      "heading": "readonly em campos de classe",
+      "body": [
+        "readonly funciona em campos de classe da mesma forma que já funcionava em propriedades de objeto no Módulo 02: o compilador recusa qualquer atribuição fora do momento certo. Em campos de classe, o momento certo é o construtor — é lá que um campo readonly costuma ser inicializado, e é a única situação em que atribuir-lhe um valor compila.",
+        "Como todos os modificadores vistos nesta aula, readonly também não sobrevive à compilação: é uma marca de tipo, apagada no JavaScript emitido. Um cast para any que force a escrita compila e, tal como private, funciona quando o programa corre."
+      ],
+      "code": "class Utilizador {\n  readonly id: number;\n  nome: string;\n\n  constructor(id: number, nome: string) {\n    this.id = id; // atribuir a um campo readonly dentro do construtor é permitido\n    this.nome = nome;\n  }\n\n  mudarId(novoId: number): void {\n    // @ts-expect-error id é readonly: só pode ser atribuído no construtor, nem em outro método\n    this.id = novoId;\n  }\n}\n\nconst u = new Utilizador(1, \"Rui\");\nconsole.log(u.id); // 1\n\n// @ts-expect-error readonly também bloqueia a atribuição a partir de fora da classe\nu.id = 2;\nconsole.log(u.id); // 2 — a marca readonly é só verificação de compilação, como no Módulo 02",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Percorra uma classe já escrita e procure campos que só são atribuídos uma vez, no construtor, e nunca mais. São candidatos naturais a readonly: a intenção passa a estar no tipo, não só na disciplina de quem escreveu o código.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔏",
+          "text": "readonly em campos de classe, igual ao do Módulo 02"
+        },
+        {
+          "icon": "🏗️",
+          "text": "O construtor é o único sítio onde se atribui"
+        },
+        {
+          "icon": "🙅",
+          "text": "Outros métodos e código externo ficam de fora"
+        },
+        {
+          "icon": "👻",
+          "text": "Também desaparece no JavaScript emitido"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Ficha de funcionário",
+      "difficulty": "Iniciante",
+      "statement": "Crie uma classe Funcionario com um campo público nome (string) e um campo privado salario (number), ambos inicializados no construtor. Acrescente um método aumentar(percentagem: number) que atualize o salário internamente, e um método salarioAtual() que o devolva. Crie um funcionário, aumente o salário em 10% e mostre o resultado com console.log. Demonstre também que aceder a funcionario.salario diretamente a partir de fora da classe é recusado pelo compilador.",
+      "hint": "Só o campo salario precisa do modificador private; nome fica com o comportamento por omissão. O aumento é o salário atual multiplicado por 1 mais a percentagem a dividir por 100.",
+      "solution_code": "class Funcionario {\n  nome: string;\n  private salario: number;\n\n  constructor(nome: string, salario: number) {\n    this.nome = nome;\n    this.salario = salario;\n  }\n\n  aumentar(percentagem: number): void {\n    this.salario = this.salario * (1 + percentagem / 100);\n  }\n\n  salarioAtual(): number {\n    return this.salario;\n  }\n}\n\nconst rui = new Funcionario(\"Rui\", 1000);\nrui.aumentar(10);\nconsole.log(rui.salarioAtual()); // 1100\nconsole.log(rui.nome); // Rui\n\n// @ts-expect-error salario é private: não é visível fora da classe Funcionario\nconsole.log(rui.salario);",
+      "solution_explanation": "salario fica private porque só a própria classe deve poder alterá-lo, sempre através de aumentar. nome não precisa de modificador porque é public por omissão. A última linha confirma que o compilador recusa o acesso direto, mesmo sabendo-se, pela aula, que o campo continua lá no JavaScript emitido."
+    },
+    {
+      "title": "Cofre com private e cofre com #",
+      "difficulty": "Intermedio",
+      "statement": "Crie duas classes: CofrePrivate, com um campo private codigo (string), e CofreHash, com um campo #codigo (string), ambos inicializados no construtor. Instancie as duas com o código 1234. Demonstre que um cast para any consegue ler o codigo de CofrePrivate a partir de fora. Depois crie uma terceira classe, Espiao, que declare o seu próprio campo #codigo e tenha um método tentar(alvo: object) que devolva alvo.#codigo (marcado como erro esperado, porque object não tem esse campo). Chame esse método com a instância de CofreHash dentro de um try/catch e mostre a mensagem do erro apanhado.",
+      "hint": "Para escrever a expressão alvo.#codigo em Espiao é preciso que Espiao declare também um campo #codigo, mesmo que não seja esse o que se está a tentar ler. O erro só acontece quando o código corre, por isso precisa de try/catch.",
+      "solution_code": "class CofrePrivate {\n  private codigo: string;\n  constructor(codigo: string) {\n    this.codigo = codigo;\n  }\n}\n\nclass CofreHash {\n  #codigo: string;\n  constructor(codigo: string) {\n    this.#codigo = codigo;\n  }\n}\n\nconst c1 = new CofrePrivate(\"1234\");\nconst c2 = new CofreHash(\"1234\");\n\n// O cast para any funciona: private é só verificação de compilação.\nconsole.log((c1 as any).codigo); // 1234\n\n// Uma classe intrusa com um #codigo homónimo consegue escrever a expressão, mas o\n// runtime bloqueia porque #codigo de CofreHash e #codigo desta classe são campos distintos.\nclass Espiao {\n  #codigo = \"\";\n  tentar(alvo: object): string {\n    // @ts-expect-error alvo (object) não tem o #codigo declarado nesta classe\n    return alvo.#codigo;\n  }\n}\n\nconst espiao = new Espiao();\ntry {\n  console.log(espiao.tentar(c2));\n} catch (erro) {\n  console.log(\"bloqueado:\", (erro as Error).message);\n}",
+      "solution_explanation": "A leitura de (c1 as any).codigo funciona porque private não deixa rasto no JavaScript emitido. A leitura de alvo.#codigo compila em Espiao só porque essa classe declara o seu próprio #codigo, mas falha em runtime com Cannot read private member #codigo from an object whose class did not declare it, porque o motor de JavaScript distingue os #codigo das duas classes mesmo com o nome igual. É a prova de que # resiste ao mesmo truque que engana private."
+    },
+    {
+      "title": "Animais e o campo protegido",
+      "difficulty": "Intermedio",
+      "statement": "Crie uma classe Animal com um campo protected nome (string), inicializado no construtor. Crie duas subclasses, Cao com um método latir() que devolva algo como \"Bobi diz Au!\", e Gato com um método miar() que devolva \"Mimi diz Miau!\", ambos usando this.nome. Instancie um Cao e um Gato, chame os métodos e mostre os resultados. Demonstre por fim que aceder a bobi.nome fora da hierarquia de classes é recusado pelo compilador.",
+      "hint": "As duas subclasses acedem a this.nome diretamente, sem métodos auxiliares em Animal: é isso que protected permite. O erro de acesso externo vai na linha do console.log fora das classes.",
+      "solution_code": "class Animal {\n  protected nome: string;\n\n  constructor(nome: string) {\n    this.nome = nome;\n  }\n}\n\nclass Cao extends Animal {\n  latir(): string {\n    return `${this.nome} diz Au!`;\n  }\n}\n\nclass Gato extends Animal {\n  miar(): string {\n    return `${this.nome} diz Miau!`;\n  }\n}\n\nconst bobi = new Cao(\"Bobi\");\nconsole.log(bobi.latir()); // Bobi diz Au!\n\nconst mimi = new Gato(\"Mimi\");\nconsole.log(mimi.miar()); // Mimi diz Miau!\n\n// @ts-expect-error nome é protected: acessível na classe e nas subclasses, não fora delas\nconsole.log(bobi.nome);",
+      "solution_explanation": "nome fica protected porque só Animal e as suas subclasses precisam dele; código fora da hierarquia não deve mexer-lhe. Cao e Gato acedem a this.nome livremente dentro dos seus métodos, sem qualquer getter na classe base. A última linha mostra que, apesar disso, o acesso a partir de fora da hierarquia continua recusado pelo compilador, exatamente como aconteceria com private."
+    },
+    {
+      "title": "Um registo com os três modificadores",
+      "difficulty": "Avancado",
+      "statement": "Crie uma classe RegistoAuditoria com um campo readonly id (number), um campo protected instanteUnix (number, um número simples que representa um instante) e um campo private detalhes (string), todos inicializados no construtor. Acrescente um método resumo() que devolva uma string com os três valores. Crie uma subclasse RegistoErro com um método descricaoComHora() que use this.instanteUnix diretamente. Instancie um RegistoErro, chame os dois métodos, e depois demonstre, cada uma com o erro esperado assinalado, que: reatribuir id de fora falha no compilador mas muda o valor em runtime; ler instanteUnix de fora falha; ler detalhes de fora falha. Termine mostrando que um cast para any consegue mesmo assim ler detalhes.",
+      "hint": "Os três modificadores comportam-se de forma independente: readonly controla reatribuição, protected e private controlam onde o campo é visível. O cast para any do fim é o mesmo truque já usado com private, aplicado outra vez.",
+      "solution_code": "class RegistoAuditoria {\n  readonly id: number;\n  protected instanteUnix: number;\n  private detalhes: string;\n\n  constructor(id: number, instanteUnix: number, detalhes: string) {\n    this.id = id;\n    this.instanteUnix = instanteUnix;\n    this.detalhes = detalhes;\n  }\n\n  resumo(): string {\n    return `#${this.id} às ${this.instanteUnix}: ${this.detalhes}`;\n  }\n}\n\nclass RegistoErro extends RegistoAuditoria {\n  descricaoComHora(): string {\n    // instanteUnix é protected: a subclasse acede-lhe diretamente.\n    return `erro registado no instante ${this.instanteUnix}`;\n  }\n}\n\nconst registo = new RegistoErro(1, 1700000000, \"ligação recusada\");\nconsole.log(registo.resumo()); // #1 às 1700000000: ligação recusada\nconsole.log(registo.descricaoComHora()); // erro registado no instante 1700000000\n\n// @ts-expect-error id é readonly: não pode ser reatribuído fora do construtor\nregisto.id = 99;\nconsole.log(registo.id); // 99 — readonly é só verificação de compilação, o valor muda na mesma\n\n// @ts-expect-error instanteUnix é protected: não é visível fora da hierarquia de classes\nconsole.log(registo.instanteUnix);\n\n// @ts-expect-error detalhes é private: não é visível fora de RegistoAuditoria\nconsole.log(registo.detalhes);\n\n// O cast para any confirma que os três bloqueios são só do compilador: todos cedem.\nconsole.log((registo as any).detalhes); // ligação recusada",
+      "solution_explanation": "Os três modificadores resolvem problemas diferentes: readonly impede reatribuição depois do construtor, protected partilha instanteUnix com RegistoErro sem o expor fora da hierarquia, e private esconde detalhes até de subclasses. Nenhum dos três deixa rasto no JavaScript emitido, por isso a reatribuição de id muda mesmo o valor e o cast para any lê mesmo detalhes: os três bloqueios existem só enquanto o compilador está a verificar o código-fonte."
+    }
+  ],
+  "summary": [
+    "Campos e construtor de uma classe tipam-se como qualquer outra propriedade ou função, sem sintaxe nova.",
+    "public (o valor por omissão), private e protected controlam onde um membro pode ser referido no código-fonte: própria classe, subclasses, ou também fora.",
+    "private é apagado no JavaScript emitido: um cast para any faz o acesso compilar, e esse acesso funciona também em runtime, sem erro nenhum.",
+    "O campo # já conhecido do JavaScript resiste ao mesmo truque: cada classe tem o seu próprio espaço de campos #, e aceder ao #campo de outra classe lança um erro real quando o programa corre.",
+    "protected estende private às subclasses, mantendo o acesso recusado fora da hierarquia; noImplicitOverride é uma flag à parte que obriga a anotar override nas subclasses.",
+    "readonly em campos de classe funciona como no Módulo 02: só permite atribuição no construtor e, tal como os outros modificadores, desaparece na compilação."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 02",
+  "next_label": "Aula 02 → Classes Abstratas e implements"
+}

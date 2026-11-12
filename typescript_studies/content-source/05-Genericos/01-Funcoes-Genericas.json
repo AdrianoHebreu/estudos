@@ -1,0 +1,325 @@
+{
+  "module_num": "05",
+  "module_title": "Genéricos",
+  "module_dir": "05-Genericos",
+  "lesson_num": "01",
+  "lesson_slug": "Funcoes-Genericas",
+  "kind": "aula",
+  "title": "Funções Genéricas",
+  "filename_base": "01-Funcoes-Genericas",
+  "subtitle": "Escrever a função uma só vez e mesmo assim preservar o tipo de quem a chama",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Reconhecer a informação de tipo que o any e as sobrecargas deitam fora",
+    "Declarar e ler parâmetros de tipo numa função genérica",
+    "Confiar na inferência do argumento de tipo e saber quando a dispensar",
+    "Combinar vários parâmetros de tipo numa só assinatura",
+    "Tipar funções de ordem superior sem anotar os callbacks",
+    "Identificar genéricos que não acrescentam nada e substituí-los"
+  ],
+  "sections": [
+    {
+      "heading": "O que se perde sem genéricos",
+      "body": [
+        "Uma função que se limita a devolver o que recebe parece trivial de tipar, até se tentar. Com any o compilador aceita o argumento, mas também desiste do resultado: quem chama fica com um valor sobre o qual nada se sabe, e todas as operações passam a ser permitidas, incluindo as que não existem.",
+        "A alternativa conhecida do módulo anterior são as sobrecargas: uma assinatura por tipo aceite. Funciona e é honesta, mas só cobre a lista que alguém se lembrou de escrever. Cada tipo novo obriga a mais uma linha, e um array ou um objeto de domínio ficam de fora até alguém reparar na falta.",
+        "O que falta não é mais uma assinatura. É poder dizer que o tipo do resultado é exatamente o tipo do argumento, seja ele qual for, e é isso que um parâmetro de tipo faz."
+      ],
+      "code": "// Tentativa 1: any. Entra o que for, sai o que for, e ninguém fica a saber o quê.\nfunction identidadeAny(valor: any): any {\n  return valor;\n}\n\nconst nome = identidadeAny(\"Ada\");\n// nome: any -- o compilador deixou de ter opinião sobre isto\ntry {\n  console.log(nome.toFixed(2)); // erro só em execução: as strings não têm toFixed\n} catch (erro) {\n  console.log(erro instanceof TypeError); // true\n}\n\n// Tentativa 2: uma sobrecarga por tipo. Correta, e insustentável.\nfunction identidade(valor: string): string;\nfunction identidade(valor: number): number;\nfunction identidade(valor: boolean): boolean;\nfunction identidade(valor: any): any {\n  return valor;\n}\n\nconst texto = identidade(\"Ada\"); // string\nconst idade = identidade(36); // number\nconsole.log(texto.toUpperCase(), idade.toFixed(1)); // ADA 36.0\n\n// @ts-expect-error não há sobrecarga para arrays: cada tipo novo exige mais uma linha\nconst lista = identidade([1, 2, 3]);",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Trocar any por unknown resolve a segurança mas não o problema: o resultado continua a não ter relação nenhuma com o que entrou.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🕳️",
+          "text": "any devolve any: a informação de tipo evapora-se"
+        },
+        {
+          "icon": "📋",
+          "text": "Uma sobrecarga por tipo nunca fica completa"
+        },
+        {
+          "icon": "🔗",
+          "text": "Falta ligar o tipo do retorno ao tipo do argumento"
+        }
+      ]
+    },
+    {
+      "heading": "A sintaxe de um parâmetro de tipo",
+      "body": [
+        "Um parâmetro de tipo declara-se entre sinais de menor e maior, logo a seguir ao nome da função, e passa a poder ser usado nos parâmetros, no corpo e no retorno. Na função primeiro, o T é uma incógnita que só ganha valor no momento da chamada, tal como um parâmetro normal só ganha valor quando recebe um argumento.",
+        "A diferença é que o T vive inteiramente no sistema de tipos. Não ocupa memória, não aparece no JavaScript gerado e não se pode imprimir nem comparar em tempo de execução. Uma função genérica é uma função normal com uma instrução extra dada ao compilador: o que entra como T e o que sai como T são a mesma coisa.",
+        "Lê-se da esquerda para a direita: para qualquer tipo T, esta função recebe um array de T e devolve um T ou undefined."
+      ],
+      "code": "function primeiro<T>(itens: T[]): T | undefined {\n  return itens.length > 0 ? itens[0] : undefined;\n}\n\nconst n = primeiro([10, 20, 30]);\n// n: number | undefined\n\nconst s = primeiro([\"Ada\", \"Alan\"]);\n// s: string | undefined\n\nconsole.log(n, s); // 10 Ada\n\n// O T não é um valor: vive só no sistema de tipos e desaparece no JavaScript gerado\nfunction espreitar<T>(itens: T[]): T | undefined {\n  // @ts-expect-error T é um parâmetro de tipo, não uma variável que se possa ler\n  console.log(T);\n  return itens[0];\n}",
+      "callout_kind": "NOTA",
+      "callout_text": "Um parâmetro de tipo é apagado na compilação. Não há forma de o ler em execução, e tratá-lo como valor é erro imediato.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔤",
+          "text": "O parâmetro de tipo vai entre o nome e os parênteses"
+        },
+        {
+          "icon": "🔁",
+          "text": "O mesmo T liga parâmetros, corpo e retorno"
+        },
+        {
+          "icon": "👻",
+          "text": "T só existe em compilação: no JavaScript não há rasto"
+        }
+      ]
+    },
+    {
+      "heading": "Inferência na chamada, e quando dizer o tipo à mão",
+      "body": [
+        "Na prática quase nunca se escreve o argumento de tipo: o compilador olha para o argumento normal e deduz o T sozinho. Chamar a função com um array de números dá logo number no resultado, sem cerimónia nenhuma no sítio da chamada. Indicar um tipo que já é óbvio só acrescenta ruído.",
+        "Há dois casos em que vale a pena escrevê-lo. O primeiro é quando não há por onde inferir: um array vazio não oferece candidatos, o T cai em never e o resultado deixa de ter utilidade. O segundo é quando a inferência acerta mas estreita demais, por exemplo quando se quer uma caixa que aceite texto ou null e o valor inicial é apenas texto.",
+        "A regra útil é curta: deixar inferir por omissão e intervir apenas quando o tipo deduzido não é o pretendido."
+      ],
+      "code": "function primeiro<T>(itens: T[]): T | undefined {\n  return itens.length > 0 ? itens[0] : undefined;\n}\n\n// Na esmagadora maioria das chamadas o argumento de tipo escreve-se sozinho\nconst a = primeiro([10, 20]); // T = number, a: number | undefined\nconst b = primeiro([\"Ada\"]); // T = string, b: string | undefined\nconsole.log(a, b); // 10 Ada\n\n// Caso 1: não há por onde inferir. Um array vazio dá T = never,\n// e o resultado colapsa em undefined, que não serve para nada.\nconst nada = primeiro([]); // nada: undefined\nconst tipado = primeiro<string>([]); // tipado: string | undefined\nconsole.log(nada, tipado); // undefined undefined\n\n// Caso 2: a inferência acerta, mas estreita demais para o que se pretende\nfunction criarCaixa<T>(valor: T): { valor: T } {\n  return { valor };\n}\n\nconst estreita = criarCaixa(\"pendente\"); // { valor: string }\n// @ts-expect-error T foi inferido como string e null não cabe lá dentro\nestreita.valor = null;\n\nconst larga = criarCaixa<string | null>(\"pendente\"); // { valor: string | null }\nlarga.valor = null; // agora é legítimo\nconsole.log(larga.valor); // null",
+      "callout_kind": "DICA",
+      "callout_text": "Se o editor mostrar never num resultado genérico, quase sempre foi passado um array vazio ou um argumento sem informação suficiente.",
+      "table_headers": [
+        "Chamada",
+        "T inferido",
+        "Resultado"
+      ],
+      "table_rows": [
+        [
+          "primeiro com um array de números",
+          "number",
+          "number ou undefined"
+        ],
+        [
+          "primeiro com um array de textos",
+          "string",
+          "string ou undefined"
+        ],
+        [
+          "primeiro com um array vazio",
+          "never",
+          "undefined, sem utilidade"
+        ],
+        [
+          "primeiro com o tipo string escrito à mão",
+          "string",
+          "string ou undefined"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧠",
+          "text": "O compilador deduz T a partir dos argumentos"
+        },
+        {
+          "icon": "🈳",
+          "text": "Array vazio dá never: aí escreve-se o tipo"
+        },
+        {
+          "icon": "🎯",
+          "text": "Indicar T também serve para alargar o tipo"
+        }
+      ]
+    },
+    {
+      "heading": "Vários parâmetros de tipo",
+      "body": [
+        "Nada obriga uma função a ter um único parâmetro de tipo. Uma função que recebe dois valores independentes declara dois, e cada um é inferido a partir do seu argumento. O resultado guarda os dois tipos separados, em vez de os fundir numa união que depois obrigaria a narrowing para nada.",
+        "Ter dois parâmetros de tipo não significa exigir dois tipos diferentes: o T e o U podem acabar ambos em number sem problema nenhum. O que a assinatura diz é que são independentes, não que são distintos.",
+        "Fica uma limitação prática a reter: os argumentos de tipo são tudo ou nada. Ou se deixam inferir todos, ou se escrevem todos. Não há maneira de fixar apenas o segundo e deixar o primeiro ao critério do compilador."
+      ],
+      "code": "function par<T, U>(a: T, b: U): [T, U] {\n  return [a, b];\n}\n\nconst registo = par(\"idade\", 36); // [string, number]\nconsole.log(registo[0], registo[1]); // idade 36\n\n// Os dois parâmetros são independentes: nada obriga T e U a serem diferentes\nconst iguais = par(1, 2); // [number, number]\nconsole.log(iguais[0] + iguais[1]); // 3\n\nfunction trocar<T, U>(entrada: [T, U]): [U, T] {\n  return [entrada[1], entrada[0]];\n}\n\nconst trocado = trocar(registo); // [number, string]\nconsole.log(trocado[0].toFixed(0), trocado[1].toUpperCase()); // 36 IDADE\n\n// @ts-expect-error com um argumento de tipo escrito à mão é preciso escrevê-los todos\nconst incompleto = par<string>(\"idade\", 36);",
+      "callout_kind": "NOTA",
+      "callout_text": "A ordem conta: os argumentos de tipo escritos à mão são associados por posição, tal como os argumentos normais.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "✌️",
+          "text": "Vários parâmetros de tipo, separados por vírgula"
+        },
+        {
+          "icon": "🧩",
+          "text": "T e U são independentes, não obrigatoriamente diferentes"
+        },
+        {
+          "icon": "⚖️",
+          "text": "Escritos à mão: ou todos, ou nenhum"
+        }
+      ]
+    },
+    {
+      "heading": "Genéricos em funções de ordem superior",
+      "body": [
+        "É nas funções que recebem outras funções que os genéricos rendem mais. Numa função que transforma cada elemento de um array, o tipo de entrada e o de saída são duas incógnitas distintas ligadas pelo callback: o T é o tipo de cada item, o U é o que o callback devolve, e o resultado é um array de U.",
+        "A consequência agradável aparece do lado de quem chama. Como o T já foi fixado pelo primeiro argumento, o parâmetro do callback recebe esse tipo por contexto e dispensa anotação. Se o callback usar um método que o tipo não tem, o erro aparece dentro da função anónima, no sítio certo, e não lá em cima na chamada.",
+        "É o mesmo mecanismo que dá tipos aos métodos de array já conhecidos: o map da biblioteca padrão é exatamente uma assinatura genérica deste feitio."
+      ],
+      "code": "function mapear<T, U>(itens: T[], fn: (item: T) => U): U[] {\n  const saida: U[] = [];\n  for (const item of itens) {\n    saida.push(fn(item));\n  }\n  return saida;\n}\n\n// T vem do primeiro argumento; U vem do que o callback devolve\nconst comprimentos = mapear([\"Ada\", \"Grace\"], (nome) => nome.length);\n// comprimentos: number[], e o parâmetro nome já é string sem anotação nenhuma\nconsole.log(comprimentos.join(\", \")); // 3, 5\n\nconst etiquetas = mapear([1, 2, 3], (n) => `n${n}`);\n// etiquetas: string[]\nconsole.log(etiquetas.join(\" \")); // n1 n2 n3\n\n// @ts-expect-error o callback recebe string, por isso toFixed não existe\nconst erro = mapear([\"Ada\"], (nome) => nome.toFixed(2));",
+      "callout_kind": "DICA",
+      "callout_text": "Se um callback obrigar a anotar os parâmetros à mão, a assinatura genérica perdeu algures a ligação entre o argumento e o callback.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔄",
+          "text": "T entra pelo array, U sai pelo callback"
+        },
+        {
+          "icon": "✍️",
+          "text": "O callback fica tipado sem uma única anotação"
+        },
+        {
+          "icon": "📚",
+          "text": "É assim que o map da biblioteca padrão é escrito"
+        }
+      ]
+    },
+    {
+      "heading": "Arrow functions genéricas e nomes dos parâmetros de tipo",
+      "body": [
+        "Uma arrow function também pode ser genérica: os parâmetros de tipo vão imediatamente antes da lista de parâmetros. Num ficheiro com extensão tsx há uma armadilha conhecida, porque o compilador leria o sinal de menor como o início de uma etiqueta JSX; a solução habitual é acrescentar uma vírgula a seguir ao nome do parâmetro de tipo. Em ficheiros ts normais não é preciso.",
+        "Quanto aos nomes, a convenção herdada de outras linguagens usa letras maiúsculas curtas, e vale a pena respeitá-la em funções pequenas porque toda a gente as lê sem pensar. Em assinaturas com três ou mais incógnitas, ou quando a função é o coração de uma biblioteca interna, um nome descritivo com prefixo T poupa releituras.",
+        "O critério é o de qualquer outro nome no código: curto quando o alcance é curto, explícito quando o alcance cresce."
+      ],
+      "code": "// Arrow genérica: os parâmetros de tipo vão antes da lista de parâmetros\nconst ultimo = <T>(itens: T[]): T | undefined =>\n  itens.length > 0 ? itens[itens.length - 1] : undefined;\n\nconsole.log(ultimo([1, 2, 3])); // 3\n\n// Num ficheiro .tsx o <T> sozinho seria lido como o início de uma etiqueta JSX;\n// aí escreve-se <T,> com vírgula. Num ficheiro .ts não é preciso.\n\n// A anotação também pode viver na variável, e a arrow fica sem tipos nenhuns\nconst envolver: <T>(valor: T) => T[] = (valor) => [valor];\nconsole.log(envolver(\"Ada\")); // [ 'Ada' ]\n\n// Quando as incógnitas deixam de ser duas, um nome descritivo poupa releituras\nfunction converterCada<TEntrada, TSaida>(\n  itens: TEntrada[],\n  converter: (item: TEntrada) => TSaida,\n): TSaida[] {\n  return itens.map(converter);\n}\n\nconsole.log(converterCada([1.5, 2.25], (n) => n.toFixed(1)).join(\"|\")); // 1.5|2.3",
+      "callout_kind": "NOTA",
+      "callout_text": "Restringir esses tipos com extends e dar-lhes valores por omissão são os temas das duas aulas seguintes deste módulo.",
+      "table_headers": [
+        "Nome",
+        "Uso habitual"
+      ],
+      "table_rows": [
+        [
+          "T",
+          "o tipo principal, o primeiro parâmetro de tipo"
+        ],
+        [
+          "U",
+          "um segundo tipo independente, muitas vezes o de saída"
+        ],
+        [
+          "K",
+          "o tipo de uma chave"
+        ],
+        [
+          "V",
+          "o tipo do valor associado a uma chave"
+        ],
+        [
+          "TEntrada, TSaida",
+          "assinaturas longas, onde as letras soltas confundem"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "➡️",
+          "text": "Arrow genérica: o tipo vai antes dos parênteses"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Em tsx é precisa a vírgula para não parecer JSX"
+        },
+        {
+          "icon": "🏷️",
+          "text": "T, U, K, V em funções curtas; TAlgo quando cresce"
+        }
+      ]
+    },
+    {
+      "heading": "Quando um genérico não serve de nada",
+      "body": [
+        "Um parâmetro de tipo existe para relacionar sítios diferentes de uma assinatura. Se aparecer uma única vez, não relaciona coisa nenhuma e é apenas decoração: uma função que recebe T e devolve void diz exatamente o mesmo que se recebesse unknown, só que com mais sintaxe e com a falsa sugestão de que há algo a preservar.",
+        "Há um caso pior, muito comum em código que fala com o exterior. Uma função cujo parâmetro de tipo aparece só no retorno não está a inferir nada: está a aceitar uma promessa de quem chama e a devolver um valor asserido. O compilador passa a acreditar num tipo que ninguém verificou, e a falha aparece mais tarde, longe da causa.",
+        "O teste compensa antes de escrever os sinais de menor e maior: contar as ocorrências do parâmetro de tipo na assinatura. Menos de duas, e é sinal de que ali devia estar unknown, um tipo concreto, ou uma validação a sério na fronteira do sistema."
+      ],
+      "code": "// Genérico inútil: T aparece uma só vez, no parâmetro. Não liga nada a nada.\nfunction registar<T>(valor: T): void {\n  console.log(String(valor));\n}\nregistar<number>(1); // 1\n\n// A mesma função, sem a cerimónia e com exatamente a mesma segurança\nfunction registarSimples(valor: unknown): void {\n  console.log(String(valor));\n}\nregistarSimples(1); // 1\n\n// Pior do que inútil: T aparece só no retorno, e passa a ser um desejo\nfunction lerJson<T>(texto: string): T {\n  return JSON.parse(texto) as T;\n}\n\nconst config = lerJson<{ porta: number }>('{\"porta\": 8080}');\nconsole.log(config.porta.toFixed(0)); // 8080\n\nconst vazio = lerJson<{ porta: number }>(\"{}\");\n// O tipo promete number; em execução vem undefined e ninguém foi avisado\nconsole.log(vazio.porta); // undefined",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Procurar no código do trabalho uma função genérica cujo parâmetro de tipo apareça uma só vez e reescrevê-la sem genérico. A assinatura fica mais curta e mais honesta.",
+      "table_headers": [
+        "Onde o parâmetro de tipo aparece",
+        "Veredito"
+      ],
+      "table_rows": [
+        [
+          "só no parâmetro",
+          "sem utilidade: usar unknown ou o tipo concreto"
+        ],
+        [
+          "só no retorno",
+          "perigoso: devolver unknown e validar quem recebe"
+        ],
+        [
+          "no parâmetro e no retorno",
+          "genérico legítimo"
+        ],
+        [
+          "no parâmetro e num callback",
+          "genérico legítimo e dos mais úteis"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔢",
+          "text": "Contar as ocorrências de T na assinatura"
+        },
+        {
+          "icon": "🚫",
+          "text": "Uma só ocorrência: o genérico não liga nada"
+        },
+        {
+          "icon": "🎭",
+          "text": "T só no retorno é uma asserção disfarçada"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "O último elemento, com o tipo preservado",
+      "difficulty": "Iniciante",
+      "statement": "Escrever uma função genérica chamada ultimo que recebe um array de um tipo qualquer e devolve o último elemento, ou undefined se o array estiver vazio. O tipo devolvido tem de acompanhar o tipo dos elementos, sem any e sem sobrecargas. Demonstrar três chamadas: uma com números, uma com textos e uma com um array vazio em que o tipo é indicado à mão.",
+      "hint": "O array vazio não oferece candidatos à inferência, por isso é a única das três chamadas em que é preciso escrever o argumento de tipo entre sinais de menor e maior.",
+      "solution_code": "function ultimo<T>(itens: T[]): T | undefined {\n  return itens.length > 0 ? itens[itens.length - 1] : undefined;\n}\n\nconst n = ultimo([10, 20, 30]); // number | undefined\nconst s = ultimo([\"a\", \"b\"]); // string | undefined\nconst nenhum = ultimo<boolean>([]); // boolean | undefined\n\nconsole.log(n, s, nenhum); // 30 b undefined",
+      "solution_explanation": "O parâmetro de tipo T liga o tipo dos elementos ao tipo do resultado, por isso o retorno acompanha cada chamada sem nenhuma anotação adicional. Nas duas primeiras chamadas o compilador deduz o T a partir do argumento; na terceira não há por onde deduzir e o tipo é escrito à mão para o resultado não colapsar em undefined. A união com undefined obriga quem recebe a tratar o caso do array vazio."
+    },
+    {
+      "title": "Emparelhar dois arrays",
+      "difficulty": "Intermedio",
+      "statement": "Escrever uma função emparelhar que recebe dois arrays de tipos possivelmente diferentes e devolve um array de tuplas com os elementos correspondentes, parando no comprimento do array mais curto. A assinatura tem de manter os dois tipos separados: emparelhar um array de textos com um array de números dá um array de tuplas de texto e número, e não um array de tuplas de uniões.",
+      "hint": "São precisos dois parâmetros de tipo independentes, e o tipo de retorno é um array cujo elemento é uma tupla desses dois tipos, pela mesma ordem dos parâmetros.",
+      "solution_code": "function emparelhar<T, U>(esquerda: T[], direita: U[]): [T, U][] {\n  const total = Math.min(esquerda.length, direita.length);\n  const saida: [T, U][] = [];\n  for (let i = 0; i < total; i += 1) {\n    saida.push([esquerda[i], direita[i]]);\n  }\n  return saida;\n}\n\nconst pares = emparelhar([\"a\", \"b\", \"c\"], [1, 2]);\n// pares: [string, number][] -- o terceiro elemento da esquerda fica de fora\nconsole.log(pares.map((p) => `${p[0]}=${p[1]}`).join(\", \")); // a=1, b=2\n\nconst vazio = emparelhar<string, number>([], []);\nconsole.log(vazio.length); // 0",
+      "solution_explanation": "Dois parâmetros de tipo mantêm os arrays independentes, e a tupla preserva a posição de cada um, o que permite usar cada elemento com os métodos do seu próprio tipo. O comprimento mínimo evita índices fora do array, que em execução dariam undefined apesar de o tipo garantir o contrário. Na chamada com dois arrays vazios os tipos são escritos à mão, porque não há de onde inferir."
+    },
+    {
+      "title": "Compor duas funções",
+      "difficulty": "Intermedio",
+      "statement": "Escrever uma função compor que recebe duas funções de um só argumento e devolve uma terceira função, a que aplica a primeira e passa o resultado à segunda. A tipagem tem de garantir que a saída da primeira encaixa na entrada da segunda: uma composição incompatível tem de ser rejeitada em compilação. Demonstrar uma composição válida e marcar uma inválida com o comentário de erro esperado.",
+      "hint": "São três parâmetros de tipo: o que entra, o tipo intermédio e o que sai. O intermédio aparece duas vezes, no retorno da primeira função e no parâmetro da segunda, e é essa repetição que faz a verificação.",
+      "solution_code": "function compor<T, U, V>(\n  primeira: (entrada: T) => U,\n  segunda: (intermedio: U) => V,\n): (entrada: T) => V {\n  return (entrada) => segunda(primeira(entrada));\n}\n\nconst comprimento = (texto: string): number => texto.length;\nconst parOuImpar = (n: number): string => (n % 2 === 0 ? \"par\" : \"impar\");\n\nconst classificar = compor(comprimento, parOuImpar);\n// classificar: (entrada: string) => string\nconsole.log(classificar(\"Ada\")); // impar\nconsole.log(classificar(\"Alan\")); // par\nconsole.log(classificar(\"Grace\")); // impar\n\n// @ts-expect-error o retorno da primeira (string) não encaixa na entrada da segunda (number)\nconst invalida = compor(parOuImpar, parOuImpar);",
+      "solution_explanation": "O parâmetro de tipo intermédio aparece em dois sítios da assinatura, e é essa ligação que obriga a saída da primeira função a coincidir com a entrada da segunda. A função devolvida já nasce tipada, sem uma única anotação no corpo, porque o contexto fixa os tipos. A composição inválida é apanhada na chamada a compor, e não mais tarde, quando o resultado fosse usado."
+    },
+    {
+      "title": "Agrupar por uma chave calculada",
+      "difficulty": "Avancado",
+      "statement": "Escrever uma função agruparPor que recebe um array de itens e uma função que calcula a chave de cada item, e devolve um Map da chave para o array de itens com essa chave. Tanto o tipo dos itens como o tipo da chave têm de ser genéricos: agrupar por um texto dá um Map de chaves de texto, agrupar por uma condição dá um Map de chaves booleanas. Demonstrar os dois casos e marcar uma leitura com uma chave do tipo errado.",
+      "hint": "Um parâmetro de tipo para o item e outro para a chave, sendo o segundo inferido a partir do que a função de chave devolve. Dentro do ciclo convém ler o grupo existente antes de decidir entre criar um array novo e acrescentar ao que já lá está.",
+      "solution_code": "function agruparPor<T, C>(itens: T[], obterChave: (item: T) => C): Map<C, T[]> {\n  const grupos = new Map<C, T[]>();\n  for (const item of itens) {\n    const chave = obterChave(item);\n    const atual = grupos.get(chave);\n    if (atual === undefined) {\n      grupos.set(chave, [item]);\n    } else {\n      atual.push(item);\n    }\n  }\n  return grupos;\n}\n\nconst pessoas = [\n  { nome: \"Ada\", equipa: \"backend\" },\n  { nome: \"Grace\", equipa: \"backend\" },\n  { nome: \"Alan\", equipa: \"frontend\" },\n];\n\nconst porEquipa = agruparPor(pessoas, (p) => p.equipa);\n// porEquipa: Map<string, { nome: string; equipa: string }[]>\nconsole.log(porEquipa.get(\"backend\")?.length); // 2\nconsole.log(porEquipa.get(\"frontend\")?.map((p) => p.nome).join()); // Alan\n\nconst porParidade = agruparPor([1, 2, 3, 4], (n) => n % 2 === 0);\n// C inferido como boolean a partir do retorno de obterChave\nconsole.log(porParidade.get(true)?.join(\",\")); // 2,4\nconsole.log(porParidade.get(false)?.join(\",\")); // 1,3\n\n// @ts-expect-error a chave é boolean, por isso o texto \"sim\" nunca pode estar lá\nconsole.log(porParidade.get(\"sim\"));",
+      "solution_explanation": "O tipo da chave é inferido a partir do retorno da função recebida, por isso o Map fica tipado sem que quem chama escreva o que quer que seja. Como o Map guarda a relação entre os dois tipos, ler com uma chave do tipo errado passa a ser erro de compilação, e o valor devolvido continua possivelmente undefined, o que obriga a tratar o grupo inexistente. Os dois exemplos mostram o mesmo código a produzir mapas de tipos diferentes."
+    }
+  ],
+  "summary": [
+    "Um parâmetro de tipo liga partes de uma assinatura, evitando o any e a lista interminável de sobrecargas",
+    "Declara-se entre sinais de menor e maior antes dos parênteses e desaparece na compilação",
+    "O argumento de tipo é quase sempre inferido; escreve-se à mão com arrays vazios ou para alargar o tipo deduzido",
+    "Vários parâmetros de tipo são independentes entre si, e escrevem-se todos ou nenhum",
+    "Em funções de ordem superior, fixar o tipo de entrada tipa o callback sem anotações",
+    "Um parâmetro de tipo que aparece uma só vez na assinatura devia ser unknown ou um tipo concreto"
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 02",
+  "next_label": "Aula 02 → Interfaces e Classes Genéricas"
+}

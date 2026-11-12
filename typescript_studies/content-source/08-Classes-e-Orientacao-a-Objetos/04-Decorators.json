@@ -1,0 +1,334 @@
+{
+  "module_num": "08",
+  "module_title": "Classes e Orientação a Objetos",
+  "module_dir": "08-Classes-e-Orientacao-a-Objetos",
+  "lesson_num": "04",
+  "lesson_slug": "Decorators",
+  "kind": "aula",
+  "title": "Decorators",
+  "filename_base": "04-Decorators",
+  "subtitle": "Decorators standard: método, classe, campo e accessor, sem experimentalDecorators",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Perceber para que servem os decorators e quando o código de um decorator corre",
+    "Escrever um decorator de método que envolve a chamada original",
+    "Escrever um decorator de classe que devolve uma subclasse",
+    "Escrever um decorator de campo que valida ou transforma o valor inicial",
+    "Aplicar um decorator a um accessor, com accessor, get ou set",
+    "Prever a ordem de avaliação e de aplicação com vários decorators na mesma declaração"
+  ],
+  "sections": [
+    {
+      "heading": "Para que serve um decorator, e quando corre",
+      "body": [
+        "Um decorator é uma função aplicada com a sintaxe @nome mesmo antes da declaração de uma classe, de um método, de um campo ou de um accessor. Serve para instrumentar código sem alterar a declaração original: registar chamadas, medir tempo de execução, validar ou transformar um valor, registar uma classe num contentor de dependências, ou colocar em cache o resultado de um método.",
+        "Há hoje duas versões de decorators a coexistir no TypeScript. A instalada neste curso, a 5.9.3, usa por omissão os decorators standard, a proposta stage 3 do TC39, que não precisam de nenhuma flag. A versão legacy, histórica em bibliotecas como Angular e NestJS, só funciona com experimentalDecorators: true, que este curso não ativa. As duas têm assinaturas diferentes: um decorator standard recebe sempre (valor, contexto), nunca (target, propertyKey, descriptor) como a legacy.",
+        "O ponto mais fácil de errar é quando o código de um decorator corre. A própria função do decorator é chamada uma vez, no momento em que a classe é definida — não quando uma instância é criada nem quando o método é chamado. O que ela devolve é que passa a correr depois, a cada uso. O exemplo a seguir separa as duas fases com um log em cada uma."
+      ],
+      "code": "function registarUso<This, Args extends unknown[], Return>(\n  alvo: (this: This, ...args: Args) => Return,\n  contexto: ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>,\n) {\n  console.log(\"FASE 1 (definicao da classe): a envolver \" + String(contexto.name));\n  return function (this: This, ...args: Args): Return {\n    console.log(\"FASE 2 (chamada do metodo): \" + String(contexto.name) + \" foi chamado\");\n    return alvo.apply(this, args);\n  };\n}\n\nclass Notificador {\n  @registarUso\n  enviar(mensagem: string) {\n    console.log(\"a enviar: \" + mensagem);\n  }\n}\n\nconsole.log(\"--- classe definida, ainda sem instancia ---\");\nconst notificador = new Notificador();\nconsole.log(\"--- instancia criada, ainda sem chamada ---\");\nnotificador.enviar(\"ola\");\n// FASE 1 (definicao da classe): a envolver enviar\n// --- classe definida, ainda sem instancia ---\n// --- instancia criada, ainda sem chamada ---\n// FASE 2 (chamada do metodo): enviar foi chamado\n// a enviar: ola",
+      "callout_kind": "NOTA",
+      "callout_text": "O nome do parâmetro que recebe o valor decorado é livre, aqui chamado alvo; o que importa ao TypeScript é a posição e o tipo, que varia consoante o kind do contexto.",
+      "table_headers": [
+        "kind do contexto",
+        "Aplicado a",
+        "Primeiro argumento recebido"
+      ],
+      "table_rows": [
+        [
+          "class",
+          "uma classe",
+          "a própria classe"
+        ],
+        [
+          "method",
+          "um método",
+          "a função original do método"
+        ],
+        [
+          "getter",
+          "um get clássico",
+          "a função getter original"
+        ],
+        [
+          "setter",
+          "um set clássico",
+          "a função setter original"
+        ],
+        [
+          "field",
+          "um campo",
+          "sempre undefined"
+        ],
+        [
+          "accessor",
+          "um campo com a palavra accessor",
+          "um objeto com get e set"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🏷️",
+          "text": "@nome antes de classe, método, campo ou accessor"
+        },
+        {
+          "icon": "⏱️",
+          "text": "O decorator corre quando a classe é definida"
+        },
+        {
+          "icon": "🔁",
+          "text": "O que ele devolve é que corre depois, a cada uso"
+        },
+        {
+          "icon": "🧩",
+          "text": "Standard (stage 3) vs legacy (experimentalDecorators)"
+        }
+      ]
+    },
+    {
+      "heading": "Decorator de método: envolver a chamada",
+      "body": [
+        "Um decorator de método recebe dois argumentos: a função original e um objeto de contexto cujo kind é method e cujo name identifica o método. Pode devolver undefined, para deixar o método como está, ou uma nova função, que passa a substituir a definição original no protótipo da classe.",
+        "Como a nova função embrulha a original, o decorator decide tudo: pode medir quanto tempo a chamada demora, pode registar os argumentos, ou pode nem sequer chamar a função original — por exemplo, para impedir a execução quando falta autorização, bastando devolver outro valor ou lançar um erro sem invocar alvo.",
+        "Para o TypeScript aceitar a função devolvida, o tipo dela tem de corresponder ao do método original — daí os genéricos This, Args e Return no exemplo. Sem eles, o compilador rejeita a atribuição com o erro TS1270. O exemplo mede o tempo real de gerar com performance.now: a duração impressa varia a cada execução, mas o total continua sempre igual."
+      ],
+      "code": "function medirTempo<This, Args extends unknown[], Return>(\n  alvo: (this: This, ...args: Args) => Return,\n  contexto: ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>,\n) {\n  const nome = String(contexto.name);\n  return function (this: This, ...args: Args): Return {\n    const inicio = performance.now();\n    const resultado = alvo.apply(this, args);\n    const duracao = performance.now() - inicio;\n    console.log(nome + \" demorou \" + duracao.toFixed(2) + \"ms\");\n    return resultado;\n  };\n}\n\nclass Relatorio {\n  @medirTempo\n  gerar(linhas: number) {\n    let total = 0;\n    for (let i = 0; i < linhas; i++) {\n      total += i;\n    }\n    return total;\n  }\n}\n\nconst relatorio = new Relatorio();\nconsole.log(\"total=\" + relatorio.gerar(1000));\n// gerar demorou <alguns ms, o valor exato varia a cada execucao>\n// total=499500",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Sem tipar o decorator com os genéricos do método (This, Args, Return), o TypeScript recusa a função devolvida com TS1270: o tipo devolvido tem de ser atribuível ao tipo do método original.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📥",
+          "text": "Recebe a função original e um contexto kind method"
+        },
+        {
+          "icon": "📤",
+          "text": "Pode devolver uma função que a substitui"
+        },
+        {
+          "icon": "🚫",
+          "text": "Não chamar a original impede a execução"
+        },
+        {
+          "icon": "⏱️",
+          "text": "Serve para medir tempo, autenticar ou fazer log"
+        }
+      ]
+    },
+    {
+      "heading": "Decorator de classe: substituir a própria classe",
+      "body": [
+        "Um decorator de classe recebe a própria classe como primeiro argumento — não uma instância, a classe inteira — e um contexto com kind class. Pode devolver undefined, para não alterar nada, ou uma nova classe, tipicamente uma subclasse que estende a original e acrescenta comportamento.",
+        "O contexto também tem addInitializer, que regista uma função a correr mais tarde. Num decorator de classe, essa função corre exatamente uma vez, logo depois de a classe estar definida, e o this dentro dela é a própria classe — não cada instância criada a partir dela. O exemplo confirma isto criando duas instâncias e só vendo o log de addInitializer aparecer uma vez.",
+        "Se a subclasse devolvida for uma expressão de classe anónima, o seu nome fica vazio (medido: constructor.name é a string vazia). Dar-lhe um nome, como ServicoRegistado no exemplo, mantém um constructor.name útil para logs e mensagens de erro."
+      ],
+      "code": "function registar<T extends new (...args: any[]) => object>(alvo: T, contexto: ClassDecoratorContext) {\n  console.log(\"decorator de classe avaliado, kind=\" + contexto.kind + \" name=\" + String(contexto.name));\n  contexto.addInitializer(function () {\n    // \"this\" aqui e a propria classe, nao uma instancia: e um decorator de classe.\n    console.log(\"addInitializer a correr, this=\" + (this as { name: string }).name);\n  });\n  return class ServicoRegistado extends alvo {\n    descricao = \"instancia registada\";\n  };\n}\n\n@registar\nclass Servico {\n  constructor() {\n    console.log(\"construtor de Servico a correr\");\n  }\n}\n\nconsole.log(\"--- a criar a primeira instancia ---\");\nconst s1 = new Servico() as Servico & { descricao: string };\nconsole.log(\"--- a criar a segunda instancia ---\");\nconst s2 = new Servico() as Servico & { descricao: string };\nconsole.log(\"nome da classe efetiva=\" + s1.constructor.name + \", descricao=\" + s2.descricao);\n// decorator de classe avaliado, kind=class name=Servico\n// addInitializer a correr, this=ServicoRegistado\n// --- a criar a primeira instancia ---\n// construtor de Servico a correr\n// --- a criar a segunda instancia ---\n// construtor de Servico a correr\n// nome da classe efetiva=ServicoRegistado, descricao=instancia registada",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Estender um construtor genérico T dentro de um decorator exige a assinatura (...args: any[]) => ...; com unknown[] o TypeScript recusa com TS2545, A mixin class must have a constructor with a single rest parameter of type any[]. É um any explícito e aceite, não um any implícito.",
+      "table_headers": [
+        "Tipo de decorator",
+        "addInitializer corre",
+        "this dentro dele"
+      ],
+      "table_rows": [
+        [
+          "classe",
+          "uma vez, ao definir a classe",
+          "a própria classe"
+        ],
+        [
+          "método, campo, getter, setter ou accessor",
+          "uma vez por instância criada",
+          "essa instância"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🏗️",
+          "text": "Recebe a própria classe, não uma instância"
+        },
+        {
+          "icon": "🧬",
+          "text": "Pode devolver uma subclasse que a substitui"
+        },
+        {
+          "icon": "🔂",
+          "text": "addInitializer de classe corre uma vez só"
+        },
+        {
+          "icon": "🏷️",
+          "text": "Nomeie a subclasse devolvida ou o nome fica vazio"
+        }
+      ]
+    },
+    {
+      "heading": "Decorator de campo: transformar o valor inicial",
+      "body": [
+        "Um decorator de campo recebe sempre undefined como primeiro argumento — medido diretamente: o campo ainda não tem valor nenhum no momento em que a classe é definida, que é quando o decorator corre. O contexto tem kind field e o name do campo.",
+        "O que interessa é o que o decorator devolve: uma função que recebe o valor inicial do campo, já calculado para essa instância, e devolve o valor que fica mesmo atribuído. É o sítio certo para validar ou transformar um valor à entrada, sem tocar na classe que declara o campo.",
+        "Essa função de inicialização corre uma vez por instância, durante a construção — tal como o addInitializer de um método, mostrado na tabela da secção anterior. Um erro lançado aí interrompe a construção dessa instância; por isso o exemplo isola a instância inválida num try/catch, para o resto do bloco continuar a correr."
+      ],
+      "code": "function naoNegativo(valor: undefined, contexto: ClassFieldDecoratorContext) {\n  return function (this: unknown, valorInicial: number): number {\n    if (valorInicial < 0) {\n      throw new Error(String(contexto.name) + \" nao pode ser negativo\");\n    }\n    return valorInicial;\n  };\n}\n\nclass Produto {\n  @naoNegativo\n  preco = 10;\n}\n\nconst produto = new Produto();\nconsole.log(\"preco=\" + produto.preco);\n// preco=10\n\nclass ProdutoInvalido {\n  @naoNegativo\n  preco = -5;\n}\n\ntry {\n  new ProdutoInvalido();\n} catch (erro) {\n  console.log(\"falhou como esperado: \" + (erro as Error).message);\n}\n// falhou como esperado: preco nao pode ser negativo",
+      "callout_kind": "NOTA",
+      "callout_text": "valor chega sempre undefined a um decorator de campo. O valor real só existe dentro da função devolvida, que recebe o valorInicial já calculado para essa instância.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "❔",
+          "text": "Primeiro argumento é sempre undefined"
+        },
+        {
+          "icon": "🔧",
+          "text": "Devolve uma função que recebe o valor inicial"
+        },
+        {
+          "icon": "✅",
+          "text": "Serve para validar ou transformar antes de atribuir"
+        },
+        {
+          "icon": "🧯",
+          "text": "Um erro lançado aí interrompe só essa construção"
+        }
+      ]
+    },
+    {
+      "heading": "Decorators em accessors: accessor, get e set",
+      "body": [
+        "A palavra accessor, escrita antes de um campo, gera automaticamente um par get/set com armazenamento privado próprio. Um decorator aplicado a um campo accessor recebe um objeto com get e set, o par original, e um contexto com kind accessor; pode devolver um novo par get/set que substitui o original.",
+        "Também é possível decorar diretamente um get ou um set clássico, sem a palavra accessor. Nesse caso o contexto tem kind getter ou kind setter, e o decorator funciona exatamente como um decorator de método: recebe a função original e pode devolver uma função que a substitui.",
+        "No exemplo medido, ler temperatura chama sempre o get embrulhado, e escrever chama o set embrulhado; escrever seguido de ler volta a passar pelo get. Não há nenhuma ordem surpreendente aqui: cada acesso à propriedade dispara exatamente o par que o decorator devolveu."
+      ],
+      "code": "function logAcesso(alvo: ClassAccessorDecoratorTarget<unknown, number>, contexto: ClassAccessorDecoratorContext) {\n  console.log(\"kind=\" + contexto.kind + \" name=\" + String(contexto.name));\n  return {\n    get(this: unknown) {\n      console.log(\"GET a correr\");\n      return alvo.get.call(this);\n    },\n    set(this: unknown, novoValor: number) {\n      console.log(\"SET a correr com \" + novoValor);\n      alvo.set.call(this, novoValor);\n    },\n  };\n}\n\nclass Termometro {\n  @logAcesso\n  accessor temperatura = 20;\n}\n\nconst termometro = new Termometro();\nconsole.log(\"valor=\" + termometro.temperatura);\ntermometro.temperatura = 25;\nconsole.log(\"valor=\" + termometro.temperatura);\n// kind=accessor name=temperatura\n// GET a correr\n// valor=20\n// SET a correr com 25\n// GET a correr\n// valor=25",
+      "callout_kind": "DICA",
+      "callout_text": "Para decorar só a leitura ou só a escrita de uma propriedade, decore o get ou o set clássico em separado; para embrulhar sempre os dois juntos com armazenamento próprio, use accessor.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔐",
+          "text": "accessor gera um par get/set com armazenamento próprio"
+        },
+        {
+          "icon": "🔍",
+          "text": "kind accessor recebe {get, set} e devolve {get, set}"
+        },
+        {
+          "icon": "🎚️",
+          "text": "get/set clássicos dão kind getter ou setter"
+        },
+        {
+          "icon": "♻️",
+          "text": "Cada acesso dispara o par devolvido pelo decorator"
+        }
+      ]
+    },
+    {
+      "heading": "O que não existe: decorators de parâmetro",
+      "body": [
+        "A versão legacy dos decorators, usada historicamente por Angular e NestJS com experimentalDecorators, permitia decorar parâmetros individuais de um método — sobretudo para injeção de dependências. A proposta standard, a que este curso usa, não inclui decorators de parâmetro: essa posição não existe na especificação.",
+        "Escrever @algo antes de um parâmetro, mesmo com este projeto configurado sem experimentalDecorators, dá sempre um erro de compilação: TS1206, Decorators are not valid here. Não é um erro de tipo nem de runtime — o compilador rejeita a sintaxe nesse sítio.",
+        "Medido: com @ts-expect-error a suprimir esse erro, o código chega a compilar e a correr, mas o decorator do parâmetro é simplesmente apagado do JavaScript emitido, e nunca chega a ser chamado. Um projeto que precise mesmo de decorators por parâmetro só os tem com a versão legacy, que muda a assinatura inteira dos decorators."
+      ],
+      "code": "function decoradorParametro(alvo: unknown, contexto: unknown, indice: number) {\n  console.log(alvo, contexto, indice);\n}\n\nclass Servico {\n  // @ts-expect-error decorators de parametro nao existem na proposta standard (TS1206)\n  metodo(@decoradorParametro valor: number) {\n    return valor;\n  }\n}\n\nconsole.log(new Servico().metodo(1));\n// 1 (o decorator do parametro foi apagado do JavaScript emitido; nunca corre)",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Decorators de parâmetro só existem na versão legacy, com experimentalDecorators: true. Na proposta standard usada neste curso não existem: o compilador rejeita sempre com TS1206.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🚫",
+          "text": "Parâmetros não podem ser decorados no standard"
+        },
+        {
+          "icon": "⚙️",
+          "text": "Só existiam na versão legacy, com experimentalDecorators"
+        },
+        {
+          "icon": "🧯",
+          "text": "Tentar dá sempre TS1206, Decorators are not valid here"
+        },
+        {
+          "icon": "🗑️",
+          "text": "Suprimido o erro, o decorator é apagado do JS emitido"
+        }
+      ]
+    },
+    {
+      "heading": "Vários decorators juntos: a ordem medida",
+      "body": [
+        "Quando uma declaração tem mais do que um decorator, cada função de decorator é chamada uma vez, na ordem de baixo para cima: o decorator mais próximo do nome do membro é chamado primeiro, e o resultado dele é que é passado ao decorator seguinte, como uma composição de funções.",
+        "Por serem embrulhos aninhados, quando o método finalmente é chamado a ordem inverte: o decorator mais afastado do nome do membro, por ser o mais exterior, corre primeiro; o mais próximo corre a seguir; só depois corre o método original; e cada embrulho fecha na ordem inversa à que abriu.",
+        "O exemplo junta dois decorators realistas, medirTempo e registarChamada, com logs numerados que confirmam essa ordem: 1 e 2 são a chamada às funções de decorator, na definição da classe; 3 a 7 são a chamada ao método, já depois de instanciar."
+      ],
+      "code": "function medirTempo<This, Args extends unknown[], Return>(\n  alvo: (this: This, ...args: Args) => Return,\n  contexto: ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>,\n) {\n  console.log(\"[2] medirTempo avaliado sobre \" + String(contexto.name));\n  return function (this: This, ...args: Args): Return {\n    console.log(\"[4] medirTempo: a iniciar cronometro\");\n    const inicio = performance.now();\n    const resultado = alvo.apply(this, args);\n    const duracao = performance.now() - inicio;\n    console.log(\"[6] medirTempo: \" + String(contexto.name) + \" demorou \" + duracao.toFixed(2) + \"ms\");\n    return resultado;\n  };\n}\n\nfunction registarChamada<This, Args extends unknown[], Return>(\n  alvo: (this: This, ...args: Args) => Return,\n  contexto: ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>,\n) {\n  console.log(\"[1] registarChamada avaliado sobre \" + String(contexto.name));\n  return function (this: This, ...args: Args): Return {\n    console.log(\"[5] registarChamada: a chamar \" + String(contexto.name) + \" com \" + JSON.stringify(args));\n    return alvo.apply(this, args);\n  };\n}\n\nclass Repositorio {\n  @medirTempo\n  @registarChamada\n  buscar(id: number) {\n    console.log(\"[a] buscar a correr, id=\" + id);\n    return { id, nome: \"registo \" + id };\n  }\n}\n\nconsole.log(\"--- classe definida ---\");\nconst repo = new Repositorio();\nconsole.log(\"[3] a chamar buscar\");\nconst registo = repo.buscar(7);\nconsole.log(\"[7] resultado=\" + JSON.stringify(registo));\n// [1] registarChamada avaliado sobre buscar\n// [2] medirTempo avaliado sobre buscar\n// --- classe definida ---\n// [3] a chamar buscar\n// [4] medirTempo: a iniciar cronometro\n// [5] registarChamada: a chamar buscar com [7]\n// [a] buscar a correr, id=7\n// [6] medirTempo: buscar demorou <alguns ms, varia a cada execucao>\n// [7] resultado={\"id\":7,\"nome\":\"registo 7\"}",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Troque a ordem de @medirTempo e @registarChamada acima de buscar e corra outra vez: o log [2] passa a aparecer antes do [1], e o [5] passa a aparecer antes do [4] — confirma que quem está mais próximo do nome do método é sempre chamado primeiro.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔢",
+          "text": "As funções de decorator correm de baixo para cima"
+        },
+        {
+          "icon": "🧅",
+          "text": "Os embrulhos aninham como composição de funções"
+        },
+        {
+          "icon": "↩️",
+          "text": "Na chamada, o mais exterior corre primeiro"
+        },
+        {
+          "icon": "📏",
+          "text": "Medido com logs numerados, não presumido"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Um decorator de log simples",
+      "difficulty": "Iniciante",
+      "statement": "Escreva um decorator de método chamado registarChamada que, sem alterar o comportamento do método, imprima a chamar seguido do nome do método antes de correr o código original, e devolva o mesmo resultado que o método original devolveria. Aplique-o ao método saudar de uma classe Pessoa que recebe o nome no construtor e devolve uma saudação, e prove que continua a funcionar chamando-o.",
+      "hint": "O decorator recebe a função original e um contexto; contexto.name dá o nome do método. A função devolvida tem de chamar a original com apply, incluindo o this e os argumentos, e devolver o que ela devolver.",
+      "solution_code": "function registarChamada<This, Args extends unknown[], Return>(\n  alvo: (this: This, ...args: Args) => Return,\n  contexto: ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>,\n) {\n  return function (this: This, ...args: Args): Return {\n    console.log(\"a chamar \" + String(contexto.name));\n    return alvo.apply(this, args);\n  };\n}\n\nclass Pessoa {\n  constructor(private nome: string) {}\n\n  @registarChamada\n  saudar() {\n    return \"Ola, \" + this.nome;\n  }\n}\n\nconst pessoa = new Pessoa(\"Rui\");\nconsole.log(pessoa.saudar());\n// a chamar saudar\n// Ola, Rui",
+      "solution_explanation": "O decorator recebe (alvo, contexto) com contexto.kind igual a method e devolve uma nova função que regista a chamada antes de invocar alvo.apply(this, args) e devolver o resultado sem o alterar. Por não mudar o valor devolvido, o comportamento do método mantém-se igual do ponto de vista de quem o chama."
+    },
+    {
+      "title": "Normalizar um campo de texto",
+      "difficulty": "Intermedio",
+      "statement": "Escreva um decorator de campo chamado maiusculas que transforme o valor inicial de um campo de texto para maiúsculas antes de ele ser atribuído. Aplique-o ao campo categoria de uma classe Produto, inicializado com um valor em minúsculas, e confirme que o valor lido da instância já vem em maiúsculas.",
+      "hint": "O decorator de campo recebe undefined como primeiro argumento; o que interessa é a função que devolve, que recebe o valor inicial verdadeiro e devolve o valor final.",
+      "solution_code": "function maiusculas(valor: undefined, contexto: ClassFieldDecoratorContext) {\n  return function (this: unknown, valorInicial: string): string {\n    return valorInicial.toUpperCase();\n  };\n}\n\nclass Produto {\n  @maiusculas\n  categoria = \"eletronica\";\n}\n\nconst produto = new Produto();\nconsole.log(produto.categoria);\n// ELETRONICA",
+      "solution_explanation": "O decorator ignora o primeiro argumento, sempre undefined num campo, e devolve uma função que recebe o valor inicial e aplica toUpperCase antes de o devolver. Essa função corre durante a construção da instância, por isso categoria já nasce em maiúsculas."
+    },
+    {
+      "title": "Numerar bilhetes automaticamente",
+      "difficulty": "Intermedio",
+      "statement": "Escreva um decorator de campo chamado atribuirId que ignore o valor inicial escrito no código e, em vez disso, atribua a cada instância um número sequencial, guardado numa variável do módulo que conta quantas instâncias já foram criadas. Aplique-o ao campo id de uma classe Bilhete e confirme, criando três bilhetes, que cada um recebe um número diferente e que o total final corresponde ao número de bilhetes criados.",
+      "hint": "A função devolvida pelo decorator de campo pode ignorar o parâmetro que recebe, o valor inicial, e devolver outra coisa; a variável que conta as instâncias vive fora da classe, no módulo, partilhada por todas as chamadas ao decorator.",
+      "solution_code": "let totalCriados = 0;\n\nfunction atribuirId(valor: undefined, contexto: ClassFieldDecoratorContext) {\n  return function (this: unknown): number {\n    totalCriados++;\n    return totalCriados;\n  };\n}\n\nclass Bilhete {\n  @atribuirId\n  id = 0;\n}\n\nconst b1 = new Bilhete();\nconst b2 = new Bilhete();\nconst b3 = new Bilhete();\nconsole.log(b1.id, b2.id, b3.id, totalCriados);\n// 1 2 3 3",
+      "solution_explanation": "totalCriados vive fora da classe e é partilhada por todas as instâncias; a função devolvida pelo decorator incrementa-a e devolve o novo total, ignorando por completo o valor com que o campo id foi escrito no código. Cada instância nova soma um ao contador e recebe esse número como id."
+    },
+    {
+      "title": "Um decorator de memoização",
+      "difficulty": "Avancado",
+      "statement": "Escreva um decorator de método chamado memorizar que guarde em cache o resultado de um método consoante os argumentos recebidos, usando JSON.stringify dos argumentos como chave. Se os mesmos argumentos já tiverem sido usados, o método não deve voltar a correr: o decorator devolve logo o valor guardado. Aplique-o ao método quadrado de uma classe Matematica que também mantém um contador de chamadas reais num campo, e prove que chamar quadrado(4) duas vezes só incrementa esse contador uma vez.",
+      "hint": "A cache pode viver numa Map criada dentro do próprio decorator, fora da função devolvida, para ser partilhada por todas as chamadas àquele método decorado. Antes de chamar a função original, verifique se a chave já está na cache.",
+      "solution_code": "function memorizar<This, Args extends unknown[], Return>(\n  alvo: (this: This, ...args: Args) => Return,\n  contexto: ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>,\n) {\n  const cache = new Map<string, Return>();\n  return function (this: This, ...args: Args): Return {\n    const chave = JSON.stringify(args);\n    if (cache.has(chave)) {\n      console.log(String(contexto.name) + \": veio da cache para \" + chave);\n      return cache.get(chave) as Return;\n    }\n    const resultado = alvo.apply(this, args);\n    cache.set(chave, resultado);\n    return resultado;\n  };\n}\n\nclass Matematica {\n  chamadas = 0;\n\n  @memorizar\n  quadrado(n: number) {\n    this.chamadas++;\n    return n * n;\n  }\n}\n\nconst matematica = new Matematica();\nconsole.log(matematica.quadrado(4));\nconsole.log(matematica.quadrado(4));\nconsole.log(matematica.quadrado(5));\nconsole.log(\"chamadas reais=\" + matematica.chamadas);\n// 16\n// quadrado: veio da cache para [4]\n// 16\n// 25\n// chamadas reais=2",
+      "solution_explanation": "A Map cache é criada uma vez, quando o decorator corre, na definição da classe, e fica capturada por fecho na função devolvida, partilhada por todas as chamadas a esse método. Cada chamada calcula a chave com JSON.stringify(args); se já existir na cache devolve o valor guardado sem tocar em alvo, e só quando a chave é nova chama a função original e regista o resultado, o que explica porque quadrado(4) chamado duas vezes só soma uma vez ao contador chamadas."
+    }
+  ],
+  "summary": [
+    "Um decorator standard recebe (valor, contexto) e corre uma vez, quando a classe é definida",
+    "Um decorator de método, de getter, de setter ou de accessor pode devolver uma função nova que substitui a original",
+    "Um decorator de classe recebe a própria classe e pode devolver uma subclasse; o seu addInitializer corre uma só vez",
+    "Um decorator de campo recebe sempre undefined e devolve uma função que transforma o valor inicial de cada instância",
+    "Decorators de parâmetro não existem no standard; só existiam na versão legacy com experimentalDecorators",
+    "Com vários decorators na mesma declaração, as funções de decorator correm de baixo para cima; na chamada, a ordem inverte"
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para o Módulo 09",
+  "next_label": "Aula 01 → Módulos em TypeScript"
+}

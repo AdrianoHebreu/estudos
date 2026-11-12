@@ -1,0 +1,326 @@
+{
+  "module_num": "10",
+  "module_title": "TypeScript no Mundo Real",
+  "module_dir": "10-TypeScript-no-Mundo-Real",
+  "lesson_num": "03",
+  "lesson_slug": "Validacao-em-Runtime",
+  "kind": "aula",
+  "title": "Validação em Runtime de Dados Externos",
+  "filename_base": "03-Validacao-em-Runtime",
+  "subtitle": "Predicados, asserções e validadores compostos para confiar nos dados que chegam de fora",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Escrever type predicates completos e reutilizáveis para dados externos",
+    "Reconhecer o risco de um predicado mentiroso que o compilador aceita",
+    "Usar assertion functions na fronteira e respeitar as regras de chamada",
+    "Validar arrays e objetos aninhados elemento a elemento",
+    "Compor validadores genéricos e derivar deles o tipo estático",
+    "Acumular mensagens de erro com o caminho de cada campo"
+  ],
+  "sections": [
+    {
+      "heading": "Um predicado completo para dados externos",
+      "body": [
+        "Na aula anterior a entrada passou a ser tratada como unknown e estreitada à mão. O passo seguinte é arrumar essa verificação numa função reutilizável com a assinatura x is Utilizador: valida tudo uma vez e, a partir daí, cada if que a chama estreita o valor para o tipo certo.",
+        "Um predicado sério verifica que o valor é um objeto não nulo, que cada campo obrigatório tem o tipo esperado, que os campos opcionais ou faltam ou têm o tipo certo, e que as uniões de literais só aceitam os valores previstos. Converter para Record<string, unknown> depois do teste de objeto permite ler qualquer campo sem perder a segurança: cada leitura continua a ser unknown."
+      ],
+      "code": "type Papel = \"admin\" | \"leitor\";\n\ninterface Utilizador {\n  id: number;\n  nome: string;\n  papel: Papel;\n  email?: string;\n}\n\nconst PAPEIS: readonly string[] = [\"admin\", \"leitor\"];\n\nfunction ePapel(x: unknown): x is Papel {\n  return typeof x === \"string\" && PAPEIS.includes(x);\n}\n\nfunction eUtilizador(x: unknown): x is Utilizador {\n  if (typeof x !== \"object\" || x === null) return false;\n  // Record<string, unknown> permite ler qualquer campo, sempre como unknown\n  const o = x as Record<string, unknown>;\n  return (\n    typeof o.id === \"number\" &&\n    typeof o.nome === \"string\" &&\n    ePapel(o.papel) &&\n    // opcional: pode faltar, mas se existir tem de ser string\n    (o.email === undefined || typeof o.email === \"string\")\n  );\n}\n\nconst entradas: unknown[] = [\n  JSON.parse('{\"id\": 1, \"nome\": \"Ana\", \"papel\": \"admin\"}'),\n  JSON.parse('{\"id\": 2, \"nome\": \"Rui\", \"papel\": \"editor\"}'),\n  JSON.parse('{\"id\": \"3\", \"nome\": \"Eva\", \"papel\": \"leitor\"}'),\n  JSON.parse('{\"id\": 4, \"nome\": \"Luis\", \"papel\": \"leitor\", \"email\": 42}'),\n  null,\n];\n\nfor (const e of entradas) {\n  if (eUtilizador(e)) {\n    // aqui e: Utilizador\n    console.log(\"válido:\", e.nome, e.papel);\n  } else {\n    console.log(\"rejeitado:\", JSON.stringify(e));\n  }\n}\n// válido: Ana admin\n// rejeitado: {\"id\":2,\"nome\":\"Rui\",\"papel\":\"editor\"}\n// rejeitado: {\"id\":\"3\",\"nome\":\"Eva\",\"papel\":\"leitor\"}\n// rejeitado: {\"id\":4,\"nome\":\"Luis\",\"papel\":\"leitor\",\"email\":42}\n// rejeitado: null\n",
+      "callout_kind": "DICA",
+      "callout_text": "Para uniões de literais como \"admin\" | \"leitor\", guarde os valores permitidos num array e faça um predicado pequeno (ePapel). Assim o mesmo teste serve em qualquer validador que precise do papel.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧱",
+          "text": "Primeiro: objeto e não nulo"
+        },
+        {
+          "icon": "🔎",
+          "text": "Depois: cada campo com typeof ou predicado próprio"
+        },
+        {
+          "icon": "❔",
+          "text": "Opcional: undefined ou o tipo certo"
+        },
+        {
+          "icon": "🎯",
+          "text": "Literais: só os valores da união passam"
+        }
+      ]
+    },
+    {
+      "heading": "O predicado mentiroso",
+      "body": [
+        "O compilador não confere o corpo de um type predicate com a promessa da assinatura. Basta devolver boolean: se a função diz x is Utilizador, o TypeScript acredita, mesmo que só se tenha verificado um campo, ou nenhum.",
+        "O resultado é pior do que não ter tipos: o código dentro do if parece seguro, o editor completa os campos, e o erro só aparece em runtime, longe da validação. Um predicado é código que tem de ser revisto e testado como qualquer outro, porque é o ponto onde a verificação estática passa a depender de uma verificação manual."
+      ],
+      "code": "interface Utilizador {\n  id: number;\n  nome: string;\n  papel: \"admin\" | \"leitor\";\n}\n\n// Compila sem queixas: o compilador não confere o corpo com a promessa\nfunction eUtilizadorMentiroso(x: unknown): x is Utilizador {\n  return typeof x === \"object\" && x !== null && \"id\" in x;\n}\n\nconst dados: unknown = JSON.parse('{\"id\": 7}');\n\nif (eUtilizadorMentiroso(dados)) {\n  // dados: Utilizador, segundo o compilador\n  try {\n    console.log(dados.nome.toUpperCase());\n  } catch (e) {\n    console.log(\"rebentou em runtime:\", (e as Error).message);\n  }\n}\n// rebentou em runtime: Cannot read properties of undefined (reading 'toUpperCase')\n\n// Nem sequer é preciso verificar nada: isto também compila\nfunction eSempreUtilizador(x: unknown): x is Utilizador {\n  return true;\n}\nconsole.log(eSempreUtilizador(42)); // true\n",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Um type predicate é uma afirmação de quem escreve o código, tal como um as. A diferença é que fica num único sítio e pode ser testado. Quando se acrescenta um campo ao tipo, o predicado tem de ser atualizado à mão: o compilador não avisa.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🤥",
+          "text": "x is T compila com qualquer corpo que devolva boolean"
+        },
+        {
+          "icon": "💥",
+          "text": "O erro aparece em runtime, longe da validação"
+        },
+        {
+          "icon": "🧪",
+          "text": "Predicados precisam de testes com dados maus"
+        }
+      ]
+    },
+    {
+      "heading": "Assertion functions na fronteira",
+      "body": [
+        "Uma assertion function (asserts x is T) não devolve nada: ou lança, ou a partir da linha seguinte o valor fica estreitado. Encaixa bem na fronteira quando dados inválidos devem interromper o fluxo, por exemplo ao ler configuração no arranque. O predicado é melhor quando o código tem um caminho alternativo, como ignorar o registo ou usar um valor por omissão.",
+        "Há uma regra que costuma surpreender: para a chamada estreitar, cada nome no alvo da chamada tem de ter um tipo declarado explicitamente. Uma declaração function cumpre-a; uma arrow function guardada numa const só a cumpre se a própria const tiver a anotação de tipo. Anotar apenas o retorno da arrow não chega e dá TS2775. Chamar a asserção através de acesso por índice, como lista[0](x) ou o[\"f\"](x), dá TS2776: Assertions require the call target to be an identifier or qualified name."
+      ],
+      "code": "interface Config {\n  porta: number;\n  anfitriao: string;\n}\n\nfunction eConfig(x: unknown): x is Config {\n  if (typeof x !== \"object\" || x === null) return false;\n  const o = x as Record<string, unknown>;\n  return typeof o.porta === \"number\" && typeof o.anfitriao === \"string\";\n}\n\n// Declaração de função: serve como asserção sem mais nada\nfunction assertConfig(x: unknown): asserts x is Config {\n  if (!eConfig(x)) {\n    throw new Error(\"configuração inválida: \" + JSON.stringify(x));\n  }\n}\n\n// Arrow function: só funciona com a anotação de tipo na própria constante\nconst assertConfigArrow: (x: unknown) => asserts x is Config = (x) => {\n  if (!eConfig(x)) throw new Error(\"configuração inválida\");\n};\n\n// Sem anotação na constante, a chamada é rejeitada\nconst assertSemAnotacao = (x: unknown): asserts x is Config => {\n  if (!eConfig(x)) throw new Error(\"configuração inválida\");\n};\n\nconst bruto: unknown = JSON.parse('{\"porta\": 8080, \"anfitriao\": \"localhost\"}');\nassertConfig(bruto);\nconsole.log(bruto.porta); // 8080 (bruto: Config daqui para baixo)\n\nconst outro: unknown = JSON.parse('{\"porta\": 3000, \"anfitriao\": \"0.0.0.0\"}');\nassertConfigArrow(outro);\nconsole.log(outro.anfitriao); // 0.0.0.0 (outro: Config)\n\nconst terceiro: unknown = JSON.parse('{\"porta\": 1}');\ntry {\n  // @ts-expect-error TS2775: Assertions require every name in the call target to be declared with an explicit type annotation.\n  assertSemAnotacao(terceiro);\n} catch (e) {\n  console.log((e as Error).message); // configuração inválida\n}\n",
+      "callout_kind": "NOTA",
+      "callout_text": "Medido no TypeScript 5.9: o método o.f(x) funciona se o objeto o tiver o tipo anotado; lista[0](x) e o[\"f\"](x) dão TS2776, mesmo com anotações.",
+      "table_headers": [
+        "Situação",
+        "Predicado x is T",
+        "Asserção asserts x is T"
+      ],
+      "table_rows": [
+        [
+          "Resultado",
+          "Devolve boolean",
+          "Devolve void ou lança"
+        ],
+        [
+          "Onde estreita",
+          "Dentro do if",
+          "Em todo o código a seguir à chamada"
+        ],
+        [
+          "Uso típico",
+          "Filtrar, escolher alternativa",
+          "Parar logo perante dados inválidos"
+        ],
+        [
+          "Arrow function numa const",
+          "Funciona sem anotação na const",
+          "Exige anotação na const (senão TS2775)"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🛑",
+          "text": "asserts x is T: lança ou estreita o resto do bloco"
+        },
+        {
+          "icon": "🔀",
+          "text": "Predicado quando há caminho alternativo"
+        },
+        {
+          "icon": "🏷️",
+          "text": "Arrow numa const precisa de anotação: senão TS2775"
+        },
+        {
+          "icon": "🚫",
+          "text": "lista[0](x) ou o[\"f\"](x) dão TS2776"
+        }
+      ]
+    },
+    {
+      "heading": "Arrays e objetos aninhados",
+      "body": [
+        "Um array vindo de fora é validado elemento a elemento. O every da biblioteca padrão tem uma sobrecarga para predicados: arr.every(eString) estreita o próprio array. Medido no TypeScript 5.9, tanto um unknown[] como o any[] que sai de Array.isArray passam a string[] dentro do if.",
+        "Para objetos dentro de objetos, reutiliza-se o predicado do nível de baixo: eCliente chama eMorada para o campo morada. Cada predicado fica pequeno e o validador completo é a soma das partes."
+      ],
+      "code": "interface Morada {\n  rua: string;\n  codigoPostal: string;\n}\n\ninterface Cliente {\n  nome: string;\n  morada: Morada;\n  etiquetas: string[];\n}\n\nfunction eRegisto(x: unknown): x is Record<string, unknown> {\n  return typeof x === \"object\" && x !== null && !Array.isArray(x);\n}\n\nfunction eString(x: unknown): x is string {\n  return typeof x === \"string\";\n}\n\nfunction eMorada(x: unknown): x is Morada {\n  return eRegisto(x) && eString(x.rua) && eString(x.codigoPostal);\n}\n\nfunction eCliente(x: unknown): x is Cliente {\n  return (\n    eRegisto(x) &&\n    eString(x.nome) &&\n    eMorada(x.morada) && // objeto dentro de objeto: reutiliza o predicado\n    Array.isArray(x.etiquetas) &&\n    x.etiquetas.every(eString) // cada elemento é validado\n  );\n}\n\n// every com um predicado estreita o próprio array\nconst lista: unknown[] = JSON.parse('[\"norte\", \"vip\"]');\nif (lista.every(eString)) {\n  const maiusculas: string[] = lista.map((s) => s.toUpperCase()); // lista: string[]\n  console.log(maiusculas); // [ 'NORTE', 'VIP' ]\n}\n\nconst texto = '{\"nome\": \"Marta\", \"morada\": {\"rua\": \"Rua Direita\", \"codigoPostal\": 4000}, \"etiquetas\": [\"vip\"]}';\nconsole.log(eCliente(JSON.parse(texto))); // false (codigoPostal é number)\n\nconst corrigido = '{\"nome\": \"Marta\", \"morada\": {\"rua\": \"Rua Direita\", \"codigoPostal\": \"4000-123\"}, \"etiquetas\": [\"vip\"]}';\nconst c: unknown = JSON.parse(corrigido);\nif (eCliente(c)) {\n  console.log(c.morada.codigoPostal, c.etiquetas.length); // 4000-123 1\n}\n",
+      "callout_kind": "DICA",
+      "callout_text": "Um predicado auxiliar eRegisto(x): x is Record<string, unknown> evita repetir typeof, null e Array.isArray em todos os validadores e dá acesso direto aos campos, já como unknown.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📚",
+          "text": "arr.every(ePredicado) estreita unknown[] para T[]"
+        },
+        {
+          "icon": "🪆",
+          "text": "Objetos aninhados: um predicado por nível"
+        },
+        {
+          "icon": "🧩",
+          "text": "eRegisto dá acesso aos campos como unknown"
+        }
+      ]
+    },
+    {
+      "heading": "Validadores compostos e tipo derivado",
+      "body": [
+        "Escrever a interface e depois o predicado é escrever o mesmo formato duas vezes, e as duas versões podem divergir. A alternativa é construir o validador a partir de peças genéricas e deixar o compilador derivar o tipo. Um Validador<T> é só (x: unknown) => x is T; combinadores como eArrayDe e eObjeto recebem validadores e devolvem validadores maiores.",
+        "O truque está em dois tipos pequenos: TipoDe<V> usa infer para extrair o T de um Validador<T>, e o tipo de retorno de eObjeto é um mapped type que aplica TipoDe a cada campo do esquema. O esquema existe em runtime e o tipo estático sai dele com TipoDe<typeof eUtilizador>, sem nunca ser escrito à mão.",
+        "O parâmetro const em eLiteral faz com que eLiteral(\"admin\", \"leitor\") fique com o tipo \"admin\" | \"leitor\" em vez de string."
+      ],
+      "code": "type Validador<T> = (x: unknown) => x is T;\ntype TipoDe<V> = V extends Validador<infer T> ? T : never;\n\nconst eString: Validador<string> = (x): x is string => typeof x === \"string\";\nconst eNumero: Validador<number> = (x): x is number => typeof x === \"number\";\n\nfunction eLiteral<const L extends readonly (string | number)[]>(...valores: L): Validador<L[number]> {\n  return (x): x is L[number] => valores.includes(x as L[number]);\n}\n\nfunction eArrayDe<T>(v: Validador<T>): Validador<T[]> {\n  return (x): x is T[] => Array.isArray(x) && x.every(v);\n}\n\nfunction eObjeto<E extends Record<string, Validador<unknown>>>(\n  esquema: E\n): Validador<{ [K in keyof E]: TipoDe<E[K]> }> {\n  return (x): x is { [K in keyof E]: TipoDe<E[K]> } => {\n    if (typeof x !== \"object\" || x === null) return false;\n    const o = x as Record<string, unknown>;\n    return Object.keys(esquema).every((chave) => esquema[chave](o[chave]));\n  };\n}\n\n// Um único esquema em runtime...\nconst eUtilizador = eObjeto({\n  id: eNumero,\n  nome: eString,\n  papel: eLiteral(\"admin\", \"leitor\"),\n  morada: eObjeto({ rua: eString, codigoPostal: eString }),\n  etiquetas: eArrayDe(eString),\n});\n\n// ...e o tipo estático derivado dele, sem o escrever duas vezes\ntype Utilizador = TipoDe<typeof eUtilizador>;\n// { id: number; nome: string; papel: \"admin\" | \"leitor\";\n//   morada: { rua: string; codigoPostal: string }; etiquetas: string[] }\n\nconst dados: unknown = JSON.parse(\n  '{\"id\": 1, \"nome\": \"Ana\", \"papel\": \"admin\", \"morada\": {\"rua\": \"Rua Nova\", \"codigoPostal\": \"1000-001\"}, \"etiquetas\": []}'\n);\n\nif (eUtilizador(dados)) {\n  const u: Utilizador = dados;\n  console.log(u.papel, u.morada.codigoPostal); // admin 1000-001\n}\nconsole.log(eUtilizador({ id: 1, nome: \"Rui\", papel: \"editor\" })); // false\n",
+      "callout_kind": "NOTA",
+      "callout_text": "Esta versão simples não distingue campo opcional de campo que aceita undefined: um eOpcional(eString) dá o tipo string | undefined com a chave obrigatória. As bibliotecas de validação tratam esse caso com tipos mais elaborados.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔧",
+          "text": "Validador<T> = (x: unknown) => x is T"
+        },
+        {
+          "icon": "🧬",
+          "text": "Combinadores: eArrayDe, eObjeto, eLiteral"
+        },
+        {
+          "icon": "🪄",
+          "text": "TipoDe<V> com infer extrai o tipo do validador"
+        },
+        {
+          "icon": "✍️",
+          "text": "Formato escrito uma vez, tipo derivado"
+        }
+      ]
+    },
+    {
+      "heading": "Acumular erros com o caminho do campo",
+      "body": [
+        "Um predicado responde sim ou não, o que chega para decidir mas não para explicar. Quando os dados vêm de um formulário ou de outra equipa, é mais útil devolver a lista de todos os problemas, cada um com o caminho do campo, como morada.codigoPostal ou telefones[1].",
+        "O desenho muda pouco: cada verificador recebe o valor e o caminho até ele e devolve string[], vazio quando está tudo bem. Os combinadores de objeto e de array constroem o caminho e juntam as listas com flatMap, em vez de parar no primeiro erro. O tratamento de erros mais estruturado, com objetos de resultado e classes de erro próprias, fica para a aula seguinte."
+      ],
+      "code": "// Cada verificador devolve a lista de problemas (lista vazia = válido)\ntype Verificador = (x: unknown, caminho: string) => string[];\n\nfunction tipoDe(x: unknown): string {\n  if (x === null) return \"null\";\n  if (Array.isArray(x)) return \"array\";\n  return typeof x;\n}\n\nconst texto: Verificador = (x, caminho) =>\n  typeof x === \"string\" ? [] : [`${caminho}: esperava string, recebeu ${tipoDe(x)}`];\n\nconst numero: Verificador = (x, caminho) =>\n  typeof x === \"number\" ? [] : [`${caminho}: esperava number, recebeu ${tipoDe(x)}`];\n\nfunction objeto(esquema: Record<string, Verificador>): Verificador {\n  return (x, caminho) => {\n    if (typeof x !== \"object\" || x === null || Array.isArray(x)) {\n      return [`${caminho || \"(raiz)\"}: esperava objeto, recebeu ${tipoDe(x)}`];\n    }\n    const o = x as Record<string, unknown>;\n    // não pára no primeiro: junta os problemas de todos os campos\n    return Object.entries(esquema).flatMap(([chave, verificar]) =>\n      verificar(o[chave], caminho ? `${caminho}.${chave}` : chave)\n    );\n  };\n}\n\nfunction arrayDe(verificar: Verificador): Verificador {\n  return (x, caminho) =>\n    Array.isArray(x)\n      ? x.flatMap((elem, i) => verificar(elem, `${caminho}[${i}]`))\n      : [`${caminho}: esperava array, recebeu ${tipoDe(x)}`];\n}\n\nconst verificarCliente = objeto({\n  nome: texto,\n  idade: numero,\n  morada: objeto({ rua: texto, codigoPostal: texto }),\n  telefones: arrayDe(texto),\n});\n\nconst entrada: unknown = JSON.parse(\n  '{\"nome\": \"Marta\", \"idade\": \"40\", \"morada\": {\"rua\": \"Rua Direita\", \"codigoPostal\": 4000}, \"telefones\": [\"912\", 913]}'\n);\n\nconsole.log(verificarCliente(entrada, \"\"));\n// [\n//   'idade: esperava number, recebeu string',\n//   'morada.codigoPostal: esperava string, recebeu number',\n//   'telefones[1]: esperava string, recebeu number'\n// ]\nconsole.log(verificarCliente(null, \"\")); // [ '(raiz): esperava objeto, recebeu null' ]\n",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Acrescente um verificador booleano e um campo ativo ao esquema do cliente, e confirme que a mensagem aparece com o caminho certo quando o JSON traz \"ativo\": \"sim\".",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📋",
+          "text": "Devolver string[]: vazio significa válido"
+        },
+        {
+          "icon": "🧭",
+          "text": "Cada mensagem leva o caminho do campo"
+        },
+        {
+          "icon": "➕",
+          "text": "flatMap junta os problemas de todos os campos"
+        }
+      ]
+    },
+    {
+      "heading": "Bibliotecas de validação e onde validar",
+      "body": [
+        "O que se construiu à mão é a ideia central de bibliotecas como Zod ou Valibot: um único esquema que existe em runtime, valida os dados e do qual se deriva o tipo estático. Em Zod escreve-se z.object({ nome: z.string() }) para o esquema e z.infer<typeof esquema> para o tipo, que é o papel de eObjeto e de TipoDe nesta aula. As bibliotecas acrescentam mensagens de erro ricas, campos opcionais bem tipados, transformações e muitos validadores prontos.",
+        "Seja à mão ou com biblioteca, a validação faz-se na fronteira e uma vez: onde o JSON entra, a função devolve um tipo confiável e o interior do programa trabalha com ele sem voltar a verificar. Não validar sai caro: um as silencia o compilador e o dado errado circula até rebentar, ou pior, até produzir um resultado errado sem erro nenhum, como a soma que concatena strings no exemplo."
+      ],
+      "code": "interface Encomenda {\n  id: string;\n  total: number;\n}\n\nfunction eEncomenda(x: unknown): x is Encomenda {\n  if (typeof x !== \"object\" || x === null) return false;\n  const o = x as Record<string, unknown>;\n  return typeof o.id === \"string\" && typeof o.total === \"number\";\n}\n\n// Fronteira: o único sítio onde entra unknown e onde se valida\nfunction lerEncomendas(json: string): Encomenda[] {\n  const bruto: unknown = JSON.parse(json);\n  if (!Array.isArray(bruto) || !bruto.every(eEncomenda)) {\n    throw new Error(\"resposta com formato inesperado\");\n  }\n  return bruto;\n}\n\n// Interior: recebe Encomenda[] e confia no tipo, sem voltar a validar\nfunction somarTotais(encomendas: Encomenda[]): number {\n  return encomendas.reduce((soma, e) => soma + e.total, 0);\n}\n\nconst resposta = '[{\"id\": \"A1\", \"total\": 12.5}, {\"id\": \"A2\", \"total\": 7.5}]';\nconsole.log(somarTotais(lerEncomendas(resposta))); // 20\n\n// O custo de não validar: um as silencia o compilador e o erro passa\nconst semValidar = JSON.parse('[{\"id\": \"A3\", \"total\": \"10\"}]') as Encomenda[];\nconsole.log(somarTotais(semValidar)); // 010 (concatenou strings, não somou)\n\ntry {\n  lerEncomendas('[{\"id\": \"A3\", \"total\": \"10\"}]');\n} catch (e) {\n  console.log((e as Error).message); // resposta com formato inesperado\n}\n",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Espalhar validações pelo interior do código é sinal de que a fronteira não está bem definida. Valide à entrada, devolva o tipo correto e deixe os tipos fazer o resto.",
+      "table_headers": [
+        "Conceito",
+        "Feito à mão nesta aula",
+        "Em Zod (só para comparação)"
+      ],
+      "table_rows": [
+        [
+          "Validador de texto",
+          "eString",
+          "z.string()"
+        ],
+        [
+          "Array de T",
+          "eArrayDe(v)",
+          "z.array(v)"
+        ],
+        [
+          "Objeto com esquema",
+          "eObjeto({ ... })",
+          "z.object({ ... })"
+        ],
+        [
+          "União de literais",
+          "eLiteral(\"admin\", \"leitor\")",
+          "z.enum([\"admin\", \"leitor\"])"
+        ],
+        [
+          "Tipo derivado",
+          "TipoDe<typeof v>",
+          "z.infer<typeof v>"
+        ],
+        [
+          "Lista de erros",
+          "Verificador com caminho",
+          "safeParse e a lista de issues"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "Zod e Valibot: esquema em runtime, tipo derivado"
+        },
+        {
+          "icon": "🚪",
+          "text": "Validar na fronteira, uma única vez"
+        },
+        {
+          "icon": "🏠",
+          "text": "O interior confia nos tipos e não revalida"
+        },
+        {
+          "icon": "💸",
+          "text": "Sem validar, um as deixa passar dados errados"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Predicado para um produto",
+      "difficulty": "Iniciante",
+      "statement": "Defina a interface Produto com nome (string), preco (number), emStock (boolean) e categoria opcional (string). Escreva o type predicate eProduto(x: unknown): x is Produto que verifique todos os campos, aceitando a ausência de categoria mas rejeitando uma categoria que não seja string. Teste-o com quatro strings JSON: duas válidas, uma com o preço em texto e outra com categoria numérica, mostrando o nome nas válidas e \"rejeitado\" nas restantes.",
+      "hint": "Depois de confirmar que é objeto não nulo, converta para Record<string, unknown> e combine os testes com &&. O campo opcional precisa de um teste com ||.",
+      "solution_code": "interface Produto {\n  nome: string;\n  preco: number;\n  emStock: boolean;\n  categoria?: string;\n}\n\nfunction eProduto(x: unknown): x is Produto {\n  if (typeof x !== \"object\" || x === null) return false;\n  const o = x as Record<string, unknown>;\n  return (\n    typeof o.nome === \"string\" &&\n    typeof o.preco === \"number\" &&\n    typeof o.emStock === \"boolean\" &&\n    (o.categoria === undefined || typeof o.categoria === \"string\")\n  );\n}\n\nconst testes = [\n  '{\"nome\": \"Caneta\", \"preco\": 1.2, \"emStock\": true}',\n  '{\"nome\": \"Lápis\", \"preco\": 0.5, \"emStock\": false, \"categoria\": \"escrita\"}',\n  '{\"nome\": \"Borracha\", \"preco\": \"0.3\", \"emStock\": true}',\n  '{\"nome\": \"Régua\", \"preco\": 2, \"emStock\": true, \"categoria\": 5}',\n];\n\nfor (const t of testes) {\n  const dados: unknown = JSON.parse(t);\n  console.log(eProduto(dados) ? `ok: ${dados.nome}` : \"rejeitado\");\n}\n// ok: Caneta\n// ok: Lápis\n// rejeitado\n// rejeitado\n",
+      "solution_explanation": "O predicado verifica cada campo com typeof e trata o opcional como undefined ou string. Dentro do ternário, dados já é Produto e dados.nome compila sem conversões."
+    },
+    {
+      "title": "Assertion function para um pedido",
+      "difficulty": "Intermedio",
+      "statement": "Um pedido tem cliente (string) e linhas, um array de objetos com produto (string) e quantidade (number maior que zero). Escreva a assertion function assertPedido como arrow function guardada numa const, que lance um Error com uma mensagem indicando o campo em falta. Escreva uma função processar(json: string) que faça o parse, chame a asserção dentro de try/catch e, se passar, mostre o cliente e o total de unidades. Teste com um pedido válido, um com quantidade 0 e um sem cliente.",
+      "hint": "Lembre-se de que a arrow function só estreita se a própria const tiver o tipo anotado. Para as linhas, um predicado eLinha combinado com every resolve o array.",
+      "solution_code": "interface Linha {\n  produto: string;\n  quantidade: number;\n}\n\ninterface Pedido {\n  cliente: string;\n  linhas: Linha[];\n}\n\nfunction eLinha(x: unknown): x is Linha {\n  if (typeof x !== \"object\" || x === null) return false;\n  const o = x as Record<string, unknown>;\n  return typeof o.produto === \"string\" && typeof o.quantidade === \"number\" && o.quantidade > 0;\n}\n\n// A anotação na constante é obrigatória para a chamada estreitar (senão TS2775)\nconst assertPedido: (x: unknown) => asserts x is Pedido = (x) => {\n  if (typeof x !== \"object\" || x === null) throw new Error(\"pedido: esperava objeto\");\n  const o = x as Record<string, unknown>;\n  if (typeof o.cliente !== \"string\") throw new Error(\"pedido.cliente: esperava string\");\n  if (!Array.isArray(o.linhas) || !o.linhas.every(eLinha)) {\n    throw new Error(\"pedido.linhas: formato inválido\");\n  }\n};\n\nfunction processar(json: string): void {\n  const dados: unknown = JSON.parse(json);\n  try {\n    assertPedido(dados);\n    const unidades = dados.linhas.reduce((s, l) => s + l.quantidade, 0);\n    console.log(`${dados.cliente}: ${unidades} unidades`);\n  } catch (e) {\n    console.log(\"erro:\", (e as Error).message);\n  }\n}\n\nprocessar('{\"cliente\": \"Ana\", \"linhas\": [{\"produto\": \"Caneta\", \"quantidade\": 3}, {\"produto\": \"Lápis\", \"quantidade\": 2}]}');\nprocessar('{\"cliente\": \"Rui\", \"linhas\": [{\"produto\": \"Caneta\", \"quantidade\": 0}]}');\nprocessar('{\"linhas\": []}');\n// Ana: 5 unidades\n// erro: pedido.linhas: formato inválido\n// erro: pedido.cliente: esperava string\n",
+      "solution_explanation": "A anotação (x: unknown) => asserts x is Pedido na const evita o TS2775. Depois da chamada, dados é Pedido e o reduce sobre as linhas é tipado sem mais verificações; os pedidos inválidos caem no catch com a mensagem do campo."
+    },
+    {
+      "title": "Combinadores novos e tipo derivado",
+      "difficulty": "Intermedio",
+      "statement": "Partindo do tipo Validador<T>, de TipoDe<V> e dos combinadores eString, eNumero, eArrayDe e eObjeto da aula, acrescente eBooleano e eOpcional<T>(v: Validador<T>): Validador<T | undefined>. Use-os para descrever um artigo com titulo, publicado (boolean), visitas, subtitulo opcional e autores, um array de objetos com nome e email opcional. Derive o tipo Artigo do validador sem escrever a interface e mostre o título, o subtítulo (ou \"(sem subtítulo)\") e o primeiro autor de um JSON válido.",
+      "hint": "eOpcional aceita undefined ou delega no validador recebido. O tipo sai de TipoDe<typeof eArtigo>.",
+      "solution_code": "type Validador<T> = (x: unknown) => x is T;\ntype TipoDe<V> = V extends Validador<infer T> ? T : never;\n\nconst eString: Validador<string> = (x): x is string => typeof x === \"string\";\nconst eNumero: Validador<number> = (x): x is number => typeof x === \"number\";\nconst eBooleano: Validador<boolean> = (x): x is boolean => typeof x === \"boolean\";\n\nfunction eOpcional<T>(v: Validador<T>): Validador<T | undefined> {\n  return (x): x is T | undefined => x === undefined || v(x);\n}\n\nfunction eArrayDe<T>(v: Validador<T>): Validador<T[]> {\n  return (x): x is T[] => Array.isArray(x) && x.every(v);\n}\n\nfunction eObjeto<E extends Record<string, Validador<unknown>>>(\n  esquema: E\n): Validador<{ [K in keyof E]: TipoDe<E[K]> }> {\n  return (x): x is { [K in keyof E]: TipoDe<E[K]> } => {\n    if (typeof x !== \"object\" || x === null) return false;\n    const o = x as Record<string, unknown>;\n    return Object.keys(esquema).every((chave) => esquema[chave](o[chave]));\n  };\n}\n\nconst eArtigo = eObjeto({\n  titulo: eString,\n  publicado: eBooleano,\n  visitas: eNumero,\n  subtitulo: eOpcional(eString),\n  autores: eArrayDe(eObjeto({ nome: eString, email: eOpcional(eString) })),\n});\n\ntype Artigo = TipoDe<typeof eArtigo>;\n// { titulo: string; publicado: boolean; visitas: number; subtitulo: string | undefined;\n//   autores: { nome: string; email: string | undefined }[] }\n\nconst bruto: unknown = JSON.parse(\n  '{\"titulo\": \"Tipos na fronteira\", \"publicado\": true, \"visitas\": 120, \"autores\": [{\"nome\": \"Ana\"}]}'\n);\n\nif (eArtigo(bruto)) {\n  const a: Artigo = bruto;\n  console.log(a.titulo, a.subtitulo ?? \"(sem subtítulo)\", a.autores[0].nome);\n}\n// Tipos na fronteira (sem subtítulo) Ana\nconsole.log(eArtigo({ titulo: \"X\", publicado: \"sim\", visitas: 1, autores: [] })); // false\n",
+      "solution_explanation": "Cada combinador devolve um Validador com o tipo certo, e o mapped type de eObjeto junta-os num tipo de objeto. Artigo nunca é escrito à mão: muda sozinho quando o esquema muda. Os campos opcionais ficam com o tipo string | undefined e a chave obrigatória, a limitação desta versão simples."
+    },
+    {
+      "title": "Relatório de erros de uma lista de encomendas",
+      "difficulty": "Avancado",
+      "statement": "Com o tipo Verificador = (x: unknown, caminho: string) => string[], escreva os verificadores texto e numero, um umDe(...valores) para uniões de literais em texto, e os combinadores objeto e arrayDe que constroem o caminho (com ponto para campos e [i] para índices) e acumulam todos os problemas. Valide um JSON com três encomendas, cada uma com id (string), estado (pendente, pago ou enviado) e itens (array de objetos com produto string e preco number), em que a segunda tenha vários erros e a terceira não tenha itens. Mostre todas as mensagens, uma por linha, com o caminho a começar em encomendas.",
+      "hint": "arrayDe usa flatMap com o índice para montar o caminho; objeto usa Object.entries do esquema e flatMap para juntar as listas de cada campo.",
+      "solution_code": "type Verificador = (x: unknown, caminho: string) => string[];\n\nfunction tipoDe(x: unknown): string {\n  if (x === null) return \"null\";\n  if (Array.isArray(x)) return \"array\";\n  return typeof x;\n}\n\nconst texto: Verificador = (x, c) =>\n  typeof x === \"string\" ? [] : [`${c}: esperava string, recebeu ${tipoDe(x)}`];\n\nconst numero: Verificador = (x, c) =>\n  typeof x === \"number\" ? [] : [`${c}: esperava number, recebeu ${tipoDe(x)}`];\n\nfunction umDe(...valores: readonly string[]): Verificador {\n  return (x, c) =>\n    typeof x === \"string\" && valores.includes(x)\n      ? []\n      : [`${c}: esperava um de ${valores.join(\", \")}, recebeu ${JSON.stringify(x)}`];\n}\n\nfunction objeto(esquema: Record<string, Verificador>): Verificador {\n  return (x, c) => {\n    if (typeof x !== \"object\" || x === null || Array.isArray(x)) {\n      return [`${c || \"(raiz)\"}: esperava objeto, recebeu ${tipoDe(x)}`];\n    }\n    const o = x as Record<string, unknown>;\n    return Object.entries(esquema).flatMap(([k, v]) => v(o[k], c ? `${c}.${k}` : k));\n  };\n}\n\nfunction arrayDe(v: Verificador): Verificador {\n  return (x, c) =>\n    Array.isArray(x)\n      ? x.flatMap((e, i) => v(e, `${c}[${i}]`))\n      : [`${c}: esperava array, recebeu ${tipoDe(x)}`];\n}\n\nconst verificarEncomendas = arrayDe(\n  objeto({\n    id: texto,\n    estado: umDe(\"pendente\", \"pago\", \"enviado\"),\n    itens: arrayDe(objeto({ produto: texto, preco: numero })),\n  })\n);\n\nconst json = `[\n  {\"id\": \"E1\", \"estado\": \"pago\", \"itens\": [{\"produto\": \"Caneta\", \"preco\": 1.2}]},\n  {\"id\": 2, \"estado\": \"perdido\", \"itens\": [{\"produto\": \"Lápis\", \"preco\": \"0.5\"}, {\"preco\": 3}]},\n  {\"id\": \"E3\", \"estado\": \"enviado\"}\n]`;\n\nconst problemas = verificarEncomendas(JSON.parse(json), \"encomendas\");\nconsole.log(problemas.length === 0 ? \"tudo válido\" : problemas.join(\"\\n\"));\n// encomendas[1].id: esperava string, recebeu number\n// encomendas[1].estado: esperava um de pendente, pago, enviado, recebeu \"perdido\"\n// encomendas[1].itens[0].preco: esperava number, recebeu string\n// encomendas[1].itens[1].produto: esperava string, recebeu undefined\n// encomendas[2].itens: esperava array, recebeu undefined\n",
+      "solution_explanation": "Como cada verificador devolve uma lista em vez de lançar, os combinadores apenas concatenam resultados e nenhum erro esconde os outros. O caminho vai sendo prolongado a cada nível, o que torna cada mensagem acionável para quem enviou os dados."
+    }
+  ],
+  "summary": [
+    "Um type predicate completo valida objeto, cada campo, opcionais e literais, e reutiliza-se em todo o lado",
+    "O compilador confia cegamente no corpo do predicado: um predicado incompleto compila e falha em runtime",
+    "asserts x is T estreita o resto do bloco; numa arrow function a const precisa de anotação (TS2775)",
+    "arr.every(ePredicado) estreita o array para T[] e os objetos aninhados reutilizam predicados",
+    "Com Validador<T>, combinadores e TipoDe<V> o formato é escrito uma vez e o tipo é derivado, como em Zod",
+    "Valida-se na fronteira, uma vez, de preferência com mensagens que indiquem o caminho do campo"
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 04",
+  "next_label": "Aula 04 → Tratamento de Erros Tipado"
+}

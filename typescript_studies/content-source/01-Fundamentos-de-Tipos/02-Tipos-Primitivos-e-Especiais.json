@@ -1,0 +1,359 @@
+{
+  "module_num": "01",
+  "module_title": "Fundamentos de Tipos",
+  "module_dir": "01-Fundamentos-de-Tipos",
+  "lesson_num": "02",
+  "lesson_slug": "Tipos-Primitivos-e-Especiais",
+  "kind": "aula",
+  "title": "Tipos Primitivos e Especiais: any, unknown e never",
+  "filename_base": "02-Tipos-Primitivos-e-Especiais",
+  "subtitle": "Os tipos base do TypeScript e os três casos especiais: any, unknown e never",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Reconhecer os sete tipos primitivos e escrevê-los sempre em minúsculas",
+    "Perceber porque cada any é um buraco na rede de segurança do compilador",
+    "Usar unknown para receber valores de fora sem perder a verificação de tipos",
+    "Identificar onde o tipo never aparece e para que serve",
+    "Distinguir void de undefined no retorno de funções",
+    "Saber o que mudam as opções strictNullChecks e noImplicitAny"
+  ],
+  "sections": [
+    {
+      "heading": "Os tipos primitivos",
+      "body": [
+        "O TypeScript parte dos mesmos valores primitivos que já conhece do JavaScript e dá um nome de tipo a cada um: string, number, boolean, bigint, symbol, null e undefined. Não há um tipo int nem um tipo float separados, porque em JavaScript também não há.",
+        "Todos estes nomes se escrevem em minúsculas. Existem também String, Number e Boolean com maiúscula, mas esses referem-se aos objetos invólucro do JavaScript, que quase nunca se usam e que não são compatíveis com os primitivos. Se anotar uma variável com String em vez de string, o compilador vai recusar-lhe valores de texto normais em alguns sítios e aceitar coisas que não quer. A regra é simples: minúsculas, sempre."
+      ],
+      "code": "const etiqueta: string = \"Ana Ribeiro\";\nconst contagem: number = 34;\nconst estaAtivo: boolean = true;\nconst bytesDoFicheiro: bigint = 9007199254740993n;\nconst chaveUnica: symbol = Symbol(\"id\");\nconst semValor: undefined = undefined;\nconst nenhum: null = null;\n\n// @ts-expect-error String com maiúscula é o objeto invólucro, não o tipo primitivo\nconst textoInvalido: string = new String(\"texto\");\n\nconsole.log(typeof etiqueta, typeof contagem, typeof estaAtivo);\n// string number boolean\nconsole.log(typeof bytesDoFicheiro, typeof chaveUnica, semValor, nenhum);\n// bigint symbol undefined null\nconsole.log(textoInvalido);",
+      "callout_kind": "NOTA",
+      "callout_text": "Na prática, anotar primitivos à mão é raro: a inferência, que viu na aula anterior, já lhes acerta no tipo. Os nomes interessam sobretudo quando escreve assinaturas de funções e tipos de objetos.",
+      "table_headers": [
+        "Tipo",
+        "Exemplo de valor",
+        "Notas"
+      ],
+      "table_rows": [
+        [
+          "string",
+          "\"Ana\"",
+          "Texto; não confundir com String, o objeto invólucro"
+        ],
+        [
+          "number",
+          "34 ou 3.5",
+          "Inteiros e decimais partilham o mesmo tipo"
+        ],
+        [
+          "boolean",
+          "true",
+          "Só admite true e false"
+        ],
+        [
+          "bigint",
+          "9007199254740993n",
+          "Inteiros de precisão arbitrária; exige target ES2020 ou superior"
+        ],
+        [
+          "symbol",
+          "Symbol(\"id\")",
+          "Chaves únicas; o tipo chama-se symbol, em minúsculas"
+        ],
+        [
+          "null",
+          "null",
+          "Um único valor possível"
+        ],
+        [
+          "undefined",
+          "undefined",
+          "Um único valor possível"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔤",
+          "text": "string, number, boolean, bigint, symbol, null, undefined"
+        },
+        {
+          "icon": "🔡",
+          "text": "Sempre em minúsculas: String maiúscula é outra coisa"
+        },
+        {
+          "icon": "🧮",
+          "text": "Não há int nem float: number cobre tudo"
+        }
+      ]
+    },
+    {
+      "heading": "any: desligar o compilador",
+      "body": [
+        "O tipo any diz ao TypeScript para não verificar nada naquele valor. Aceita qualquer atribuição, permite aceder a qualquer propriedade, chamar qualquer método e ser atribuído a qualquer outro tipo. É o tipo de escape que existe para casos em que ainda não se consegue descrever a forma de um valor, tipicamente durante uma migração de JavaScript, assunto do Módulo 11.",
+        "O problema do any é que é contagioso. Tudo o que se lê a partir de um any também é any, e esse any viaja pelo código até chegar a um sítio onde causa um erro em execução que o compilador nunca viu. No exemplo, portaLida é um número guardado numa constante declarada como string, e ninguém se queixa: só quando o programa correr é que toUpperCase rebenta.",
+        "Cada any no código é um buraco na rede. Não é errado usar um, mas deve ser uma decisão consciente, escrita de propósito e de preferência com um comentário a dizer porquê, e não o resultado de esquecer uma anotação."
+      ],
+      "code": "function lerConfiguracao(): any {\n  return { porta: 8080, ativo: true };\n}\n\nconst configuracaoLida = lerConfiguracao();\nconst portaLida = configuracaoLida.porta;\nconst tituloDoAny: string = portaLida;\nconst tituloEmMaiusculas = tituloDoAny.toUpperCase();\nconst somaFalsa: number = configuracaoLida.naoExiste.nem.esta;",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Nada neste bloco dá erro de compilação, e no entanto duas linhas rebentam em execução. É exatamente esse o custo do any: o compilador deixa de ser o seu revisor.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🚪",
+          "text": "any desliga a verificação naquele valor"
+        },
+        {
+          "icon": "🦠",
+          "text": "É contagioso: propaga-se a tudo o que toca"
+        },
+        {
+          "icon": "🕳️",
+          "text": "Cada any é um buraco na rede de segurança"
+        }
+      ]
+    },
+    {
+      "heading": "unknown: o any com cinto de segurança",
+      "body": [
+        "O tipo unknown aceita qualquer valor, tal como any, mas não deixa fazer nada com ele. Não se lhe pode aceder a propriedades, não se lhe pode chamar métodos e não se pode atribuir a uma variável de outro tipo. Para o usar é obrigatório provar primeiro ao compilador de que tipo se trata, com typeof, com uma comparação, com Array.isArray ou com um type guard dos que o Módulo 04 trata em detalhe.",
+        "Esta é a diferença essencial: any transfere a responsabilidade para si e cala-se; unknown mantém a responsabilidade do lado do compilador e obriga-o a verificar. É por isso que unknown é a escolha certa para tudo o que entra no programa vindo de fora, como JSON.parse, respostas de rede, dados de formulários ou o valor apanhado num catch.",
+        "Repare no exemplo: as duas primeiras utilizações são recusadas, e só dentro do if, depois de confirmar que é um objeto, que não é null e que tem a propriedade nome, é que o acesso passa."
+      ],
+      "code": "const respostaJson: unknown = JSON.parse('{\"nome\":\"Ana\"}');\n\n// @ts-expect-error não se pode aceder a propriedades de um unknown sem estreitar\nconsole.log(respostaJson.nome);\n\n// @ts-expect-error unknown não é atribuível a string\nconst textoInseguro: string = respostaJson;\n\nif (typeof respostaJson === \"object\" && respostaJson !== null && \"nome\" in respostaJson) {\n  console.log(respostaJson.nome);\n}\n\nconst valorDesconhecido: unknown = 42;\nconsole.log(valorDesconhecido === 42, typeof valorDesconhecido, textoInseguro);",
+      "callout_kind": "DICA",
+      "callout_text": "Quando estiver tentado a escrever any, experimente primeiro unknown. Se o código continuar a compilar, ganhou segurança de graça; se deixar de compilar, o compilador acabou de lhe mostrar uma verificação que faltava.",
+      "table_headers": [
+        "Pergunta",
+        "any",
+        "unknown"
+      ],
+      "table_rows": [
+        [
+          "Aceita qualquer valor na atribuição?",
+          "Sim",
+          "Sim"
+        ],
+        [
+          "Pode ser atribuído a string ou number?",
+          "Sim, sem aviso",
+          "Não, só depois de estreitar"
+        ],
+        [
+          "Deixa aceder a propriedades e chamar métodos?",
+          "Sim, sem qualquer verificação",
+          "Não, enquanto o tipo não for estreitado"
+        ],
+        [
+          "Propaga-se ao resto do código?",
+          "Sim, é contagioso",
+          "Não, fica contido onde está"
+        ],
+        [
+          "O compilador ainda o protege?",
+          "Não, está desligado ali",
+          "Sim, obriga a verificar antes de usar"
+        ],
+        [
+          "Quando usar",
+          "Último recurso, e de propósito",
+          "Sempre que o valor vem de fora"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🛡️",
+          "text": "unknown aceita tudo mas não deixa usar nada"
+        },
+        {
+          "icon": "🔍",
+          "text": "Obriga a estreitar o tipo antes de qualquer acesso"
+        },
+        {
+          "icon": "🌐",
+          "text": "É o tipo certo para dados vindos de fora"
+        }
+      ]
+    },
+    {
+      "heading": "never: o tipo do que nunca acontece",
+      "body": [
+        "O tipo never representa um valor que nunca chega a existir. Não é o mesmo que undefined, que é um valor concreto: never é a ausência total de valores possíveis, e por isso nenhuma variável de tipo never pode alguma vez ser preenchida.",
+        "Aparece em três sítios na prática. Primeiro, no retorno de funções que nunca devolvem nada porque lançam sempre uma exceção ou porque nunca terminam. Segundo, em tipos vazios por construção, como a interseção de string com number, que não tem um único valor que satisfaça os dois lados. Terceiro, e este é o mais útil, no ramo impossível de uma união: depois de tratar todas as hipóteses, o que sobra tem tipo never.",
+        "É esse terceiro caso que dá a verificação de exaustividade. Ao atribuir o valor restante a uma constante de tipo never, obriga o compilador a confirmar que não sobrou nada por tratar. No dia em que alguém acrescentar um valor à união e se esquecer de tratar esse caso, a atribuição deixa de compilar e o erro aparece logo, em vez de aparecer em produção. O Módulo 04 aprofunda esta técnica."
+      ],
+      "code": "function lancarFalha(mensagem: string): never {\n  throw new Error(mensagem);\n}\n\nfunction cicloEterno(): never {\n  while (true) {\n    // nunca chega ao fim, por isso nunca devolve nada\n  }\n}\n\ntype EstadoDoRegisto = \"ativo\" | \"inativo\";\n\nfunction descreverEstado(estado: EstadoDoRegisto): string {\n  if (estado === \"ativo\") {\n    return \"Registo ativo\";\n  }\n  if (estado === \"inativo\") {\n    return \"Registo inativo\";\n  }\n  const naoTratado: never = estado;\n  return lancarFalha(`estado impossível: ${String(naoTratado)}`);\n}\n\ntype NuncaExiste = string & number;\nconst semValoresPossiveis: NuncaExiste[] = [];\nconst tarefasSemFim: Array<() => never> = [cicloEterno];\nconst rotuloDoEstado: string = descreverEstado(\"ativo\");",
+      "callout_kind": "NOTA",
+      "callout_text": "never é atribuível a qualquer tipo, porque uma expressão que nunca produz valor nunca pode violar contrato nenhum. O contrário não acontece: nada é atribuível a never, exceto o próprio never.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🚫",
+          "text": "never é o tipo sem valores possíveis"
+        },
+        {
+          "icon": "💥",
+          "text": "Retorno de funções que lançam sempre ou nunca terminam"
+        },
+        {
+          "icon": "✅",
+          "text": "Garante que tratou todos os casos de uma união"
+        }
+      ]
+    },
+    {
+      "heading": "void e a diferença para undefined",
+      "body": [
+        "O tipo void é o retorno de uma função que não devolve nada de útil. Em execução esse retorno é undefined, mas o tipo não é undefined: void significa que ninguém deve olhar para o valor devolvido, e por isso o compilador não deixa usá-lo como se fosse um valor normal.",
+        "A diferença tem uma consequência prática importante nos callbacks. Uma função declarada com retorno void aceita ser satisfeita por uma função que devolve alguma coisa, porque o valor vai simplesmente ser ignorado. É graças a essa regra que a chamada a push dentro de um forEach compila sem problemas, apesar de push devolver um número. Já um retorno anotado como undefined exige mesmo que o valor devolvido seja undefined."
+      ],
+      "code": "function registarMensagem(mensagem: string): void {\n  console.log(mensagem);\n}\n\nconst retornoVoid: void = registarMensagem(\"a gravar\");\n\n// @ts-expect-error void não é atribuível a undefined\nconst retornoComoUndefined: undefined = retornoVoid;\n\nfunction devolveUndefined(): undefined {\n  return undefined;\n}\n\nconst numerosGuardados: number[] = [];\n[1, 2, 3].forEach((n) => numerosGuardados.push(n));\n\nconsole.log(numerosGuardados, devolveUndefined(), retornoComoUndefined);",
+      "callout_kind": "DICA",
+      "callout_text": "Na dúvida, use void no retorno de funções que existem pelo efeito que produzem, e reserve undefined para quando a ausência de valor é mesmo um resultado que quem chama vai inspecionar.",
+      "table_headers": [
+        "Aspeto",
+        "void",
+        "undefined"
+      ],
+      "table_rows": [
+        [
+          "O que representa",
+          "Não há valor de retorno a usar",
+          "Um valor concreto do JavaScript"
+        ],
+        [
+          "Onde se usa",
+          "Quase só em tipos de retorno",
+          "Variáveis, propriedades e retornos"
+        ],
+        [
+          "Aceita receber undefined?",
+          "Sim",
+          "Sim"
+        ],
+        [
+          "Pode ser atribuído a undefined?",
+          "Não",
+          "Sim"
+        ],
+        [
+          "Num callback, deixa devolver um valor?",
+          "Sim, o valor é ignorado",
+          "Não, o valor tem de ser undefined"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📭",
+          "text": "void: a função não devolve nada de útil"
+        },
+        {
+          "icon": "🔁",
+          "text": "Callbacks void podem devolver algo, que é ignorado"
+        },
+        {
+          "icon": "🎯",
+          "text": "undefined é um valor; void é uma promessa de o ignorar"
+        }
+      ]
+    },
+    {
+      "heading": "null e undefined com strictNullChecks",
+      "body": [
+        "Sem strictNullChecks, null e undefined pertencem a quase todos os tipos, e uma constante declarada como string pode perfeitamente valer null. É esse o comportamento que produz a maior parte dos erros de execução em JavaScript, do género cannot read properties of null.",
+        "Com strictNullChecks ligado, que faz parte da opção strict e é o que se deve usar sempre, null e undefined passam a ser tipos por direito próprio. Uma constante de tipo string deixa de aceitar null, e se quiser mesmo admitir a ausência de valor tem de o escrever na anotação, com string ou null. A partir daí o compilador exige que verifique o caso nulo antes de usar o valor, e a verificação faz-se com uma comparação normal, com o operador de acesso opcional ou com o operador de coalescência nula.",
+        "O ganho é grande: a possibilidade de um valor faltar deixa de ser uma surpresa em execução e passa a estar escrita no tipo, à vista de quem lê o código."
+      ],
+      "code": "function obterMorada(): string | null {\n  return \"Rua Nova, 12\";\n}\n\n// @ts-expect-error com strictNullChecks, null não pertence ao tipo string\nconst cidadeNula: string = null;\n\nconst moradaLida = obterMorada();\n\n// @ts-expect-error moradaLida pode ser null, por isso não tem length garantido\nconsole.log(moradaLida.length);\n\nif (moradaLida !== null) {\n  console.log(moradaLida.length); // 12\n}\n\nfunction ultimoApelido(nomeCompleto: string | undefined): string {\n  return nomeCompleto?.split(\" \").at(-1) ?? \"sem apelido\";\n}\n\nconsole.log(ultimoApelido(\"Ana Ribeiro\"), ultimoApelido(undefined), cidadeNula);\n// Ribeiro sem apelido",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Se encontrar um projeto onde const cidade: string = null compila, é sinal de que strictNullChecks está desligado. Ligá-lo é quase sempre a alteração de configuração que mais erros reais revela, tema do Módulo 09.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔒",
+          "text": "Com strict, null e undefined não entram em todo o lado"
+        },
+        {
+          "icon": "✍️",
+          "text": "A ausência de valor passa a estar escrita no tipo"
+        },
+        {
+          "icon": "❓",
+          "text": "Verificação com comparação, ?. ou ??"
+        }
+      ]
+    },
+    {
+      "heading": "noImplicitAny: sem tipo não passa",
+      "body": [
+        "Há dois caminhos para o any: escrevê-lo, o que é uma decisão sua, e deixá-lo aparecer sozinho. O segundo caso chama-se any implícito e acontece sobretudo em parâmetros de função, onde o compilador não tem de onde inferir nada, porque cada chamada pode passar o que quiser.",
+        "A opção noImplicitAny, que também vem incluída em strict, transforma essas situações em erro. Deixa de haver any silencioso: ou anota o parâmetro, ou o ficheiro não compila. Note que isto não afeta os parâmetros de callbacks passados a métodos já tipados, como o map do exemplo, porque aí o tipo vem do contexto e a inferência funciona.",
+        "Juntando as peças desta aula: prefira sempre o tipo mais preciso que conseguir escrever, use unknown quando não souber o que vem, reserve any para casos justificados e deixe never fazer o trabalho de garantir que não se esqueceu de nenhum caso."
+      ],
+      "code": "// @ts-expect-error com noImplicitAny o parâmetro não pode ficar sem tipo\nfunction duplicarSemTipo(valor) {\n  return valor * 2;\n}\n\nfunction triplicarTipado(valor: number): number {\n  return valor * 3;\n}\n\nconst dobrosInferidos = [1, 2, 3].map((n) => n * 2);\n\nconsole.log(duplicarSemTipo(4), triplicarTipado(4), dobrosInferidos);\n// 8 12 [ 2, 4, 6 ]",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Abra um ficheiro TypeScript seu, procure todas as ocorrências de any e, uma a uma, tente trocá-las por unknown ou por um tipo concreto. As que resistirem merecem um comentário a explicar porque ficaram.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⚙️",
+          "text": "noImplicitAny acaba com o any silencioso"
+        },
+        {
+          "icon": "🖊️",
+          "text": "Parâmetros de função exigem anotação"
+        },
+        {
+          "icon": "🧩",
+          "text": "Callbacks de métodos tipados continuam a inferir"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Um valor de cada tipo primitivo",
+      "difficulty": "Iniciante",
+      "statement": "Declare seis constantes com anotação explícita: tituloRelatorio do tipo string, paginasRelatorio do tipo number, relatorioPublicado do tipo boolean, idRelatorio do tipo symbol, bytesDoRelatorio do tipo bigint e revisorRelatorio do tipo string ou null, com o valor null. Escreva depois a função imprimirResumo, que recebe um nome de documento e um total de páginas e escreve uma linha na consola sem devolver nada, anotando o retorno de forma explícita. Chame a função e imprima as restantes constantes.",
+      "hint": "O retorno de uma função que só escreve na consola anota-se com void. Os literais de bigint terminam em n e a comparação também usa 0n.",
+      "solution_code": "const tituloRelatorio: string = \"Relatório mensal\";\nconst paginasRelatorio: number = 12;\nconst relatorioPublicado: boolean = false;\nconst idRelatorio: symbol = Symbol(\"relatorio\");\nconst bytesDoRelatorio: bigint = 12000000000n;\nconst revisorRelatorio: string | null = null;\n\nfunction imprimirResumo(nomeDoDocumento: string, total: number): void {\n  console.log(`${nomeDoDocumento} tem ${total} páginas`);\n}\n\nimprimirResumo(tituloRelatorio, paginasRelatorio);\n// Relatório mensal tem 12 páginas\nconsole.log(relatorioPublicado, revisorRelatorio); // false null\nconsole.log(typeof idRelatorio, bytesDoRelatorio > 0n); // symbol true",
+      "solution_explanation": "Cada constante usa o nome do tipo em minúsculas, que é a única forma correta de os escrever. O revisor admite a ausência de valor, e com strictNullChecks isso tem de constar da anotação, com string ou null. A função declara void porque existe apenas pelo efeito de escrever na consola."
+    },
+    {
+      "title": "Descrever um valor unknown",
+      "difficulty": "Intermedio",
+      "statement": "Escreva a função descreverValor, que recebe um parâmetro do tipo unknown e devolve uma string a descrever o que recebeu. Deve tratar, por esta ordem, strings (indicando o número de caracteres), números (formatados com duas casas decimais), booleanos, o valor null, o valor undefined e arrays (indicando o número de elementos), devolvendo uma descrição genérica para tudo o resto. Não pode usar any nem asserções de tipo. Teste a função com pelo menos cinco valores diferentes.",
+      "hint": "typeof resolve os primitivos, a comparação direta resolve null e undefined, e Array.isArray resolve os arrays. Repare que dentro de cada ramo o valor já tem o tipo certo.",
+      "solution_code": "function descreverValor(valor: unknown): string {\n  if (typeof valor === \"string\") {\n    return `string com ${valor.length} caracteres`;\n  }\n  if (typeof valor === \"number\") {\n    return `número ${valor.toFixed(2)}`;\n  }\n  if (typeof valor === \"boolean\") {\n    return valor ? \"booleano verdadeiro\" : \"booleano falso\";\n  }\n  if (valor === null) {\n    return \"o valor null\";\n  }\n  if (valor === undefined) {\n    return \"o valor undefined\";\n  }\n  if (Array.isArray(valor)) {\n    return `array com ${valor.length} elementos`;\n  }\n  return \"outro tipo qualquer\";\n}\n\nconsole.log(descreverValor(\"Ana\")); // string com 3 caracteres\nconsole.log(descreverValor(3.5)); // número 3.50\nconsole.log(descreverValor(true)); // booleano verdadeiro\nconsole.log(descreverValor(null)); // o valor null\nconsole.log(descreverValor([1, 2, 3])); // array com 3 elementos",
+      "solution_explanation": "O parâmetro entra como unknown, portanto nenhuma propriedade está acessível à partida. Cada verificação estreita o tipo dentro do respetivo ramo, e é por isso que valor.length e valor.toFixed passam a ser permitidos sem qualquer asserção. Com any o código também compilaria, mas um engano de tipo só apareceria em execução."
+    },
+    {
+      "title": "Exaustividade garantida com never",
+      "difficulty": "Intermedio",
+      "statement": "Defina o tipo EstadoEncomenda como a união dos textos pendente, pago e cancelado. Escreva a função mensagemDoEstado, que recebe um estado e devolve a mensagem correspondente, usando um switch. No ramo por omissão, atribua o estado a uma constante do tipo never e lance um erro. Confirme mentalmente que, se acrescentar um quarto estado à união sem tratar o caso novo, essa atribuição deixa de compilar.",
+      "hint": "No ramo por omissão o compilador já esgotou todas as hipóteses da união, por isso o que sobra tem tipo never. Use chavetas no case default para poder declarar uma constante lá dentro.",
+      "solution_code": "type EstadoEncomenda = \"pendente\" | \"pago\" | \"cancelado\";\n\nfunction mensagemDoEstado(estado: EstadoEncomenda): string {\n  switch (estado) {\n    case \"pendente\":\n      return \"A aguardar pagamento\";\n    case \"pago\":\n      return \"Pagamento confirmado\";\n    case \"cancelado\":\n      return \"Encomenda cancelada\";\n    default: {\n      const naoTratado: never = estado;\n      throw new Error(`Estado desconhecido: ${String(naoTratado)}`);\n    }\n  }\n}\n\nconsole.log(mensagemDoEstado(\"pendente\")); // A aguardar pagamento\nconsole.log(mensagemDoEstado(\"pago\")); // Pagamento confirmado\nconsole.log(mensagemDoEstado(\"cancelado\")); // Encomenda cancelada",
+      "solution_explanation": "Depois de tratados os três casos, o compilador sabe que não resta nenhum valor possível, e por isso o tipo de estado no ramo por omissão é never. A atribuição a uma constante de tipo never é a armadilha: assim que a união crescer sem o switch crescer também, sobra um valor real que não cabe em never e o erro aparece na compilação."
+    },
+    {
+      "title": "Validar dados externos sem any",
+      "difficulty": "Avancado",
+      "statement": "Defina a interface UtilizadorValidado com as propriedades nome do tipo string e idade do tipo number. Escreva a função campoInvalido, que recebe o nome de um campo e lança sempre um erro, com retorno anotado como never. Escreva depois lerUtilizador, que recebe um parâmetro do tipo unknown e devolve um UtilizadorValidado, rejeitando com campoInvalido os casos em que os dados não são um objeto, em que o nome não é uma string não vazia ou em que a idade não é um número válido. Teste com um objeto correto vindo de JSON.parse e com um objeto incompleto.",
+      "hint": "Uma função com retorno never interrompe o fluxo, portanto depois de a chamar dentro de um if o compilador considera que o valor já foi estreitado. Para ler propriedades de um objeto desconhecido, converta-o uma única vez para um registo de chaves string com valores unknown.",
+      "solution_code": "interface UtilizadorValidado {\n  nome: string;\n  idade: number;\n}\n\nfunction campoInvalido(campo: string): never {\n  throw new Error(`Campo inválido: ${campo}`);\n}\n\nfunction lerUtilizador(dados: unknown): UtilizadorValidado {\n  if (typeof dados !== \"object\" || dados === null) {\n    campoInvalido(\"raiz\");\n  }\n  const registo = dados as Record<string, unknown>;\n  const nomeLido = registo[\"nome\"];\n  const idadeLida = registo[\"idade\"];\n  if (typeof nomeLido !== \"string\" || nomeLido.length === 0) {\n    campoInvalido(\"nome\");\n  }\n  if (typeof idadeLida !== \"number\" || Number.isNaN(idadeLida)) {\n    campoInvalido(\"idade\");\n  }\n  return { nome: nomeLido, idade: idadeLida };\n}\n\nconst brutoDoJson: unknown = JSON.parse('{\"nome\":\"Ana\",\"idade\":34}');\nconst utilizadorValido = lerUtilizador(brutoDoJson);\nconsole.log(utilizadorValido.nome, utilizadorValido.idade); // Ana 34\n\ntry {\n  lerUtilizador({ nome: \"Bruno\" });\n} catch (erro) {\n  console.log((erro as Error).message); // Campo inválido: idade\n}",
+      "solution_explanation": "O valor externo entra como unknown, por isso nada pode ser lido antes de ser verificado. Como campoInvalido está anotada com retorno never, o compilador sabe que o código nunca continua a seguir a essa chamada, e portanto no fim das verificações nomeLido já é string e idadeLida já é number, o que permite construir o objeto de retorno sem uma única asserção adicional. O Módulo 10 volta a este padrão aplicado a respostas de rede."
+    }
+  ],
+  "summary": [
+    "Os tipos primitivos escrevem-se em minúsculas: string, number, boolean, bigint, symbol, null e undefined.",
+    "O tipo any desliga a verificação e é contagioso: propaga-se a tudo o que toca e transforma erros de compilação em erros de execução.",
+    "O tipo unknown aceita qualquer valor mas não deixa usá-lo sem estreitar primeiro o tipo, e é a escolha certa para dados vindos de fora.",
+    "O tipo never representa o que nunca acontece: funções que lançam sempre ou nunca terminam, tipos vazios e o ramo impossível de uma união.",
+    "void é o retorno de funções que não devolvem nada de útil e não é a mesma coisa que undefined, que é um valor concreto.",
+    "Com strict ativo, strictNullChecks obriga a declarar a possibilidade de null e noImplicitAny acaba com os any silenciosos nos parâmetros."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 03",
+  "next_label": "Aula 03 → Arrays, Tuplas e readonly"
+}

@@ -1,0 +1,407 @@
+{
+  "module_num": "01",
+  "module_title": "Fundamentos da Linguagem",
+  "module_dir": "01-Fundamentos-da-Linguagem",
+  "lesson_num": "04",
+  "lesson_slug": "Operadores",
+  "kind": "aula",
+  "title": "Operadores",
+  "filename_base": "04-Operadores",
+  "subtitle": "Domine todos os operadores de JavaScript, de aritméticos a optional chaining.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Aplicar corretamente os operadores aritméticos, incluindo exponenciação e resto.",
+    "Usar atribuição composta e os operadores de atribuição lógica (&&=, ||=, ??=) para simplificar código.",
+    "Distinguir == de === e evitar bugs de coerção de tipos.",
+    "Utilizar operadores lógicos com curto-circuito e o operador ternário para lógica condicional concisa.",
+    "Aplicar nullish coalescing (??) e optional chaining (?.) para lidar com valores ausentes em segurança.",
+    "Usar typeof, instanceof, in e delete para inspecionar e manipular objetos."
+  ],
+  "sections": [
+    {
+      "heading": "Operadores aritméticos",
+      "body": [
+        "JavaScript disponibiliza seis operadores aritméticos: soma (+), subtração (-), multiplicação (*), divisão (/), resto ou módulo (%) e exponenciação (**, introduzido no ES2016). Todos operam sobre valores do tipo number (ou bigint, quando ambos os operandos forem desse tipo); o operador + tem ainda um comportamento especial quando um dos operandos é uma string, caso em que passa a concatenar em vez de somar, convertendo o outro operando para texto.",
+        "O operador % devolve o resto da divisão inteira, e o sinal do resultado acompanha sempre o sinal do dividendo, não o do divisor. O operador ** é associativo à direita, ao contrário dos restantes operadores aritméticos, pelo que 2 ** 3 ** 2 é calculado como 2 ** (3 ** 2). Por fim, como os números seguem o padrão IEEE 754 de vírgula flutuante de precisão dupla, operações simples como 0.1 + 0.2 podem não devolver exatamente o valor esperado."
+      ],
+      "code": "const preco = 49.9;\nconst quantidade = 3;\nconst subtotal = preco * quantidade;\n\nconsole.log(subtotal);     // 149.7\nconsole.log(17 % 5);       // 2\nconsole.log(-7 % 3);       // -1, o sinal do resultado segue o dividendo\nconsole.log(2 ** 10);      // 1024\nconsole.log(2 ** 3 ** 2);  // 512, ** é associativo à direita: 2 ** (3 ** 2)\nconsole.log(0.1 + 0.2);    // 0.30000000000000004",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Como os números em JavaScript usam vírgula flutuante de precisão dupla, somas como 0.1 + 0.2 podem devolver 0.30000000000000004 em vez de 0.3. Ao comparar valores decimais, evite igualdade direta e avalie antes a diferença absoluta entre eles.",
+      "table_headers": [
+        "Operador",
+        "Nome",
+        "Exemplo",
+        "Resultado"
+      ],
+      "table_rows": [
+        [
+          "+",
+          "Soma",
+          "5 + 2",
+          "7"
+        ],
+        [
+          "-",
+          "Subtração",
+          "5 - 2",
+          "3"
+        ],
+        [
+          "*",
+          "Multiplicação",
+          "5 * 2",
+          "10"
+        ],
+        [
+          "/",
+          "Divisão",
+          "5 / 2",
+          "2.5"
+        ],
+        [
+          "%",
+          "Resto (módulo)",
+          "5 % 2",
+          "1"
+        ],
+        [
+          "**",
+          "Exponenciação",
+          "5 ** 2",
+          "25"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "➕",
+          "text": "6 operadores aritméticos: +, -, *, /, %, **"
+        },
+        {
+          "icon": "⚠️",
+          "text": "0.1 + 0.2 não dá exatamente 0.3"
+        },
+        {
+          "icon": "🔁",
+          "text": "** é associativo à direita"
+        }
+      ]
+    },
+    {
+      "heading": "Atribuição simples, composta e lógica",
+      "body": [
+        "Além do operador de atribuição simples (=), a linguagem disponibiliza atribuição composta para cada operador aritmético: +=, -=, *=, /=, %= e **=. Cada um é uma forma abreviada de reatribuir uma variável com base no seu próprio valor; por exemplo, total += 50 equivale a total = total + 50, evitando repetir o nome da variável.",
+        "Desde o ES2021 existem também três operadores de atribuição lógica: &&=, ||= e ??=. Ao contrário da atribuição composta aritmética, estes só atribuem um novo valor quando uma condição sobre o valor atual se verifica: &&= atribui apenas se o valor atual for truthy, ||= atribui apenas se for falsy, e ??= atribui apenas se for null ou undefined. São particularmente úteis para definir valores por omissão em propriedades de objetos sem escrever uma condicional explícita."
+      ],
+      "code": "let total = 100;\ntotal += 50;   // 150\ntotal -= 20;   // 130\ntotal *= 2;    // 260\ntotal /= 4;    // 65\ntotal **= 2;   // 4225\n\nconst utilizador = { nome: \"Rita\", permissoes: null };\n\nutilizador.permissoes ??= [\"leitura\"]; // atribui, porque permissoes é null\nutilizador.ativo &&= false;            // não atribui, ativo é undefined (falsy)\nutilizador.tema ||= \"claro\";           // atribui, tema é undefined (falsy)\n\nconsole.log(utilizador);\n// { nome: 'Rita', permissoes: ['leitura'], tema: 'claro' }",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [
+        "Operador",
+        "Equivalente a"
+      ],
+      "table_rows": [
+        [
+          "x += y",
+          "x = x + y"
+        ],
+        [
+          "x -= y",
+          "x = x - y"
+        ],
+        [
+          "x *= y",
+          "x = x * y"
+        ],
+        [
+          "x /= y",
+          "x = x / y"
+        ],
+        [
+          "x %= y",
+          "x = x % y"
+        ],
+        [
+          "x **= y",
+          "x = x ** y"
+        ],
+        [
+          "x &&= y",
+          "x = x && y (só se x for truthy)"
+        ],
+        [
+          "x ||= y",
+          "x = x || y (só se x for falsy)"
+        ],
+        [
+          "x ??= y",
+          "x = x ?? y (só se x for null ou undefined)"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧮",
+          "text": "Atribuição composta evita repetir a variável"
+        },
+        {
+          "icon": "🆕",
+          "text": "&&=, ||= e ??= chegaram no ES2021"
+        },
+        {
+          "icon": "🎯",
+          "text": "Cada uma atribui sob uma condição diferente"
+        }
+      ]
+    },
+    {
+      "heading": "Operadores de comparação",
+      "body": [
+        "Os operadores relacionais >, <, >= e <= comparam valores numericamente quando ambos os operandos são números, e lexicograficamente (carácter a carácter, segundo os pontos de código Unicode) quando ambos são strings. Para verificar igualdade, existem dois operadores com comportamentos muito diferentes: == (igualdade solta) converte os operandos para um tipo comum antes de comparar, enquanto === (igualdade estrita) compara diretamente o valor e o tipo, sem qualquer coerção.",
+        "A coerção de == segue regras da especificação difíceis de memorizar e frequentemente contraintuitivas, pelo que a prática recomendada é usar sempre === e !== no código, reservando == apenas para comparações deliberadas com null ou undefined. Um caso particular a conhecer é o de NaN, que nunca é igual a si próprio nem a nenhum outro valor, mesmo com ===; para o detetar deve usar-se Number.isNaN()."
+      ],
+      "code": "console.log(5 == \"5\");   // true, o \"5\" é convertido para número\nconsole.log(5 === \"5\");  // false, tipos diferentes\nconsole.log(null == undefined);  // true, caso especial da especificação\nconsole.log(null === undefined); // false\n\nconsole.log(\"banana\" > \"abacaxi\"); // true, comparação carácter a carácter\nconsole.log(NaN === NaN);          // false, NaN nunca é igual a nada\nconsole.log(Number.isNaN(NaN));    // true, forma correta de testar NaN\n\nconst idade = 20;\nconsole.log(idade >= 18 && idade < 65); // true",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Use sempre === e !==. O operador == aplica regras de coerção pouco intuitivas (por exemplo, '' == 0 é true, mas '' == '0' é false) e é uma fonte comum de bugs difíceis de detetar.",
+      "table_headers": [
+        "Expressão",
+        "Resultado",
+        "Motivo"
+      ],
+      "table_rows": [
+        [
+          "5 == \"5\"",
+          "true",
+          "coerção de tipos antes de comparar"
+        ],
+        [
+          "5 === \"5\"",
+          "false",
+          "tipos diferentes, sem coerção"
+        ],
+        [
+          "null == undefined",
+          "true",
+          "caso especial da especificação"
+        ],
+        [
+          "null === undefined",
+          "false",
+          "tipos diferentes"
+        ],
+        [
+          "NaN === NaN",
+          "false",
+          "NaN nunca é igual a nada"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "⚖️",
+          "text": "== compara com coerção, === sem coerção"
+        },
+        {
+          "icon": "✅",
+          "text": "Preferir sempre === e !=="
+        },
+        {
+          "icon": "🔤",
+          "text": "Strings comparam-se carácter a carácter"
+        }
+      ]
+    },
+    {
+      "heading": "Operadores lógicos e curto-circuito",
+      "body": [
+        "Os operadores lógicos && (E), || (OU) e ! (negação) avaliam a veracidade dos seus operandos, mas && e || não devolvem obrigatoriamente true ou false: devolvem o valor de um dos operandos originais. && avalia o operando esquerdo e, se for falsy, devolve-o de imediato sem avaliar o direito (curto-circuito); caso contrário, devolve o valor do operando direito. || funciona de forma simétrica, devolvendo o primeiro operando truthy que encontrar.",
+        "Esta avaliação em curto-circuito é usada com frequência para executar código apenas sob condição (condicao && acao()) ou para escolher um valor alternativo quando o primeiro é falsy. Os valores considerados falsy em JavaScript são apenas false, 0, -0, 0n, a string vazia \"\", null, undefined e NaN; todos os restantes valores, incluindo objetos vazios e arrays vazios, são truthy. O operador ! converte o operando para booleano e nega-o, sendo comum usar !! para forçar explicitamente a conversão para booleano sem negar o valor."
+      ],
+      "code": "const utilizadorAutenticado = true;\nutilizadorAutenticado && console.log(\"Bem-vindo!\"); // só executa se for truthy\n\nconst nomeUtilizador = \"\" || \"Convidado\"; // \"Convidado\", porque \"\" é falsy\n\nconsole.log(!0);      // true\nconsole.log(!!\"ola\"); // true, dupla negação força um booleano\n\nconst idade = 20;\nconst temCarta = true;\nconsole.log(idade >= 18 && temCarta); // true\n\nconst idadeMenor = 16;\nconsole.log(idadeMenor >= 18 && temCarta); // false, && para logo na primeira condição falsy",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⚡",
+          "text": "&& e || param assim que o resultado é certo"
+        },
+        {
+          "icon": "🚫",
+          "text": "Falsy: false, 0, \"\", null, undefined, NaN"
+        },
+        {
+          "icon": "❗",
+          "text": "!! força a conversão explícita para booleano"
+        }
+      ]
+    },
+    {
+      "heading": "Operador ternário e nullish coalescing",
+      "body": [
+        "O operador ternário condicao ? valorSeVerdadeiro : valorSeFalso é a única forma de expressão condicional em JavaScript, o que o torna útil para atribuir um valor com base numa condição diretamente numa declaração. É possível encadear ternários, mas mais do que um nível de aninhamento tende a prejudicar seriamente a legibilidade, sendo preferível nesses casos separar a lógica de outra forma.",
+        "O operador de nullish coalescing (??), introduzido no ES2020, devolve o operando direito apenas quando o esquerdo é null ou undefined, e devolve o operando esquerdo em qualquer outro caso. Isto distingue-o do ||, que reage a qualquer valor falsy: com ??, valores legítimos como 0, \"\" ou false do lado esquerdo são preservados em vez de substituídos. Por razões de clareza, a especificação não permite combinar ?? diretamente com && ou || na mesma expressão sem parênteses explícitos."
+      ],
+      "code": "const idade = 16;\nconst categoria = idade >= 18 ? \"adulto\" : \"menor\";\nconsole.log(categoria); // \"menor\"\n\nconst pontuacao = null;\nconst desconto = 0;\n\nconsole.log(pontuacao ?? \"sem pontuação\"); // \"sem pontuação\"\nconsole.log(desconto ?? 10); // 0, porque 0 não é null nem undefined\nconsole.log(desconto || 10); // 10, porque 0 é falsy\n\n// (idade > 0 || false) ?? \"valor\";\n// ?? não pode ser combinado diretamente com && ou || sem parênteses explícitos",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Misturar ?? diretamente com && ou || sem parênteses é um erro de sintaxe (SyntaxError). Escreva sempre (a || b) ?? c ou a || (b ?? c) para deixar clara a ordem de avaliação pretendida.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "❓",
+          "text": "condicao ? seVerdadeiro : seFalso"
+        },
+        {
+          "icon": "🕳️",
+          "text": "?? só reage a null/undefined, não a 0 ou \"\""
+        },
+        {
+          "icon": "🔒",
+          "text": "?? exige parênteses ao juntar com && ou ||"
+        }
+      ]
+    },
+    {
+      "heading": "Optional chaining",
+      "body": [
+        "O operador de optional chaining (?.), também introduzido no ES2020, permite aceder a propriedades, métodos ou elementos de um array através de uma cadeia que pode conter valores null ou undefined em qualquer ponto intermédio, sem lançar um erro. Assim que o motor encontra um valor nullish num dos elos da cadeia, interrompe a avaliação de tudo o que se segue e devolve undefined, em vez de tentar ler uma propriedade de null ou undefined, o que provocaria um TypeError.",
+        "A sintaxe adapta-se a três situações: obj?.propriedade para propriedades, obj?.[expressao] para acesso computado ou a índices de array, e obj.metodo?.() para chamar uma função apenas se ela existir. O optional chaining combina-se naturalmente com o nullish coalescing para fornecer um valor por omissão exatamente quando a cadeia falha, como em obj?.a?.b ?? \"valor por omissão\"."
+      ],
+      "code": "const empresa = {\n  nome: \"Casais\",\n  morada: { cidade: \"Braga\" },\n  contactar(mensagem) {\n    console.log(\"Mensagem enviada: \" + mensagem);\n  }\n};\n\nconsole.log(empresa.morada?.cidade);             // \"Braga\"\nconsole.log(empresa.contacto?.email);            // undefined, não lança erro\nconsole.log(empresa.morada?.pais ?? \"Portugal\"); // \"Portugal\"\n\nempresa.contactar?.(\"Olá\");    // executa, o método existe\nempresa.enviarFatura?.(\"PDF\"); // não faz nada, o método não existe\n\nconst lista = null;\nconsole.log(lista?.[0]); // undefined",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔗",
+          "text": "?. evita erros ao aceder a propriedades ausentes"
+        },
+        {
+          "icon": "🧩",
+          "text": "Funciona em propriedades, índices e chamadas"
+        },
+        {
+          "icon": "🛟",
+          "text": "Combine ?. com ?? para valores por omissão"
+        }
+      ]
+    },
+    {
+      "heading": "typeof, instanceof, in, delete e o operador vírgula",
+      "body": [
+        "O operador typeof devolve, sob a forma de string, o tipo de um valor, e é a forma mais direta de distinguir primitivos como number, string, boolean, undefined, symbol e bigint. Tem, no entanto, duas peculiaridades importantes: typeof null devolve \"object\" (um erro histórico da própria linguagem, mantido por compatibilidade), e typeof de um array também devolve \"object\", pelo que para confirmar que um valor é um array se deve usar Array.isArray() ou instanceof Array.",
+        "O operador instanceof verifica se o protótipo de um construtor está presente na cadeia de protótipos de um objeto, sendo a forma correta de testar instâncias de construtores incorporados como Array, Date ou Error. O operador in devolve true se uma propriedade existir num objeto, quer seja própria quer herdada através do protótipo, o que o distingue de simplesmente verificar se o valor da propriedade é undefined. O operador delete remove uma propriedade de um objeto (não funciona sobre variáveis) e devolve um booleano a indicar se a operação foi bem sucedida.",
+        "Por fim, o operador vírgula avalia uma sequência de expressões da esquerda para a direita e devolve o valor da última. É usado sobretudo na cláusula de atualização de um ciclo for (assunto estudado em detalhe no módulo seguinte) para alterar mais do que uma variável em simultâneo numa só passagem."
+      ],
+      "code": "console.log(typeof 42);          // \"number\"\nconsole.log(typeof \"ola\");       // \"string\"\nconsole.log(typeof undefined);   // \"undefined\"\nconsole.log(typeof null);        // \"object\" (peculiaridade histórica)\nconsole.log(typeof [1, 2, 3]);   // \"object\"\nconsole.log(typeof console.log); // \"function\"\n\nconsole.log(Array.isArray([1, 2, 3]));   // true\nconsole.log([1, 2, 3] instanceof Array); // true\nconsole.log(new Date() instanceof Date); // true\n\nconst carro = { marca: \"Renault\", ano: 2023 };\nconsole.log(\"marca\" in carro);    // true\nconsole.log(\"toString\" in carro); // true, propriedade herdada do protótipo\n\ndelete carro.ano;\nconsole.log(carro); // { marca: 'Renault' }\n\nfor (let i = 0, j = 3; i < j; i++, j--) {\n  console.log(i, j); // a vírgula atualiza i e j na mesma expressão\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "typeof null devolve \"object\" — um erro histórico da linguagem que nunca foi corrigido por razões de compatibilidade. Para verificar null de forma fiável, compare diretamente com === null.",
+      "table_headers": [
+        "Valor",
+        "typeof valor"
+      ],
+      "table_rows": [
+        [
+          "42",
+          "\"number\""
+        ],
+        [
+          "\"texto\"",
+          "\"string\""
+        ],
+        [
+          "true",
+          "\"boolean\""
+        ],
+        [
+          "undefined",
+          "\"undefined\""
+        ],
+        [
+          "null",
+          "\"object\" (peculiaridade histórica)"
+        ],
+        [
+          "[1, 2, 3]",
+          "\"object\""
+        ],
+        [
+          "function(){}",
+          "\"function\""
+        ],
+        [
+          "Symbol()",
+          "\"symbol\""
+        ],
+        [
+          "10n",
+          "\"bigint\""
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔍",
+          "text": "typeof devolve o tipo em texto"
+        },
+        {
+          "icon": "🧬",
+          "text": "instanceof verifica a cadeia de protótipos"
+        },
+        {
+          "icon": "🗑️",
+          "text": "delete remove uma propriedade de um objeto"
+        },
+        {
+          "icon": "➡️",
+          "text": "Vírgula avalia várias expressões, devolve a última"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Cálculo de fatura com IVA",
+      "difficulty": "Iniciante",
+      "statement": "Tem as variáveis precoUnitario = 49.9, quantidade = 3 e taxaIva = 0.23. Calcule o subtotal (preço vezes quantidade) e guarde-o numa variável chamada subtotal. Depois, crie uma variável valorIva inicializada a 0 e utilize atribuição composta (+=) para lhe somar o valor do IVA (subtotal vezes taxaIva). Por fim, calcule total como a soma de subtotal e valorIva, arredondado a duas casas decimais, convertendo o resultado de toFixed(2) de volta para número com Number(). Mostre subtotal, valorIva e total na consola.",
+      "hint": "toFixed devolve sempre uma string; para voltar a ter um número, envolva o resultado em Number(...).",
+      "solution_code": "const precoUnitario = 49.9;\nconst quantidade = 3;\nconst taxaIva = 0.23;\n\nconst subtotal = precoUnitario * quantidade;\n\nlet valorIva = 0;\nvalorIva += subtotal * taxaIva;\n\nconst total = Number((subtotal + valorIva).toFixed(2));\n\nconsole.log(subtotal); // 149.7\nconsole.log(valorIva); // 34.431\nconsole.log(total);    // 184.13",
+      "solution_explanation": "O subtotal usa o operador *, o valorIva é acumulado com o operador de atribuição composta +=, e o total soma os dois valores antes de ser arredondado com toFixed e reconvertido para número com Number(), já que toFixed devolve sempre uma string."
+    },
+    {
+      "title": "Validação de acesso com operadores lógicos",
+      "difficulty": "Intermedio",
+      "statement": "Tem as variáveis idade = 20, temConvite = false, banido = false e areaPublica = true. Escreva uma única expressão lógica, guardada numa variável chamada podeAceder, que seja true apenas quando idade for maior ou igual a 18, banido for false, e (temConvite for true ou areaPublica for true). Utilize os operadores >=, !, && e || combinados numa só expressão, agrupando com parênteses onde for necessário para garantir a ordem correta de avaliação. De seguida, use o operador ternário para criar uma variável mensagem que valha \"Acesso permitido\" quando podeAceder for true, e \"Acesso negado\" caso contrário.",
+      "hint": "! nega um valor booleano, e && tem precedência maior do que ||, por isso a parte \"temConvite || areaPublica\" precisa dos seus próprios parênteses para não ficar dependente da precedência por defeito.",
+      "solution_code": "const idade = 20;\nconst temConvite = false;\nconst banido = false;\nconst areaPublica = true;\n\nconst podeAceder = idade >= 18 && !banido && (temConvite || areaPublica);\n\nconst mensagem = podeAceder ? \"Acesso permitido\" : \"Acesso negado\";\n\nconsole.log(podeAceder); // true\nconsole.log(mensagem);   // \"Acesso permitido\"",
+      "solution_explanation": ">= verifica a idade mínima, ! nega o valor de banido, e os parênteses isolam a condição temConvite || areaPublica antes de todas serem combinadas com &&, que só é true se todas as partes forem true; o ternário traduz esse booleano numa mensagem legível."
+    },
+    {
+      "title": "Leitura segura de configuração",
+      "difficulty": "Avancado",
+      "statement": "Considere o objeto abaixo, que pode vir incompleto de um servidor:\n\nconst configServidor = {\n  utilizador: {\n    nome: \"Ana\",\n    definicoes: { tema: \"escuro\" }\n  }\n};\n\nUsando optional chaining (?.) e nullish coalescing (??), crie uma variável tema que valha configServidor.utilizador.definicoes.tema quando essa propriedade existir, ou \"claro\" caso qualquer parte da cadeia seja null ou undefined. Depois, crie uma variável temPermissoes que seja true apenas se a propriedade \"permissoes\" existir dentro de configServidor.utilizador (utilize o operador in, protegendo o acesso com ?. e considerando um objeto vazio {} caso utilizador não exista, através do operador ??). Por fim, use typeof para guardar numa variável tipoPermissoes o tipo de configServidor?.utilizador?.permissoes, e crie uma variável permissoesEhArray que confirme, usando Array.isArray, se esse valor é de facto um array.",
+      "hint": "\"propriedade in objeto\" espera sempre um objeto do lado direito; se utilizador puder ser undefined, combine ?? com um objeto vazio antes de aplicar o in.",
+      "solution_code": "const configServidor = {\n  utilizador: {\n    nome: \"Ana\",\n    definicoes: { tema: \"escuro\" }\n  }\n};\n\nconst tema = configServidor?.utilizador?.definicoes?.tema ?? \"claro\";\n\nconst temPermissoes = \"permissoes\" in (configServidor?.utilizador ?? {});\n\nconst tipoPermissoes = typeof configServidor?.utilizador?.permissoes;\nconst permissoesEhArray = Array.isArray(configServidor?.utilizador?.permissoes);\n\nconsole.log(tema);             // \"escuro\"\nconsole.log(temPermissoes);    // false, a propriedade \"permissoes\" não existe\nconsole.log(tipoPermissoes);   // \"undefined\"\nconsole.log(permissoesEhArray); // false",
+      "solution_explanation": "O ?. protege cada elo da cadeia contra valores ausentes e o ?? só entra em ação quando o resultado final é null ou undefined; o in confirma a existência da propriedade em vez do seu valor, e como typeof não distingue um array de um objeto simples (ambos dão \"object\"), Array.isArray é a forma correta de confirmar que se trata de um array."
+    },
+    {
+      "title": "Ajuste de saldo com o operador vírgula",
+      "difficulty": "Avancado",
+      "statement": "Tem duas variáveis, saldoContaA = 500 e saldoContaB = 200. Escreva uma única expressão, atribuída a uma nova variável chamada resultadoTransferencia, que: primeiro subtrai 150 a saldoContaA (usando -=), depois soma 150 a saldoContaB (usando +=), e por fim calcula a diferença entre os dois saldos já atualizados (saldoContaA - saldoContaB). Use o operador vírgula para agrupar as três operações numa só expressão entre parênteses, sabendo que o valor de toda a expressão é sempre o da última operação separada por vírgulas. Depois, use typeof para confirmar, guardando o resultado num booleano chamado ehNumero, que resultadoTransferencia é de facto um number.",
+      "hint": "O operador vírgula avalia da esquerda para a direita e o valor de toda a expressão é o do último operando; para usar -= e += dentro da mesma expressão que é atribuída a outra variável, tem de agrupar tudo entre parênteses.",
+      "solution_code": "let saldoContaA = 500;\nlet saldoContaB = 200;\n\nconst resultadoTransferencia = (saldoContaA -= 150, saldoContaB += 150, saldoContaA - saldoContaB);\n\nconsole.log(saldoContaA); // 350\nconsole.log(saldoContaB); // 350\nconsole.log(resultadoTransferencia); // 0\n\nconst ehNumero = typeof resultadoTransferencia === \"number\";\nconsole.log(ehNumero); // true",
+      "solution_explanation": "As três operações separadas por vírgulas são executadas em sequência dentro dos parênteses, mas o valor devolvido pela expressão inteira é apenas o da última (saldoContaA - saldoContaB); typeof confirma depois que esse valor final é do tipo number."
+    }
+  ],
+  "summary": [
+    "=== e !== evitam bugs de coerção; prefira sempre === a ==.",
+    "?? só reage a null/undefined, enquanto || reage a qualquer valor falsy (0, \"\", false incluídos).",
+    "?. interrompe o acesso em cadeia assim que encontra null/undefined, sem lançar erro.",
+    "&&=, ||= e ??= atribuem condicionalmente, evitando condicionais redundantes.",
+    "typeof tem uma peculiaridade histórica: typeof null é \"object\"; para arrays use Array.isArray.",
+    "O operador vírgula avalia várias expressões e devolve a última, útil sobretudo em ciclos for."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 05",
+  "next_label": "Aula 05 → Coerção e Comparação",
+  "_stage": "revisao"
+}

@@ -1,0 +1,274 @@
+{
+  "module_num": "04",
+  "module_title": "Narrowing e Type Guards",
+  "module_dir": "04-Narrowing-e-Type-Guards",
+  "lesson_num": "02",
+  "lesson_slug": "Unioes-Discriminadas",
+  "kind": "aula",
+  "title": "Uniões Discriminadas",
+  "filename_base": "02-Unioes-Discriminadas",
+  "subtitle": "Uma propriedade literal comum que diz ao compilador qual é o membro da união",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Reconhecer os estados impossíveis que nascem de objetos com propriedades opcionais",
+    "Declarar uma união discriminada com uma propriedade literal comum a todos os membros",
+    "Estreitar a união com switch sobre o discriminante e com if/else encadeado",
+    "Modelar os estados de um pedido remoto sem verificações defensivas",
+    "Estreitar o discriminante dentro de arrays e em propriedades aninhadas",
+    "Escolher o nome e o tipo do discriminante segundo as convenções mais comuns"
+  ],
+  "sections": [
+    {
+      "heading": "Quatro opcionais e os estados impossíveis",
+      "body": [
+        "A forma mais imediata de descrever um pedido a um servidor é um objeto com um booleano para o carregamento e duas propriedades opcionais, uma para os dados e outra para o erro. Compila, mas descreve mal o que existe: o tipo permite combinações de presença que o domínio nunca produz, como estar a carregar e já trazer dados e erro ao mesmo tempo.",
+        "O preço paga-se em dois sítios. Quem constrói o objeto pode montar um estado que nunca deveria existir e ninguém o avisa. Quem o lê tem de repetir verificações defensivas, porque depois de excluir o carregamento e o erro o compilador continua a dizer que os dados podem ser undefined."
+      ],
+      "code": "interface EstadoPedido {\n  aCarregar: boolean;\n  dados?: string[];\n  erro?: string;\n}\n\nfunction descrever(estado: EstadoPedido): string {\n  if (estado.aCarregar) {\n    return \"A carregar...\";\n  }\n  if (estado.erro !== undefined) {\n    return \"Falhou: \" + estado.erro;\n  }\n  // @ts-expect-error dados continua opcional: o compilador não sabe que só sobrou o caso de sucesso\n  return estado.dados.join(\", \");\n}\n\n// nada impede um estado impossível: a carregar, com dados e com erro ao mesmo tempo\nconst impossivel: EstadoPedido = { aCarregar: true, dados: [\"a\"], erro: \"timeout\" };\n\nconsole.log(descrever({ aCarregar: false, erro: \"404\" })); // \"Falhou: 404\"\nconsole.log(impossivel.erro); // \"timeout\"",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Propriedades opcionais descrevem o que pode faltar, não descrevem em que estado o objeto está. São coisas diferentes, e é essa diferença que gera os estados impossíveis.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧩",
+          "text": "Opcionais permitem combinações que não existem"
+        },
+        {
+          "icon": "🛡️",
+          "text": "Quem lê fica preso a verificações defensivas"
+        },
+        {
+          "icon": "❓",
+          "text": "Depois de excluir tudo, os dados ainda são undefined"
+        }
+      ]
+    },
+    {
+      "heading": "A mesma propriedade com um literal diferente",
+      "body": [
+        "Uma união discriminada, também conhecida por tagged union, é uma união de tipos de objeto em que todos os membros têm a mesma propriedade e essa propriedade tem, em cada membro, um tipo literal diferente. Essa propriedade é o discriminante.",
+        "O compilador trata o discriminante como um seletor: quando o compara com um dos literais, escolhe o membro correspondente e a partir daí só vê as propriedades desse membro. Antes da comparação, apenas as propriedades comuns a todos os membros estão disponíveis, e o discriminante é sempre uma delas."
+      ],
+      "code": "type Circulo = { kind: \"circulo\"; raio: number };\ntype Quadrado = { kind: \"quadrado\"; lado: number };\ntype Forma = Circulo | Quadrado;\n\nfunction medida(forma: Forma): number {\n  console.log(forma.kind); // kind existe em todos os membros, logo está sempre disponível\n\n  // @ts-expect-error raio não existe em Quadrado, logo não existe na união\n  console.log(forma.raio);\n\n  if (forma.kind === \"circulo\") {\n    return forma.raio; // aqui forma é Circulo\n  }\n  return forma.lado; // e aqui é Quadrado\n}\n\nconsole.log(medida({ kind: \"circulo\", raio: 2 })); // 2\nconsole.log(medida({ kind: \"quadrado\", lado: 5 })); // 5\n\n// @ts-expect-error losango não é um dos literais declarados no discriminante kind\nconst invalida: Forma = { kind: \"losango\", lado: 3 };\nconsole.log(invalida.kind);",
+      "callout_kind": "NOTA",
+      "callout_text": "Basta comparar o discriminante com igualdade estrita. Não é preciso typeof nem instanceof: o trabalho é feito pelos tipos literais que já viu no Módulo 01.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏷️",
+          "text": "Todos os membros partilham a mesma propriedade"
+        },
+        {
+          "icon": "🔑",
+          "text": "Cada membro dá-lhe um literal diferente"
+        },
+        {
+          "icon": "🎯",
+          "text": "Comparar o literal escolhe o membro"
+        }
+      ]
+    },
+    {
+      "heading": "Estreitar com switch e com if/else",
+      "body": [
+        "Com o discriminante no lugar, o narrowing passa a ser uma comparação simples. Um switch sobre a propriedade cobre um ramo por estado e, dentro de cada case, o valor já tem o tipo exato desse membro: as propriedades específicas ficam disponíveis sem qualquer verificação extra.",
+        "O if/else encadeado faz exatamente o mesmo. Cada condição retira um membro da união, por isso o último else recebe o único membro que sobrou, com as suas propriedades obrigatórias. É a mesma análise de fluxo da aula anterior, agora aplicada a um valor literal em vez de typeof.",
+        "Repare que a função devolve string sem um return final e sem um ramo default. Como os quatro case esgotam a união, o compilador sabe que o fim da função é inalcançável. Garantir que essa exaustividade se mantém quando alguém acrescenta um estado novo é o tema da última aula deste módulo."
+      ],
+      "code": "type Pedido =\n  | { estado: \"inativo\" }\n  | { estado: \"aCarregar\"; desdeMs: number }\n  | { estado: \"sucesso\"; dados: string[] }\n  | { estado: \"erro\"; codigo: number; mensagem: string };\n\nfunction mensagemDe(pedido: Pedido): string {\n  switch (pedido.estado) {\n    case \"inativo\":\n      return \"Ainda nao foi pedido nada.\";\n    case \"aCarregar\":\n      return \"A carregar ha \" + pedido.desdeMs + \" ms.\";\n    case \"sucesso\":\n      return pedido.dados.length + \" resultados.\";\n    case \"erro\":\n      return \"Erro \" + pedido.codigo + \": \" + pedido.mensagem;\n  }\n}\n\n// o mesmo estreitamento com if/else encadeado: no último else só sobra o membro erro\nfunction mensagemComIf(pedido: Pedido): string {\n  if (pedido.estado === \"inativo\") {\n    return \"Ainda nao foi pedido nada.\";\n  } else if (pedido.estado === \"aCarregar\") {\n    return \"A carregar ha \" + pedido.desdeMs + \" ms.\";\n  } else if (pedido.estado === \"sucesso\") {\n    return pedido.dados.length + \" resultados.\";\n  } else {\n    return \"Erro \" + pedido.codigo + \": \" + pedido.mensagem;\n  }\n}\n\nconsole.log(mensagemDe({ estado: \"aCarregar\", desdeMs: 250 })); // \"A carregar ha 250 ms.\"\nconsole.log(mensagemDe({ estado: \"sucesso\", dados: [\"a\", \"b\"] })); // \"2 resultados.\"\nconsole.log(mensagemComIf({ estado: \"erro\", codigo: 404, mensagem: \"nao encontrado\" })); // \"Erro 404: nao encontrado\"",
+      "callout_kind": "DICA",
+      "callout_text": "Com dois estados, um if/else chega. A partir de três, o switch lê-se melhor e deixa a lista de estados visível de uma só vez.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔀",
+          "text": "Um case por estado, sem verificações extra"
+        },
+        {
+          "icon": "🪜",
+          "text": "No último else sobra um só membro"
+        },
+        {
+          "icon": "✅",
+          "text": "Switch exaustivo dispensa o return final"
+        }
+      ]
+    },
+    {
+      "heading": "Formas geométricas e a função de área",
+      "body": [
+        "O exemplo canónico das uniões discriminadas são as formas geométricas, porque cada forma precisa de dados diferentes para o mesmo cálculo. O círculo precisa do raio, o retângulo da largura e da altura, o triângulo da base e da altura. Numa só interface com tudo opcional, a função de área seria uma sucessão de verificações; com uma união discriminada é um switch de três ramos.",
+        "Nada impede que membros diferentes partilhem propriedades para além do discriminante, como a altura do retângulo e a do triângulo. O que os distingue é o literal em kind, não a lista de propriedades."
+      ],
+      "code": "type Forma =\n  | { kind: \"circulo\"; raio: number }\n  | { kind: \"retangulo\"; largura: number; altura: number }\n  | { kind: \"triangulo\"; base: number; altura: number };\n\nfunction area(forma: Forma): number {\n  switch (forma.kind) {\n    case \"circulo\":\n      return Math.PI * forma.raio ** 2;\n    case \"retangulo\":\n      return forma.largura * forma.altura;\n    case \"triangulo\":\n      return (forma.base * forma.altura) / 2;\n  }\n}\n\nconsole.log(area({ kind: \"retangulo\", largura: 3, altura: 4 })); // 12\nconsole.log(area({ kind: \"triangulo\", base: 6, altura: 5 })); // 15\nconsole.log(area({ kind: \"circulo\", raio: 1 }).toFixed(2)); // \"3.14\"\n\n// @ts-expect-error o membro triangulo precisa de base, e largura não lhe pertence\nconst errada: Forma = { kind: \"triangulo\", largura: 6, altura: 5 };\nconsole.log(errada.kind);",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [
+        "Membro",
+        "Valor do discriminante kind",
+        "Propriedades próprias",
+        "Cálculo da área"
+      ],
+      "table_rows": [
+        [
+          "Circulo",
+          "circulo",
+          "raio",
+          "Math.PI vezes raio ao quadrado"
+        ],
+        [
+          "Retangulo",
+          "retangulo",
+          "largura, altura",
+          "largura vezes altura"
+        ],
+        [
+          "Triangulo",
+          "triangulo",
+          "base, altura",
+          "base vezes altura a dividir por dois"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📐",
+          "text": "Cada forma traz só os dados de que precisa"
+        },
+        {
+          "icon": "🧮",
+          "text": "Uma área, três ramos, zero verificações"
+        },
+        {
+          "icon": "🔁",
+          "text": "Membros podem partilhar propriedades"
+        }
+      ]
+    },
+    {
+      "heading": "Listas e uniões aninhadas",
+      "body": [
+        "O narrowing do discriminante funciona em qualquer sítio onde exista um valor da união, e não apenas num parâmetro. Num for...of sobre um array de eventos, a variável do ciclo é a união e o switch dentro do corpo estreita-a a cada volta.",
+        "Também funciona em profundidade: se uma propriedade contém uma união discriminada, comparar o discriminante através do caminho de acesso estreita essa propriedade. E, num filter cujo callback compara o discriminante, o compilador reconhece o padrão e devolve um array já estreitado ao membro filtrado. O mecanismo por trás disso, os predicados de tipo, é o tema da próxima aula."
+      ],
+      "code": "type Evento =\n  | { tipo: \"clique\"; x: number; y: number }\n  | { tipo: \"tecla\"; tecla: string }\n  | { tipo: \"scroll\"; delta: number };\n\nconst eventos: Evento[] = [\n  { tipo: \"clique\", x: 10, y: 20 },\n  { tipo: \"tecla\", tecla: \"Enter\" },\n  { tipo: \"scroll\", delta: -120 },\n  { tipo: \"clique\", x: 5, y: 5 },\n];\n\nlet cliques = 0;\nfor (const evento of eventos) {\n  switch (evento.tipo) {\n    case \"clique\":\n      cliques += 1;\n      console.log(\"clique em \" + evento.x + \",\" + evento.y);\n      break;\n    case \"tecla\":\n      console.log(\"tecla \" + evento.tecla.toLowerCase());\n      break;\n    case \"scroll\":\n      console.log(\"scroll de \" + Math.abs(evento.delta));\n      break;\n  }\n}\nconsole.log(cliques); // 2\n\n// o discriminante também pode estar numa propriedade aninhada\ntype Notificacao = {\n  id: number;\n  corpo: { formato: \"texto\"; texto: string } | { formato: \"imagem\"; url: string; largura: number };\n};\n\nfunction resumo(notificacao: Notificacao): string {\n  if (notificacao.corpo.formato === \"texto\") {\n    return notificacao.id + \": \" + notificacao.corpo.texto;\n  }\n  return notificacao.id + \": imagem de \" + notificacao.corpo.largura + \" px\";\n}\n\nconsole.log(resumo({ id: 1, corpo: { formato: \"texto\", texto: \"ola\" } })); // \"1: ola\"\nconsole.log(resumo({ id: 2, corpo: { formato: \"imagem\", url: \"/a.png\", largura: 800 } })); // \"2: imagem de 800 px\"\n\n// o filter compara o discriminante, e o array devolvido já vem estreitado\nconst soCliques = eventos.filter((evento) => evento.tipo === \"clique\");\nconsole.log(soCliques.length); // 2\nconsole.log(soCliques[0].x); // 10",
+      "callout_kind": "NOTA",
+      "callout_text": "O narrowing através de um caminho aninhado mantém-se enquanto nada reatribuir o objeto pelo meio. Depois de uma atribuição, o compilador volta a analisar o fluxo a partir daí.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔄",
+          "text": "O switch estreita a cada volta do for...of"
+        },
+        {
+          "icon": "🪆",
+          "text": "Discriminantes aninhados também estreitam"
+        },
+        {
+          "icon": "🧹",
+          "text": "Filtrar pelo discriminante devolve a lista estreitada"
+        }
+      ]
+    },
+    {
+      "heading": "Boas práticas ao desenhar o discriminante",
+      "body": [
+        "Os nomes mais usados são kind, type, status, state e tag. Qualquer um serve; o que importa é usar o mesmo em toda a base de código e não o reaproveitar para outra coisa. Em dados que vêm de uma API, o discriminante costuma já existir com o nome que o servidor lhe deu, e vale a pena mantê-lo.",
+        "O discriminante deve ser um tipo literal de string. Booleanos só distinguem dois membros, não se leem nas mensagens de erro nem nos registos, e combinam-se em estados sem sentido quando há vários no mesmo objeto. Um literal de string nomeia o estado, e acrescentar um estado novo passa a ser acrescentar um membro.",
+        "A regra prática é preferir duas propriedades obrigatórias em membros distintos a quatro opcionais no mesmo objeto. Cada membro descreve exatamente um estado, as propriedades desse estado deixam de ser opcionais e, depois de estreitar, desaparecem as verificações defensivas."
+      ],
+      "code": "// Booleanos soltos deixam passar combinações que não existem no domínio\ntype EstadoSolto = { terminado: boolean; falhou: boolean; valor?: number };\nconst semSentido: EstadoSolto = { terminado: false, falhou: true, valor: 7 };\nconsole.log(semSentido.falhou); // true: não terminou, falhou e ainda trouxe um valor\n\n// Com um discriminante de string, só se escrevem os estados que existem mesmo\ntype Tarefa =\n  | { status: \"pendente\" }\n  | { status: \"concluida\"; valor: number }\n  | { status: \"falhada\"; motivo: string };\n\n// @ts-expect-error cancelada não é um dos literais de status\nconst inventada: Tarefa = { status: \"cancelada\" };\nconsole.log(inventada.status);\n\n// @ts-expect-error o membro concluida exige a propriedade valor\nconst incompleta: Tarefa = { status: \"concluida\" };\nconsole.log(incompleta.status);\n\nfunction relatorio(tarefa: Tarefa): string {\n  if (tarefa.status === \"concluida\") {\n    return \"Valor: \" + tarefa.valor;\n  }\n  if (tarefa.status === \"falhada\") {\n    return \"Motivo: \" + tarefa.motivo;\n  }\n  return \"Por fazer.\";\n}\n\nconsole.log(relatorio({ status: \"concluida\", valor: 42 })); // \"Valor: 42\"\nconsole.log(relatorio({ status: \"pendente\" })); // \"Por fazer.\"",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Procure no seu código um objeto com três ou mais propriedades opcionais. É quase sempre uma união discriminada por escrever.",
+      "table_headers": [
+        "Critério",
+        "Objeto com opcionais",
+        "União discriminada"
+      ],
+      "table_rows": [
+        [
+          "Estados impossíveis",
+          "Permitidos pelo tipo",
+          "Impossíveis de escrever"
+        ],
+        [
+          "Leitura das propriedades",
+          "Cada acesso exige verificação",
+          "Obrigatórias depois de estreitar"
+        ],
+        [
+          "Acrescentar um estado",
+          "Mais uma propriedade opcional",
+          "Mais um membro na união"
+        ],
+        [
+          "Mensagens de erro",
+          "Falam de undefined",
+          "Falam do literal que não encaixou"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🏷️",
+          "text": "kind, type ou status: escolha um e mantenha"
+        },
+        {
+          "icon": "🔤",
+          "text": "Literais de string, nunca booleanos soltos"
+        },
+        {
+          "icon": "📦",
+          "text": "Obrigatórias por membro em vez de opcionais"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Dois métodos de pagamento",
+      "difficulty": "Iniciante",
+      "statement": "Declare um tipo Pagamento como união discriminada de dois membros, com o discriminante chamado metodo. O membro cujo metodo é o literal cartao tem uma propriedade ultimosQuatro do tipo string; o membro cujo metodo é o literal mbway tem uma propriedade telemovel do tipo string. Escreva uma função descrever que recebe um Pagamento e devolve uma string: para o cartão, a palavra Cartao seguida dos quatro dígitos; para o MB WAY, o texto MB WAY seguido do número de telemóvel. Use if/else e não acrescente verificações de undefined.",
+      "hint": "Comece por escrever os dois tipos de objeto separados por uma barra vertical. No corpo da função, compare pagamento.metodo com um dos literais e deixe o outro caso para o return final.",
+      "solution_code": "type Pagamento =\n  | { metodo: \"cartao\"; ultimosQuatro: string }\n  | { metodo: \"mbway\"; telemovel: string };\n\nfunction descrever(pagamento: Pagamento): string {\n  if (pagamento.metodo === \"cartao\") {\n    return \"Cartao terminado em \" + pagamento.ultimosQuatro;\n  }\n  return \"MB WAY para o numero \" + pagamento.telemovel;\n}\n\nconsole.log(descrever({ metodo: \"cartao\", ultimosQuatro: \"4321\" })); // \"Cartao terminado em 4321\"\nconsole.log(descrever({ metodo: \"mbway\", telemovel: \"912345678\" })); // \"MB WAY para o numero 912345678\"",
+      "solution_explanation": "A comparação de pagamento.metodo com o literal cartao estreita a união ao primeiro membro, e por isso ultimosQuatro está disponível dentro do if. Depois desse return sobra apenas o membro mbway, logo telemovel é acessível sem qualquer verificação."
+    },
+    {
+      "title": "Os quatro estados de um upload",
+      "difficulty": "Intermedio",
+      "statement": "Modele o estado de um upload com uma união discriminada de quatro membros, com o discriminante chamado fase: parado sem mais nada, aEnviar com percentagem do tipo number, terminado com url do tipo string e falhado com motivo do tipo string. Escreva uma função estadoDoUpload que recebe um Upload e devolve a mensagem de cada fase, usando um switch sobre fase e sem escrever um ramo default nem um return no fim da função. Chame a função uma vez por cada fase.",
+      "hint": "Se o compilador se queixar de que a função pode devolver undefined, falta-lhe um case: só com todos os membros cobertos é que ele conclui que o fim da função é inalcançável.",
+      "solution_code": "type Upload =\n  | { fase: \"parado\" }\n  | { fase: \"aEnviar\"; percentagem: number }\n  | { fase: \"terminado\"; url: string }\n  | { fase: \"falhado\"; motivo: string };\n\nfunction estadoDoUpload(upload: Upload): string {\n  switch (upload.fase) {\n    case \"parado\":\n      return \"Escolha um ficheiro.\";\n    case \"aEnviar\":\n      return \"A enviar: \" + upload.percentagem + \"%\";\n    case \"terminado\":\n      return \"Disponivel em \" + upload.url;\n    case \"falhado\":\n      return \"Falhou: \" + upload.motivo;\n  }\n}\n\nconsole.log(estadoDoUpload({ fase: \"parado\" })); // \"Escolha um ficheiro.\"\nconsole.log(estadoDoUpload({ fase: \"aEnviar\", percentagem: 40 })); // \"A enviar: 40%\"\nconsole.log(estadoDoUpload({ fase: \"terminado\", url: \"/f/1.pdf\" })); // \"Disponivel em /f/1.pdf\"\nconsole.log(estadoDoUpload({ fase: \"falhado\", motivo: \"ficheiro grande demais\" })); // \"Falhou: ficheiro grande demais\"",
+      "solution_explanation": "Cada case estreita o parâmetro ao membro correspondente, o que dá acesso direto a percentagem, url ou motivo. Como os quatro literais esgotam a união, o compilador aceita a função sem return final e sem ramo default."
+    },
+    {
+      "title": "Perímetro de três figuras",
+      "difficulty": "Intermedio",
+      "statement": "Declare um tipo Figura com três membros discriminados pela propriedade forma: quadrado com lado, retangulo com largura e altura, e circulo com raio, todos do tipo number. Escreva uma função perimetro que devolve o perímetro de cada figura com um switch. Depois crie um array com uma figura de cada tipo e percorra-o com for...of, imprimindo o valor do discriminante seguido do perímetro com duas casas decimais.",
+      "hint": "Dentro do ciclo, figura.forma pode ser lido antes de qualquer estreitamento, porque é a propriedade comum a todos os membros. O perímetro do círculo é duas vezes Math.PI vezes o raio.",
+      "solution_code": "type Figura =\n  | { forma: \"quadrado\"; lado: number }\n  | { forma: \"retangulo\"; largura: number; altura: number }\n  | { forma: \"circulo\"; raio: number };\n\nfunction perimetro(figura: Figura): number {\n  switch (figura.forma) {\n    case \"quadrado\":\n      return figura.lado * 4;\n    case \"retangulo\":\n      return (figura.largura + figura.altura) * 2;\n    case \"circulo\":\n      return 2 * Math.PI * figura.raio;\n  }\n}\n\nconst figuras: Figura[] = [\n  { forma: \"quadrado\", lado: 3 },\n  { forma: \"retangulo\", largura: 2, altura: 5 },\n  { forma: \"circulo\", raio: 2 },\n];\n\nfor (const figura of figuras) {\n  console.log(figura.forma + \": \" + perimetro(figura).toFixed(2));\n}\n// \"quadrado: 12.00\"\n// \"retangulo: 14.00\"\n// \"circulo: 12.57\"",
+      "solution_explanation": "O switch dá a cada ramo o membro exato, por isso lado, largura, altura e raio são lidos sem verificações. No ciclo, figura.forma é acessível sem estreitar porque é o discriminante, comum aos três membros."
+    },
+    {
+      "title": "Total de um carrinho com operações",
+      "difficulty": "Avancado",
+      "statement": "Modele as operações de um carrinho com uma união discriminada pela propriedade tipo: adicionar e remover, ambos com preco e quantidade; portes com valor; e desconto, cuja propriedade desconto é ela própria uma união discriminada pela propriedade modo, com percentagem mais pontos ou fixo mais euros. Escreva uma função total que recebe um array de operações, percorre-o com for...of e aplica cada operação por ordem a um acumulador, devolvendo o valor final. Teste com um carrinho que some 20 euros, some 5, remova 5, aplique 10 por cento de desconto, tire 2 euros fixos e junte 4 euros de portes, imprimindo o total com duas casas decimais.",
+      "hint": "São dois níveis de estreitamento: primeiro o switch sobre operacao.tipo e, dentro do ramo do desconto, um if sobre operacao.desconto.modo. O desconto em percentagem aplica-se ao acumulador nesse momento, não ao total inicial.",
+      "solution_code": "type Operacao =\n  | { tipo: \"adicionar\"; preco: number; quantidade: number }\n  | { tipo: \"remover\"; preco: number; quantidade: number }\n  | { tipo: \"desconto\"; desconto: { modo: \"percentagem\"; pontos: number } | { modo: \"fixo\"; euros: number } }\n  | { tipo: \"portes\"; valor: number };\n\nfunction total(operacoes: Operacao[]): number {\n  let valor = 0;\n  for (const operacao of operacoes) {\n    switch (operacao.tipo) {\n      case \"adicionar\":\n        valor += operacao.preco * operacao.quantidade;\n        break;\n      case \"remover\":\n        valor -= operacao.preco * operacao.quantidade;\n        break;\n      case \"desconto\":\n        // segundo nível de estreitamento, agora sobre o discriminante aninhado\n        if (operacao.desconto.modo === \"percentagem\") {\n          valor -= (valor * operacao.desconto.pontos) / 100;\n        } else {\n          valor -= operacao.desconto.euros;\n        }\n        break;\n      case \"portes\":\n        valor += operacao.valor;\n        break;\n    }\n  }\n  return valor;\n}\n\nconst carrinho: Operacao[] = [\n  { tipo: \"adicionar\", preco: 10, quantidade: 2 },\n  { tipo: \"adicionar\", preco: 5, quantidade: 1 },\n  { tipo: \"remover\", preco: 5, quantidade: 1 },\n  { tipo: \"desconto\", desconto: { modo: \"percentagem\", pontos: 10 } },\n  { tipo: \"desconto\", desconto: { modo: \"fixo\", euros: 2 } },\n  { tipo: \"portes\", valor: 4 },\n];\n\nconsole.log(total(carrinho).toFixed(2)); // \"20.00\"",
+      "solution_explanation": "O switch estreita cada operação ao seu membro e dá acesso às propriedades certas em cada ramo. Dentro do ramo do desconto, a comparação de operacao.desconto.modo estreita a união aninhada, escolhendo entre pontos e euros. O acumulador passa por 20, 25, 20, 18 e 16, e termina em 20 euros depois dos portes."
+    }
+  ],
+  "summary": [
+    "Uma união discriminada é uma união de objetos em que todos partilham uma propriedade com um tipo literal diferente por membro",
+    "O discriminante é sempre legível sem estreitar, porque é comum a todos os membros da união",
+    "Comparar o discriminante com um literal, em switch ou em if/else, dá acesso às propriedades desse membro",
+    "Modelar estados assim torna impossível escrever combinações que o domínio não tem, ao contrário de um objeto com opcionais",
+    "O narrowing do discriminante funciona dentro de ciclos, em propriedades aninhadas e ao filtrar listas",
+    "Prefira literais de string em kind, type ou status, e propriedades obrigatórias por membro em vez de opcionais partilhadas"
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 03",
+  "next_label": "Aula 03 → Type Predicates e Assertion Functions"
+}

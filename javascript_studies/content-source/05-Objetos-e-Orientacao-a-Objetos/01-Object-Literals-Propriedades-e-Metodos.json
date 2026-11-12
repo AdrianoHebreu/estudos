@@ -1,0 +1,264 @@
+{
+  "module_num": "05",
+  "module_title": "Objetos e Orientação a Objetos",
+  "module_dir": "05-Objetos-e-Orientacao-a-Objetos",
+  "lesson_num": "01",
+  "lesson_slug": "Object-Literals-Propriedades-e-Metodos",
+  "kind": "aula",
+  "title": "Object Literals, Propriedades e Métodos",
+  "filename_base": "01-Object-Literals-Propriedades-e-Metodos",
+  "subtitle": "Criar, aceder e transformar objetos com a sintaxe moderna do JavaScript.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Criar objetos literais e aceder às suas propriedades com notação de ponto ou de colchetes",
+    "Usar shorthand de propriedades e de métodos para escrever objetos mais concisos",
+    "Definir nomes de propriedades em tempo de execução com chaves computadas",
+    "Percorrer e transformar objetos com Object.keys, Object.values e Object.entries",
+    "Reconstruir objetos a partir de pares chave-valor com Object.fromEntries",
+    "Aceder em segurança a propriedades aninhadas com optional chaining (?.)"
+  ],
+  "sections": [
+    {
+      "heading": "Objetos Literais e Acesso a Propriedades",
+      "body": [
+        "Um objeto literal é a forma mais direta de criar um objeto em JavaScript: um conjunto de pares chave-valor delimitado por chavetas. As chaves são, internamente, sempre strings ou symbols, ainda que possam ser escritas sem aspas quando são identificadores válidos; os valores podem ser de qualquer tipo, incluindo números, strings, funções, arrays ou outros objetos.",
+        "Para ler ou escrever um valor existem duas notações: a notação de ponto (objeto.propriedade) e a notação de colchetes (objeto[\"propriedade\"]). A notação de ponto é mais legível e deve ser a escolha por omissão, mas a de colchetes é obrigatória quando o nome da propriedade não é um identificador válido, por exemplo contém espaços ou começa por um número, ou quando o nome só é conhecido em tempo de execução, guardado numa variável."
+      ],
+      "code": "const produto = {\n  nome: \"Teclado mecânico\",\n  preco: 79.9,\n  emStock: true,\n};\n\nconsole.log(produto.nome); // \"Teclado mecânico\" — notação de ponto\n\nconst campo = \"preco\";\nconsole.log(produto[campo]); // 79.9 — notação de colchetes, chave dinâmica\n\nproduto.desconto = 0.1; // adicionar propriedade nova\ndelete produto.emStock; // remover propriedade existente",
+      "callout_kind": "NOTA",
+      "callout_text": "objeto.propriedade só funciona quando propriedade é um identificador válido, sem espaços e sem começar por um número. Para qualquer outro caso, ou quando o nome vem de uma variável, use sempre colchetes.",
+      "table_headers": [
+        "Situação",
+        "Notação de ponto",
+        "Notação de colchetes"
+      ],
+      "table_rows": [
+        [
+          "Nome fixo e válido como identificador",
+          "produto.nome",
+          "produto[\"nome\"] (funciona, mas é mais verboso)"
+        ],
+        [
+          "Nome guardado numa variável",
+          "Não é possível",
+          "produto[campo]"
+        ],
+        [
+          "Nome com espaços ou hífens",
+          "Não é possível",
+          "produto[\"tamanho-ecrã\"]"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "Objeto literal: pares chave-valor entre { }"
+        },
+        {
+          "icon": "👉",
+          "text": "Ponto para chaves fixas, colchetes para dinâmicas"
+        },
+        {
+          "icon": "➕",
+          "text": "Propriedades podem ser criadas ou removidas depois"
+        }
+      ]
+    },
+    {
+      "heading": "Shorthand de Propriedades e de Métodos",
+      "body": [
+        "Quando o nome de uma propriedade coincide com o nome da variável que contém o valor, o JavaScript permite escrever apenas o nome uma vez — a chamada shorthand de propriedades. É muito comum ao construir um objeto a partir de valores já existentes, por exemplo dentro de uma função que recebe parâmetros e devolve um objeto com esses mesmos nomes.",
+        "Da mesma forma, um método (uma propriedade cujo valor é uma função) pode ser escrito sem a palavra function e sem os dois-pontos, apenas com nome(parâmetros) { ... }. O resultado tem exatamente o mesmo comportamento de um método escrito de forma mais verbosa, incluindo o acesso a this dentro do corpo da função."
+      ],
+      "code": "function criarUtilizador(nome, idade) {\n  const ativo = true;\n  return { nome, idade, ativo }; // shorthand de propriedades\n}\n\nconst utilizador = criarUtilizador(\"Marta\", 32);\n\nconst carrinho = {\n  itens: [],\n  adicionar(item) {           // shorthand de método\n    this.itens.push(item);\n    return this.itens.length;\n  },\n};\n\ncarrinho.adicionar(\"Livro\");",
+      "callout_kind": "DICA",
+      "callout_text": "Sempre que estiver a escrever { nomeDaVariavel: nomeDaVariavel }, pode simplificar para { nomeDaVariavel }. O mesmo vale para metodo: function() {} versus metodo() {}.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "✨",
+          "text": "{ nome } em vez de { nome: nome }"
+        },
+        {
+          "icon": "🔧",
+          "text": "metodo() {} em vez de metodo: function() {}"
+        },
+        {
+          "icon": "🧹",
+          "text": "Menos código, mesmo comportamento"
+        }
+      ]
+    },
+    {
+      "heading": "Chaves Computadas",
+      "body": [
+        "Por vezes o nome de uma propriedade só é conhecido em tempo de execução: vem de uma variável, do resultado de uma função ou de um parâmetro. As chaves computadas permitem usar uma expressão entre colchetes diretamente dentro do objeto literal, na forma [expressao]: valor. A expressão é avaliada primeiro e o resultado torna-se o nome da propriedade.",
+        "Isto é muito usado para construir objetos dinamicamente, por exemplo para gerar chaves a partir de um prefixo ou para atribuir uma propriedade cujo nome só existe dentro de uma função genérica."
+      ],
+      "code": "const idioma = \"pt\";\n\nconst traducoes = {\n  [`titulo_${idioma}`]: \"Bem-vindo\",\n  [idioma === \"pt\" ? \"saudacao\" : \"greeting\"]: \"Olá!\",\n};\n\nconsole.log(traducoes.titulo_pt); // \"Bem-vindo\"\n\nfunction criarRegisto(chave, valor) {\n  return { [chave]: valor };\n}\n\nconsole.log(criarRegisto(\"email\", \"marta@example.com\"));\n// { email: \"marta@example.com\" }",
+      "callout_kind": "NOTA",
+      "callout_text": "A chave computada é avaliada uma única vez, no momento da criação do objeto. Se a variável usada na expressão mudar depois, o nome da propriedade já criada não muda.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧮",
+          "text": "[expressao]: valor calcula o nome da propriedade"
+        },
+        {
+          "icon": "⚡",
+          "text": "Avaliada uma vez, na criação do objeto"
+        },
+        {
+          "icon": "🔑",
+          "text": "Ideal para gerar chaves dinâmicas"
+        }
+      ]
+    },
+    {
+      "heading": "Percorrer Objetos: Object.keys, values e entries",
+      "body": [
+        "Object.keys(objeto) devolve um array com os nomes das propriedades próprias e enumeráveis do objeto, pela ordem de inserção. Object.values(objeto) devolve, na mesma ordem, um array só com os valores. Object.entries(objeto) devolve um array de pares [chave, valor], cada par representado como um array de dois elementos — o formato ideal para percorrer com for...of ou para transformar com métodos de array.",
+        "Estes três métodos são a forma padrão de tratar um objeto como uma coleção iterável, algo que os objetos não são nativamente. Combinados com map, filter ou reduce, permitem aplicar toda a caixa de ferramentas de arrays a estruturas de dados baseadas em objetos."
+      ],
+      "code": "const stock = { maçã: 50, banana: 12, pera: 0 };\n\nconsole.log(Object.keys(stock));   // [\"maçã\", \"banana\", \"pera\"]\nconsole.log(Object.values(stock)); // [50, 12, 0]\nconsole.log(Object.entries(stock));\n// [[\"maçã\", 50], [\"banana\", 12], [\"pera\", 0]]\n\nfor (const [fruta, quantidade] of Object.entries(stock)) {\n  console.log(`${fruta}: ${quantidade} unidades`);\n}\n\nconst disponiveis = Object.entries(stock).filter(([, qtd]) => qtd > 0);\n// [[\"maçã\", 50], [\"banana\", 12]]",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [
+        "Método",
+        "O que devolve",
+        "Exemplo de resultado"
+      ],
+      "table_rows": [
+        [
+          "Object.keys(obj)",
+          "Array com os nomes das propriedades",
+          "[\"maçã\", \"banana\", \"pera\"]"
+        ],
+        [
+          "Object.values(obj)",
+          "Array com os valores",
+          "[50, 12, 0]"
+        ],
+        [
+          "Object.entries(obj)",
+          "Array de pares [chave, valor]",
+          "[[\"maçã\", 50], [\"banana\", 12], [\"pera\", 0]]"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🗝️",
+          "text": "keys() devolve os nomes das propriedades"
+        },
+        {
+          "icon": "💎",
+          "text": "values() devolve só os valores"
+        },
+        {
+          "icon": "🔗",
+          "text": "entries() devolve pares [chave, valor]"
+        }
+      ]
+    },
+    {
+      "heading": "Reconstruir Objetos com Object.fromEntries",
+      "body": [
+        "Object.fromEntries(iteravel) faz o percurso inverso de Object.entries: recebe uma coleção de pares [chave, valor] — um array de arrays, um Map, ou qualquer iterável equivalente — e constrói um objeto novo a partir deles. É a ferramenta natural para fechar o ciclo depois de transformar um objeto com entries, map ou filter, sem ter de reconstruir o resultado manualmente com um reduce.",
+        "Um uso muito comum é converter um Map num objeto simples, ou filtrar e transformar as propriedades de um objeto mantendo o resultado ainda como objeto, em vez de ficar preso num array de pares."
+      ],
+      "code": "const stock = { maçã: 50, banana: 12, pera: 0 };\n\n// filtrar propriedades e devolver um objeto (não um array)\nconst comStock = Object.fromEntries(\n  Object.entries(stock).filter(([, quantidade]) => quantidade > 0)\n);\nconsole.log(comStock); // { \"maçã\": 50, banana: 12 }\n\n// converter um Map num objeto\nconst configuracoes = new Map([\n  [\"tema\", \"escuro\"],\n  [\"idioma\", \"pt-PT\"],\n]);\nconsole.log(Object.fromEntries(configuracoes));\n// { tema: \"escuro\", idioma: \"pt-PT\" }",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Experimente combinar Object.entries, map e Object.fromEntries para multiplicar todos os valores de um objeto de preços por 1.23 (para incluir IVA), mantendo as chaves originais intactas.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔄",
+          "text": "fromEntries() é o inverso de entries()"
+        },
+        {
+          "icon": "🧵",
+          "text": "Recebe pares [chave, valor], devolve um objeto"
+        },
+        {
+          "icon": "🗺️",
+          "text": "Perfeito para converter Map em objeto"
+        }
+      ]
+    },
+    {
+      "heading": "Optional Chaining (?.) em Objetos",
+      "body": [
+        "O optional chaining (?.) permite aceder a uma propriedade aninhada sem lançar um erro quando um dos elos intermédios é null ou undefined. Em vez de objeto.a.b.c, escreve-se objeto?.a?.b?.c: assim que um dos elos for null ou undefined, a expressão inteira devolve undefined imediatamente, sem tentar continuar a aceder mais fundo e sem lançar TypeError.",
+        "É especialmente útil com dados que vêm de fontes externas, como uma resposta de API ou input do utilizador, onde nem sempre se sabe com certeza se uma propriedade intermédia existe. O optional chaining também funciona antes de invocar um método, objeto.metodo?.(), o que evita verificar manualmente se a função existe antes de a chamar, e antes de aceder por colchetes, objeto?.[\"chave\"]."
+      ],
+      "code": "const utilizador = {\n  nome: \"Rui\",\n  morada: {\n    cidade: \"Porto\",\n  },\n};\n\nconsole.log(utilizador.morada?.rua);      // undefined, sem erro\nconsole.log(utilizador?.contacto?.email); // undefined, sem erro\n\nconsole.log(utilizador.morada?.[\"cidade\"]); // \"Porto\" — também com colchetes\n\nutilizador.saudar?.(); // não faz nada, \"saudar\" não existe — não lança erro",
+      "callout_kind": "ATENCAO",
+      "callout_text": "?. protege contra null/undefined nesse ponto da cadeia, mas não substitui validação de dados. Se depois precisar mesmo de um valor, continue a verificar explicitamente ou lance um erro.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🛡️",
+          "text": "?. evita TypeError em propriedades inexistentes"
+        },
+        {
+          "icon": "🚫",
+          "text": "Para a cadeia assim que encontra null/undefined"
+        },
+        {
+          "icon": "📞",
+          "text": "objeto.metodo?.() chama só se o método existir"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Criar um livro com shorthand",
+      "difficulty": "Iniciante",
+      "statement": "Crie uma função criarLivro(titulo, autor, paginas) que recebe três parâmetros e devolve um objeto literal com essas três propriedades (usando shorthand) mais uma propriedade lido inicializada a false. De seguida, aceda ao título do livro devolvido usando notação de ponto e ao número de páginas usando notação de colchetes.",
+      "hint": "O shorthand só funciona quando o nome da propriedade é exatamente igual ao nome do parâmetro; lido não tem essa correspondência, por isso escreve-se por extenso.",
+      "solution_code": "function criarLivro(titulo, autor, paginas) {\n  return { titulo, autor, paginas, lido: false };\n}\n\nconst livro = criarLivro(\"Duna\", \"Frank Herbert\", 688);\nconsole.log(livro.titulo);     // \"Duna\"\nconsole.log(livro[\"paginas\"]); // 688",
+      "solution_explanation": "titulo, autor e paginas usam a sintaxe shorthand porque os nomes das propriedades coincidem com os parâmetros da função; lido é escrita da forma completa porque não vem de nenhuma variável com esse nome. O acesso final mostra as duas notações possíveis para ler o mesmo objeto."
+    },
+    {
+      "title": "Reconstruir respostas de um formulário",
+      "difficulty": "Intermedio",
+      "statement": "Tem um array de respostas de um formulário no formato [{ campo: 'nome', valor: 'Ana' }, { campo: 'idade', valor: 25 }]. Escreva uma função construirObjeto(respostas) que percorre esse array e devolve um único objeto onde cada campo é uma chave e cada valor é o respetivo valor (por exemplo, { nome: 'Ana', idade: 25 }). Use uma chave computada para atribuir cada propriedade.",
+      "hint": "Dentro de um reduce, cada objeto novo pode ser criado com { ...acc, [campo]: valor } — os colchetes à volta de campo tornam-no uma chave computada.",
+      "solution_code": "function construirObjeto(respostas) {\n  return respostas.reduce((acc, { campo, valor }) => {\n    return { ...acc, [campo]: valor };\n  }, {});\n}\n\nconst respostas = [\n  { campo: \"nome\", valor: \"Ana\" },\n  { campo: \"idade\", valor: 25 },\n];\n\nconsole.log(construirObjeto(respostas)); // { nome: \"Ana\", idade: 25 }",
+      "solution_explanation": "Cada passo do reduce cria um objeto novo espalhando o acumulado (...acc) e acrescentando uma propriedade cuja chave é dada pela expressão computada [campo], avaliada com o valor atual dessa iteração."
+    },
+    {
+      "title": "Aplicar desconto a uma tabela de preços",
+      "difficulty": "Intermedio",
+      "statement": "Dado o objeto de preços { teclado: 79.9, rato: 39.9, monitor: 249.9 }, escreva uma função aplicarDesconto(precos, percentagem) que devolve um NOVO objeto com os mesmos produtos, mas com cada preço reduzido na percentagem indicada (por exemplo, 10 significa 10%). Use Object.entries, map e Object.fromEntries, e não altere o objeto original.",
+      "hint": "Object.entries transforma o objeto num array de pares que pode ser tratado com map como qualquer array; Object.fromEntries fecha o ciclo, transformando o array de volta num objeto.",
+      "solution_code": "function aplicarDesconto(precos, percentagem) {\n  const fator = 1 - percentagem / 100;\n  return Object.fromEntries(\n    Object.entries(precos).map(([produto, preco]) => [\n      produto,\n      Number((preco * fator).toFixed(2)),\n    ])\n  );\n}\n\nconst precos = { teclado: 79.9, rato: 39.9, monitor: 249.9 };\nconsole.log(aplicarDesconto(precos, 10));\n// { teclado: 71.91, rato: 35.91, monitor: 224.91 }\nconsole.log(precos); // objeto original inalterado",
+      "solution_explanation": "Object.entries converte o objeto num array de pares [chave, valor] que map percorre, devolvendo um novo par com o preço já com desconto; Object.fromEntries reconstrói o objeto a partir desse array transformado, sem tocar em precos original."
+    },
+    {
+      "title": "Cidades dos clientes, com dados incompletos",
+      "difficulty": "Avancado",
+      "statement": "Recebe um array de pedidos, cada um com esta forma, mas onde algumas propriedades podem faltar: { id: 1, cliente: { nome: 'Sofia', morada: { cidade: 'Lisboa' } } }. Escreva uma função listarCidades(pedidos) que devolve um objeto em que cada chave é o id do pedido e cada valor é a cidade do respetivo cliente, ou a string 'desconhecida' quando a morada ou a cidade não existirem. Use optional chaining para aceder à cidade em segurança e Object.fromEntries para construir o resultado.",
+      "hint": "Transforme cada pedido num par [id, cidade] com pedido.cliente?.morada?.cidade ?? 'desconhecida', e passe o array de pares resultante a Object.fromEntries.",
+      "solution_code": "function listarCidades(pedidos) {\n  return Object.fromEntries(\n    pedidos.map((pedido) => [\n      pedido.id,\n      pedido.cliente?.morada?.cidade ?? \"desconhecida\",\n    ])\n  );\n}\n\nconst pedidos = [\n  { id: 1, cliente: { nome: \"Sofia\", morada: { cidade: \"Lisboa\" } } },\n  { id: 2, cliente: { nome: \"Tiago\" } },\n  { id: 3 },\n];\n\nconsole.log(listarCidades(pedidos));\n// { \"1\": \"Lisboa\", \"2\": \"desconhecida\", \"3\": \"desconhecida\" }",
+      "solution_explanation": "pedido.cliente?.morada?.cidade percorre a cadeia de propriedades e para em segurança assim que encontra null ou undefined, devolvendo undefined nesse caso; o operador ?? substitui esse undefined por 'desconhecida'. map gera os pares [id, cidade] que Object.fromEntries transforma no objeto final."
+    }
+  ],
+  "summary": [
+    "Objetos literais agrupam pares chave-valor entre chavetas; acede-se com ponto (chaves fixas) ou colchetes (chaves dinâmicas ou nomes inválidos como identificador)",
+    "Shorthand de propriedades ({ nome }) e de métodos (metodo() {}) tornam o código mais conciso sem alterar o comportamento",
+    "Chaves computadas ([expressao]: valor) permitem definir o nome de uma propriedade a partir de uma expressão avaliada em tempo de execução",
+    "Object.keys, Object.values e Object.entries transformam um objeto num array, abrindo a porta a map, filter e reduce",
+    "Object.fromEntries faz o caminho inverso, reconstruindo um objeto a partir de pares [chave, valor]",
+    "Optional chaining (?.) evita erros ao aceder a propriedades aninhadas que podem não existir, parando a cadeia assim que encontra null ou undefined"
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 02",
+  "next_label": "Aula 02 → Protótipos e Herança Prototipal",
+  "_stage": "revisao"
+}

@@ -1,0 +1,244 @@
+{
+  "module_num": "08",
+  "module_title": "Módulos e Ecossistema",
+  "module_dir": "08-Modulos-e-Ecossistema",
+  "lesson_num": "03",
+  "lesson_slug": "NPM-e-Gestao-de-Pacotes",
+  "kind": "aula",
+  "title": "NPM e Gestão de Pacotes",
+  "filename_base": "03-NPM-e-Gestao-de-Pacotes",
+  "subtitle": "Como o npm organiza, instala e mantém as dependências do seu projeto Node.js",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Compreender a estrutura do package.json e a diferença entre dependencies, devDependencies e scripts.",
+    "Distinguir npm install de npm ci e saber em que situação usar cada um.",
+    "Interpretar o versionamento semântico e o efeito prático dos operadores ^ e ~.",
+    "Usar npx para executar pacotes pontualmente sem os instalar globalmente.",
+    "Perceber para que servem node_modules e package-lock.json, e por que motivo apenas um deles se deve versionar."
+  ],
+  "sections": [
+    {
+      "heading": "package.json: o manifesto do projeto",
+      "body": [
+        "O package.json é o ficheiro de manifesto de qualquer projeto Node.js e a primeira coisa que o npm lê ao instalar pacotes ou ao executar comandos. Nele constam metadados do projeto, como nome, versão e descrição, e três blocos que qualquer programador usa no dia a dia: dependencies, devDependencies e scripts.",
+        "dependencies lista os pacotes de que a aplicação precisa para funcionar em produção, como um framework de servidor ou uma biblioteca de datas. devDependencies lista ferramentas necessárias apenas durante o desenvolvimento, como linters, frameworks de testes ou bundlers, que nunca chegam a correr no ambiente final. Esta distinção não é só organizativa: uma instalação de produção pode omitir as devDependencies, reduzindo o tamanho do que é implantado.",
+        "O bloco scripts define atalhos de linha de comandos, executados com npm run <nome>. Dois nomes são especiais e dispensam o run: npm start executa scripts.start e npm test executa scripts.test. Dentro de um script é possível chamar diretamente executáveis instalados em node_modules/.bin, como o eslint, sem indicar o caminho completo, porque o npm coloca essa pasta no PATH apenas durante a execução do script."
+      ],
+      "code": "{\n  \"name\": \"app-tarefas\",\n  \"version\": \"1.0.0\",\n  \"description\": \"Gestor de tarefas simples em Node.js\",\n  \"main\": \"index.js\",\n  \"scripts\": {\n    \"start\": \"node index.js\",\n    \"test\": \"node --test\",\n    \"lint\": \"eslint .\"\n  },\n  \"dependencies\": {\n    \"express\": \"^4.18.2\"\n  },\n  \"devDependencies\": {\n    \"eslint\": \"^8.50.0\",\n    \"nodemon\": \"^3.0.1\"\n  }\n}",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "package.json e o manifesto do projeto"
+        },
+        {
+          "icon": "🏭",
+          "text": "dependencies = producao, devDependencies = so dev"
+        },
+        {
+          "icon": "⚙️",
+          "text": "scripts corre-se com npm run <nome>"
+        },
+        {
+          "icon": "▶️",
+          "text": "start e test correm sem precisar de run"
+        }
+      ]
+    },
+    {
+      "heading": "npm install vs npm ci",
+      "body": [
+        "npm install é o comando mais usado no dia a dia: lê o package.json, resolve as versões de cada dependência dentro dos intervalos permitidos, escreve ou atualiza o package-lock.json e instala tudo em node_modules. Se for chamado com o nome de um pacote, por exemplo npm install dayjs, acrescenta essa dependência ao package.json automaticamente. É o comando certo enquanto se está a desenvolver: adicionar bibliotecas novas, atualizar versões ou preparar um projeto pela primeira vez.",
+        "npm ci, de clean install, destina-se a instalações reprodutíveis, tipicamente em integração contínua ou em builds de produção. Exige que exista um package-lock.json sincronizado com o package.json; caso contrário falha de imediato, em vez de tentar resolver versões novas. Antes de instalar, apaga por completo a pasta node_modules existente e instala exatamente as versões gravadas no lock file, sem nunca o alterar. Isto torna-o mais rápido do que o npm install em ambientes limpos e garante que toda a equipa, e o servidor de CI, instalam sempre o mesmo conjunto de versões."
+      ],
+      "code": "# uso diario, em desenvolvimento: pode atualizar o package-lock.json\nnpm install\n\n# adicionar uma dependencia de producao\nnpm install dayjs\n\n# adicionar uma dependencia so de desenvolvimento\nnpm install --save-dev jest\n\n# instalacao reprodutivel, tipica de CI/CD ou de deploy:\n# falha imediatamente se o package-lock.json nao existir\n# ou estiver desatualizado face ao package.json\nnpm ci",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Nunca use npm install num pipeline de CI para instalar as dependências de build ou de deploy: como pode resolver versões diferentes das que estão gravadas no lock file, duas execuções do mesmo pipeline podem acabar por instalar conjuntos diferentes de pacotes. Para instalações reprodutíveis use sempre npm ci.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔄",
+          "text": "npm install resolve versoes e pode atualizar o lock"
+        },
+        {
+          "icon": "🔒",
+          "text": "npm ci instala exatamente o que esta no lock file"
+        },
+        {
+          "icon": "🧹",
+          "text": "npm ci apaga o node_modules antes de instalar"
+        },
+        {
+          "icon": "🤖",
+          "text": "use npm ci em CI/CD e builds de producao"
+        }
+      ]
+    },
+    {
+      "heading": "Versionamento semântico: os operadores ^ e ~",
+      "body": [
+        "O versionamento semântico, ou semver, organiza cada versão em três números, MAJOR.MINOR.PATCH. O MAJOR muda quando há alterações incompatíveis com versões anteriores, o MINOR muda quando se acrescenta funcionalidade nova mas compatível, e o PATCH muda quando se corrigem apenas defeitos, sem alterar o comportamento esperado. É este contrato que permite ao npm decidir, em segurança, que atualizações pode instalar automaticamente.",
+        "No package.json, o prefixo ^ antes de uma versão, por exemplo ^1.2.3, permite atualizações de MINOR e de PATCH, desde que a versão MAJOR se mantenha igual. O til, como em ~1.2.3, é mais restritivo e só permite atualizações de PATCH. Uma versão escrita sem qualquer prefixo, como 1.2.3, fixa exatamente essa versão, sem margem para atualizações automáticas."
+      ],
+      "code": "const dependenciasExemplo = {\n  express: '^4.18.2',  // aceita 4.18.2 ate <5.0.0 (minor e patch)\n  dayjs: '~1.11.9',     // aceita 1.11.9 ate <1.12.0 (so patch)\n  'left-pad': '1.3.0',  // aceita apenas exatamente esta versao\n};",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Quando a versão MAJOR é 0, como em ^0.4.2, o semver considera que o pacote ainda está em desenvolvimento inicial e pode ter alterações incompatíveis em qualquer versão MINOR. Por isso o npm trata ^0.x.y de forma mais restrita: só aceita atualizações de PATCH, tal como o til faria numa versão 1.x.y ou superior.",
+      "table_headers": [
+        "Notacao",
+        "Exemplo",
+        "Versoes aceites ao instalar",
+        "Versoes recusadas"
+      ],
+      "table_rows": [
+        [
+          "^ (caret)",
+          "^1.2.3",
+          "1.2.3 ate < 2.0.0 (atualizacoes minor e patch)",
+          "2.0.0 ou superior"
+        ],
+        [
+          "~ (til)",
+          "~1.2.3",
+          "1.2.3 ate < 1.3.0 (apenas atualizacoes patch)",
+          "1.3.0 ou superior"
+        ],
+        [
+          "sem prefixo",
+          "1.2.3",
+          "exatamente a versao 1.2.3",
+          "qualquer outra versao"
+        ],
+        [
+          "^ com major 0",
+          "^0.2.3",
+          "0.2.3 ate < 0.3.0 (so patch, tratado como o til)",
+          "0.3.0 ou superior"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔢",
+          "text": "MAJOR.MINOR.PATCH: incompativel, funcionalidade, correcao"
+        },
+        {
+          "icon": "➕",
+          "text": "^ aceita atualizacoes minor e patch"
+        },
+        {
+          "icon": "🔧",
+          "text": "~ aceita so atualizacoes de patch"
+        },
+        {
+          "icon": "⚠️",
+          "text": "^0.x.y comporta-se como um til"
+        }
+      ]
+    },
+    {
+      "heading": "npx: executar pacotes sem instalação global",
+      "body": [
+        "O npx vem incluído com o npm desde a versão 5.2 e serve para executar o binário de um pacote sem o instalar de forma permanente. Se o pacote já estiver instalado localmente, em node_modules/.bin, o npx usa essa cópia; caso contrário descarrega-o temporariamente, corre-o uma única vez e não o deixa instalado. É a ferramenta certa para geradores de projeto, como criar um novo scaffold, ou para utilitários pontuais que só se usam esporadicamente.",
+        "Sem o npx, a alternativa seria instalar o pacote globalmente com npm install -g, o que polui o ambiente da máquina e pode causar conflitos de versão entre projetos diferentes que precisam de versões distintas da mesma ferramenta. Com npx, é ainda possível pedir uma versão específica através de @, como em npx cowsay@1.5.0, garantindo que se usa sempre a versão pretendida, sem depender do que estiver instalado globalmente."
+      ],
+      "code": "# criar um novo projeto sempre com a versao mais recente do gerador,\n# sem o instalar globalmente\nnpx create-vite@latest meu-projeto\n\n# correr o linter local do projeto (usa o binario de node_modules/.bin)\nnpx eslint . --fix\n\n# correr uma versao especifica de um utilitario, so uma vez\nnpx json-server@0.17.4 db.json --port 3001",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🚀",
+          "text": "npx corre um pacote sem o instalar"
+        },
+        {
+          "icon": "🧭",
+          "text": "ideal para geradores de projeto e utilitarios pontuais"
+        },
+        {
+          "icon": "🎯",
+          "text": "npx pacote@versao fixa uma versao especifica"
+        }
+      ]
+    },
+    {
+      "heading": "node_modules e package-lock.json",
+      "body": [
+        "node_modules é a pasta onde são fisicamente instalados todos os pacotes, as dependências diretas e devDependencies, mas também todas as suas dependências transitivas. Pode facilmente conter milhares de ficheiros mesmo num projeto pequeno, porque cada dependência traz consigo a sua própria árvore de dependências. Não se edita à mão, nunca se versiona em git e não se copia entre máquinas: regenera-se sempre a partir do package.json e do package-lock.json com npm install ou npm ci.",
+        "package-lock.json regista, para todo o projeto, a versão exata resolvida para cada pacote da árvore, incluindo as dependências indiretas, juntamente com um hash de integridade que confirma que o conteúdo descarregado não foi alterado. A sua finalidade é a reprodutibilidade: dois colegas de equipa, ou uma máquina de desenvolvimento e um servidor de CI, ao correrem npm ci com o mesmo lock file, acabam com instalações idênticas, mesmo que entretanto tenham sido publicadas versões novas e compatíveis no registo do npm. Ao contrário de node_modules, o package-lock.json deve sempre ser incluído no controlo de versões."
+      ],
+      "code": "// excerto de package-lock.json (nunca se edita a mao)\n{\n  \"name\": \"app-tarefas\",\n  \"lockfileVersion\": 3,\n  \"packages\": {\n    \"\": {\n      \"dependencies\": {\n        \"express\": \"^4.18.2\"\n      }\n    },\n    \"node_modules/express\": {\n      \"version\": \"4.18.2\",\n      \"resolved\": \"https://registry.npmjs.org/express/-/express-4.18.2.tgz\",\n      \"integrity\": \"sha512-abcXYZ...==\"\n    }\n  }\n}\n\n// .gitignore do projeto\nnode_modules\n.env",
+      "callout_kind": "DICA",
+      "callout_text": "Regra simples para não errar: node_modules entra sempre no .gitignore e nunca se edita à mão; package-lock.json faz sempre parte do commit e também nunca se edita à mão, é o npm que o mantém atualizado.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🗂️",
+          "text": "node_modules guarda fisicamente todos os pacotes"
+        },
+        {
+          "icon": "🚫",
+          "text": "node_modules nunca se versiona no git"
+        },
+        {
+          "icon": "🔐",
+          "text": "package-lock.json fixa a versao exata de cada dependencia"
+        },
+        {
+          "icon": "✅",
+          "text": "commitar o lock file garante instalacoes identicas"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Completar um package.json",
+      "difficulty": "Iniciante",
+      "statement": "Tem um projeto Node.js chamado \"app-tarefas\", na versão 1.0.0, que usa a biblioteca express (aceitando atualizações de minor e patch a partir da 4.18.2) como dependência de produção, e usa eslint (aceitando apenas atualizações de patch a partir da 8.50.0) como dependência de desenvolvimento. O projeto deve poder ser iniciado com o comando npm start, que executa node index.js, e testado com npm test, que executa node --test. Escreva o conteúdo completo do ficheiro package.json que satisfaz estes requisitos.",
+      "hint": "Lembre-se que \"aceitar atualizações de minor e patch\" corresponde a um dos dois operadores de intervalo estudados nesta aula, e \"aceitar só patch\" corresponde ao outro.",
+      "solution_code": "{\n  \"name\": \"app-tarefas\",\n  \"version\": \"1.0.0\",\n  \"scripts\": {\n    \"start\": \"node index.js\",\n    \"test\": \"node --test\"\n  },\n  \"dependencies\": {\n    \"express\": \"^4.18.2\"\n  },\n  \"devDependencies\": {\n    \"eslint\": \"~8.50.0\"\n  }\n}",
+      "solution_explanation": "O express usa ^4.18.2 porque o enunciado pede atualizações minor e patch dentro da mesma major, o que é exatamente o comportamento do caret. O eslint usa ~8.50.0 porque só se querem correções de patch. Os nomes start e test em scripts são reconhecidos diretamente pelo npm, sem necessidade de escrever npm run."
+    },
+    {
+      "title": "Usar npx sem instalar nada globalmente",
+      "difficulty": "Intermedio",
+      "statement": "Precisa de fazer duas coisas pontuais no seu computador, sem instalar nada de forma permanente: primeiro, criar um novo projeto com o gerador create-vite na sua versão mais recente, numa pasta chamada novo-projeto; segundo, correr o utilitário cowsay para imprimir a mensagem \"Ola, npm!\", mesmo sem o ter instalado antes. Escreva os dois comandos que usaria, e explique numa frase o que acontece a esses pacotes depois de os comandos terminarem.",
+      "hint": "O comando que executa um pacote sem o instalar permanentemente vem incluído com o npm desde a versão 5.2.",
+      "solution_code": "# 1. cria o projeto usando sempre a versao mais recente do gerador\nnpx create-vite@latest novo-projeto\n\n# 2. executa o cowsay uma unica vez, sem o instalar no projeto nem globalmente\nnpx cowsay \"Ola, npm!\"\n\n# depois de cada comando terminar, o pacote descarregado temporariamente\n# e removido da cache de execucao do npx; nao fica instalado nem no\n# projeto (node_modules) nem globalmente na maquina.",
+      "solution_explanation": "O npx procura primeiro o executável em node_modules/.bin do projeto atual; se não o encontrar, descarrega-o temporariamente do registo, corre-o uma única vez e não o deixa instalado. Isto evita instalações globais que ficariam desatualizadas ou entrariam em conflito entre projetos diferentes."
+    },
+    {
+      "title": "Classificar intervalos de versão",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função classificarIntervalo(intervalo) que recebe uma string tal como aparece num package.json (por exemplo \"^1.11.0\", \"~2.3.1\" ou \"1.9.0\") e devolve a string \"caret\", \"til\" ou \"exata\", consoante o prefixo. De seguida, use essa função para classificar os três intervalos seguintes e imprima o resultado no formato \"intervalo -> classificacao\": \"^1.11.0\", \"~2.3.1\", \"1.9.0\".",
+      "hint": "Pode verificar o primeiro caráter da string com startsWith, sem necessidade de expressões regulares.",
+      "solution_code": "function classificarIntervalo(intervalo) {\n  if (intervalo.startsWith('^')) return 'caret';\n  if (intervalo.startsWith('~')) return 'til';\n  return 'exata';\n}\n\nconst intervalos = ['^1.11.0', '~2.3.1', '1.9.0'];\n\nfor (const intervalo of intervalos) {\n  console.log(`${intervalo} -> ${classificarIntervalo(intervalo)}`);\n}",
+      "solution_explanation": "A função testa o primeiro caráter da string com startsWith: se for ^ devolve \"caret\", se for ~ devolve \"til\", e nos restantes casos assume-se que é uma versão exata sem prefixo. O ciclo for-of percorre o array e usa um template literal para imprimir cada par intervalo/classificação."
+    },
+    {
+      "title": "Detetar dependências fora do lock file",
+      "difficulty": "Avancado",
+      "statement": "O pipeline de integração contínua da sua equipa usa npm ci e falha com um erro a indicar que o package-lock.json está desatualizado. Escreva uma função dependenciasForaDoLock(packageJson, nomesNoLock) que recebe um objeto packageJson (com as propriedades dependencies e devDependencies, cada uma um objeto nome -> intervalo de versão) e um array nomesNoLock com os nomes de pacotes já registados no package-lock.json, e devolve um array com os nomes de todos os pacotes que aparecem em dependencies ou devDependencies mas não em nomesNoLock, ou seja, os que tornariam o lock file desatualizado. Inclua no próprio código um comentário a explicar por que motivo o npm ci falha nesta situação em vez de simplesmente instalar a dependência em falta, como o npm install faria.",
+      "hint": "Junte as chaves de dependencies e devDependencies num único conjunto de nomes e compare esse conjunto com nomesNoLock; um Set ajuda a evitar duplicados e torna a comparação mais eficiente.",
+      "solution_code": "function dependenciasForaDoLock(packageJson, nomesNoLock) {\n  const { dependencies = {}, devDependencies = {} } = packageJson;\n  const nomesDeclarados = [...Object.keys(dependencies), ...Object.keys(devDependencies)];\n  const noLock = new Set(nomesNoLock);\n\n  // O npm ci nao tenta resolver nem instalar nada que nao esteja no lock file:\n  // em vez disso falha de imediato, para garantir que a instalacao e sempre\n  // identica a que foi validada e gravada no package-lock.json. Se encontrasse\n  // um pacote em falta e o instalasse por conta propria (como o npm install faria),\n  // deixaria de haver garantia de reprodutibilidade entre maquinas.\n  return nomesDeclarados.filter((nome) => !noLock.has(nome));\n}\n\nconst packageJsonExemplo = {\n  dependencies: { express: '^4.18.2', dayjs: '^1.11.0' },\n  devDependencies: { eslint: '^8.50.0' },\n};\n\nconsole.log(dependenciasForaDoLock(packageJsonExemplo, ['express', 'eslint']));\n// -> ['dayjs']",
+      "solution_explanation": "A função reúne, com destructuring e valores por omissão, as chaves de dependencies e devDependencies num único array, e usa um Set com os nomes já presentes no lock file para filtrar em tempo constante os que faltam. O resultado são exatamente os pacotes que o package-lock.json ainda não conhece, e é por essa discrepância que o npm ci recusa continuar."
+    }
+  ],
+  "summary": [
+    "package.json é o manifesto do projeto: nome, versão, scripts e as dependências necessárias.",
+    "dependencies são precisas em produção; devDependencies servem apenas para o desenvolvimento.",
+    "npm install resolve e pode atualizar versões; npm ci instala exatamente o que está no lock file e é a escolha certa para CI e produção.",
+    "^ permite atualizações minor e patch; ~ só permite patch; sem prefixo fixa a versão exata, e ^0.x.y comporta-se como um til.",
+    "npx executa um pacote pontualmente sem o instalar globalmente, sempre com a versão pedida.",
+    "node_modules nunca se versiona; package-lock.json versiona-se sempre, para garantir instalações reprodutíveis."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 04",
+  "next_label": "Aula 04 → Bundlers e Ferramentas de Build",
+  "_stage": "autoria"
+}

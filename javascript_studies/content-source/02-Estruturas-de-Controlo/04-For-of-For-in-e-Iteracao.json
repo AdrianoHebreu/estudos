@@ -1,0 +1,253 @@
+{
+  "module_num": "02",
+  "module_title": "Estruturas de Controlo",
+  "module_dir": "02-Estruturas-de-Controlo",
+  "lesson_num": "04",
+  "lesson_slug": "For-of-For-in-e-Iteracao",
+  "kind": "aula",
+  "title": "for...of, for...in e Iteração",
+  "filename_base": "04-For-of-For-in-e-Iteracao",
+  "subtitle": "Percorra arrays, strings, Map, Set e objetos com o ciclo certo para cada caso.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Usar for...of para percorrer valores de arrays, strings, Map e Set.",
+    "Usar for...in para percorrer as chaves enumeráveis de um objeto.",
+    "Perceber por que motivo for...in deve ser evitado em arrays.",
+    "Identificar as diferenças-chave entre for...of e for...in.",
+    "Combinar Object.entries com for...of para percorrer pares chave-valor de um objeto."
+  ],
+  "sections": [
+    {
+      "heading": "for...of: percorrer valores de arrays e strings",
+      "body": [
+        "O ciclo for...of foi introduzido para percorrer diretamente os valores de qualquer objeto iterável, sem ter de gerir índices manualmente. A sintaxe é for (const elemento of coleção) { ... }, em que elemento assume, em cada iteração, o valor seguinte da coleção, e não a sua posição.",
+        "Em arrays, isto significa obter logo o valor de cada posição, sem escrever coleção[i]. Em strings, o for...of percorre cada carácter respeitando corretamente os pontos de código Unicode fora do plano básico, ao contrário de um ciclo indexado ingénuo, o que o torna a forma mais segura e legível de processar texto carácter a carácter."
+      ],
+      "code": "const frutas = ['maçã', 'banana', 'pera'];\n\nfor (const fruta of frutas) {\n  console.log(fruta);\n}\n\nconst saudacao = 'Olá 👋';\nfor (const caractere of saudacao) {\n  console.log(caractere);\n}",
+      "callout_kind": "NOTA",
+      "callout_text": "for...of funciona com qualquer objeto iterável, ou seja, que implemente o protocolo Symbol.iterator, e não apenas com arrays.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔁",
+          "text": "for...of devolve valores, não índices"
+        },
+        {
+          "icon": "🧵",
+          "text": "Funciona em arrays e em strings"
+        },
+        {
+          "icon": "🌍",
+          "text": "Percorre corretamente carateres Unicode"
+        }
+      ]
+    },
+    {
+      "heading": "for...of com Map e Set",
+      "body": [
+        "Map e Set implementam também o protocolo iterável, pelo que podem ser percorridos com for...of. Num Set, cada iteração devolve um valor, sem repetições, já que o Set não admite duplicados. Num Map, cada iteração devolve um par [chave, valor], que pode ser desestruturado diretamente no cabeçalho do ciclo para obter as duas variáveis de uma vez.",
+        "Tanto o Map como o Set mantêm a ordem de inserção dos seus elementos. Isto torna o resultado do for...of previsível: os pares ou valores surgem sempre pela mesma ordem em que foram adicionados à coleção."
+      ],
+      "code": "const inventario = new Map([\n  ['maçãs', 10],\n  ['peras', 5],\n]);\n\nfor (const [produto, quantidade] of inventario) {\n  console.log(`${produto}: ${quantidade}`);\n}\n\nconst idsUnicos = new Set([1, 2, 2, 3]);\nfor (const id of idsUnicos) {\n  console.log(id);\n}",
+      "callout_kind": "DICA",
+      "callout_text": "Ao percorrer um Map com for...of, desestruture logo o par [chave, valor] no cabeçalho do ciclo, em vez de aceder aos dois elementos do par dentro do corpo do ciclo.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🗺️",
+          "text": "Map: cada iteração dá [chave, valor]"
+        },
+        {
+          "icon": "🧩",
+          "text": "Set: cada valor surge uma só vez"
+        },
+        {
+          "icon": "📌",
+          "text": "Ordem de inserção sempre preservada"
+        }
+      ]
+    },
+    {
+      "heading": "for...in: percorrer chaves enumeráveis de um objeto",
+      "body": [
+        "O ciclo for...in serve um propósito diferente do for...of: percorre os nomes das propriedades enumeráveis de um objeto, e não os seus valores. A sintaxe é for (const chave in objeto) { ... }, em que chave é sempre uma string com o nome da propriedade, mesmo quando essa propriedade foi originalmente definida com um número.",
+        "Para além das propriedades próprias do objeto, o for...in percorre também as propriedades enumeráveis herdadas através da cadeia de protótipos. Quando isso não é desejado, cada chave deve ser filtrada com Object.hasOwn(objeto, chave), que devolve true apenas para propriedades próprias."
+      ],
+      "code": "const pessoa = {\n  nome: 'Marta',\n  idade: 34,\n  profissao: 'engenheira',\n};\n\nfor (const chave in pessoa) {\n  if (Object.hasOwn(pessoa, chave)) {\n    console.log(`${chave}: ${pessoa[chave]}`);\n  }\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "for...in percorre também propriedades enumeráveis herdadas da cadeia de protótipos, não apenas as propriedades próprias do objeto.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔑",
+          "text": "for...in devolve nomes de propriedades"
+        },
+        {
+          "icon": "🧬",
+          "text": "Inclui propriedades herdadas do protótipo"
+        },
+        {
+          "icon": "✅",
+          "text": "Object.hasOwn filtra só as próprias"
+        }
+      ]
+    },
+    {
+      "heading": "Porque evitar for...in em arrays",
+      "body": [
+        "Em JavaScript, os arrays são também objetos, e os seus índices são, na prática, propriedades enumeráveis com nomes de string ('0', '1', '2', e assim por diante). Isto significa que um for...in sobre um array funciona tecnicamente, mas devolve os índices como strings em vez de números, e nada garante que a ordem de percurso corresponda sempre à ordem numérica esperada.",
+        "O problema agrava-se se o array tiver propriedades adicionais atribuídas diretamente, ou propriedades enumeráveis herdadas: essas também aparecem no for...in, misturadas com os índices, o que normalmente não é a intenção de quem pretende percorrer uma lista de valores. Por estas razões, a prática recomendada é usar sempre for...of, ou métodos como forEach e map, para percorrer arrays, reservando o for...in exclusivamente para objetos simples."
+      ],
+      "code": "const numeros = [10, 20, 30];\nnumeros.etiqueta = 'valores de teste';\n\nfor (const indice in numeros) {\n  console.log(indice, typeof indice);\n}\n\nfor (const numero of numeros) {\n  console.log(numero, typeof numero);\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Em arrays, for...in devolve os índices como strings e pode incluir propriedades adicionais não numéricas; use sempre for...of para percorrer arrays.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⚠️",
+          "text": "Índices tornam-se strings ('0', '1'...)"
+        },
+        {
+          "icon": "🚫",
+          "text": "Pode incluir propriedades não numéricas"
+        },
+        {
+          "icon": "✅",
+          "text": "Prefira for...of para percorrer arrays"
+        }
+      ]
+    },
+    {
+      "heading": "Diferenças-chave entre for...of e for...in",
+      "body": [
+        "As duas instruções resolvem problemas distintos e não são intercambiáveis. O for...of exige que a coleção implemente o protocolo iterável, isto é, Symbol.iterator; tentar usá-lo sobre um objeto literal comum, que não é iterável, lança um TypeError em tempo de execução. O for...in, pelo contrário, funciona sobre qualquer objeto, iterável ou não, porque se baseia apenas na existência de propriedades enumeráveis.",
+        "Outra diferença essencial está naquilo que cada ciclo devolve em cada iteração: o for...of devolve o valor em si, seja o elemento do array, o carácter da string ou o par do Map, enquanto o for...in devolve sempre o nome da propriedade, como string. A tabela seguinte resume as diferenças mais importantes a reter."
+      ],
+      "code": "const objetoSimples = { a: 1, b: 2 };\n\ntry {\n  for (const valor of objetoSimples) {\n    console.log(valor);\n  }\n} catch (erro) {\n  console.log(erro.message); // objetoSimples is not iterable\n}",
+      "callout_kind": "NOTA",
+      "callout_text": "Tentar usar for...of sobre um objeto não iterável lança sempre um TypeError; o for...in nunca lança este erro, porque não depende do protocolo iterável.",
+      "table_headers": [
+        "Aspeto",
+        "for...of",
+        "for...in"
+      ],
+      "table_rows": [
+        [
+          "O que percorre",
+          "Os valores de um iterável",
+          "Os nomes das propriedades enumeráveis"
+        ],
+        [
+          "Requisito da coleção",
+          "Tem de implementar Symbol.iterator",
+          "Qualquer objeto, não precisa de ser iterável"
+        ],
+        [
+          "Valor devolvido em cada iteração",
+          "O elemento, carácter ou par em si",
+          "Sempre uma string com o nome da chave"
+        ],
+        [
+          "Inclui propriedades herdadas",
+          "Não aplicável",
+          "Sim, a não ser que se filtre com Object.hasOwn"
+        ],
+        [
+          "Uso recomendado",
+          "Arrays, strings, Map, Set, generators",
+          "Inspecionar propriedades de objetos simples"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "❌",
+          "text": "for...of falha em objetos não iteráveis"
+        },
+        {
+          "icon": "✅",
+          "text": "for...in aceita qualquer objeto"
+        },
+        {
+          "icon": "🎯",
+          "text": "Cada um devolve algo diferente"
+        }
+      ]
+    },
+    {
+      "heading": "Iterar entries de objetos com Object.entries e for...of",
+      "body": [
+        "Quando se pretende percorrer um objeto obtendo ao mesmo tempo a chave e o valor de cada propriedade, a abordagem mais moderna e segura não é o for...in, mas sim combinar Object.entries com for...of. Object.entries(objeto) devolve um array de pares [chave, valor], contendo apenas as propriedades próprias e enumeráveis do objeto, nunca propriedades herdadas, o que elimina de raiz o problema de herança associado ao for...in.",
+        "Como o resultado de Object.entries é um array, e portanto iterável, pode percorrer-se diretamente com for...of, desestruturando cada par em duas variáveis. Esta combinação é hoje a forma idiomática de processar todas as propriedades de um objeto quando se precisa tanto da chave como do valor; quando só se precisa dos valores ou só das chaves, existem os equivalentes Object.values e Object.keys."
+      ],
+      "code": "const produto = {\n  nome: 'Teclado mecânico',\n  preco: 79.9,\n  emStock: true,\n};\n\nfor (const [chave, valor] of Object.entries(produto)) {\n  console.log(`${chave} -> ${valor}`);\n}",
+      "callout_kind": "DICA",
+      "callout_text": "Object.keys(objeto) e Object.values(objeto) seguem a mesma lógica de Object.entries, devolvendo arrays apenas com as chaves ou apenas com os valores próprios e enumeráveis, prontos a percorrer com for...of.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔑",
+          "text": "Object.entries dá pares [chave, valor]"
+        },
+        {
+          "icon": "🚫",
+          "text": "Sem propriedades herdadas"
+        },
+        {
+          "icon": "✅",
+          "text": "Combina bem com destructuring"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Somar valores de um array com for...of",
+      "difficulty": "Iniciante",
+      "statement": "Dado o array de números const notas = [14, 16, 9, 18, 12];, escreva um ciclo for...of que percorra o array e calcule a soma total das notas, mostrando o resultado no final com console.log.",
+      "hint": "Vai precisar de uma variável acumuladora inicializada a 0 antes do ciclo, que vai somando o valor de cada iteração.",
+      "solution_code": "const notas = [14, 16, 9, 18, 12];\nlet soma = 0;\n\nfor (const nota of notas) {\n  soma += nota;\n}\n\nconsole.log(soma); // 69",
+      "solution_explanation": "O for...of devolve diretamente o valor de cada nota, sem necessidade de indexar o array, o que permite acumular a soma numa variável externa ao ciclo de forma direta e legível."
+    },
+    {
+      "title": "Percorrer um objeto com for...in e Object.hasOwn",
+      "difficulty": "Intermedio",
+      "statement": "Tem o seguinte objeto que representa o stock de uma loja: const stock = { canetas: 120, cadernos: 45, borrachas: 80 };. Escreva um ciclo for...in que percorra as propriedades do objeto, filtre-as com Object.hasOwn para garantir que são propriedades próprias, mostre uma linha por produto no formato 'produto: quantidade' e, no final, mostre o total de unidades em stock.",
+      "hint": "Object.hasOwn(objeto, chave) devolve true apenas quando a chave é uma propriedade própria do objeto, e não herdada.",
+      "solution_code": "const stock = { canetas: 120, cadernos: 45, borrachas: 80 };\nlet total = 0;\n\nfor (const produto in stock) {\n  if (Object.hasOwn(stock, produto)) {\n    console.log(`${produto}: ${stock[produto]}`);\n    total += stock[produto];\n  }\n}\n\nconsole.log(`Total em stock: ${total}`);",
+      "solution_explanation": "O for...in percorre as chaves enumeráveis do objeto stock; a verificação com Object.hasOwn garante que só se processam propriedades próprias, protegendo o código de propriedades herdadas indesejadas."
+    },
+    {
+      "title": "Formatar um objeto com Object.entries e for...of",
+      "difficulty": "Intermedio",
+      "statement": "Dado o objeto const carro = { marca: 'Toyota', modelo: 'Corolla', ano: 2023, cor: 'branco' };, use Object.entries em conjunto com for...of para construir um array chamado linhas em que cada elemento seja uma string no formato 'chave: valor' (por exemplo, 'marca: Toyota'). No final, mostre o array linhas na consola.",
+      "hint": "Object.entries(objeto) devolve um array de pares [chave, valor] que pode desestruturar diretamente no cabeçalho do for...of.",
+      "solution_code": "const carro = { marca: 'Toyota', modelo: 'Corolla', ano: 2023, cor: 'branco' };\nconst linhas = [];\n\nfor (const [chave, valor] of Object.entries(carro)) {\n  linhas.push(`${chave}: ${valor}`);\n}\n\nconsole.log(linhas);",
+      "solution_explanation": "Object.entries transforma o objeto num array de pares [chave, valor], que o for...of percorre desestruturando cada par diretamente em chave e valor, evitando aceder manualmente às propriedades do objeto."
+    },
+    {
+      "title": "Médias por turma com for...of aninhado sobre um Map",
+      "difficulty": "Avancado",
+      "statement": "Tem o seguinte Map, em que cada chave é o nome de uma turma e o valor é um array de objetos aluno (cada um com nome e nota): const turmas = new Map([['A', [{ nome: 'Rita', nota: 15 }, { nome: 'Tiago', nota: 12 }]], ['B', [{ nome: 'Sofia', nota: 18 }, { nome: 'Bruno', nota: 14 }]]]);. Escreva código, usando for...of (pode aninhar dois ciclos), que calcule e mostre a média de notas de cada turma, no formato 'Turma A: 13.5'.",
+      "hint": "Ao percorrer o Map com for...of, pode desestruturar logo cada entrada em [turma, alunos]; depois use outro for...of para percorrer o array alunos dessa turma.",
+      "solution_code": "const turmas = new Map([\n  ['A', [{ nome: 'Rita', nota: 15 }, { nome: 'Tiago', nota: 12 }]],\n  ['B', [{ nome: 'Sofia', nota: 18 }, { nome: 'Bruno', nota: 14 }]],\n]);\n\nfor (const [turma, alunos] of turmas) {\n  let soma = 0;\n\n  for (const aluno of alunos) {\n    soma += aluno.nota;\n  }\n\n  const media = soma / alunos.length;\n  console.log(`Turma ${turma}: ${media}`);\n}",
+      "solution_explanation": "O for...of externo percorre as entradas do Map, desestruturando cada par em turma e alunos; o for...of interno percorre o array de alunos dessa turma para somar as notas antes de calcular e mostrar a média."
+    }
+  ],
+  "summary": [
+    "for...of percorre os valores de qualquer iterável, como arrays, strings, Map ou Set, com base no protocolo Symbol.iterator.",
+    "for...in percorre os nomes das propriedades enumeráveis de um objeto, incluindo as herdadas da cadeia de protótipos.",
+    "Em arrays, for...in deve ser evitado: devolve índices como strings e pode incluir propriedades não numéricas; use for...of.",
+    "Object.hasOwn(objeto, chave) permite filtrar apenas propriedades próprias quando se usa for...in.",
+    "for...of lança TypeError sobre valores não iteráveis; for...in nunca lança este erro, porque não depende desse protocolo.",
+    "Object.entries(objeto) combinado com for...of é a forma moderna e segura de percorrer pares chave-valor de um objeto, sem herança."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 05",
+  "next_label": "Aula 05 → break, continue e Labels",
+  "_stage": "revisao"
+}

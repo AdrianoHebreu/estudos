@@ -1,0 +1,232 @@
+{
+  "module_num": "09",
+  "module_title": "Tratamento de Erros",
+  "module_dir": "09-Tratamento-de-Erros",
+  "lesson_num": "01",
+  "lesson_slug": "Try-Catch-Finally",
+  "kind": "aula",
+  "title": "try, catch e finally",
+  "filename_base": "01-Try-Catch-Finally",
+  "subtitle": "Domine try, catch e finally e saiba exatamente que erros lhes escapam.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Compreender a sintaxe e o fluxo de execução de try, catch e finally.",
+    "Saber quando e porque usar o catch sem parâmetro (catch binding opcional).",
+    "Perceber as garantias de execução do bloco finally, mesmo com return, throw ou propagação de erros.",
+    "Identificar situações em que try/catch não apanha erros, nomeadamente em código assíncrono não aguardado.",
+    "Aplicar boas práticas de granularidade ao usar try, catch e finally."
+  ],
+  "sections": [
+    {
+      "heading": "Sintaxe e fluxo básico do try/catch/finally",
+      "body": [
+        "A estrutura try/catch/finally é o mecanismo central do JavaScript para lidar com erros de forma síncrona e controlada. O bloco try contém o código que pode falhar; se nenhuma exceção for lançada, o motor de JavaScript executa toda a instrução try normalmente e ignora por completo o bloco catch. Se, durante a execução do try, uma instrução throw for atingida ou uma operação interna lançar uma exceção (por exemplo, aceder a uma propriedade de undefined), a execução do try é interrompida de imediato e o controlo salta para o catch, que recebe o valor lançado como parâmetro.",
+        "O catch funciona como uma rede de segurança local: permite decidir, no próprio ponto onde o erro ocorre (ou perto dele), como recuperar, registar informação de diagnóstico ou devolver um valor alternativo, em vez de deixar o erro subir descontroladamente pela pilha de chamadas. O bloco finally, por sua vez, executa sempre a seguir, independentemente de o try ter terminado com sucesso ou de o catch ter tratado uma exceção, sendo o local ideal para código de limpeza que tem de correr em qualquer circunstância."
+      ],
+      "code": "function dividir(a, b) {\n  try {\n    if (b === 0) {\n      throw new Error(\"Divisão por zero não é permitida\");\n    }\n    const resultado = a / b;\n    console.log(`Resultado: ${resultado}`);\n    return resultado;\n  } catch (erro) {\n    console.error(`Erro capturado: ${erro.message}`);\n    return null;\n  } finally {\n    console.log(\"Operação de divisão terminada.\");\n  }\n}\n\ndividir(10, 2);\n// Resultado: 5\n// Operação de divisão terminada.\n\ndividir(10, 0);\n// Erro capturado: Divisão por zero não é permitida\n// Operação de divisão terminada.",
+      "callout_kind": "NOTA",
+      "callout_text": "O valor recebido pelo catch é normalmente uma instância de Error (com propriedades como message e name), mas tecnicamente pode ser qualquer valor passado a throw, incluindo uma string ou um número.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎯",
+          "text": "try isola código que pode falhar"
+        },
+        {
+          "icon": "🧯",
+          "text": "catch recebe o erro lançado"
+        },
+        {
+          "icon": "🔁",
+          "text": "finally corre sempre no fim"
+        }
+      ]
+    },
+    {
+      "heading": "As garantias de execução do finally",
+      "body": [
+        "A garantia mais importante do finally é que ele corre sempre, seja qual for o caminho que o try e o catch tomaram. Isto inclui a situação em que o try (ou o catch) contém uma instrução return: o motor de JavaScript guarda o valor a devolver, executa por completo o bloco finally, e só depois efetivamente devolve esse valor à chamada da função. Nada dentro do finally impede essa devolução, a não ser que o próprio finally contenha uma instrução de controlo de fluxo, como outro return, um throw, um break ou um continue.",
+        "Quando isso acontece, essa instrução dentro do finally substitui por completo o resultado anterior: um return no finally sobrepõe-se a qualquer return do try ou do catch, e sobrepõe-se mesmo a uma exceção que estivesse prestes a propagar-se, fazendo-a desaparecer silenciosamente. Por essa razão, o finally deve ser reservado para efeitos secundários de limpeza (fechar ligações, libertar recursos, repor estado) e não para devolver valores de negócio."
+      ],
+      "code": "function testarFinally() {\n  try {\n    console.log(\"A tentar...\");\n    return \"valor do try\";\n  } finally {\n    console.log(\"finally executa sempre, mesmo com return no try\");\n  }\n}\n\nconsole.log(testarFinally());\n// A tentar...\n// finally executa sempre, mesmo com return no try\n// valor do try\n\nfunction overrideFinally() {\n  try {\n    return \"do try\";\n  } finally {\n    return \"do finally\"; // substitui o valor anterior - evite isto\n  }\n}\n\nconsole.log(overrideFinally()); // \"do finally\"",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Um return, throw, break ou continue dentro do finally sobrepõe-se sempre ao que veio do try ou do catch, incluindo uma exceção que estava prestes a propagar. Isto pode mascarar erros silenciosamente, por isso evite colocar return dentro de finally.",
+      "table_headers": [
+        "Situação no try/catch",
+        "O finally executa?"
+      ],
+      "table_rows": [
+        [
+          "try termina sem erros",
+          "Sim"
+        ],
+        [
+          "try lança erro e o catch trata",
+          "Sim"
+        ],
+        [
+          "try lança erro e não existe catch",
+          "Sim, antes de o erro propagar"
+        ],
+        [
+          "try ou catch contém um return",
+          "Sim, antes de a função retornar efetivamente"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "✅",
+          "text": "finally corre com sucesso ou erro"
+        },
+        {
+          "icon": "↩️",
+          "text": "corre mesmo com return no try"
+        },
+        {
+          "icon": "⚠️",
+          "text": "return no finally sobrepõe-se a tudo"
+        }
+      ]
+    },
+    {
+      "heading": "Catch sem parâmetro (catch binding opcional)",
+      "body": [
+        "Antes do ES2019, a sintaxe do catch exigia sempre um parâmetro entre parênteses para receber o valor lançado, mesmo que esse valor nunca fosse utilizado dentro do bloco. A partir do ES2019, o binding do catch tornou-se opcional: é possível escrever catch { ... } sem parênteses nem parâmetro, quando o único objetivo é reagir ao facto de ter ocorrido uma falha, sem precisar de inspecionar a mensagem, o tipo ou a stack do erro.",
+        "Esta forma é especialmente útil em deteção de funcionalidades (feature detection), em tentativas de operações que podem legitimamente não estar disponíveis no ambiente atual, ou sempre que a lógica de recuperação é a mesma independentemente da causa exata da falha. Reduz também o aviso comum de ferramentas de análise estática sobre variáveis declaradas e nunca utilizadas."
+      ],
+      "code": "function suportaLocalStorage() {\n  try {\n    const chave = \"__teste_storage__\";\n    localStorage.setItem(chave, \"1\");\n    localStorage.removeItem(chave);\n    return true;\n  } catch {\n    // não interessa saber porque falhou (quota excedida, modo privado, etc.)\n    return false;\n  }\n}\n\nconsole.log(suportaLocalStorage());",
+      "callout_kind": "DICA",
+      "callout_text": "Use catch sem parâmetro sempre que o corpo do catch não referencia o objeto de erro; isto deixa claro, a quem lê o código, que os detalhes do erro são irrelevantes ali.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🆕",
+          "text": "catch sem parâmetro desde ES2019"
+        },
+        {
+          "icon": "🔍",
+          "text": "útil quando o erro não interessa"
+        }
+      ]
+    },
+    {
+      "heading": "Finally mesmo quando o erro não é tratado localmente",
+      "body": [
+        "O finally não depende da existência de um catch. Numa instrução try/finally sem catch, se o try lançar uma exceção, o finally ainda assim executa antes de essa exceção continuar a propagar-se pela pilha de chamadas, à procura de um catch mais acima que a trate. O mesmo acontece se o próprio bloco catch, depois de apanhar um erro, decidir relançá-lo com throw: o finally correspondente executa antes de esse novo throw sair da função.",
+        "Este comportamento é o que torna o finally fiável para libertar recursos, como fechar uma ligação de rede, cancelar um temporizador ou repor uma flag de estado, independentemente de o erro ter sido tratado localmente ou de continuar a propagar-se para ser tratado por quem chamou a função."
+      ],
+      "code": "function processar() {\n  try {\n    throw new Error(\"Falha no processamento\");\n  } finally {\n    console.log(\"A libertar recursos...\");\n  }\n}\n\ntry {\n  processar();\n} catch (erro) {\n  console.log(\"Apanhado no chamador:\", erro.message);\n}\n// A libertar recursos...\n// Apanhado no chamador: Falha no processamento",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📤",
+          "text": "finally corre antes do erro propagar"
+        },
+        {
+          "icon": "🔓",
+          "text": "garante limpeza mesmo sem catch"
+        }
+      ]
+    },
+    {
+      "heading": "O que o try/catch não apanha: erros assíncronos",
+      "body": [
+        "O try/catch só consegue apanhar exceções lançadas de forma síncrona durante a execução do próprio bloco try, ou seja, enquanto essa chamada de função ainda está na pilha de chamadas. Quando se agenda trabalho assíncrono através de um callback, como um setTimeout ou um addEventListener, o try já terminou de executar (sem erro nenhum) muito antes de esse callback alguma vez correr. Se o callback lançar uma exceção, ela surge numa tarefa completamente nova do motor, sem qualquer try/catch em torno dela, resultando tipicamente num erro não apanhado.",
+        "O mesmo problema surge com Promises que não são aguardadas: chamar uma função que devolve uma Promise sem lhe pôr await dentro do try faz com que o try termine assim que a Promise é criada, muito antes de ela ser resolvida ou rejeitada. Uma rejeição nessa Promise não é uma exceção síncrona, é tratada como uma rejeição não gerida, e o catch à volta da chamada nunca chega a correr para ela.",
+        "A forma correta de apanhar este tipo de erro é usar await dentro de uma função async, dentro do próprio try: o await suspende a execução até a Promise terminar, e uma rejeição nesse ponto é convertida automaticamente numa exceção que o try/catch envolvente apanha com normalidade. Os padrões completos de tratamento de erros em código assíncrono são aprofundados mais à frente neste módulo."
+      ],
+      "code": "// NÃO funciona: o erro escapa ao try/catch\ntry {\n  setTimeout(() => {\n    throw new Error(\"Erro assíncrono não apanhado\");\n  }, 100);\n} catch (erro) {\n  console.log(\"Isto nunca é executado:\", erro.message);\n}\n// O setTimeout dispara depois de o try já ter terminado; o erro\n// aparece como \"Uncaught Error\" e o catch acima nunca corre.\n\nfunction falharAssincrono() {\n  return new Promise((_, reject) => {\n    setTimeout(() => reject(new Error(\"Falha na promise\")), 100);\n  });\n}\n\ntry {\n  falharAssincrono(); // chamada sem await!\n} catch (erro) {\n  console.log(\"Também nunca é executado:\", erro.message);\n}\n\n// Forma correta: aguardar dentro de uma função async\nasync function correr() {\n  try {\n    await falharAssincrono();\n  } catch (erro) {\n    console.log(\"Agora sim é apanhado:\", erro.message);\n  }\n}\ncorrer();",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Um try/catch à volta de uma chamada que apenas inicia trabalho assíncrono, sem await, nunca apanha os erros desse trabalho: o bloco já terminou a sua execução antes de esse trabalho sequer começar.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⏱️",
+          "text": "try não apanha erros em setTimeout"
+        },
+        {
+          "icon": "🚫",
+          "text": "Promise sem await escapa ao catch"
+        },
+        {
+          "icon": "✅",
+          "text": "await dentro de try/catch resolve isto"
+        }
+      ]
+    },
+    {
+      "heading": "Boas práticas de granularidade",
+      "body": [
+        "Um try demasiado grande, a envolver dezenas de linhas de código não relacionado, torna difícil perceber qual instrução exata pode realmente lançar uma exceção e esconde erros de programação genuínos (como um erro de digitação num nome de variável) dentro do mesmo catch genérico que trata falhas esperadas. É preferível manter o try o mais pequeno possível, à volta apenas da operação que pode legitimamente falhar, como uma chamada de rede, uma conversão ou o acesso a uma API externa, tratando o resto do código normalmente fora do try.",
+        "O finally deve ficar reservado para efeitos secundários que têm mesmo de correr sempre, como libertar um recurso ou repor um indicador de carregamento na interface, e nunca para lógica de negócio que decide o valor devolvido pela função. Vale também a pena evitar usar try/catch como substituto de uma validação simples: se uma condição pode ser verificada antecipadamente com um if, verificá-la antes é normalmente mais claro do que provocar deliberadamente uma exceção para depois a apanhar."
+      ],
+      "code": "// Evitar: try demasiado abrangente\ntry {\n  const dados = obterDadosDoFormulario();\n  const idade = Number(dados.idade);\n  registarNoServidor(idade); // só esta linha pode realmente falhar (rede)\n  atualizarInterface(idade);\n} catch (erro) {\n  console.error(\"Algo correu mal:\", erro.message);\n}\n\n// Preferível: try focado só na operação que pode falhar\nconst dados = obterDadosDoFormulario();\nconst idade = Number(dados.idade);\n\ntry {\n  registarNoServidor(idade);\n} catch (erro) {\n  console.error(\"Falha ao registar no servidor:\", erro.message);\n} finally {\n  atualizarInterface(idade);\n}",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Reveja um try/catch que já tenha escrito antes: consegue reduzir o bloco try para conter apenas a instrução que realmente pode lançar uma exceção?",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔬",
+          "text": "try pequeno e focado"
+        },
+        {
+          "icon": "🧹",
+          "text": "finally só para limpeza"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Análise segura de JSON",
+      "difficulty": "Iniciante",
+      "statement": "Escreva uma função chamada analisarJSON que receba uma cadeia de texto (string) e tente convertê-la num objeto com JSON.parse. Se a conversão for bem-sucedida, a função deve devolver o objeto resultante. Se falhar (por exemplo, com uma string inválida como \"{nome: sem aspas}\"), a função deve apanhar o erro, imprimir na consola uma mensagem \"JSON inválido: \" seguida da mensagem do erro, e devolver null. Independentemente do resultado, a função deve sempre imprimir na consola \"Análise terminada.\" no final, usando um bloco finally.",
+      "hint": "Lembre-se que JSON.parse lança uma exceção (SyntaxError) quando a string não é um JSON válido; use try para chamar JSON.parse e catch para tratar essa exceção.",
+      "solution_code": "function analisarJSON(texto) {\n  try {\n    const objeto = JSON.parse(texto);\n    return objeto;\n  } catch (erro) {\n    console.error(`JSON inválido: ${erro.message}`);\n    return null;\n  } finally {\n    console.log(\"Análise terminada.\");\n  }\n}\n\nconsole.log(analisarJSON('{\"nome\": \"Ana\"}')); // { nome: 'Ana' }\nconsole.log(analisarJSON(\"{nome: sem aspas}\")); // null",
+      "solution_explanation": "O JSON.parse lança um SyntaxError quando o texto não é JSON válido, o que é apanhado pelo catch, que regista a mensagem e devolve null. O bloco finally corre sempre, tanto no caso de sucesso como no de erro, porque não depende do resultado do try nem do catch."
+    },
+    {
+      "title": "Deteção de suporte sem inspecionar o erro",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função chamada suportaStructuredClone que verifica se a função global structuredClone está disponível e funcional no ambiente atual. Dentro de um try, tente executar structuredClone({ teste: 1 }). Se não ocorrer nenhuma exceção, a função deve devolver true. Se ocorrer qualquer exceção (por exemplo, por structuredClone não existir), a função deve devolver false, sem precisar de examinar os detalhes do erro; use para isso a sintaxe de catch sem parâmetro.",
+      "hint": "Desde o ES2019 o catch pode ser escrito sem parênteses e sem parâmetro quando não é necessário usar o objeto de erro dentro do bloco.",
+      "solution_code": "function suportaStructuredClone() {\n  try {\n    structuredClone({ teste: 1 });\n    return true;\n  } catch {\n    return false;\n  }\n}\n\nconsole.log(suportaStructuredClone());",
+      "solution_explanation": "Como o objetivo é apenas saber se a operação falhou ou não, o catch é escrito sem parâmetro (catch binding opcional), evitando declarar uma variável de erro que nunca seria usada. Se structuredClone não existir ou lançar uma exceção, o catch intercepta-a e devolve false."
+    },
+    {
+      "title": "O valor final depende de quem tem a última palavra",
+      "difficulty": "Avancado",
+      "statement": "Escreva uma função chamada configurarModo que recebe um booleano modoSeguro. Dentro de um try: se modoSeguro for false, deve lançar um Error com a mensagem \"Modo inseguro não permitido\"; caso contrário, deve devolver a string \"ativo\". No catch, deve apanhar o erro, registar a sua mensagem na consola com console.error, e devolver a string \"modo por omissão\". No finally, deve apenas registar na consola \"Configuração concluída.\", sem qualquer return dentro do finally. Depois de escrever a função, indique em comentários no código qual o valor devolvido em cada uma destas duas chamadas: configurarModo(true) e configurarModo(false).",
+      "hint": "Recorde que um return dentro do try ou do catch fica reservado até o finally terminar de executar; o finally só substitui esse valor se ele próprio contiver um return.",
+      "solution_code": "function configurarModo(modoSeguro) {\n  try {\n    if (!modoSeguro) {\n      throw new Error(\"Modo inseguro não permitido\");\n    }\n    return \"ativo\";\n  } catch (erro) {\n    console.error(erro.message);\n    return \"modo por omissão\";\n  } finally {\n    console.log(\"Configuração concluída.\");\n  }\n}\n\nconsole.log(configurarModo(true));\n// Configuração concluída.\n// ativo\n\nconsole.log(configurarModo(false));\n// Modo inseguro não permitido\n// Configuração concluída.\n// modo por omissão",
+      "solution_explanation": "Em configurarModo(true), o try devolve \"ativo\" sem erro, o finally executa antes de a função efetivamente retornar, e o valor final é \"ativo\". Em configurarModo(false), o throw desvia para o catch, que devolve \"modo por omissão\"; o finally volta a correr, mas não sobrepõe esse valor porque não contém nenhum return próprio."
+    },
+    {
+      "title": "Corrigir a captura de um erro assíncrono",
+      "difficulty": "Avancado",
+      "statement": "O código seguinte tenta validar um utilizador de forma assíncrona, mas o erro lançado dentro da Promise nunca é apanhado pelo try/catch:\n\nfunction validarUtilizador(idade) {\n  return new Promise((resolve, reject) => {\n    setTimeout(() => {\n      if (idade < 18) {\n        reject(new Error(\"Utilizador menor de idade\"));\n      } else {\n        resolve(\"Utilizador válido\");\n      }\n    }, 50);\n  });\n}\n\ntry {\n  validarUtilizador(15);\n} catch (erro) {\n  console.log(\"Erro apanhado:\", erro.message);\n}\n\nExplique, num comentário, porque é que este catch nunca é executado, e reescreva o código para que o erro seja corretamente apanhado, usando async/await.",
+      "hint": "O try termina de executar antes de o setTimeout dentro da Promise sequer disparar; para o try/catch conseguir apanhar uma rejeição, é preciso usar await sobre a Promise dentro de uma função async.",
+      "solution_code": "function validarUtilizador(idade) {\n  return new Promise((resolve, reject) => {\n    setTimeout(() => {\n      if (idade < 18) {\n        reject(new Error(\"Utilizador menor de idade\"));\n      } else {\n        resolve(\"Utilizador válido\");\n      }\n    }, 50);\n  });\n}\n\n// O try/catch original falha porque validarUtilizador(15) devolve uma\n// Promise de imediato; o try termina a sua execução (sem qualquer erro\n// síncrono) muito antes de o setTimeout disparar e chamar reject, que\n// acontece numa tarefa separada, já fora do try/catch original.\n\nasync function executar() {\n  try {\n    const resultado = await validarUtilizador(15);\n    console.log(resultado);\n  } catch (erro) {\n    console.log(\"Erro apanhado:\", erro.message);\n  } finally {\n    console.log(\"Validação terminada.\");\n  }\n}\n\nexecutar();",
+      "solution_explanation": "Sem await, validarUtilizador(15) devolve de imediato uma Promise pendente, e o try termina antes de o setTimeout alguma vez correr, pelo que não existe nenhum erro síncrono para o catch apanhar. Ao usar await dentro de uma função async, a execução suspende-se até a Promise ser resolvida ou rejeitada, e uma rejeição nesse ponto é convertida numa exceção que o try/catch envolvente apanha normalmente."
+    }
+  ],
+  "summary": [
+    "try executa código que pode lançar exceções; catch só corre se algo for de facto lançado dentro do try.",
+    "finally corre sempre: com sucesso, com erro apanhado, com erro propagado e mesmo com return dentro do try ou do catch.",
+    "Um return dentro do finally substitui qualquer valor ou exceção anterior; evite isso, pois esconde erros silenciosamente.",
+    "Desde o ES2019, catch pode ser escrito sem parâmetro quando não é preciso inspecionar o objeto de erro.",
+    "try/catch só apanha erros síncronos lançados durante a execução do próprio try; erros em callbacks (setTimeout, event listeners) ou em Promises não aguardadas escapam-lhe.",
+    "Para apanhar erros de operações assíncronas, é necessário aguardá-las com await dentro de uma função async, dentro do try."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 02",
+  "next_label": "Aula 02 → Objetos Error e Erros Personalizados",
+  "_stage": "autoria"
+}

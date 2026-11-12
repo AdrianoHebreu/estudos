@@ -1,0 +1,416 @@
+{
+  "module_num": "11",
+  "module_title": "Migração e Boas Práticas",
+  "module_dir": "11-Migracao-e-Boas-Praticas",
+  "lesson_num": "01",
+  "lesson_slug": "Migrar-JavaScript-para-TypeScript",
+  "kind": "aula",
+  "title": "Migrar JavaScript para TypeScript",
+  "filename_base": "01-Migrar-JavaScript-para-TypeScript",
+  "subtitle": "Levar um projeto JavaScript para TypeScript por fases, sem parar o trabalho",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Planear uma migração incremental em vez de renomear tudo de uma vez",
+    "Usar allowJs, checkJs e as diretivas @ts-check, @ts-nocheck e @ts-ignore",
+    "Tipar ficheiros .js com JSDoc e perceber o que o tsc verifica neles",
+    "Ligar o strict por fases e usar a contagem de erros como métrica",
+    "Tipar dependências e escrever os primeiros tipos de domínio nas fronteiras"
+  ],
+  "sections": [
+    {
+      "heading": "Porquê migrar por fases",
+      "body": [
+        "Renomear de uma só vez todos os ficheiros de um projeto grande produz centenas ou milhares de erros ao mesmo tempo. Enquanto não forem todos resolvidos, o projeto não compila, ninguém consegue integrar outras alterações e a migração transforma-se num ramo eterno que nunca chega à main. A alternativa é migrar por fases: o JavaScript e o TypeScript convivem no mesmo projeto e cada passo é pequeno o suficiente para ser revisto e integrado no próprio dia.",
+        "A ordem habitual é: pôr o tsc a aceitar os .js que já existem (allowJs), ligar a verificação ficheiro a ficheiro (// @ts-check ou checkJs), acrescentar JSDoc onde ajuda, e só depois renomear .js para .ts. A renomeação começa pelas folhas do grafo de dependências, os módulos utilitários que não importam nada do projeto, e sobe até aos pontos de entrada. Assim, quando um ficheiro é migrado, tudo aquilo de que ele depende já tem tipos.",
+        "A tabela resume a sequência que esta aula percorre. Cada linha pode demorar dias ou semanas num projeto real, e o projeto continua a funcionar entre elas."
+      ],
+      "code": "",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Migrar não é reescrever. Durante a migração, cada alteração deve manter o comportamento: corrigir tipos, sim; mudar lógica, só em commits separados.",
+      "table_headers": [
+        "Passo",
+        "O que se faz",
+        "Resultado"
+      ],
+      "table_rows": [
+        [
+          "1",
+          "tsconfig com allowJs e strict: false",
+          "O tsc aceita o projeto tal como está"
+        ],
+        [
+          "2",
+          "// @ts-check por ficheiro ou checkJs global",
+          "Os .js passam a ser verificados"
+        ],
+        [
+          "3",
+          "JSDoc nas funções exportadas",
+          "Tipos sem mudar a extensão"
+        ],
+        [
+          "4",
+          "Instalar @types ou declarar módulos em falta",
+          "Imports de bibliotecas deixam de falhar"
+        ],
+        [
+          "5",
+          "Renomear .js para .ts, das folhas para a entrada",
+          "Código TypeScript a sério"
+        ],
+        [
+          "6",
+          "Tipos de domínio e anotações nas fronteiras",
+          "Contratos explícitos entre módulos"
+        ],
+        [
+          "7",
+          "Ligar as flags do strict uma a uma",
+          "Contagem de erros desce até zero com strict: true"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "💥",
+          "text": "Big bang: milhares de erros e um ramo que nunca é integrado"
+        },
+        {
+          "icon": "🪜",
+          "text": "Por fases: JS e TS convivem e cada passo é pequeno"
+        },
+        {
+          "icon": "🍃",
+          "text": "Renomear das folhas do grafo para os pontos de entrada"
+        },
+        {
+          "icon": "🔒",
+          "text": "Migrar não é reescrever: o comportamento mantém-se"
+        }
+      ]
+    },
+    {
+      "heading": "allowJs e checkJs",
+      "body": [
+        "allowJs deixa o tsc incluir ficheiros .js no programa: são lidos, os tipos são inferidos e ficam disponíveis para os .ts que os importam. Sozinho, porém, não reporta erros dentro dos .js, com uma exceção: os ficheiros que começam por // @ts-check. checkJs liga a verificação em todos os .js incluídos, como se cada um tivesse // @ts-check.",
+        "Para medir, basta correr npx tsc --allowJs --checkJs --noEmit sobre os ficheiros. Num .js sem JSDoc, um parâmetro não anotado fica any e, por isso, uma chamada como dobro(\"3\") não dá erro; já Math.max(\"a\", 2) dá TS2345, porque os tipos da biblioteca padrão são conhecidos. Dois pormenores medidos: num .js os parâmetros sem JSDoc são opcionais, por isso chamar dobro() sem argumentos também passa; e com strict ligado o noImplicitAny aplica-se aos .js, dando TS7006 em cada parâmetro sem tipo.",
+        "Num projeto grande, ligar checkJs de uma vez tem o mesmo problema do big bang. O mais prático é deixar checkJs desligado e ir acrescentando // @ts-check ficheiro a ficheiro; quando quase todos o tiverem, liga-se checkJs e marca-se o resto com // @ts-nocheck."
+      ],
+      "code": "// tsconfig.json\n{\n  \"compilerOptions\": {\n    \"allowJs\": true,\n    \"checkJs\": false,\n    \"strict\": false,\n    \"noEmit\": true,\n    \"target\": \"es2022\",\n    \"module\": \"es2022\",\n    \"moduleResolution\": \"bundler\"\n  },\n  \"include\": [\"src\"]\n}",
+      "callout_kind": "NOTA",
+      "callout_text": "As opções target, module, noEmit e include foram vistas no Módulo 09, Aula 02. Aqui interessa só o par allowJs e checkJs.",
+      "table_headers": [
+        "Configuração",
+        "Ficheiro .js sem diretiva",
+        "Ficheiro .js com // @ts-check"
+      ],
+      "table_rows": [
+        [
+          "sem allowJs",
+          "Não faz parte do programa",
+          "Não faz parte do programa"
+        ],
+        [
+          "allowJs",
+          "Incluído, sem erros reportados",
+          "Verificado"
+        ],
+        [
+          "allowJs + checkJs",
+          "Verificado",
+          "Verificado"
+        ],
+        [
+          "allowJs + checkJs + strict",
+          "Verificado, com TS7006 nos parâmetros sem tipo",
+          "Idem"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📥",
+          "text": "allowJs: os .js entram no programa, sem erros reportados"
+        },
+        {
+          "icon": "🔍",
+          "text": "checkJs: todos os .js passam a ser verificados"
+        },
+        {
+          "icon": "❓",
+          "text": "Parâmetro sem JSDoc num .js é any e opcional"
+        },
+        {
+          "icon": "🐢",
+          "text": "Começar com // @ts-check por ficheiro, checkJs no fim"
+        }
+      ]
+    },
+    {
+      "heading": "Diretivas @ts-check, @ts-nocheck e @ts-ignore",
+      "body": [
+        "// @ts-check no topo de um .js liga a verificação só nesse ficheiro, mesmo com checkJs desligado. // @ts-nocheck faz o contrário: desliga a verificação do ficheiro inteiro, mesmo com checkJs ligado, e serve para marcar os ficheiros que ainda não foram tratados. // @ts-ignore silencia apenas a linha seguinte.",
+        "O exemplo foi medido com --allowJs --noEmit, sem checkJs. Em calculos.js, a linha marcada com @ts-ignore não dá erro, mas toUppercase dá TS2551 com a sugestão Did you mean 'toUpperCase'?. Em legado.js, \"5\" * 2 e a chamada a um método inexistente passam sem nada, porque o ficheiro está em @ts-nocheck. Também existe // @ts-expect-error nos .js, com a mesma regra dos .ts: se não houver erro na linha seguinte, é ele próprio o erro TS2578."
+      ],
+      "code": "// calculos.js\n// @ts-check\nexport function dobro(x) {\n  return x * 2;\n}\n\nconst texto = \"olá\";\n// @ts-ignore\ntexto.inexistente();   // silenciado\ntexto.toUppercase();   // TS2551: Property 'toUppercase' does not exist on type '\"olá\"'. Did you mean 'toUpperCase'?\ndobro();               // sem erro: num .js o parâmetro sem JSDoc é opcional\n\n// legado.js\n// @ts-nocheck\nexport const n = \"5\" * 2;              // não verificado\nexport const m = \"texto\".inexistente(); // não verificado",
+      "callout_kind": "DICA",
+      "callout_text": "Prefira @ts-expect-error a @ts-ignore: quando o problema for corrigido, o compilador avisa que a diretiva já não é precisa, em vez de a deixar esquecida no código.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "✅",
+          "text": "// @ts-check: verifica este ficheiro .js"
+        },
+        {
+          "icon": "🚫",
+          "text": "// @ts-nocheck: não verifica este ficheiro, nem com checkJs"
+        },
+        {
+          "icon": "🙈",
+          "text": "// @ts-ignore: silencia só a linha seguinte"
+        },
+        {
+          "icon": "🎯",
+          "text": "@ts-expect-error avisa (TS2578) quando deixa de ser preciso"
+        }
+      ]
+    },
+    {
+      "heading": "JSDoc como tipos em ficheiros .js",
+      "body": [
+        "Num .js verificado, os comentários JSDoc são lidos como anotações de tipo. @param e @returns tipam funções, @type tipa variáveis, @typedef com @property declara um tipo de objeto (o [email] entre parênteses retos marca uma propriedade opcional) e import(\"./ficheiro.js\").Tipo usa num ficheiro um tipo declarado noutro. Dentro das chavetas escreve-se sintaxe TypeScript normal: uniões, arrays, tipos de função.",
+        "Com --allowJs --checkJs --strict, o exemplo dá exatamente três erros, todos em main.js: TS2322 porque idade recebe uma string, TS2345 porque o objeto passado a saudacao não tem idade, e TS2551 porque saudacao devolve string e string não tem toFixed. É a mesma verificação que um .ts teria, sem mudar a extensão nem o processo de build.",
+        "Um ficheiro que só contém @typedef tem de ser um módulo para poder ser importado: sem nenhum import ou export, o import(\"./tipos.js\") dá TS2306 (File ... is not a module). Um export {} no fim resolve."
+      ],
+      "code": "// utilizador.js\n/**\n * @typedef {Object} Utilizador\n * @property {string} nome\n * @property {number} idade\n * @property {string} [email]\n */\n\n/**\n * @param {Utilizador} u\n * @returns {string}\n */\nexport function saudacao(u) {\n  return \"Olá, \" + u.nome;\n}\n\n/** @type {number} */\nexport let limite = 10;\n\n// main.js\nimport { saudacao } from \"./utilizador.js\";\n\n/** @type {import(\"./utilizador.js\").Utilizador} */\nconst ana = { nome: \"Ana\", idade: \"30\" }; // TS2322: Type 'string' is not assignable to type 'number'.\n\nsaudacao({ nome: \"Rui\" });  // TS2345: Property 'idade' is missing ...\nsaudacao(ana).toFixed(2);   // TS2551: Property 'toFixed' does not exist on type 'string'.",
+      "callout_kind": "NOTA",
+      "callout_text": "JSDoc é um passo intermédio útil, não o destino. Ao renomear para .ts, os @typedef passam a interface ou type e as anotações passam para a própria assinatura.",
+      "table_headers": [
+        "JSDoc",
+        "Equivalente em .ts"
+      ],
+      "table_rows": [
+        [
+          "@param {string} nome",
+          "(nome: string)"
+        ],
+        [
+          "@returns {number}",
+          "): number"
+        ],
+        [
+          "@type {number[]} antes de let xs",
+          "let xs: number[]"
+        ],
+        [
+          "@typedef {Object} T com @property",
+          "interface T { ... }"
+        ],
+        [
+          "import(\"./x.js\").T",
+          "import type { T } from \"./x\""
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📝",
+          "text": "@param, @returns e @type anotam sem mudar a extensão"
+        },
+        {
+          "icon": "🧱",
+          "text": "@typedef com @property declara tipos de objeto"
+        },
+        {
+          "icon": "🔗",
+          "text": "import(\"./x.js\").Tipo usa tipos de outro ficheiro"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Ficheiro só com @typedef precisa de export {} (senão TS2306)"
+        }
+      ]
+    },
+    {
+      "heading": "Renomear para .ts e ligar o strict por fases",
+      "body": [
+        "Ao renomear um ficheiro para .ts, o JSDoc deixa de contar como tipo e passam a valer as anotações. Com strict: false, código sem anotações compila quase sempre sem erros, e é assim que se consegue renomear rapidamente. Depois ligam-se as flags do strict uma de cada vez, normalmente noImplicitAny primeiro e strictNullChecks a seguir, e as restantes no fim. O significado de cada flag está no Módulo 09, Aula 03.",
+        "A contagem de erros é a métrica de progresso. Antes de mudar o tsconfig, experimenta-se a próxima flag na linha de comando, que se sobrepõe ao ficheiro: npx tsc --noEmit --noImplicitAny. No terminal, o tsc termina com uma linha Found N errors in M files. Esse número regista-se, reduz-se aos poucos e só se muda o tsconfig quando chega a zero.",
+        "Nos dois ficheiros do exemplo, medidos com TypeScript 5.9, a contagem foi 0 com strict: false, 6 com noImplicitAny, 7 ao juntar strictNullChecks e continuou em 7 com strict completo. Repare na última chamada de main.ts: procurar ainda devolve any, por isso o acesso a .preco sobre um possível undefined não é apanhado por nenhuma flag. Só desaparece quando procurar tiver tipos."
+      ],
+      "code": "// precos.ts\nexport function comIva(valor, taxa) {     // noImplicitAny: TS7006 em valor e em taxa\n  return valor * (1 + taxa);\n}\nexport function procurar(lista, id) {     // noImplicitAny: TS7006 em lista e em id\n  return lista.find((p) => p.id === id);  // noImplicitAny: TS7006 em p\n}\n\n// main.ts\nimport { procurar, comIva } from \"./precos\";\n\ninterface Produto { id: number; preco: number }\nconst produtos: Produto[] = [{ id: 1, preco: 10 }];\nconst nomes = { a: \"Ana\" };\n\nfunction tamanho(chave: string) {\n  return nomes[chave].length;             // noImplicitAny: TS7053\n}\n\nconst p = produtos.find((x) => x.id === 1);\nconsole.log(comIva(p.preco, 0.23));       // strictNullChecks: TS18048 'p' is possibly 'undefined'\nconsole.log(procurar(produtos, 2).preco); // nenhum erro: procurar devolve any\nconsole.log(tamanho(\"a\"));",
+      "callout_kind": "DICA",
+      "callout_text": "Guarde a contagem de erros por flag num ficheiro do repositório ou no CI. Um número que só desce é a forma mais simples de mostrar à equipa que a migração avança.",
+      "table_headers": [
+        "Fase",
+        "Configuração",
+        "Erros no exemplo"
+      ],
+      "table_rows": [
+        [
+          "0",
+          "strict: false",
+          "0"
+        ],
+        [
+          "1",
+          "noImplicitAny: true",
+          "6 (cinco TS7006 e um TS7053)"
+        ],
+        [
+          "2",
+          "noImplicitAny + strictNullChecks",
+          "7 (mais um TS18048)"
+        ],
+        [
+          "3",
+          "strict: true",
+          "7 (nada de novo neste código)"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔤",
+          "text": "Renomear com strict: false para avançar depressa"
+        },
+        {
+          "icon": "🎚️",
+          "text": "Ligar noImplicitAny, depois strictNullChecks, depois o resto"
+        },
+        {
+          "icon": "📉",
+          "text": "A contagem de erros por flag é a métrica de progresso"
+        },
+        {
+          "icon": "🕳️",
+          "text": "Um any que sobra esconde erros que nenhuma flag apanha"
+        }
+      ]
+    },
+    {
+      "heading": "Tipar dependências",
+      "body": [
+        "Ao migrar, os imports de bibliotecas também precisam de tipos. Muitas já os trazem no próprio pacote; para as outras, o primeiro passo é procurar o pacote @types correspondente e instalá-lo como dependência de desenvolvimento, por exemplo npm install --save-dev @types/lodash.",
+        "Quando não há tipos publicados, uma declaração mínima temporária desbloqueia a migração: declare module \"lib-sem-tipos\"; num ficheiro .d.ts incluído no projeto. Tudo o que vem desse módulo passa a any, como se viu no Módulo 09, Aula 04. Sem essa declaração, um import de um módulo que o tsc não encontra dá TS2307, tanto num .ts como num .js verificado.",
+        "É uma dívida consciente: a declaração leva um comentário TODO e, mais tarde, é substituída por declarações a sério só com as funções que o projeto usa."
+      ],
+      "code": "// src/tipos/vendor.d.ts\n// TODO(migracao): trocar por @types/lib-sem-tipos ou por tipos próprios\ndeclare module \"lib-sem-tipos\";\n\n// src/main.ts\nimport formatar from \"lib-sem-tipos\";\n\nconst resultado = formatar(42); // resultado: any\nresultado.qualquerCoisa();      // sem erro: tudo o que vem do módulo é any",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Um declare module sem corpo desliga a verificação de tudo o que passa por essa biblioteca. Use-o para desbloquear, não como solução final.",
+      "table_headers": [
+        "Situação",
+        "O que fazer"
+      ],
+      "table_rows": [
+        [
+          "O pacote já traz tipos",
+          "Nada; os tipos vêm com o pacote"
+        ],
+        [
+          "Existe @types/nome",
+          "npm install --save-dev @types/nome"
+        ],
+        [
+          "Não há tipos publicados",
+          "declare module \"nome\"; com TODO, temporário"
+        ],
+        [
+          "Usa-se só parte da biblioteca",
+          "Declarar apenas as funções usadas"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "Primeiro verificar se o pacote já traz tipos"
+        },
+        {
+          "icon": "🧩",
+          "text": "Depois procurar @types/nome como devDependency"
+        },
+        {
+          "icon": "🩹",
+          "text": "declare module \"nome\"; desbloqueia, mas dá any"
+        },
+        {
+          "icon": "📌",
+          "text": "Marcar a declaração temporária com TODO"
+        }
+      ]
+    },
+    {
+      "heading": "Primeiros tipos: domínio e fronteiras",
+      "body": [
+        "Os tipos que representam o negócio (encomenda, cliente, produto) vão para uma pasta própria, por exemplo src/dominio, e são importados pelo resto do código. Escrevê-los cedo evita que cada ficheiro migrado invente a sua versão da mesma forma de dados.",
+        "Onde anotar primeiro: nas fronteiras. Parâmetros e tipos de retorno das funções exportadas são o contrato entre módulos e é aí que os erros de integração aparecem. Dentro das funções, a inferência trata de variáveis locais, callbacks e resultados intermédios; no exemplo, subtotal e desconto não levam anotação e têm o tipo certo.",
+        "Quando um tipo ainda não se consegue escrever sem parar a migração, um any explícito com um comentário TODO é dívida controlada: fica visível, pesquisável e não se confunde com um any implícito esquecido. A Aula 02 deste módulo trata de como o eliminar."
+      ],
+      "code": "// Tipos de domínio: numa pasta própria (por exemplo src/dominio), importados pelo resto\nexport interface LinhaEncomenda {\n  produto: string;\n  quantidade: number;\n  precoUnitario: number;\n}\n\nexport interface Encomenda {\n  id: string;\n  linhas: LinhaEncomenda[];\n  cupao?: string;\n}\n\n// Fronteira anotada (parâmetro e retorno); o interior fica com a inferência\nexport function totalEncomenda(encomenda: Encomenda): number {\n  const subtotal = encomenda.linhas.reduce(\n    (soma, linha) => soma + linha.quantidade * linha.precoUnitario,\n    0,\n  );\n  const desconto = encomenda.cupao === \"VERAO10\" ? 0.1 : 0;\n  return Math.round(subtotal * (1 - desconto) * 100) / 100;\n}\n\n// TODO(migracao): any temporário; tipar quando o módulo de relatórios for migrado\nexport function paraRelatorio(dados: any): string {\n  return JSON.stringify(dados);\n}\n\nconst encomenda: Encomenda = {\n  id: \"E1\",\n  linhas: [\n    { produto: \"Caneta\", quantidade: 3, precoUnitario: 1.5 },\n    { produto: \"Caderno\", quantidade: 2, precoUnitario: 4 },\n  ],\n  cupao: \"VERAO10\",\n};\n\nconsole.log(totalEncomenda(encomenda)); // 11.25\nconsole.log(paraRelatorio({ id: encomenda.id, total: totalEncomenda(encomenda) })); // {\"id\":\"E1\",\"total\":11.25}",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Pesquise TODO(migracao) no projeto: cada ocorrência é um any ou uma declaração temporária por resolver. O número de resultados é outra métrica de progresso.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🗂️",
+          "text": "Tipos de domínio numa pasta própria, partilhados"
+        },
+        {
+          "icon": "🚪",
+          "text": "Anotar primeiro parâmetros e retornos exportados"
+        },
+        {
+          "icon": "🤖",
+          "text": "O interior das funções fica com a inferência"
+        },
+        {
+          "icon": "🏷️",
+          "text": "any explícito com TODO é dívida visível e controlada"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Migrar um módulo de carrinho",
+      "difficulty": "Iniciante",
+      "statement": "O ficheiro carrinho.js tem duas funções: adicionar(carrinho, item), que devolve [...carrinho, item], e total(carrinho), que devolve carrinho.reduce((s, i) => s + i.preco * i.qtd, 0). Cada item tem nome, preco e qtd. Migre-o para carrinho.ts em strict: crie uma interface Item, anote só os parâmetros e retornos das funções exportadas, e mostre que passar um preco em string é rejeitado.",
+      "hint": "O callback do reduce não precisa de anotações: o tipo do array e o valor inicial chegam para a inferência.",
+      "solution_code": "interface Item {\n  nome: string;\n  preco: number;\n  qtd: number;\n}\n\nexport function adicionar(carrinho: Item[], item: Item): Item[] {\n  return [...carrinho, item];\n}\n\nexport function total(carrinho: Item[]): number {\n  return carrinho.reduce((soma, item) => soma + item.preco * item.qtd, 0);\n}\n\nlet carrinho = adicionar([], { nome: \"Livro\", preco: 12, qtd: 1 });\ncarrinho = adicionar(carrinho, { nome: \"Marcador\", preco: 0.5, qtd: 4 });\nconsole.log(total(carrinho)); // 14\n\n// @ts-expect-error\nadicionar(carrinho, { nome: \"Caneta\", preco: \"1\", qtd: 1 });",
+      "solution_explanation": "As anotações ficam nas fronteiras: dois parâmetros e dois retornos. O interior, incluindo o callback do reduce e a variável carrinho, é inferido. O preco em string é rejeitado porque o parâmetro item exige um Item."
+    },
+    {
+      "title": "Apanhar um erro com JSDoc",
+      "difficulty": "Iniciante",
+      "statement": "Em conversor.js existe export function paraFahrenheit(celsius) { return celsius * 9 / 5 + 32; }, e main.js chama-a com o valor lido de um formulário, a string \"20\". Sem mudar a extensão, acrescente // @ts-check e JSDoc para que o tsc (com --allowJs --noEmit) rejeite essa chamada, indique o código do erro e corrija a chamada.",
+      "hint": "Precisa de @param e @returns em conversor.js e de // @ts-check nos dois ficheiros.",
+      "solution_code": "// conversor.js\n// @ts-check\n/**\n * @param {number} celsius\n * @returns {number}\n */\nexport function paraFahrenheit(celsius) {\n  return celsius * 9 / 5 + 32;\n}\n\n// main.js\n// @ts-check\nimport { paraFahrenheit } from \"./conversor.js\";\n\nconst valorDoFormulario = \"20\";\nconsole.log(paraFahrenheit(valorDoFormulario));         // TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.\nconsole.log(paraFahrenheit(Number(valorDoFormulario))); // correto: 68",
+      "solution_explanation": "Sem JSDoc, celsius seria any e a string passaria; em JavaScript \"20\" * 9 até funcionaria por coerção, o que esconde o problema. Com @param {number}, o tsc dá TS2345 na chamada e a correção é converter explicitamente com Number."
+    },
+    {
+      "title": "Tipos partilhados com @typedef e import()",
+      "difficulty": "Intermedio",
+      "statement": "Crie tipos.js com um @typedef Produto (codigo, nome e preco, todos obrigatórios) e catalogo.js, com // @ts-check, que importa esse tipo com import(\"./tipos.js\").Produto, declara um array de produtos com @type em que um dos produtos não tem preco, e uma função procurar(lista, codigo) anotada para devolver Produto | undefined. Use o resultado de procurar diretamente com .preco. Diga que erros o tsc dá com --allowJs --checkJs --strict e porque é que tipos.js precisa de uma linha extra.",
+      "hint": "Um ficheiro só com comentários não é um módulo. E find pode não encontrar nada.",
+      "solution_code": "// tipos.js\n/**\n * @typedef {Object} Produto\n * @property {string} codigo\n * @property {string} nome\n * @property {number} preco\n */\nexport {}; // sem isto, o import(\"./tipos.js\") dá TS2306: File ... is not a module\n\n// catalogo.js\n// @ts-check\n/** @typedef {import(\"./tipos.js\").Produto} Produto */\n\n/** @type {Produto[]} */\nconst catalogo = [\n  { codigo: \"A1\", nome: \"Caneta\", preco: 1.5 },\n  { codigo: \"B2\", nome: \"Caderno\" }, // TS2741: Property 'preco' is missing ...\n];\n\n/**\n * @param {Produto[]} lista\n * @param {string} codigo\n * @returns {Produto | undefined}\n */\nexport function procurar(lista, codigo) {\n  return lista.find((p) => p.codigo === codigo);\n}\n\nconst p = procurar(catalogo, \"A1\");\nconsole.log(p.preco); // TS18048: 'p' is possibly 'undefined'.",
+      "solution_explanation": "O tsc dá TS2741 no produto sem preco e TS18048 no acesso a p.preco, porque o retorno declarado inclui undefined. O export {} torna tipos.js um módulo; sem ele, o import() falha com TS2306. As correções são acrescentar o preco e verificar p antes de o usar."
+    },
+    {
+      "title": "Migrar para .ts com strictNullChecks",
+      "difficulty": "Avancado",
+      "statement": "Este código JavaScript funciona mas rebenta quando o cliente não existe: function procurarCliente(clientes, id) { return clientes.find(c => c.id === id); } e function descrever(cliente) { return cliente.nome + \" (\" + (cliente.email || \"sem email\") + \")\"; }. Migre-o para TypeScript em strict: crie um tipo de domínio Cliente com email opcional, anote as fronteiras de modo que o retorno de procurarCliente mostre que pode não haver resultado, e faça descrever tratar esse caso devolvendo \"cliente inexistente\", sem usar as nem o operador !. Teste com um cliente com email, um sem email e um id inexistente.",
+      "hint": "O retorno de find já é Cliente | undefined; torne isso visível na assinatura e faça narrowing em descrever.",
+      "solution_code": "interface Cliente {\n  id: number;\n  nome: string;\n  email?: string;\n}\n\nexport function procurarCliente(clientes: Cliente[], id: number): Cliente | undefined {\n  return clientes.find((c) => c.id === id);\n}\n\nexport function descrever(cliente: Cliente | undefined): string {\n  if (cliente === undefined) {\n    return \"cliente inexistente\";\n  }\n  const contacto = cliente.email ?? \"sem email\";\n  return `${cliente.nome} (${contacto})`;\n}\n\nconst clientes: Cliente[] = [\n  { id: 1, nome: \"Ana\", email: \"ana@exemplo.pt\" },\n  { id: 2, nome: \"Rui\" },\n];\n\nconsole.log(descrever(procurarCliente(clientes, 1))); // Ana (ana@exemplo.pt)\nconsole.log(descrever(procurarCliente(clientes, 2))); // Rui (sem email)\nconsole.log(descrever(procurarCliente(clientes, 9))); // cliente inexistente",
+      "solution_explanation": "Anotar o retorno como Cliente | undefined põe na fronteira aquilo que o JavaScript escondia, e com strictNullChecks o compilador obriga descrever a tratar o caso em falta. O narrowing com === undefined substitui as asserções, e ?? trata o email opcional sem apanhar strings vazias por engano."
+    }
+  ],
+  "summary": [
+    "Migrar por fases: JS e TS convivem e cada passo é integrado de imediato",
+    "allowJs inclui os .js; checkJs ou // @ts-check verificam-nos; @ts-nocheck adia",
+    "JSDoc (@param, @returns, @type, @typedef, import()) dá tipos aos .js sem os renomear",
+    "Renomear das folhas para a entrada com strict: false e ligar as flags uma a uma",
+    "A contagem de erros por flag e os TODO(migracao) medem o progresso",
+    "Tipos de domínio numa pasta própria, anotações nas fronteiras, inferência no interior"
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 02",
+  "next_label": "Aula 02 → Evitar any e Fugas de Tipo"
+}

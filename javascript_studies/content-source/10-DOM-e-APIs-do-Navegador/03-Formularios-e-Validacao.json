@@ -1,0 +1,284 @@
+{
+  "module_num": "10",
+  "module_title": "DOM e APIs do Navegador",
+  "module_dir": "10-DOM-e-APIs-do-Navegador",
+  "lesson_num": "03",
+  "lesson_slug": "Formularios-e-Validacao",
+  "kind": "aula",
+  "title": "Formulários e Validação",
+  "filename_base": "03-Formularios-e-Validacao",
+  "subtitle": "Eventos, validação HTML5, Constraint Validation API e FormData num só fluxo.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Distinguir os eventos submit, input e change num formulário e saber quando usar cada um.",
+    "Aplicar validação nativa HTML5 com atributos como required, pattern, minlength e min/max.",
+    "Usar a Constraint Validation API (checkValidity, reportValidity, validity, setCustomValidity) para personalizar erros.",
+    "Escrever validação em JavaScript para regras de negócio que os atributos HTML5 não conseguem exprimir.",
+    "Recolher os valores de um formulário com FormData e prepará-los para envio.",
+    "Construir um fluxo de submissão completo que combina validação nativa, JavaScript e envio de dados."
+  ],
+  "sections": [
+    {
+      "heading": "Elementos de formulário e os seus eventos",
+      "body": [
+        "Um formulário HTML é composto por elementos como input, select, textarea e button, cada um com propriedades acessíveis diretamente em JavaScript, como value, checked ou disabled. Três eventos dominam a interação com formulários: submit, disparado no próprio elemento form quando o utilizador confirma o envio, seja ao clicar num botão type=\"submit\" seja ao premir Enter num campo de texto; input, disparado em cada elemento de entrada sempre que o seu valor muda, incluindo a cada tecla premida ou carácter colado; e change, que só é disparado quando o valor é alterado e depois confirmado, tipicamente quando o campo perde o foco num campo de texto, mas de forma imediata em checkboxes, radios e selects.",
+        "A escolha entre input e change depende do objetivo: validação em tempo real ou contadores de carateres devem usar input, porque reagem a cada alteração; ações que só fazem sentido quando o valor está fechado, como recalcular um total depois de escolher uma opção num select, usam change. O evento submit deve quase sempre chamar event.preventDefault() quando a validação e o envio são geridos em JavaScript, para impedir o comportamento predefinido do browser de recarregar a página e submeter o formulário como um pedido HTTP tradicional."
+      ],
+      "code": "const form = document.querySelector('#registo');\nconst emailInput = form.querySelector('#email');\n\nemailInput.addEventListener('input', () => {\n  console.log(`Carateres atuais: ${emailInput.value.length}`);\n});\n\nform.querySelector('#pais').addEventListener('change', (evento) => {\n  console.log(`País selecionado: ${evento.target.value}`);\n});\n\nform.addEventListener('submit', (evento) => {\n  evento.preventDefault();\n  console.log('Formulário submetido sem recarregar a página');\n});",
+      "callout_kind": "NOTA",
+      "callout_text": "O evento submit só dispara em elementos form, nunca diretamente num botão. Um button type=\"submit\" dentro do formulário aciona o submit do form; um button type=\"button\" nunca o faz.",
+      "table_headers": [
+        "Evento",
+        "Onde dispara",
+        "Quando dispara"
+      ],
+      "table_rows": [
+        [
+          "input",
+          "Elemento de entrada (input, textarea, select)",
+          "A cada alteração imediata do valor"
+        ],
+        [
+          "change",
+          "Elemento de entrada",
+          "Quando o valor é confirmado (blur em texto, imediato em checkbox/select)"
+        ],
+        [
+          "submit",
+          "Elemento form",
+          "Ao confirmar o envio do formulário"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📝",
+          "text": "input dispara a cada tecla"
+        },
+        {
+          "icon": "✅",
+          "text": "change confirma o valor final"
+        },
+        {
+          "icon": "🚀",
+          "text": "submit envia o formulário"
+        },
+        {
+          "icon": "🛑",
+          "text": "preventDefault evita reload"
+        }
+      ]
+    },
+    {
+      "heading": "Validação nativa HTML5",
+      "body": [
+        "O HTML5 fornece um mecanismo declarativo de validação através de atributos colocados diretamente nos elementos de formulário, sem necessidade de escrever qualquer JavaScript. O atributo required obriga ao preenchimento do campo; pattern aceita uma expressão regular que o valor tem de respeitar; minlength e maxlength limitam o número de carateres; min e max limitam valores numéricos ou datas; e o próprio atributo type (email, url, number, tel) já aplica regras de formato específicas. Quando o utilizador tenta submeter um formulário inválido, o browser impede o envio automaticamente, mostra uma mensagem de erro nativa junto ao campo e foca o primeiro elemento inválido, tudo sem intervenção de código.",
+        "Esta validação nativa tem vantagens claras: funciona mesmo com JavaScript desativado, é acessível por predefinição, com leitores de ecrã a anunciar os erros, e não exige código. Tem, no entanto, limites: as mensagens de erro predefinidas não são traduzíveis nem estilizáveis diretamente, e não é possível exprimir regras que dependam de vários campos ao mesmo tempo, como confirmar que dois campos de password coincidem. Por isso, em formulários reais, a validação nativa e a validação em JavaScript coexistem quase sempre, com a nativa a tratar dos casos simples e o JavaScript a cobrir a lógica de negócio."
+      ],
+      "code": "const campoIdade = document.querySelector('#idade');\ncampoIdade.min = 18;\ncampoIdade.max = 120;\ncampoIdade.required = true;\n\n// O evento \"invalid\" dispara automaticamente quando o browser\n// deteta que o campo não cumpre as suas restrições nativas\ncampoIdade.addEventListener('invalid', (evento) => {\n  console.log('Valor inválido:', evento.target.value);\n  console.log('Mensagem nativa:', evento.target.validationMessage);\n});",
+      "callout_kind": "DICA",
+      "callout_text": "Adicione novalidate ao elemento form quando quiser substituir totalmente a validação nativa pela sua própria, mantendo os atributos required e pattern apenas como documentação semântica e fallback.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏷️",
+          "text": "required, pattern, min, max"
+        },
+        {
+          "icon": "🚫",
+          "text": "Bloqueia envio automaticamente"
+        },
+        {
+          "icon": "♿",
+          "text": "Acessível sem código extra"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Não valida regras entre campos"
+        }
+      ]
+    },
+    {
+      "heading": "Validação personalizada em JavaScript",
+      "body": [
+        "Sempre que uma regra de negócio ultrapassa o que os atributos nativos conseguem exprimir, a validação passa a ser feita em JavaScript. Exemplos típicos incluem confirmar que dois campos de password são iguais, verificar que uma data de fim é posterior à data de início, aplicar regras que dependem do plano subscrito pelo utilizador, ou consultar um servidor para saber se um nome de utilizador já está ocupado. Esta validação corre normalmente no evento submit do formulário, mas pode também correr no evento input para dar feedback imediato enquanto o utilizador escreve.",
+        "Uma boa prática é escrever funções de validação puras, que recebem os valores a validar e devolvem uma mensagem de erro ou uma string vazia quando tudo está correto. Isto separa a lógica de validação da manipulação do DOM, tornando-a mais fácil de testar isoladamente e de reutilizar entre formulários diferentes."
+      ],
+      "code": "function validarPasswords(password, confirmacao) {\n  if (password.length < 8) {\n    return 'A password tem de ter pelo menos 8 carateres.';\n  }\n  if (password !== confirmacao) {\n    return 'As passwords não coincidem.';\n  }\n  return '';\n}\n\nconst form = document.querySelector('#registo');\n\nform.addEventListener('submit', (evento) => {\n  const password = form.password.value;\n  const confirmacao = form.confirmarPassword.value;\n  const erro = validarPasswords(password, confirmacao);\n\n  if (erro) {\n    evento.preventDefault();\n    form.confirmarPassword.setCustomValidity(erro);\n    form.confirmarPassword.reportValidity();\n  } else {\n    form.confirmarPassword.setCustomValidity('');\n  }\n});",
+      "callout_kind": "ATENCAO",
+      "callout_text": "setCustomValidity deve ser chamado com uma string vazia assim que o campo volta a ser válido; caso contrário, o campo fica permanentemente marcado como inválido, mesmo depois de o utilizador corrigir o valor.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧩",
+          "text": "Cobre regras entre campos"
+        },
+        {
+          "icon": "🔁",
+          "text": "Funções de validação reutilizáveis"
+        },
+        {
+          "icon": "🌐",
+          "text": "Pode incluir chamadas ao servidor"
+        }
+      ]
+    },
+    {
+      "heading": "Constraint Validation API",
+      "body": [
+        "A Constraint Validation API é o conjunto de métodos e propriedades que liga a validação nativa do HTML5 ao JavaScript, permitindo ler o estado de validade de um campo e personalizar mensagens de erro sem abandonar o mecanismo nativo do browser. O método checkValidity() devolve true ou false consoante o elemento, ou o formulário inteiro, cumpre as suas restrições, sem mostrar qualquer mensagem ao utilizador; reportValidity() faz o mesmo teste, mas além disso mostra a mensagem de erro nativa e foca o campo inválido, tal como aconteceria automaticamente ao submeter o formulário.",
+        "A propriedade validity de cada elemento devolve um objeto ValidityState com sinalizadores booleanos como valueMissing, patternMismatch, tooShort, tooLong, rangeUnderflow, rangeOverflow e typeMismatch, o que permite identificar exatamente qual a regra que falhou e escolher uma mensagem apropriada. O método setCustomValidity(mensagem) marca o campo como inválido com essa mensagem personalizada; chamado com uma string vazia, marca o campo como válido de novo. Esta combinação permite substituir as mensagens genéricas do browser por texto traduzido e específico do contexto da aplicação, mantendo toda a mecânica nativa de bloqueio de envio e foco automático."
+      ],
+      "code": "const emailInput = document.querySelector('#email');\n\nemailInput.addEventListener('input', () => {\n  if (emailInput.validity.valueMissing) {\n    emailInput.setCustomValidity('O email é obrigatório.');\n  } else if (emailInput.validity.typeMismatch) {\n    emailInput.setCustomValidity('Introduza um email válido, como nome@exemplo.pt.');\n  } else {\n    emailInput.setCustomValidity('');\n  }\n});\n\nconst form = document.querySelector('#registo');\n\nform.addEventListener('submit', (evento) => {\n  if (!form.checkValidity()) {\n    evento.preventDefault();\n    form.reportValidity();\n  }\n});",
+      "callout_kind": "NOTA",
+      "callout_text": "checkValidity() é silencioso e devolve um booleano, útil para lógica interna; reportValidity() é visível ao utilizador e é o que o browser invoca internamente ao tentar submeter um formulário inválido.",
+      "table_headers": [
+        "Propriedade de validity",
+        "Significado"
+      ],
+      "table_rows": [
+        [
+          "valueMissing",
+          "Campo required está vazio"
+        ],
+        [
+          "patternMismatch",
+          "Valor não cumpre o atributo pattern"
+        ],
+        [
+          "tooShort / tooLong",
+          "Fora dos limites de minlength/maxlength"
+        ],
+        [
+          "rangeUnderflow / rangeOverflow",
+          "Fora dos limites de min/max"
+        ],
+        [
+          "typeMismatch",
+          "Formato inválido para o type (email, url)"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔍",
+          "text": "checkValidity() testa em silêncio"
+        },
+        {
+          "icon": "📢",
+          "text": "reportValidity() mostra o erro"
+        },
+        {
+          "icon": "🚦",
+          "text": "validity expõe o motivo exato"
+        },
+        {
+          "icon": "✏️",
+          "text": "setCustomValidity personaliza a mensagem"
+        }
+      ]
+    },
+    {
+      "heading": "FormData: recolher valores do formulário",
+      "body": [
+        "O construtor FormData recebe uma referência a um elemento form e cria automaticamente uma coleção com todos os pares nome/valor dos campos desse formulário, usando o atributo name de cada elemento como chave. Isto evita ter de aceder manualmente a cada input para ler o seu value, o que é especialmente útil em formulários grandes ou dinâmicos. FormData suporta múltiplos valores para o mesmo nome, por exemplo várias checkboxes com o mesmo name, campos de ficheiro (input type=\"file\"), e pode também ser construído vazio e preenchido depois com append.",
+        "Os métodos get(nome) e getAll(nome) leem valores; set(nome, valor) substitui ou cria um valor; append(nome, valor) adiciona sem substituir; e has(nome) verifica a existência de uma chave. Para percorrer todos os pares, FormData é diretamente iterável com for...of ou pode converter-se num objeto simples com Object.fromEntries(formData), o que é conveniente para enviar os dados como JSON. Quando os dados incluem ficheiros ou se pretende manter o formato multipart/form-data esperado por muitos servidores, o próprio objeto FormData pode ser passado diretamente como body de um pedido fetch, sem qualquer conversão adicional."
+      ],
+      "code": "const form = document.querySelector('#registo');\n\nform.addEventListener('submit', async (evento) => {\n  evento.preventDefault();\n\n  if (!form.checkValidity()) {\n    form.reportValidity();\n    return;\n  }\n\n  const dados = new FormData(form);\n\n  for (const [nome, valor] of dados.entries()) {\n    console.log(`${nome}: ${valor}`);\n  }\n\n  const objeto = Object.fromEntries(dados.entries());\n\n  const resposta = await fetch('/api/registo', {\n    method: 'POST',\n    body: JSON.stringify(objeto),\n    headers: { 'Content-Type': 'application/json' },\n  });\n\n  console.log('Estado da resposta:', resposta.status);\n});",
+      "callout_kind": "DICA",
+      "callout_text": "Se o formulário incluir campos de ficheiro, envie o próprio objeto FormData como body do fetch, sem o converter para JSON nem definir manualmente o cabeçalho Content-Type: o browser trata disso automaticamente com o boundary multipart correto.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "new FormData(form) recolhe tudo"
+        },
+        {
+          "icon": "🔑",
+          "text": "get, getAll, set, append, has"
+        },
+        {
+          "icon": "🔄",
+          "text": "Object.fromEntries converte para objeto"
+        },
+        {
+          "icon": "📎",
+          "text": "Suporta ficheiros nativamente"
+        }
+      ]
+    },
+    {
+      "heading": "Juntar tudo: fluxo de validação completo",
+      "body": [
+        "Um formulário robusto em produção combina as várias camadas vistas nesta aula: os atributos HTML5 tratam das restrições simples e garantem uma base acessível mesmo sem JavaScript; os eventos input e change dão feedback imediato ao utilizador enquanto preenche o formulário; a Constraint Validation API permite personalizar mensagens sem perder o mecanismo nativo de bloqueio e foco; a validação em JavaScript cobre regras de negócio que atravessam vários campos; e FormData recolhe os valores finais para envio, seja como JSON seja como multipart. O padrão mais comum é impedir sempre o comportamento predefinido do submit, correr checkValidity() ou uma validação personalizada, e só depois construir o FormData e enviar o pedido.",
+        "Vale a pena notar que validar apenas no cliente nunca é suficiente: um servidor bem construído tem de repetir toda a validação do lado do servidor, porque os pedidos podem chegar de fora do formulário, por exemplo através de uma ferramenta de linha de comandos ou de um script, sem passar por qualquer JavaScript do browser. A validação no cliente existe para dar uma experiência rápida e agradável, não como única linha de defesa."
+      ],
+      "code": "const form = document.querySelector('#contacto');\n\nfunction validarFormulario(form) {\n  const mensagem = form.telefone.value.trim().length === 9\n    ? ''\n    : 'O telefone deve ter 9 dígitos.';\n  form.telefone.setCustomValidity(mensagem);\n  return form.checkValidity();\n}\n\nform.telefone.addEventListener('input', () => validarFormulario(form));\n\nform.addEventListener('submit', (evento) => {\n  evento.preventDefault();\n\n  if (!validarFormulario(form)) {\n    form.reportValidity();\n    return;\n  }\n\n  const dados = Object.fromEntries(new FormData(form).entries());\n  console.log('Pronto a enviar:', dados);\n});",
+      "callout_kind": "ATENCAO",
+      "callout_text": "A validação em JavaScript no browser melhora a experiência do utilizador, mas nunca substitui a validação no servidor: qualquer pedido pode chegar sem passar pelo formulário.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧱",
+          "text": "HTML5 + JS + Constraint API"
+        },
+        {
+          "icon": "🔐",
+          "text": "Validar sempre também no servidor"
+        },
+        {
+          "icon": "📨",
+          "text": "FormData fecha o ciclo de envio"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Contador de carateres em tempo real",
+      "difficulty": "Iniciante",
+      "statement": "Tem um formulário com um campo de texto com id \"nome\" e, ao lado, um elemento <span id=\"contador\"></span>. Escreva o código JavaScript que atualiza o texto desse span para mostrar quantos carateres o utilizador já escreveu no campo \"nome\", atualizando-se a cada tecla premida.",
+      "hint": "Pense em qual dos eventos de formulário dispara a cada alteração imediata do valor de um input, ao contrário do change, que só dispara quando o valor é confirmado.",
+      "solution_code": "const nomeInput = document.querySelector('#nome');\nconst contador = document.querySelector('#contador');\n\nnomeInput.addEventListener('input', () => {\n  contador.textContent = `${nomeInput.value.length} carateres`;\n});",
+      "solution_explanation": "O evento input dispara sempre que o valor do campo muda, incluindo a cada tecla premida, por isso é o evento certo para atualizar um contador em tempo real; o change só dispararia quando o campo perdesse o foco."
+    },
+    {
+      "title": "Bloquear o envio até o formulário ser válido",
+      "difficulty": "Intermedio",
+      "statement": "Tem um formulário com id \"inscricao\" e um campo de email com id \"email\", que já tem no HTML os atributos required e type=\"email\". Escreva o código JavaScript que impede sempre o comportamento predefinido do submit (recarregar a página), verifica se o formulário é válido com checkValidity() e, caso não seja, chama reportValidity() para mostrar as mensagens nativas ao utilizador. Se o formulário for válido, escreva na consola a mensagem \"Formulário válido, a enviar...\".",
+      "hint": "Lembre-se que checkValidity() devolve apenas um booleano sem mostrar nada ao utilizador, enquanto reportValidity() mostra a mensagem de erro e foca o campo inválido.",
+      "solution_code": "const form = document.querySelector('#inscricao');\n\nform.addEventListener('submit', (evento) => {\n  evento.preventDefault();\n\n  if (!form.checkValidity()) {\n    form.reportValidity();\n    return;\n  }\n\n  console.log('Formulário válido, a enviar...');\n});",
+      "solution_explanation": "preventDefault() bloqueia sempre o recarregamento da página; checkValidity() avalia todos os campos contra as suas restrições HTML5 e devolve false se algum falhar, momento em que reportValidity() mostra a mensagem nativa junto ao campo inválido."
+    },
+    {
+      "title": "Confirmar password com a Constraint Validation API",
+      "difficulty": "Intermedio",
+      "statement": "Um formulário de registo tem dois campos: password (id \"password\") e confirmarPassword (id \"confirmarPassword\"). Escreva código JavaScript que, sempre que o utilizador escreve em qualquer um dos dois campos, verifica se os valores coincidem; se não coincidirem, marca confirmarPassword como inválido com a mensagem \"As passwords não coincidem.\" usando setCustomValidity, e se coincidirem, limpa essa validade personalizada com uma string vazia. No submit do formulário, impeça sempre o comportamento predefinido e só continue (escrevendo na consola \"Registo válido\") se form.checkValidity() devolver true.",
+      "hint": "setCustomValidity precisa de ser chamado com uma string vazia assim que a condição de erro deixa de se verificar, ou o campo fica preso como inválido para sempre.",
+      "solution_code": "const form = document.querySelector('#registo');\nconst password = form.querySelector('#password');\nconst confirmarPassword = form.querySelector('#confirmarPassword');\n\nfunction validarConfirmacao() {\n  if (password.value !== confirmarPassword.value) {\n    confirmarPassword.setCustomValidity('As passwords não coincidem.');\n  } else {\n    confirmarPassword.setCustomValidity('');\n  }\n}\n\npassword.addEventListener('input', validarConfirmacao);\nconfirmarPassword.addEventListener('input', validarConfirmacao);\n\nform.addEventListener('submit', (evento) => {\n  evento.preventDefault();\n\n  if (!form.checkValidity()) {\n    form.reportValidity();\n    return;\n  }\n\n  console.log('Registo válido');\n});",
+      "solution_explanation": "A função validarConfirmacao corre em ambos os campos sempre que o utilizador escreve, comparando os dois valores e usando setCustomValidity para marcar confirmarPassword como inválido apenas quando diferem; como checkValidity() considera essa validade personalizada, o formulário só é aceite no submit quando as passwords coincidem."
+    },
+    {
+      "title": "Reserva com datas cruzadas e envio por FormData",
+      "difficulty": "Avancado",
+      "statement": "Tem um formulário de reserva com id \"reserva\", contendo dois campos do tipo date: dataInicio e dataFim, além de outros campos diversos. Escreva um manipulador do evento submit que: previna sempre o comportamento predefinido; valide em JavaScript que a dataFim é posterior à dataInicio, comunicando essa falha através da Constraint Validation API no campo dataFim quando a regra não se verificar (e limpando-a quando se verificar); verifique depois se o formulário completo é válido com checkValidity(), chamando reportValidity() e interrompendo a execução caso não seja; e, só quando tudo for válido, construa um objeto com Object.fromEntries a partir de um FormData do formulário e envie-o com fetch para \"/api/reservas\" como JSON, escrevendo na consola o estado (status) da resposta recebida.",
+      "hint": "Datas no formato AAAA-MM-DD (o formato de um input type=\"date\") podem ser comparadas diretamente como strings com os operadores relacionais do JavaScript, sem as converter para objetos Date.",
+      "solution_code": "const form = document.querySelector('#reserva');\n\nform.addEventListener('submit', async (evento) => {\n  evento.preventDefault();\n\n  const dataInicio = form.dataInicio;\n  const dataFim = form.dataFim;\n\n  if (dataFim.value <= dataInicio.value) {\n    dataFim.setCustomValidity('A data de fim tem de ser posterior à data de início.');\n  } else {\n    dataFim.setCustomValidity('');\n  }\n\n  if (!form.checkValidity()) {\n    form.reportValidity();\n    return;\n  }\n\n  const dados = Object.fromEntries(new FormData(form).entries());\n\n  const resposta = await fetch('/api/reservas', {\n    method: 'POST',\n    body: JSON.stringify(dados),\n    headers: { 'Content-Type': 'application/json' },\n  });\n\n  console.log('Estado da resposta:', resposta.status);\n});",
+      "solution_explanation": "A regra que compara duas datas não pode ser expressa apenas com atributos HTML5, por isso é calculada em JavaScript e comunicada ao browser através de setCustomValidity no campo dataFim; só depois de checkValidity() confirmar que todo o formulário, incluindo essa regra personalizada, está válido é que o FormData é construído e enviado por fetch como JSON."
+    }
+  ],
+  "summary": [
+    "O evento submit dispara no form, input a cada alteração e change quando o valor é confirmado; use preventDefault para controlar o envio.",
+    "Atributos como required, pattern, minlength e min/max ativam validação nativa do browser sem escrever JavaScript.",
+    "checkValidity() testa em silêncio e devolve um booleano; reportValidity() mostra a mensagem nativa e foca o campo inválido.",
+    "setCustomValidity() permite substituir as mensagens do browser e exprimir regras entre campos, como confirmar passwords ou datas.",
+    "FormData(form) recolhe todos os valores pelo atributo name; Object.fromEntries converte-o num objeto simples para enviar como JSON.",
+    "A validação no cliente melhora a experiência do utilizador mas nunca substitui a validação obrigatória no servidor."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 04",
+  "next_label": "Aula 04 → Web Storage e Outras APIs do Browser",
+  "_stage": "autoria"
+}

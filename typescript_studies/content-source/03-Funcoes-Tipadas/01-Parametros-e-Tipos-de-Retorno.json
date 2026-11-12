@@ -1,0 +1,358 @@
+{
+  "module_num": "03",
+  "module_title": "Funções Tipadas",
+  "module_dir": "03-Funcoes-Tipadas",
+  "lesson_num": "01",
+  "lesson_slug": "Parametros-e-Tipos-de-Retorno",
+  "kind": "aula",
+  "title": "Parâmetros e Tipos de Retorno",
+  "filename_base": "01-Parametros-e-Tipos-de-Retorno",
+  "subtitle": "Onde a anotação é obrigatória, onde fixa um contrato, e onde é só ruído",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Anotar cada parâmetro e perceber porque noImplicitAny obriga a isso",
+    "Decidir quando vale a pena anotar o tipo de retorno e quando deixar inferir",
+    "Usar void em funções que correm pelo efeito e distingui-lo de undefined",
+    "Usar never em funções que lançam sempre ou que nunca terminam",
+    "Anotar o retorno de arrow functions no sítio certo, objetos literais incluídos",
+    "Reconhecer a inferência contextual e parar de anotar callbacks de map e filter"
+  ],
+  "sections": [
+    {
+      "heading": "Anotar os Parâmetros Não é Opcional",
+      "body": [
+        "Uma função é uma fronteira. Por dentro, o TypeScript segue o rasto de quase tudo a partir dos valores que vê; nos parâmetros, esse rasto não existe. O corpo da função é escrito muito antes de se saber quem a vai chamar, e o compilador não vai ler todas as chamadas espalhadas pelo projeto para adivinhar o que ali entra. Por isso a regra prática é simples: os parâmetros anotam-se, sempre.",
+        "Foi exatamente isto que a opção noImplicitAny do Módulo 01 formalizou. Sem anotação, o parâmetro ficaria com o tipo any implícito, e a função deixaria de ser verificada por dentro e por fora. Com a opção ligada, que é o que strict faz, o compilador recusa-se a inventar e exige a anotação.",
+        "Há duas exceções, e ambas ficam para as próximas aulas: um parâmetro com valor por omissão herda o tipo desse valor, e um parâmetro de um callback pode receber o tipo do contexto onde a função é passada. Fora desses dois casos, escreva o tipo."
+      ],
+      "code": "// Os parâmetros anotam-se: o compilador não tem de onde os deduzir\nfunction saudar(nome: string, entusiasmo: number): string {\n  return `Olá, ${nome}${\"!\".repeat(entusiasmo)}`;\n}\n\nconsole.log(saudar(\"Rita\", 3)); // \"Olá, Rita!!!\"\n\n// @ts-expect-error com noImplicitAny, um parâmetro sem anotação é erro\nfunction saudarSolto(nome) {\n  return `Olá, ${nome}`;\n}\n\nconsole.log(saudarSolto(\"Rita\")); // \"Olá, Rita\"\n\n// @ts-expect-error entusiasmo é number e não aceita texto\nconsole.log(saudar(\"Rita\", \"muito\"));",
+      "callout_kind": "NOTA",
+      "callout_text": "Um parâmetro sem anotação não é um erro da linguagem, é um erro da configuração. Em projetos sem strict o código compila e fica com any implícito por todo o lado, que é precisamente o que se veio evitar.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🚪",
+          "text": "A função é uma fronteira: nada entra por inferência"
+        },
+        {
+          "icon": "✍️",
+          "text": "Cada parâmetro leva o seu próprio tipo"
+        },
+        {
+          "icon": "🛑",
+          "text": "noImplicitAny recusa parâmetros por anotar"
+        },
+        {
+          "icon": "📌",
+          "text": "Exceções: valor por omissão e contexto"
+        }
+      ]
+    },
+    {
+      "heading": "O Retorno Infere-se Sozinho, Quase Sempre Bem",
+      "body": [
+        "Com os parâmetros tipados, o tipo de retorno deduz-se dos return da função, e deduz-se bem. Anotar o retorno de todas as funções é um hábito comum em quem chega de linguagens mais cerimoniosas, e na maior parte do código só acrescenta mais um sítio para manter atualizado.",
+        "Há, ainda assim, três situações em que vale mesmo a pena escrever o tipo de retorno. Em funções exportadas de um módulo, porque a assinatura passa a ser um contrato público que não muda por acidente quando alguém mexe no corpo. Em funções longas com vários return, porque a anotação força todos os caminhos a concordarem. E em funções onde um engano no cálculo mudaria o tipo devolvido em silêncio.",
+        "O terceiro caso é o mais traiçoeiro e é o que o exemplo mostra. Quando o retorno não está anotado, o compilador aceita o que a função devolver e propaga esse tipo para fora; o erro aparece mais tarde, em quem consumiu o valor, e a mensagem aponta para um sítio que não tem culpa nenhuma. Com o retorno anotado, a queixa surge dentro da função, na linha do return, que é onde o problema está."
+      ],
+      "code": "// Sem anotação de retorno: o engano passa despercebido na função\nfunction precoComIva(base: number) {\n  return (base * 1.23).toFixed(2); // toFixed devolve string, não number\n}\n\nconst semAnotacao = precoComIva(100); // inferido: string\n// @ts-expect-error o erro só aparece aqui, longe da causa\nconst dobro: number = semAnotacao * 2;\nconsole.log(dobro);\n\n// Com anotação de retorno: o compilador aponta para a linha errada\nfunction precoComIvaFixo(base: number): number {\n  // @ts-expect-error toFixed devolve string e a anotação apanha-o aqui\n  return (base * 1.23).toFixed(2);\n}\n\nconsole.log(precoComIvaFixo(100));",
+      "callout_kind": "DICA",
+      "callout_text": "Uma regra que funciona bem: deixe inferir dentro do módulo e anote tudo o que exporta. O interior fica leve de escrever e a superfície pública fica presa a um contrato explícito.",
+      "table_headers": [
+        "Situação",
+        "Anotar o retorno?"
+      ],
+      "table_rows": [
+        [
+          "Função auxiliar privada, de uma linha",
+          "Não, a inferência chega"
+        ],
+        [
+          "Função exportada do módulo",
+          "Sim, fixa o contrato público"
+        ],
+        [
+          "Vários return em ramos diferentes",
+          "Sim, obriga os ramos a concordar"
+        ],
+        [
+          "Função que só produz efeitos",
+          "Sim, void deixa a intenção clara"
+        ],
+        [
+          "Função recursiva",
+          "Sim, muitas vezes a inferência não lá chega"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧠",
+          "text": "O retorno deduz-se dos return da função"
+        },
+        {
+          "icon": "📜",
+          "text": "Anote o que exporta: a assinatura é contrato"
+        },
+        {
+          "icon": "🎯",
+          "text": "A anotação põe o erro na linha certa"
+        },
+        {
+          "icon": "🧹",
+          "text": "Anotar tudo por dentro só é ruído"
+        }
+      ]
+    },
+    {
+      "heading": "Retorno void: a Função Corre pelo Efeito",
+      "body": [
+        "void é o tipo de retorno de uma função que existe pelo que faz, não pelo que devolve: escrever no ecrã, gravar num ficheiro, disparar um evento. Em tempo de execução a função continua a devolver undefined, como em JavaScript; void é a forma de dizer ao compilador que esse valor não interessa a ninguém e não deve ser aproveitado.",
+        "Como tipo de retorno de uma declaração de função, void e undefined comportam-se de forma parecida. A diferença aparece quando void é o retorno de um tipo de função, por exemplo o de um callback. Aí, void significa o retorno é ignorado, e não a função tem de devolver undefined: qualquer função serve, devolva o que devolver, porque quem a chama promete deitar fora o resultado.",
+        "É por causa desta regra que passar uma arrow function como historico.push(m) a um parâmetro do tipo (m: string) => void compila sem queixas, apesar de push devolver um number. Se o tipo dissesse undefined em vez de void, a mesma linha seria recusada. Esta é a razão prática pela qual void é quase sempre a escolha certa para callbacks cujo resultado não usa."
+      ],
+      "code": "// void: a função corre pelo efeito, não pelo valor\nfunction registar(mensagem: string): void {\n  console.log(`[log] ${mensagem}`);\n}\n\nregistar(\"ficheiro gravado\");\n\n// @ts-expect-error o resultado de uma função void não se aproveita\nconst guardado: string = registar(\"nada\");\nconsole.log(guardado);\n\n// A subtileza: num tipo de função, void significa \"retorno ignorado\"\nconst historico: string[] = [];\nconst aoGuardar: (m: string) => void = (m) => historico.push(m); // push devolve number\naoGuardar(\"primeiro\");\nconsole.log(historico.length); // 1\n\n// Com undefined em vez de void, o mesmo já não passa\n// @ts-expect-error number não é atribuível a undefined\nconst aoGuardarEstrito: (m: string) => undefined = (m) => historico.push(m);\nconsole.log(aoGuardarEstrito);",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Não troque void por undefined a pensar que é mais preciso. Num tipo de callback, undefined recusa funções perfeitamente válidas só porque elas devolvem alguma coisa que ninguém ia usar.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "💨",
+          "text": "void: a função vale pelo efeito, não pelo valor"
+        },
+        {
+          "icon": "🚫",
+          "text": "O resultado de uma função void não se aproveita"
+        },
+        {
+          "icon": "🔄",
+          "text": "Num tipo de função, void quer dizer retorno ignorado"
+        },
+        {
+          "icon": "⚖️",
+          "text": "undefined é mais estrito e recusa callbacks válidos"
+        }
+      ]
+    },
+    {
+      "heading": "Retorno never: a Função Nunca Chega a Devolver",
+      "body": [
+        "never é o retorno das funções que nunca devolvem o controlo a quem as chamou. Há duas maneiras de isso acontecer: a função lança sempre uma exceção, ou entra num ciclo que nunca termina. Uma função void devolve, mas não devolve nada de útil; uma função never nem sequer devolve.",
+        "A utilidade não é decorativa. Quando o compilador sabe que uma chamada devolve never, sabe também que o código a seguir a essa chamada não corre, e continua a análise do fluxo com essa informação. É o que acontece no exemplo: depois de falhar() dentro do if, o compilador conclui que valor deixou de poder ser null e trata-o como string no return, sem ser preciso um else.",
+        "Para isto funcionar, a função tem de ter o never escrito de forma explícita na assinatura. Se deixar inferir, o TypeScript dá-lhe void em muitos casos, e a análise de fluxo não ganha nada. É este um dos poucos sítios onde anotar o retorno não é estilo, é a única forma de obter o comportamento."
+      ],
+      "code": "// never: a função nunca chega a devolver\nfunction falhar(mensagem: string): never {\n  throw new Error(mensagem);\n}\n\nfunction cicloEterno(): never {\n  while (true) {\n    // um processo de eventos que nunca termina\n  }\n}\n\n// O compilador sabe que depois de falhar() não há continuação\nfunction lerPorto(valor: string | null): string {\n  if (valor === null) {\n    falhar(\"PORT em falta\");\n  }\n  return valor; // aqui valor já é string\n}\n\nconsole.log(lerPorto(\"8080\")); // \"8080\"\nconsole.log(typeof cicloEterno); // \"function\"\n\n// @ts-expect-error uma função que termina normalmente não pode devolver never\nfunction terminaSempre(): never {\n  console.log(\"acabei\");\n}\nconsole.log(terminaSempre);",
+      "callout_kind": "NOTA",
+      "callout_text": "never voltará no Módulo 04, a propósito de narrowing e de verificações de exaustividade, e no Módulo 06 como o tipo vazio, aquele a que nenhum valor pertence.",
+      "table_headers": [
+        "Aspeto",
+        "void",
+        "never"
+      ],
+      "table_rows": [
+        [
+          "A função termina",
+          "Sim",
+          "Não"
+        ],
+        [
+          "Valor devolvido",
+          "undefined, que se ignora",
+          "Nenhum, nunca lá chega"
+        ],
+        [
+          "Caso típico",
+          "Registar, gravar, notificar",
+          "Lançar sempre, ciclo infinito"
+        ],
+        [
+          "Código a seguir à chamada",
+          "Corre normalmente",
+          "O compilador sabe que não corre"
+        ],
+        [
+          "Precisa de anotação explícita",
+          "Raramente",
+          "Quase sempre, senão infere void"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "💥",
+          "text": "never: lança sempre ou nunca termina"
+        },
+        {
+          "icon": "⚡",
+          "text": "void devolve sem valor útil; never não devolve"
+        },
+        {
+          "icon": "🔎",
+          "text": "O compilador sabe que o código seguinte não corre"
+        },
+        {
+          "icon": "✍️",
+          "text": "Tem de ser anotado: inferido daria void"
+        }
+      ]
+    },
+    {
+      "heading": "Funções que Devolvem Objetos",
+      "body": [
+        "Quando uma função devolve um objeto literal, a inferência produz um tipo com exatamente as propriedades que lá estão e com o tipo de cada uma deduzido do respetivo valor. Não é preciso declarar interface nenhuma para o código ficar tipado, e as propriedades escritas na forma abreviada, como evento e lugar no exemplo, ficam com o tipo do parâmetro de onde vieram.",
+        "Anotar o retorno com uma interface muda duas coisas. A primeira é que o tipo devolvido passa a ser o da interface, e nada do que a função acrescente ao literal fica visível para fora. A segunda é a verificação de propriedades a mais: um literal devolvido diretamente contra um tipo anotado não pode ter chaves que esse tipo desconheça, e o compilador recusa-o.",
+        "Essa rigidez é o ponto. Para uma fábrica interna, deixar inferir é cómodo e não se perde nada. Para uma função exportada, a interface é que define o que os outros módulos podem contar em encontrar, e impede que uma propriedade acrescentada de passagem se torne parte da API pública sem ninguém dar por isso."
+      ],
+      "code": "// Retorno inferido: o tipo do objeto sai do literal devolvido\nfunction criarBilhete(evento: string, lugar: number) {\n  return { evento, lugar, emitido: new Date(), usado: false };\n}\n// inferido: { evento: string; lugar: number; emitido: Date; usado: boolean }\nconst bilhete = criarBilhete(\"Concerto\", 14);\nconsole.log(bilhete.usado); // false\n\n// Retorno anotado: a interface fixa o contrato\ninterface Bilhete {\n  evento: string;\n  lugar: number;\n}\n\nfunction emitirBilhete(evento: string, lugar: number): Bilhete {\n  // @ts-expect-error a anotação recusa propriedades a mais no literal devolvido\n  return { evento, lugar, usado: false };\n}\n\nconsole.log(emitirBilhete(\"Teatro\", 3).lugar); // 3",
+      "callout_kind": "DICA",
+      "callout_text": "Se precisar de devolver propriedades a mais sem largar a anotação, atribua o literal a uma variável antes do return. A verificação de propriedades a mais só se aplica a literais usados diretamente.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧱",
+          "text": "O literal devolvido gera o tipo completo sozinho"
+        },
+        {
+          "icon": "📐",
+          "text": "A interface no retorno fixa a forma pública"
+        },
+        {
+          "icon": "🚧",
+          "text": "Propriedades a mais no literal são recusadas"
+        },
+        {
+          "icon": "🏭",
+          "text": "Fábrica interna: inferir; função exportada: anotar"
+        }
+      ]
+    },
+    {
+      "heading": "Arrow Functions e o Sítio da Anotação",
+      "body": [
+        "Numa declaração de função o tipo de retorno vem depois dos parênteses e antes das chavetas, e ninguém se engana. Numa arrow function o sítio é o mesmo, mas a seta pelo meio confunde: o tipo vai entre o parêntesis de fecho e a seta, nunca depois dela. Escrever const f = (n: number) => number seria uma arrow que devolve o valor de uma variável chamada number, e não uma anotação.",
+        "A posição é a mesma quer o corpo seja uma expressão única, quer seja um bloco em chavetas. E nos dois casos os parâmetros continuam a precisar de anotação, exatamente pelo mesmo motivo da primeira secção.",
+        "Há ainda uma armadilha herdada do JavaScript: para devolver um objeto literal numa arrow de corpo único, é preciso envolver as chavetas em parênteses. Sem eles, as chavetas são lidas como um bloco de código, e não como um objeto."
+      ],
+      "code": "// Numa arrow function o retorno anota-se antes da seta\nconst duplicar = (n: number): number => n * 2;\n\n// Com corpo em chavetas é exatamente o mesmo sítio\nconst iniciais = (nome: string): string => {\n  return nome\n    .split(\" \")\n    .map((p) => p[0])\n    .join(\"\");\n};\n\n// Devolver um objeto literal obriga a parênteses à volta das chavetas\nconst criarPonto = (x: number, y: number): { x: number; y: number } => ({ x, y });\n\nconsole.log(duplicar(21)); // 42\nconsole.log(iniciais(\"Ana Maria Costa\")); // \"AMC\"\nconsole.log(criarPonto(1, 2).y); // 2",
+      "callout_kind": "ATENCAO",
+      "callout_text": "A anotação de retorno de uma arrow function vai sempre antes da seta. Depois da seta começa o corpo, e o que lá escrever é tratado como valor, não como tipo.",
+      "table_headers": [
+        "Forma",
+        "Escrita"
+      ],
+      "table_rows": [
+        [
+          "Declaração",
+          "function f(n: number): number { return n; }"
+        ],
+        [
+          "Arrow, corpo expressão",
+          "const f = (n: number): number => n;"
+        ],
+        [
+          "Arrow, corpo em bloco",
+          "const f = (n: number): number => { return n; };"
+        ],
+        [
+          "Arrow que devolve objeto",
+          "const f = (n: number): { n: number } => ({ n });"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "➡️",
+          "text": "O tipo de retorno vem antes da seta"
+        },
+        {
+          "icon": "📦",
+          "text": "Corpo em expressão ou em bloco: mesmo sítio"
+        },
+        {
+          "icon": "🧿",
+          "text": "Objeto literal devolvido leva parênteses à volta"
+        },
+        {
+          "icon": "❌",
+          "text": "Depois da seta já é valor, nunca tipo"
+        }
+      ]
+    },
+    {
+      "heading": "Inferência Contextual: Quando Anotar é Só Ruído",
+      "body": [
+        "A regra de anotar sempre os parâmetros tem uma exceção importante, e é das que mais aliviam o código do dia a dia. Quando uma função é escrita no sítio onde já se sabe que tipo ela devia ter, o TypeScript tira os tipos dos parâmetros desse contexto. Chama-se inferência contextual, e é o que faz com que o p de precos.map((p) => ...) seja number sem que ninguém o escreva.",
+        "O contexto vem da assinatura de quem recebe a função. O map de um number[] declara que o callback recebe um number, e a arrow passada ali herda essa informação. O mesmo vale para filter, reduce, sort, para os handlers de eventos e para qualquer parâmetro do seu próprio código declarado com um tipo de função.",
+        "Anotar na mesma não dá erro, mas não acrescenta segurança nenhuma e cria mais um sítio para atualizar: se o array passar a guardar outra coisa, a anotação escrita à mão fica errada e o compilador reclama de algo que se corrigiria sozinho. A anotação volta a ser necessária no momento em que a função sai do contexto, por exemplo ao ser guardada numa constante solta."
+      ],
+      "code": "const precos = [10, 20, 30];\n\n// p vem tipado do contexto: map sabe que o array é number[]\nconst comIva = precos.map((p) => Math.round(p * 1.23));\nconst caros = precos.filter((p) => p > 15);\n\nconsole.log(comIva); // [12, 25, 37]\nconsole.log(caros); // [20, 30]\n\n// Anotar à mão compila, mas só acrescenta ruído e mais um sítio para atualizar\nconst ruidoso = precos.map((p: number): number => Math.round(p * 1.23));\nconsole.log(ruidoso.length); // 3\n\n// Fora de um contexto que o tipe, o parâmetro volta a precisar de anotação\n// @ts-expect-error não há contexto de onde deduzir o tipo de p\nconst solto = (p) => p * 1.23;\nconsole.log(solto);",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Abra um ficheiro seu com chamadas a map e filter e apague as anotações dos parâmetros dos callbacks. Passe o rato por cima de cada parâmetro e confirme no editor que o tipo se manteve exatamente o mesmo.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎬",
+          "text": "O contexto tipa os parâmetros dos callbacks"
+        },
+        {
+          "icon": "📚",
+          "text": "map, filter, reduce, sort e handlers de eventos"
+        },
+        {
+          "icon": "🧹",
+          "text": "Anotar à mão não acrescenta segurança"
+        },
+        {
+          "icon": "🔓",
+          "text": "Fora do contexto, a anotação volta a ser precisa"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Assinaturas Completas",
+      "difficulty": "Iniciante",
+      "statement": "Escreva uma função aplicarDesconto que receba um preço e uma percentagem, ambos números, e devolva o preço já com o desconto aplicado. Escreva depois formatarPreco, que recebe um valor numérico e o código de uma moeda em texto e devolve uma frase com o valor a duas casas decimais seguido da moeda. Por fim declare precoFinal como arrow function, com o tipo de retorno anotado, que combine as duas e devolva o preço final em EUR. Anote todos os parâmetros e todos os retornos, e mostre com um comentário ts-expect-error que passar texto onde se espera um número é recusado.",
+      "hint": "O tipo de retorno de uma declaração de função vem depois do parêntesis de fecho; numa arrow function vem também depois do parêntesis de fecho, mas antes da seta. Para as duas casas decimais lembre-se de que toFixed devolve texto, o que combina com o retorno string de formatarPreco.",
+      "solution_code": "function aplicarDesconto(preco: number, percentagem: number): number {\n  return preco - (preco * percentagem) / 100;\n}\n\nfunction formatarPreco(valor: number, moeda: string): string {\n  return `${valor.toFixed(2)} ${moeda}`;\n}\n\nconst precoFinal = (preco: number, percentagem: number): string =>\n  formatarPreco(aplicarDesconto(preco, percentagem), \"EUR\");\n\nconsole.log(aplicarDesconto(100, 25)); // 75\nconsole.log(formatarPreco(75, \"EUR\")); // \"75.00 EUR\"\nconsole.log(precoFinal(100, 25)); // \"75.00 EUR\"\n\n// @ts-expect-error percentagem é number e não aceita texto\nconsole.log(aplicarDesconto(100, \"25\"));",
+      "solution_explanation": "Os parâmetros são todos anotados porque nada no código permitiria ao compilador deduzi-los. Em precoFinal a anotação de retorno fica entre o parêntesis de fecho e a seta, que é o sítio que mais confusão gera nas arrow functions. A última linha confirma que a anotação de aplicarDesconto é verificada na chamada, e não apenas dentro da função."
+    },
+    {
+      "title": "Registar sem Devolver",
+      "difficulty": "Iniciante",
+      "statement": "Declare um array de strings chamado enviadas. Escreva uma função notificar que receba um canal e uma mensagem, ambos texto, guarde a linha combinada em enviadas e tenha o retorno anotado como void. Declare depois uma constante aoNotificar com o tipo explícito de uma função que recebe uma mensagem e devolve void, e atribua-lhe uma arrow function cujo corpo seja apenas a chamada a enviadas.push. Explique num comentário porque é que essa atribuição compila, apesar de push devolver um número. Termine com um ts-expect-error a mostrar que o resultado de notificar não pode ser guardado.",
+      "hint": "Quando void é o retorno de um tipo de função, não significa que a função tem de devolver undefined, mas sim que quem a chama vai ignorar o que ela devolver. Já o resultado de chamar uma função declarada com retorno void não tem nada de aproveitável.",
+      "solution_code": "const enviadas: string[] = [];\n\nfunction notificar(canal: string, mensagem: string): void {\n  enviadas.push(`${canal}: ${mensagem}`);\n}\n\n// void num tipo de função significa \"o retorno é ignorado\":\n// esta arrow devolve number (o push) e mesmo assim encaixa\nconst aoNotificar: (mensagem: string) => void = (mensagem) =>\n  enviadas.push(mensagem);\n\nnotificar(\"email\", \"encomenda enviada\");\naoNotificar(\"direto\");\n\nconsole.log(enviadas.length); // 2\n\n// @ts-expect-error notificar devolve void: não há valor para guardar\nconst recibo: string = notificar(\"sms\", \"ok\");\nconsole.log(recibo);",
+      "solution_explanation": "notificar corre pelo efeito, e void diz isso de forma explícita a quem lê a assinatura. A atribuição a aoNotificar compila porque void num tipo de função significa retorno ignorado, e por isso aceita uma arrow que devolve o number de push. A última linha mostra o outro lado da moeda: chamar uma função void não produz valor nenhum que se possa guardar."
+    },
+    {
+      "title": "A Interface como Contrato de Retorno",
+      "difficulty": "Intermedio",
+      "statement": "Defina uma interface Encomenda com referencia em texto, total numérico e estado em texto. Escreva criarEncomenda com o retorno anotado como Encomenda, devolvendo o estado pendente. Escreva a seguir criarEncomendaSolta, sem anotação de retorno, que devolva as mesmas três propriedades mais uma propriedade booleana interno, e indique num comentário o tipo que foi inferido. Mostre com ts-expect-error que interno não existe no resultado da primeira função, e escreva uma terceira função anotada como Encomenda que tente devolver a propriedade interno, marcando o erro que o compilador dá.",
+      "hint": "Um literal de objeto devolvido diretamente contra um tipo anotado sofre a verificação de propriedades a mais. Sem anotação de retorno, a inferência aceita tudo o que estiver no literal, e esse tipo alargado passa para quem chama.",
+      "solution_code": "interface Encomenda {\n  referencia: string;\n  total: number;\n  estado: string;\n}\n\n// Retorno anotado: o contrato fica preso à interface\nfunction criarEncomenda(referencia: string, total: number): Encomenda {\n  return { referencia, total, estado: \"pendente\" };\n}\n\n// Retorno inferido: repare que o tipo inclui a propriedade extra\nfunction criarEncomendaSolta(referencia: string, total: number) {\n  return { referencia, total, estado: \"pendente\", interno: true };\n}\n// inferido: { referencia: string; total: number; estado: string; interno: boolean }\n\nconst oficial = criarEncomenda(\"A-1\", 49.9);\nconst solta = criarEncomendaSolta(\"A-2\", 10);\n\nconsole.log(oficial.estado); // \"pendente\"\nconsole.log(solta.interno); // true\n\n// @ts-expect-error interno não pertence a Encomenda\nconsole.log(oficial.interno);\n\nfunction criarComExtra(referencia: string, total: number): Encomenda {\n  // @ts-expect-error a anotação recusa a propriedade a mais no literal devolvido\n  return { referencia, total, estado: \"pendente\", interno: true };\n}\nconsole.log(criarComExtra(\"A-3\", 5).total); // 5",
+      "solution_explanation": "Com o retorno anotado, o tipo visto de fora é Encomenda e mais nada, por isso oficial.interno nem sequer existe. Sem anotação, a propriedade interno entra no tipo inferido e passa a fazer parte da superfície da função sem que isso tenha sido decidido. A última função mostra a verificação de propriedades a mais a impedir que um literal devolvido contradiga o contrato anotado."
+    },
+    {
+      "title": "Configuração Obrigatória com never",
+      "difficulty": "Avancado",
+      "statement": "Defina uma interface Definicoes com porto numérico e host em texto. Escreva emFalta, que recebe o nome de uma chave e lança sempre um erro, e aguardarParaSempre, que entra num ciclo infinito; anote as duas com o retorno never. Escreva lerDefinicoes, que recebe um Record de string para string ou undefined, chama emFalta quando PORTO ou HOST faltam, e devolve um objeto do tipo Definicoes sem usar else nem asserções de tipo. Acrescente uma arrow function registarArranque com retorno void que imprima o host e o porto, e mostre com ts-expect-error que uma função que chega ao fim não pode ser anotada com never.",
+      "hint": "Depois de uma chamada a uma função cujo retorno está anotado como never, o compilador considera o código seguinte inalcançável por esse caminho e continua a análise com o tipo já estreitado. Repare que o never tem de estar escrito na assinatura para isso acontecer.",
+      "solution_code": "interface Definicoes {\n  porto: number;\n  host: string;\n}\n\n// Nunca devolve: lança sempre\nfunction emFalta(chave: string): never {\n  throw new Error(`Definição obrigatória em falta: ${chave}`);\n}\n\n// Nunca devolve: nunca termina\nfunction aguardarParaSempre(): never {\n  while (true) {\n    // fica à espera de sinais do sistema\n  }\n}\n\n// Como emFalta devolve never, o compilador sabe que a linha seguinte\n// só corre quando o valor existe, e estreita o tipo sozinho\nfunction lerDefinicoes(\n  cru: Record<string, string | undefined>,\n): Definicoes {\n  const porto = cru[\"PORTO\"];\n  if (porto === undefined) {\n    emFalta(\"PORTO\");\n  }\n  const host = cru[\"HOST\"];\n  if (host === undefined) {\n    emFalta(\"HOST\");\n  }\n  return { porto: Number(porto), host }; // porto e host já são string\n}\n\nconst registarArranque = (d: Definicoes): void => {\n  console.log(`a servir em ${d.host}:${d.porto}`);\n};\n\nconst definicoes = lerDefinicoes({ PORTO: \"8080\", HOST: \"localhost\" });\nregistarArranque(definicoes); // \"a servir em localhost:8080\"\nconsole.log(typeof aguardarParaSempre); // \"function\"\n\n// @ts-expect-error uma função que chega ao fim não pode ser anotada never\nfunction quaseNever(): never {\n  console.log(\"cheguei ao fim\");\n}\nconsole.log(quaseNever);",
+      "solution_explanation": "Como emFalta está anotada com never, o compilador sabe que o if só deixa passar quando o valor existe, e por isso porto e host chegam ao return já como string, sem else nem asserções. aguardarParaSempre mostra o outro caminho para never, o do ciclo que nunca termina. A última função é recusada porque chega ao fim e devolve undefined, o que é void e nunca never."
+    }
+  ],
+  "summary": [
+    "Os parâmetros anotam-se quase sempre: o compilador não tem de onde deduzir o tipo, e noImplicitAny recusa o que fica por anotar",
+    "O tipo de retorno infere-se bem; anote-o em APIs públicas, para fixar o contrato e apanhar dentro da própria função um retorno que mudou por engano",
+    "void diz que a função corre pelo efeito e que o valor devolvido não interessa; num tipo de função quer dizer retorno ignorado, o que undefined não permite",
+    "never é para funções que nunca devolvem, por lançarem sempre ou nunca terminarem; tem de ser anotado, e o compilador usa-o para saber que o código seguinte não corre",
+    "Num retorno de objeto a inferência dá a forma exata do literal, enquanto anotar com uma interface esconde os extras e ativa a verificação de propriedades a mais",
+    "Numa arrow function o retorno anota-se entre os parênteses e a seta, e nos callbacks de map ou filter a inferência contextual dispensa por completo a anotação"
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 02",
+  "next_label": "Aula 02 → Parâmetros Opcionais, Default e Rest"
+}

@@ -1,0 +1,298 @@
+### Pedidos GraphQL para a extensão REST Client do VS Code (humao.rest-client)
+### Arranca primeiro o servidor:  npm start   (porta 4000 por omissão)
+### Clica em "Send Request" por cima de cada pedido. Os pedidos são separados por ###
+### Nos pedidos GraphQL, o corpo é: a operação, uma linha em branco e as variáveis em JSON.
+
+@host = http://localhost:4000/
+@admin = Bearer tok-admin
+@leitor = Bearer tok-leitor
+
+### ============ 1. LEITURA (sem autenticação) ============
+
+### 1.1 Lista de livros com autor
+POST {{host}}
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+query ListarLivros {
+  livros {
+    totalCount
+    edges { node { id titulo ano genero autor { nome } } }
+  }
+}
+
+### 1.2 Um livro por id (variável)
+POST {{host}}
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+query LivroPorId($id: ID!) {
+  livro(id: $id) {
+    titulo
+    mediaNotas
+    autor { nome }
+    criticas { nota comentario }
+  }
+}
+
+{ "id": "1" }
+
+### 1.3 Filtrar por género e ano
+POST {{host}}
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+query Filtrar($filtro: FiltroLivros) {
+  livros(filtro: $filtro) {
+    totalCount
+    edges { node { titulo ano genero } }
+  }
+}
+
+{ "filtro": { "genero": "POESIA", "anoMinimo": 1950 } }
+
+### 1.4 Paginação: primeira página (2 livros)
+POST {{host}}
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+query Pagina($first: Int, $after: String) {
+  livros(first: $first, after: $after) {
+    edges { cursor node { id titulo } }
+    pageInfo { hasNextPage endCursor }
+  }
+}
+
+{ "first": 2 }
+
+### 1.5 Paginação: página seguinte (cola o endCursor da resposta anterior em "after")
+POST {{host}}
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+query Pagina($first: Int, $after: String) {
+  livros(first: $first, after: $after) {
+    edges { cursor node { id titulo } }
+    pageInfo { hasNextPage endCursor }
+  }
+}
+
+{ "first": 2, "after": "COLA-AQUI-O-endCursor" }
+
+### 1.6 Autores e os seus livros (aliases e fragment)
+POST {{host}}
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+query {
+  autores { ...DadosAutor }
+  saramago: autor(id: "1") { ...DadosAutor }
+}
+
+fragment DadosAutor on Autor {
+  id
+  nome
+  livros { titulo }
+}
+
+### ============ 2. AUTENTICAÇÃO ============
+
+### 2.1 Quem sou? (sem token devolve null)
+POST {{host}}
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+query { eu { id nome papel } }
+
+### 2.2 Quem sou? (administrador)
+POST {{host}}
+Content-Type: application/json
+Authorization: {{admin}}
+X-REQUEST-TYPE: GraphQL
+
+query { eu { id nome papel } }
+
+### ============ 3. ESCRITA (mutations) ============
+
+### 3.1 Criar autor (ADMIN)
+POST {{host}}
+Content-Type: application/json
+Authorization: {{admin}}
+X-REQUEST-TYPE: GraphQL
+
+mutation NovoAutor($nome: String!, $nascimento: String) {
+  criarAutor(nome: $nome, nascimento: $nascimento) { id nome nascimento }
+}
+
+{ "nome": "Eça de Queirós", "nascimento": "1845-11-25" }
+
+### 3.2 Criar livro (ADMIN): união Livro | ErroValidacao
+POST {{host}}
+Content-Type: application/json
+Authorization: {{admin}}
+X-REQUEST-TYPE: GraphQL
+
+mutation NovoLivro($input: NovoLivro!) {
+  criarLivro(input: $input) {
+    __typename
+    ... on Livro { id titulo autor { nome } }
+    ... on ErroValidacao { campo mensagem }
+  }
+}
+
+{ "input": { "titulo": "Os Maias", "ano": 1888, "genero": "FICCAO", "autorId": "4" } }
+
+### 3.3 Criar livro com autor inexistente (devolve ErroValidacao, não um erro GraphQL)
+POST {{host}}
+Content-Type: application/json
+Authorization: {{admin}}
+X-REQUEST-TYPE: GraphQL
+
+mutation NovoLivro($input: NovoLivro!) {
+  criarLivro(input: $input) {
+    __typename
+    ... on Livro { id }
+    ... on ErroValidacao { campo mensagem }
+  }
+}
+
+{ "input": { "titulo": "Fantasma", "genero": "TEATRO", "autorId": "99" } }
+
+### 3.4 Atualizar livro (ADMIN): só o campo enviado muda
+POST {{host}}
+Content-Type: application/json
+Authorization: {{admin}}
+X-REQUEST-TYPE: GraphQL
+
+mutation Atualizar($id: ID!, $input: AtualizacaoLivro!) {
+  atualizarLivro(id: $id, input: $input) { id titulo ano genero }
+}
+
+{ "id": "3", "input": { "ano": 1934, "titulo": "Mensagem (1.ª edição)" } }
+
+### 3.5 Apagar livro (ADMIN)
+POST {{host}}
+Content-Type: application/json
+Authorization: {{admin}}
+X-REQUEST-TYPE: GraphQL
+
+mutation Apagar($id: ID!) { apagarLivro(id: $id) }
+
+{ "id": "5" }
+
+### 3.6 Criar crítica (qualquer utilizador autenticado)
+POST {{host}}
+Content-Type: application/json
+Authorization: {{leitor}}
+X-REQUEST-TYPE: GraphQL
+
+mutation Criticar($input: NovaCritica!) {
+  criarCritica(input: $input) { id nota comentario livro { titulo mediaNotas } }
+}
+
+{ "input": { "livroId": "2", "nota": 5, "comentario": "Obra-prima." } }
+
+### 3.7 Várias mutations no mesmo pedido: executam em série, pela ordem escrita
+POST {{host}}
+Content-Type: application/json
+Authorization: {{admin}}
+X-REQUEST-TYPE: GraphQL
+
+mutation {
+  a: criarCritica(input: { livroId: "1", nota: 3 }) { id }
+  b: criarCritica(input: { livroId: "1", nota: 5 }) { id }
+}
+
+### ============ 4. ERROS ESPERADOS ============
+
+### 4.1 Sem token: UNAUTHENTICATED
+POST {{host}}
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+mutation { apagarLivro(id: "1") }
+
+### 4.2 Token de leitor: FORBIDDEN
+POST {{host}}
+Content-Type: application/json
+Authorization: {{leitor}}
+X-REQUEST-TYPE: GraphQL
+
+mutation { apagarLivro(id: "1") }
+
+### 4.3 Livro inexistente: NOT_FOUND
+POST {{host}}
+Content-Type: application/json
+Authorization: {{admin}}
+X-REQUEST-TYPE: GraphQL
+
+mutation { atualizarLivro(id: "999", input: { titulo: "X" }) { id } }
+
+### 4.4 Nota inválida: BAD_USER_INPUT
+POST {{host}}
+Content-Type: application/json
+Authorization: {{leitor}}
+X-REQUEST-TYPE: GraphQL
+
+mutation { criarCritica(input: { livroId: "1", nota: 9 }) { id } }
+
+### 4.5 first acima do máximo (50): BAD_USER_INPUT
+POST {{host}}
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+query { livros(first: 500) { totalCount } }
+
+### 4.6 Campo inexistente: GRAPHQL_VALIDATION_FAILED (estado HTTP 400)
+POST {{host}}
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+query { livros { edges { node { naoExiste } } } }
+
+### 4.7 Sem a variável obrigatória $id (erro de variáveis)
+POST {{host}}
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+query LivroPorId($id: ID!) { livro(id: $id) { titulo } }
+
+### ============ 5. INTROSPEÇÃO E UTILIDADES ============
+
+### 5.1 Tipos do schema
+POST {{host}}
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+query {
+  __schema { types { name kind } }
+}
+
+### 5.2 Campos do tipo Livro
+POST {{host}}
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+query {
+  __type(name: "Livro") { fields { name type { name kind ofType { name } } } }
+}
+
+### 5.3 Repor os dados iniciais (ADMIN)
+POST {{host}}
+Content-Type: application/json
+Authorization: {{admin}}
+X-REQUEST-TYPE: GraphQL
+
+mutation { reiniciarDados }
+
+### ============ 6. SEM O MODO GRAPHQL (JSON "à mão") ============
+### O mesmo pedido, com o corpo em JSON puro: útil para perceber o que viaja na rede.
+
+### 6.1 Query em JSON
+POST {{host}}
+Content-Type: application/json
+
+{
+  "query": "query($id: ID!) { livro(id: $id) { titulo } }",
+  "variables": { "id": "2" }
+}

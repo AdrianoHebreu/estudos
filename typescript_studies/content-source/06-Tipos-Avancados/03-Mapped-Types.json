@@ -1,0 +1,280 @@
+{
+  "module_num": "06",
+  "module_title": "Tipos Avançados",
+  "module_dir": "06-Tipos-Avancados",
+  "lesson_num": "03",
+  "lesson_slug": "Mapped-Types",
+  "kind": "aula",
+  "title": "Mapped Types",
+  "filename_base": "03-Mapped-Types",
+  "subtitle": "Percorrer as chaves de um tipo e produzir outro, com os valores e os modificadores mudados",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Ler e escrever a sintaxe de um mapped type, de K in keyof T a K in uma união qualquer",
+    "Construir dicionários obrigatórios a partir de uniões de literais",
+    "Transformar os valores de todas as propriedades de um tipo de uma só vez",
+    "Acrescentar e retirar os modificadores ? e readonly, com sinal e sem sinal",
+    "Distinguir um mapeamento homomórfico de um mapeamento escrito à mão sobre uma união de chaves",
+    "Filtrar chaves com key remapping, devolvendo never na cláusula as"
+  ],
+  "sections": [
+    {
+      "heading": "Um map ao nível dos tipos",
+      "body": [
+        "Um mapped type percorre uma união de chaves e produz, para cada uma, uma propriedade do tipo novo. A sintaxe é { [K in keyof T]: T[K] }: o K in keyof T funciona como o cabeçalho de um ciclo, K é o nome da chave em cada volta e o que vem depois dos dois pontos é o tipo do valor dessa propriedade. É o equivalente, ao nível dos tipos, ao que um map faz a um array de valores.",
+        "O caso trivial é copiar o tipo tal e qual: para cada chave K, o valor continua a ser T[K], o indexed access type da Aula 01. O resultado tem exatamente as mesmas propriedades do original, nem mais nem menos. Não serve para nada em produção, mas é o esqueleto de que tudo o resto sai, porque todas as variações que se seguem mudam apenas uma peça deste molde.",
+        "Convém reter uma restrição de sintaxe: um mapped type ocupa o corpo inteiro de um type alias. Não se misturam propriedades normais com a linha do mapeamento dentro das mesmas chavetas, nem se declara um mapped type com a palavra interface."
+      ],
+      "code": "type Copia<T> = { [K in keyof T]: T[K] };\n\ninterface Produto {\n  id: number;\n  nome: string;\n  preco: number;\n}\n\ntype ProdutoCopia = Copia<Produto>;\n\nconst p: ProdutoCopia = { id: 1, nome: \"Teclado\", preco: 49.9 };\nconsole.log(p.nome); // Teclado\n\nconst q: ProdutoCopia = {\n  id: 2,\n  nome: \"Rato\",\n  preco: 19.9,\n  // @ts-expect-error a cópia tem exatamente as mesmas chaves do original: stock não existe\n  stock: 5,\n};\nconsole.log(q.id); // 2",
+      "callout_kind": "NOTA",
+      "callout_text": "As três peças que se podem mexer são sempre as mesmas: a união de chaves à esquerda do in, o tipo do valor à direita dos dois pontos e os modificadores à volta dos parênteses retos.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔁",
+          "text": "K in keyof T percorre as chaves de um tipo"
+        },
+        {
+          "icon": "🧬",
+          "text": "{ [K in keyof T]: T[K] } copia o tipo tal e qual"
+        },
+        {
+          "icon": "🧱",
+          "text": "É o molde de que saem todas as variações"
+        }
+      ]
+    },
+    {
+      "heading": "Mapear qualquer união de chaves",
+      "body": [
+        "À esquerda do in não tem de estar keyof T. Serve qualquer união de chaves, incluindo uma união de literais escrita à mão: { [K in \"x\" | \"y\"]: number } descreve um objeto com exatamente as propriedades x e y, ambas number. É a forma mais curta de transformar uma união de literais num objeto com uma entrada por cada membro dessa união.",
+        "Generalizando o padrão, nasce um dicionário, com um parâmetro para as chaves e outro para o valor. A constraint do parâmetro das chaves é PropertyKey, o alias da biblioteca para string, number ou symbol, que são os únicos tipos que podem ser chave de um objeto em JavaScript.",
+        "Ao contrário de uma index signature, este dicionário obriga a preencher todas as chaves da união e recusa qualquer outra. Quando a união representa um conjunto fechado, como os idiomas suportados ou os estados de uma encomenda, a garantia é forte: se um dia entrar um membro novo na união, todos os dicionários construídos sobre ela deixam de compilar até serem completados."
+      ],
+      "code": "type Dicionario<K extends PropertyKey, V> = { [P in K]: V };\n\ntype Idioma = \"pt\" | \"en\" | \"fr\";\ntype Saudacoes = Dicionario<Idioma, string>;\n\nconst saudacoes: Saudacoes = { pt: \"Olá\", en: \"Hello\", fr: \"Bonjour\" };\nconsole.log(saudacoes.fr); // Bonjour\n\n// @ts-expect-error falta a chave fr, que o mapeamento tornou obrigatória\nconst incompleto: Saudacoes = { pt: \"Olá\", en: \"Hello\" };\nconsole.log(incompleto.pt); // Olá\n\ntype Coordenadas = { [K in \"x\" | \"y\"]: number };\nconst ponto: Coordenadas = { x: 3, y: 4 };\nconsole.log(ponto.x + ponto.y); // 7\n\ntype Contagens = Dicionario<number, string>;\nconst porIndice: Contagens = { 0: \"zero\", 1: \"um\" };\nconsole.log(porIndice[1]); // um",
+      "callout_kind": "DICA",
+      "callout_text": "Um dicionário sobre uma união fechada é um alarme de exaustividade ao nível dos dados: acrescentar um membro à união parte de propósito todos os sítios que ficaram por preencher.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔤",
+          "text": "K in aceita qualquer união de chaves, não só keyof T"
+        },
+        {
+          "icon": "📖",
+          "text": "Dicionario<K, V> transforma uma união num objeto"
+        },
+        {
+          "icon": "✅",
+          "text": "Exige todas as chaves, ao contrário de uma index signature"
+        }
+      ]
+    },
+    {
+      "heading": "Transformar os valores",
+      "body": [
+        "O sítio mais óbvio para mudar alguma coisa é o tipo do valor. Em vez de devolver T[K] intacto, devolve-se qualquer tipo construído a partir dele: uma função que o produz, um array dele, uma Promise dele, ou mesmo um tipo fixo que ignora T[K] por completo e põe tudo a string.",
+        "É o padrão por trás de fábricas de configuração, de camadas de carregamento assíncrono e de tipos de formulário, em que cada campo do modelo passa a ser um valor embrulhado em metadados. O ganho principal é que a lista de chaves nunca precisa de ser repetida: acrescente-se uma propriedade ao tipo de origem e o tipo derivado ganha-a sozinho."
+      ],
+      "code": "interface Config {\n  host: string;\n  porta: number;\n  ativo: boolean;\n}\n\ntype EmFabrica<T> = { [K in keyof T]: () => T[K] };\ntype EmArray<T> = { [K in keyof T]: T[K][] };\ntype EmPromessa<T> = { [K in keyof T]: Promise<T[K]> };\ntype TudoTexto<T> = { [K in keyof T]: string };\n\nconst fabricas: EmFabrica<Config> = {\n  host: () => \"localhost\",\n  porta: () => 8080,\n  ativo: () => true,\n};\nconsole.log(fabricas.porta()); // 8080\n\nconst listas: EmArray<Config> = { host: [\"a\", \"b\"], porta: [80, 443], ativo: [true] };\nconsole.log(listas.porta.length); // 2\n\nconst texto: TudoTexto<Config> = { host: \"localhost\", porta: \"8080\", ativo: \"sim\" };\nconsole.log(texto.ativo); // sim\n\nconst promessas: EmPromessa<Config> = {\n  host: Promise.resolve(\"localhost\"),\n  porta: Promise.resolve(8080),\n  ativo: Promise.resolve(true),\n};\npromessas.porta.then((valor) => console.log(valor)); // 8080",
+      "callout_kind": "DICA",
+      "callout_text": "Quando dois tipos têm as mesmas chaves e valores relacionados, derive um do outro com um mapped type em vez de os manter em paralelo à mão.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎁",
+          "text": "T[K] pode ser embrulhado em Promise, array ou função"
+        },
+        {
+          "icon": "🧵",
+          "text": "A lista de chaves nunca se repete à mão"
+        },
+        {
+          "icon": "🔄",
+          "text": "Mudar o modelo atualiza sozinho o tipo derivado"
+        }
+      ]
+    },
+    {
+      "heading": "Acrescentar e retirar modificadores",
+      "body": [
+        "Além do tipo do valor, um mapped type controla os dois modificadores das propriedades. Um ? a seguir ao fecho dos parênteses retos torna todas as propriedades opcionais; um readonly antes da abertura torna-as todas imutáveis. O que é próprio dos mapped types é o sinal menos: -? retira a opcionalidade, e com ela o undefined do tipo do valor, e -readonly retira a imutabilidade.",
+        "O sinal menos é a única maneira de remover um modificador em TypeScript e só funciona dentro de um mapped type. Sem sinal, escrever ? ou readonly acrescenta; um + explícito à frente tem o mesmo efeito de não pôr sinal nenhum, por isso quase nunca se escreve.",
+        "Fica uma ressalva importante: readonly é uma regra de compilação, não uma barreira de execução. O JavaScript gerado escreve na propriedade na mesma se o erro for ignorado; o que o compilador faz é recusar-se a deixar escrever esse código."
+      ],
+      "code": "interface Utilizador {\n  readonly id: number;\n  nome: string;\n  email?: string;\n}\n\ntype TudoOpcional<T> = { [K in keyof T]?: T[K] };\ntype TudoObrigatorio<T> = { [K in keyof T]-?: T[K] };\ntype TudoSoLeitura<T> = { readonly [K in keyof T]: T[K] };\ntype TudoEscrevivel<T> = { -readonly [K in keyof T]: T[K] };\n\nconst parcial: TudoOpcional<Utilizador> = { nome: \"Ana\" };\nconsole.log(parcial.nome); // Ana\n\nconst completo: TudoObrigatorio<Utilizador> = { id: 1, nome: \"Ana\", email: \"ana@exemplo.pt\" };\nconsole.log(completo.email.length); // 14\n\n// @ts-expect-error com -? o email deixou de ser opcional e tem de estar presente\nconst semEmail: TudoObrigatorio<Utilizador> = { id: 2, nome: \"Rui\" };\nconsole.log(semEmail.nome); // Rui\n\nconst fixo: TudoSoLeitura<Utilizador> = { id: 3, nome: \"Rui\" };\n// @ts-expect-error o readonly acrescentado pelo mapeamento impede a reatribuição\nfixo.nome = \"Rita\";\n\nconst livre: TudoEscrevivel<Utilizador> = { id: 4, nome: \"Rita\" };\nlivre.id = 5;\nconsole.log(livre.id); // 5",
+      "callout_kind": "ATENCAO",
+      "callout_text": "O -? não se limita a tirar a marca de opcional: também retira o undefined do tipo do valor. Já uma propriedade declarada com o tipo string | undefined mas sem ? continua a poder ser undefined.",
+      "table_headers": [
+        "Escrita",
+        "Efeito",
+        "Exemplo"
+      ],
+      "table_rows": [
+        [
+          "{ [K in keyof T]?: T[K] }",
+          "Acrescenta opcional a todas as propriedades",
+          "nome: string passa a nome?: string"
+        ],
+        [
+          "{ [K in keyof T]-?: T[K] }",
+          "Retira o opcional e o undefined do valor",
+          "email?: string passa a email: string"
+        ],
+        [
+          "{ readonly [K in keyof T]: T[K] }",
+          "Acrescenta readonly a todas as propriedades",
+          "nome: string passa a readonly nome: string"
+        ],
+        [
+          "{ -readonly [K in keyof T]: T[K] }",
+          "Retira o readonly",
+          "readonly id: number passa a id: number"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "➕",
+          "text": "? e readonly acrescentam modificadores a todas as chaves"
+        },
+        {
+          "icon": "➖",
+          "text": "-? e -readonly são a única forma de os retirar"
+        },
+        {
+          "icon": "⚠️",
+          "text": "O -? retira também o undefined do tipo do valor"
+        }
+      ]
+    },
+    {
+      "heading": "Mapeamentos homomórficos",
+      "body": [
+        "Quando o mapeamento tem a forma [K in keyof T] e T é um parâmetro de tipo, o compilador trata-o de maneira especial e chama-lhe homomórfico. Um mapeamento homomórfico preserva os modificadores originais de cada propriedade: um readonly que estava no tipo de origem continua lá, e um ? também, a menos que o próprio mapeamento diga o contrário com readonly, ?, -readonly ou -?.",
+        "Escrever o mesmo mapeamento sobre uma união de chaves à mão, como [K in \"id\" | \"cliente\" | \"nota\"], produz um tipo parecido mas sem essa preservação: os modificadores desaparecem todos. O readonly some-se e as propriedades opcionais passam a obrigatórias, embora o valor continue a admitir undefined.",
+        "O tratamento especial vai mais longe. Um mapeamento homomórfico aplicado a um array transforma o tipo dos elementos e devolve um array; aplicado a um tuplo, transforma cada posição e devolve um tuplo do mesmo comprimento. Um mapeamento sobre uma união de chaves escrita à mão produziria antes um objeto com as chaves length, push e companhia."
+      ],
+      "code": "interface Pedido {\n  readonly id: number;\n  cliente: string;\n  nota?: string;\n}\n\ntype Espelho<T> = { [K in keyof T]: T[K] };\ntype Escrito = { [K in \"id\" | \"cliente\" | \"nota\"]: Pedido[K] };\n\nconst homomorfico: Espelho<Pedido> = { id: 1, cliente: \"Ana\" };\n// @ts-expect-error o mapeamento homomórfico preservou o readonly original do id\nhomomorfico.id = 2;\nconsole.log(homomorfico.cliente); // Ana\n\nconst manual: Escrito = { id: 1, cliente: \"Ana\", nota: undefined };\nmanual.id = 2;\nconsole.log(manual.id); // 2\n\ntype EmCaixa<T> = { [K in keyof T]: { valor: T[K] } };\n\nconst caixas: EmCaixa<number[]> = [{ valor: 1 }, { valor: 2 }];\nconsole.log(caixas.length); // 2\n\nconst par: EmCaixa<[number, string]> = [{ valor: 1 }, { valor: \"a\" }];\nconst comprimento: 2 = par.length;\nconsole.log(comprimento, par[1].valor); // 2 a",
+      "callout_kind": "NOTA",
+      "callout_text": "Homomórfico quer dizer apenas que a forma do tipo de origem é respeitada. Na prática: escreva [K in keyof T] com T genérico e receba de borla a preservação de modificadores e o tratamento de arrays e tuplos.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🪞",
+          "text": "[K in keyof T] com T genérico é homomórfico"
+        },
+        {
+          "icon": "🔒",
+          "text": "Preserva o readonly e o ? do tipo de origem"
+        },
+        {
+          "icon": "📚",
+          "text": "Distribui-se sobre arrays e tuplos, mantendo a forma"
+        }
+      ]
+    },
+    {
+      "heading": "Filtrar chaves com as",
+      "body": [
+        "A cláusula as permite substituir a chave produzida em cada volta: { [K in keyof T as Expressao]: T[K] }. Se a expressão devolver never para uma chave, essa propriedade simplesmente não entra no tipo final. Juntando um conditional type ao as, obtém-se um filtro de chaves.",
+        "Dois filtros cobrem quase tudo o que se precisa na prática: manter apenas as chaves cujo valor é de um certo tipo, testando T[K] extends V, e remover um conjunto de chaves, testando a própria chave contra uma união. Como cada volta do mapeamento trata uma chave de cada vez, o conditional type recebe sempre um literal só e a distributividade da Aula 02 não traz surpresas.",
+        "Continua a valer o aviso de que o mapeamento vive ao nível dos tipos: filtrar uma chave não apaga propriedade nenhuma em tempo de execução, apenas impede que o código a trate como existente."
+      ],
+      "code": "interface Registo {\n  id: number;\n  nome: string;\n  ativo: boolean;\n  idade: number;\n}\n\ntype ApenasDoTipo<T, V> = { [K in keyof T as T[K] extends V ? K : never]: T[K] };\ntype SemEstas<T, K extends keyof T> = { [P in keyof T as P extends K ? never : P]: T[P] };\n\nconst numeros: ApenasDoTipo<Registo, number> = { id: 1, idade: 30 };\nconsole.log(numeros.idade); // 30\n\nconst comNome: ApenasDoTipo<Registo, number> = {\n  id: 1,\n  idade: 30,\n  // @ts-expect-error nome foi filtrado pelo remapeamento: a chave já não existe\n  nome: \"Ana\",\n};\nconsole.log(comNome.id); // 1\n\nconst semIdentificacao: SemEstas<Registo, \"id\" | \"ativo\"> = { nome: \"Ana\", idade: 30 };\nconsole.log(semIdentificacao.nome); // Ana\n\n// @ts-expect-error a chave ativo foi removida e já não é aceite\nconst comAtivo: SemEstas<Registo, \"id\" | \"ativo\"> = { nome: \"Rui\", idade: 40, ativo: true };\nconsole.log(comAtivo.idade); // 40",
+      "callout_kind": "ATENCAO",
+      "callout_text": "No as, never é a saída que elimina a chave. Devolver undefined, ou uma união vazia escrita de outra maneira, não tem o mesmo efeito.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧹",
+          "text": "O as substitui a chave produzida em cada volta"
+        },
+        {
+          "icon": "🚫",
+          "text": "Devolver never no as elimina a propriedade"
+        },
+        {
+          "icon": "🎯",
+          "text": "Filtra por tipo do valor ou por nome da chave"
+        }
+      ]
+    },
+    {
+      "heading": "Um caso prático de ponta a ponta",
+      "body": [
+        "Com as peças todas na mesa, um único tipo de modelo dá origem a toda a família de tipos de que uma funcionalidade precisa. De um tipo Artigo saem, sem repetir uma única chave, o tipo do estado de um formulário e o tipo dos dados aceites numa atualização parcial.",
+        "O formulário junta três coisas ao mesmo tempo: -readonly para permitir editar o identificador no estado local do formulário, -? para garantir que existe um campo por cada propriedade do modelo, e uma transformação do valor que embrulha cada um em metadados de erro e de toque. O tipo de atualização junta o ? global ao filtro no as, para que o identificador nunca possa ser alterado.",
+        "Quando o modelo ganhar uma propriedade nova, o formulário e a atualização acompanham-no sozinhos, e o compilador aponta logo para os sítios que ficaram por preencher. É esse o verdadeiro retorno dos mapped types: uma fonte de verdade em vez de três tipos a envelhecer em paralelo."
+      ],
+      "code": "interface Artigo {\n  readonly id: number;\n  titulo: string;\n  corpo: string;\n  publicado: boolean;\n  visitas: number;\n}\n\ntype Campo<V> = { valor: V; erro?: string; tocado: boolean };\ntype Formulario<T> = { -readonly [K in keyof T]-?: Campo<T[K]> };\ntype Atualizacao<T> = { [K in keyof T as K extends \"id\" ? never : K]?: T[K] };\n\nconst form: Formulario<Artigo> = {\n  id: { valor: 0, tocado: false },\n  titulo: { valor: \"\", tocado: false },\n  corpo: { valor: \"\", tocado: false },\n  publicado: { valor: false, tocado: false },\n  visitas: { valor: 0, tocado: false },\n};\nform.id.valor = 7;\nconsole.log(form.id.valor); // 7\n\nfunction atualizar(artigo: Artigo, mudancas: Atualizacao<Artigo>): Artigo {\n  return { ...artigo, ...mudancas };\n}\n\nconst original: Artigo = { id: 1, titulo: \"Mapped Types\", corpo: \"texto\", publicado: false, visitas: 0 };\nconst novo = atualizar(original, { publicado: true, visitas: 10 });\nconsole.log(novo.titulo, novo.publicado, novo.visitas); // Mapped Types true 10\n\n// @ts-expect-error id foi removido do tipo de atualização e não pode ser alterado\natualizar(original, { id: 99 });",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Pegue num tipo de modelo do código à mão e derive dele um tipo de atualização parcial sem a chave de identificação. Depois acrescente uma propriedade ao modelo e confirme que nada mais precisou de ser editado.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏗️",
+          "text": "Um modelo gera formulário e atualização parcial"
+        },
+        {
+          "icon": "🧷",
+          "text": "-readonly, -? e as combinam-se no mesmo mapeamento"
+        },
+        {
+          "icon": "🌱",
+          "text": "Uma propriedade nova propaga-se sozinha"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Dicionário de mensagens por estado",
+      "difficulty": "Iniciante",
+      "statement": "Escreva um tipo Dicionario<K extends PropertyKey, V> com um mapped type que produza uma propriedade de tipo V por cada chave da união K. Use-o para criar o tipo Mensagens a partir da união Estado, com os literais pendente, enviado e entregue, e valores string. Crie a constante mensagens com as três entradas preenchidas, escreva a função descrever(estado: Estado): string que devolve a mensagem correspondente e demonstre com um @ts-expect-error que faltar uma das chaves é um erro.",
+      "hint": "O parâmetro das chaves vai à esquerda do in e o tipo do valor à direita dos dois pontos. Como não há keyof nenhum pelo meio, K é usado diretamente como união de chaves.",
+      "solution_code": "type Dicionario<K extends PropertyKey, V> = { [P in K]: V };\n\ntype Estado = \"pendente\" | \"enviado\" | \"entregue\";\ntype Mensagens = Dicionario<Estado, string>;\n\nconst mensagens: Mensagens = {\n  pendente: \"À espera de processamento\",\n  enviado: \"A caminho\",\n  entregue: \"Entregue ao destinatário\",\n};\n\nfunction descrever(estado: Estado): string {\n  return mensagens[estado];\n}\n\nconsole.log(descrever(\"enviado\")); // A caminho\nconsole.log(descrever(\"entregue\")); // Entregue ao destinatário\n\n// @ts-expect-error falta a chave entregue, que o dicionário torna obrigatória\nconst incompleto: Mensagens = { pendente: \"à espera\", enviado: \"a caminho\" };\nconsole.log(incompleto.pendente); // à espera",
+      "solution_explanation": "O mapeamento percorre os três literais da união Estado e produz uma propriedade string por cada um, todas obrigatórias. Como a união é fechada, indexar mensagens com um valor de tipo Estado devolve sempre string, sem verificações adicionais. Se um literal novo entrar em Estado, a constante mensagens deixa de compilar até ser completada."
+    },
+    {
+      "title": "Os quatro modificadores",
+      "difficulty": "Iniciante",
+      "statement": "Parta da interface Definicao com readonly chave: string, valor: number e descricao?: string. Escreva os quatro mapped types que acrescentam e retiram modificadores: TudoOpcional, TudoObrigatorio, TudoSoLeitura e TudoEscrevivel. Demonstre cada um com uma constante: uma que não deixa escrever, uma que deixa escrever na chave que era readonly, uma que aceita um objeto vazio e uma que exige a descricao, esta última marcada com @ts-expect-error.",
+      "hint": "O ? vai imediatamente a seguir ao fecho dos parênteses retos e o readonly imediatamente antes da abertura. Para retirar, ponha um sinal menos colado ao modificador, no mesmo sítio.",
+      "solution_code": "interface Definicao {\n  readonly chave: string;\n  valor: number;\n  descricao?: string;\n}\n\ntype TudoOpcional<T> = { [K in keyof T]?: T[K] };\ntype TudoObrigatorio<T> = { [K in keyof T]-?: T[K] };\ntype TudoSoLeitura<T> = { readonly [K in keyof T]: T[K] };\ntype TudoEscrevivel<T> = { -readonly [K in keyof T]: T[K] };\n\nconst bloqueada: TudoSoLeitura<Definicao> = { chave: \"limite\", valor: 10 };\n// @ts-expect-error o readonly acrescentado a todas as propriedades impede a escrita\nbloqueada.valor = 20;\nconsole.log(bloqueada.valor); // 20: readonly existe só em tempo de compilação\n\nconst aberta: TudoEscrevivel<Definicao> = { chave: \"limite\", valor: 10 };\naberta.chave = \"teto\";\nconsole.log(aberta.chave); // teto\n\nconst rascunho: TudoOpcional<Definicao> = {};\nconsole.log(rascunho.valor); // undefined\n\n// @ts-expect-error com -? a descricao deixou de ser opcional\nconst completa: TudoObrigatorio<Definicao> = { chave: \"limite\", valor: 10 };\nconsole.log(completa.valor); // 10",
+      "solution_explanation": "Os quatro mapeamentos diferem apenas nos modificadores, porque o tipo do valor continua a ser T[K] em todos. O sinal menos é o que permite retirar o que o tipo de origem trazia, algo que não existe fora de um mapped type. A primeira saída lembra ainda que readonly é uma regra de compilação: ignorado o erro, o JavaScript gerado escreve na propriedade na mesma e imprime 20."
+    },
+    {
+      "title": "Cada valor numa lista",
+      "difficulty": "Intermedio",
+      "statement": "Escreva o tipo EmArray<T> que transforma cada propriedade de T num array dos valores originais, e a função emListas<T extends object>(objeto: T): EmArray<T> que constrói esse objeto em tempo de execução, pondo cada valor numa lista de um elemento. Aplique-a a uma interface Leitura com readonly sensor: string e celsius: number. Demonstre com um @ts-expect-error que o readonly de sensor foi preservado e prove, com uma constante anotada com o tipo literal 2, que EmArray aplicado a um tuplo de dois elementos continua a ser um tuplo de dois elementos.",
+      "hint": "No corpo da função, comece com um objeto vazio afirmado como EmArray<T> e percorra Object.keys(objeto) convertido para Array<keyof T>. O essencial é que o mapeamento tenha a forma [K in keyof T] com T genérico.",
+      "solution_code": "type EmArray<T> = { [K in keyof T]: T[K][] };\n\ninterface Leitura {\n  readonly sensor: string;\n  celsius: number;\n}\n\nfunction emListas<T extends object>(objeto: T): EmArray<T> {\n  const saida = {} as EmArray<T>;\n  for (const chave of Object.keys(objeto) as Array<keyof T>) {\n    saida[chave] = [objeto[chave]];\n  }\n  return saida;\n}\n\nconst listas = emListas<Leitura>({ sensor: \"A1\", celsius: 21.5 });\nconsole.log(listas.sensor, listas.celsius); // [ 'A1' ] [ 21.5 ]\n\n// @ts-expect-error o mapeamento homomórfico preservou o readonly de sensor\nlistas.sensor = [\"B2\"];\n\nconst tuplo: EmArray<[number, string]> = [[1, 2], [\"a\"]];\nconst comprimento: 2 = tuplo.length;\nconsole.log(comprimento); // 2",
+      "solution_explanation": "Como o mapeamento é homomórfico, o readonly de sensor sobrevive à transformação sem ser mencionado em lado nenhum, e o tuplo mantém comprimento e ordem, o que a anotação com o tipo literal 2 confirma. A asserção sobre o objeto vazio é necessária porque o compilador não consegue seguir o preenchimento propriedade a propriedade dentro do ciclo. O resultado é um tipo derivado que acompanha sozinho qualquer mudança no tipo de origem."
+    },
+    {
+      "title": "Do modelo à atualização segura",
+      "difficulty": "Avancado",
+      "statement": "Parta da interface Encomenda com readonly numero: number, cliente: string, total: number, entregue: boolean e notas?: string. Escreva ApenasDoTipo<T, V>, que usa key remapping para manter apenas as chaves cujo valor é atribuível a V, e Editavel<T>, que retira o readonly, torna tudo opcional e remove a chave numero. Escreva ainda a função aplicar(encomenda: Encomenda, alteracoes: Editavel<Encomenda>): Encomenda, que devolve uma cópia com as alterações, e demonstre com @ts-expect-error que cliente não entra em ApenasDoTipo<Encomenda, number> e que numero não pode ser passado a aplicar.",
+      "hint": "No as, devolva a própria chave quando a quiser manter e never quando a quiser deitar fora. Os modificadores e a cláusula as convivem no mesmo mapeamento: os sinais ficam nos sítios do costume e o as vem logo a seguir a keyof T.",
+      "solution_code": "interface Encomenda {\n  readonly numero: number;\n  cliente: string;\n  total: number;\n  entregue: boolean;\n  notas?: string;\n}\n\ntype ApenasDoTipo<T, V> = { [K in keyof T as T[K] extends V ? K : never]: T[K] };\ntype Editavel<T> = { -readonly [K in keyof T as K extends \"numero\" ? never : K]?: T[K] };\n\nconst valores: ApenasDoTipo<Encomenda, number> = { numero: 1, total: 99.5 };\nconsole.log(valores.total); // 99.5\n\n// @ts-expect-error cliente é string e foi filtrado pelo remapeamento\nconst errado: ApenasDoTipo<Encomenda, number> = { numero: 1, total: 99.5, cliente: \"Ana\" };\nconsole.log(errado.numero); // 1\n\nfunction aplicar(encomenda: Encomenda, alteracoes: Editavel<Encomenda>): Encomenda {\n  return { ...encomenda, ...alteracoes };\n}\n\nconst antes: Encomenda = { numero: 7, cliente: \"Ana\", total: 99.5, entregue: false };\nconst depois = aplicar(antes, { entregue: true, notas: \"deixar na portaria\" });\nconsole.log(depois.numero, depois.entregue, depois.notas); // 7 true deixar na portaria\n\n// @ts-expect-error numero foi removido de Editavel e não pode ser alterado\naplicar(antes, { numero: 8 });",
+      "solution_explanation": "ApenasDoTipo testa T[K] extends V em cada volta e devolve never nas chaves cujo valor não encaixa, o que as elimina do tipo final. Editavel combina três decisões no mesmo mapeamento: -readonly para permitir escrever, ? para tornar tudo dispensável e um as que filtra a chave de identificação. O resultado é uma função de atualização em que é impossível, por construção, alterar o número da encomenda."
+    }
+  ],
+  "summary": [
+    "Um mapped type percorre uma união de chaves e produz uma propriedade por cada uma; { [K in keyof T]: T[K] } é a cópia trivial de onde tudo parte.",
+    "À esquerda do in cabe qualquer união de chaves, o que permite construir dicionários de preenchimento obrigatório a partir de uniões de literais.",
+    "O tipo do valor pode ser transformado à vontade, embrulhando T[K] numa função, num array ou numa Promise, ou substituindo-o por completo.",
+    "Os modificadores ? e readonly acrescentam-se sem sinal e retiram-se com -? e -readonly, que só existem dentro de um mapped type.",
+    "Um mapeamento homomórfico, com [K in keyof T] e T genérico, preserva os modificadores originais e respeita arrays e tuplos; escrever a união de chaves à mão perde tudo isso.",
+    "A cláusula as substitui a chave de cada volta e, devolvendo never através de um conditional type, filtra propriedades do tipo resultante."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 04",
+  "next_label": "Aula 04 → Template Literal Types"
+}

@@ -1,0 +1,294 @@
+{
+  "module_num": "05",
+  "module_title": "Objetos e Orientação a Objetos",
+  "module_dir": "05-Objetos-e-Orientacao-a-Objetos",
+  "lesson_num": "06",
+  "lesson_slug": "Metodos-Avancados-de-Object",
+  "kind": "aula",
+  "title": "Métodos Avançados de Object",
+  "filename_base": "06-Metodos-Avancados-de-Object",
+  "subtitle": "Controla imutabilidade, cópia, descritores e comparação de objetos com precisão",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Tornar objetos imutáveis com Object.freeze e Object.seal, percebendo a diferença entre os dois",
+    "Verificar o estado de imutabilidade de um objeto com Object.isFrozen e Object.isSealed",
+    "Copiar e fundir objetos com Object.assign, e reconhecer as armadilhas da cópia rasa",
+    "Controlar com precisão o comportamento de uma propriedade com Object.defineProperty e os seus descritores",
+    "Comparar valores com exatidão usando Object.is nos casos em que === falha (NaN, +0/-0)",
+    "Verificar propriedades próprias de forma segura com Object.hasOwn, substituindo hasOwnProperty"
+  ],
+  "sections": [
+    {
+      "heading": "Object.freeze e Object.seal: imutabilidade rasa",
+      "body": [
+        "Object.freeze recebe um objeto e devolve o mesmo objeto (não uma cópia) tornado completamente imutável ao nível das suas propriedades diretas: não é possível acrescentar novas propriedades, remover as existentes, nem alterar o valor de nenhuma delas. Internamente, o motor de JavaScript marca cada propriedade de dados como writable: false e configurable: false, e o próprio objeto passa a ser não-extensível.",
+        "Object.seal é uma versão menos restritiva: impede acrescentar ou remover propriedades, mas os valores das propriedades existentes continuam a poder ser alterados, desde que já fossem writable antes de o objeto ser selado. Ou seja, seal fixa a forma do objeto (o conjunto de chaves), enquanto freeze fixa também o conteúdo.",
+        "Em ambos os casos, tentar violar a restrição em código não-estrito falha silenciosamente, sem lançar erro; em modo estrito (que é o predefinido dentro de módulos ES e de classes) lança um TypeError. Convém sempre confirmar o efeito real inspecionando o objeto depois da tentativa, em vez de confiar apenas em não ter havido exceção."
+      ],
+      "code": "const utilizador = { nome: \"Rui\", cargo: \"Developer\" };\nconst utilizadorCongelado = Object.freeze(utilizador);\n\nutilizadorCongelado.cargo = \"Manager\"; // ignorado (modo não-estrito)\nconsole.log(utilizadorCongelado.cargo); // \"Developer\"\n\nconst rascunho = Object.seal({ titulo: \"Rascunho\", versao: 1 });\nrascunho.versao = 2;      // permitido, a propriedade continua writable\ndelete rascunho.titulo;   // ignorado, objeto selado não permite remover\nrascunho.autor = \"Rui\";   // ignorado, objeto selado não é extensível\nconsole.log(rascunho); // { titulo: 'Rascunho', versao: 2 }",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Object.freeze e Object.seal são superficiais (shallow): só afetam as propriedades diretas do objeto passado. Se uma dessas propriedades apontar para outro objeto ou array, esse valor aninhado continua totalmente mutável. Para imutabilidade profunda é preciso percorrer o objeto recursivamente e congelar cada nível.",
+      "table_headers": [
+        "Operação",
+        "Object.freeze",
+        "Object.seal"
+      ],
+      "table_rows": [
+        [
+          "Adicionar novas propriedades",
+          "Bloqueado",
+          "Bloqueado"
+        ],
+        [
+          "Remover propriedades existentes",
+          "Bloqueado",
+          "Bloqueado"
+        ],
+        [
+          "Alterar valores existentes",
+          "Bloqueado",
+          "Permitido (se já era writable)"
+        ],
+        [
+          "Reconfigurar descritores (writable/enumerable/configurable)",
+          "Bloqueado",
+          "Bloqueado"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧊",
+          "text": "freeze bloqueia adicionar, remover e alterar"
+        },
+        {
+          "icon": "🔒",
+          "text": "seal bloqueia estrutura, permite mudar valores"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Ambos são rasos: aninhados escapam"
+        }
+      ]
+    },
+    {
+      "heading": "Object.isFrozen e Object.isSealed: verificar o estado",
+      "body": [
+        "Object.isFrozen(obj) devolve true apenas se três condições se verificarem em simultâneo: o objeto não é extensível, todas as suas propriedades são non-configurable, e todas as propriedades de dados são non-writable. Object.isSealed(obj) exige apenas as duas primeiras condições, sem se importar com writable. Isto significa que todo o objeto congelado é também selado, mas o inverso não é verdade.",
+        "Um caso que costuma surpreender é o de um objeto literal comum: {} não está nem congelado nem selado por omissão, porque continua extensível (é possível acrescentar-lhe propriedades). Só depois de aplicares Object.preventExtensions, Object.seal ou Object.freeze é que estas funções passam a devolver true. Um objeto sem qualquer propriedade e já tornado não-extensível é, por definição, trivialmente selado e congelado, precisamente por não ter propriedades escritáveis ou configuráveis que violem as condições.",
+        "Vale ainda notar que estas funções aceitam qualquer valor, não apenas objetos: quando o argumento não é um objeto (um número, uma string, um booleano), Object.isFrozen devolve sempre true, porque um primitivo nunca pode ser mutado por atribuição de propriedades da forma como um objeto pode."
+      ],
+      "code": "console.log(Object.isFrozen({})); // false, é extensível por omissão\nconsole.log(Object.isSealed({}));  // false\n\nconst naoExtensivel = Object.preventExtensions({});\nconsole.log(Object.isSealed(naoExtensivel));  // true, sem propriedades e não-extensível\nconsole.log(Object.isFrozen(naoExtensivel));  // true\n\nconst pessoa = Object.freeze({ nome: \"Sofia\" });\nconsole.log(Object.isFrozen(pessoa)); // true\nconsole.log(Object.isSealed(pessoa)); // true, freeze implica sempre seal\n\nconsole.log(Object.isFrozen(42)); // true, primitivos contam sempre como \"congelados\"",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Em modo não-estrito (por exemplo, na consola do browser) as alterações a um objeto congelado ou selado falham em silêncio, como nos exemplos desta aula. Dentro de um módulo ES, de uma classe ou com \"use strict\", a mesma atribuição lança TypeError. O objeto fica protegido nos dois casos — muda apenas a forma como a falha se manifesta.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔍",
+          "text": "isFrozen implica isSealed, não o inverso"
+        },
+        {
+          "icon": "📦",
+          "text": "{} não está congelado nem selado por omissão"
+        },
+        {
+          "icon": "🔢",
+          "text": "Primitivos são sempre \"congelados\""
+        }
+      ]
+    },
+    {
+      "heading": "Object.assign: copiar e fundir objetos",
+      "body": [
+        "Object.assign(alvo, ...fontes) copia para alvo todas as propriedades próprias e enumeráveis (de string e de símbolo) de cada objeto em fontes, da esquerda para a direita, e devolve o próprio alvo modificado. Quando duas fontes têm a mesma chave, a que aparece mais à direita na lista ganha, porque sobrescreve o valor já copiado.",
+        "É fundamental perceber que Object.assign muta o objeto passado como alvo (o primeiro argumento). Para fundir objetos sem alterar nenhum dos originais, o padrão habitual é passar um objeto literal vazio como alvo: Object.assign({}, base, substituicoes). Repara ainda que, se alguma propriedade de alvo for uma propriedade de acesso (com get/set), Object.assign invoca esse setter em vez de substituir o descritor diretamente.",
+        "Tal como freeze e seal, a cópia feita por Object.assign é rasa: quando uma propriedade tem como valor um objeto ou array, é a referência que é copiada, não uma cópia independente desse valor. Alterar esse valor aninhado a partir da cópia afeta também o objeto original, porque ambos apontam para a mesma estrutura em memória."
+      ],
+      "code": "const definicoesPadrao = { tema: \"claro\", tamanhoFonte: 14, notificacoes: true };\nconst preferenciasUtilizador = { tema: \"escuro\" };\n\nconst definicoesFinais = Object.assign({}, definicoesPadrao, preferenciasUtilizador);\nconsole.log(definicoesFinais); // { tema: 'escuro', tamanhoFonte: 14, notificacoes: true }\nconsole.log(definicoesPadrao.tema); // \"claro\", o original não foi tocado\n\nconst alvo = { a: 1 };\nconst resultado = Object.assign(alvo, { b: 2 }, { a: 3 });\nconsole.log(resultado === alvo); // true, o alvo foi mutado e devolvido\nconsole.log(alvo); // { a: 3, b: 2 }\n\n// cópia rasa: o objeto aninhado continua partilhado por referência\nconst original = { endereco: { cidade: \"Porto\" } };\nconst copia = Object.assign({}, original);\ncopia.endereco.cidade = \"Lisboa\";\nconsole.log(original.endereco.cidade); // \"Lisboa\"",
+      "callout_kind": "DICA",
+      "callout_text": "Para fundir objetos sem risco de mutar nenhum deles por engano, faz do primeiro argumento de Object.assign sempre um objeto literal vazio {}, nunca um dos objetos que queres preservar.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📋",
+          "text": "Copia propriedades próprias e enumeráveis"
+        },
+        {
+          "icon": "🔀",
+          "text": "Fontes à direita sobrepõem-se às da esquerda"
+        },
+        {
+          "icon": "✏️",
+          "text": "Muta e devolve o objeto alvo"
+        },
+        {
+          "icon": "🪞",
+          "text": "Cópia rasa: aninhados ficam partilhados"
+        }
+      ]
+    },
+    {
+      "heading": "Object.defineProperty e descritores de propriedade",
+      "body": [
+        "Quando criamos uma propriedade por atribuição direta (obj.x = 1), o motor de JavaScript torna-a automaticamente writable, enumerable e configurable, todas a true. Object.defineProperty(obj, chave, descritor) dá acesso a esse mecanismo interno, permitindo definir ou reconfigurar uma única propriedade com controlo total sobre estas três flags, através de um objeto descritor. Ao contrário da atribuição direta, qualquer flag omitida no descritor assume o valor false por omissão, não true.",
+        "Um descritor de dados aceita value, writable, enumerable e configurable. writable controla se o valor pode ser reatribuído; enumerable controla se a propriedade aparece em Object.keys, for...in e JSON.stringify; configurable controla se a propriedade pode ser apagada ou ter o seu descritor alterado outra vez no futuro. Um descritor de acesso, em vez de value e writable, usa get e/ou set, transformando a propriedade numa propriedade calculada, tal como as accessor properties definidas dentro de um objeto literal.",
+        "Para inspecionar o que já foi definido, Object.getOwnPropertyDescriptor(obj, chave) devolve o descritor completo de uma propriedade, e Object.defineProperties permite definir várias propriedades de uma vez, passando um objeto onde cada chave mapeia para o seu próprio descritor."
+      ],
+      "code": "const produto = {};\n\nObject.defineProperty(produto, \"id\", {\n  value: \"PRD-001\",\n  writable: false,\n  enumerable: true,\n  configurable: false,\n});\n\nObject.defineProperty(produto, \"_stockInterno\", {\n  value: 50,\n  writable: true,\n  enumerable: false,\n  configurable: false,\n});\n\nObject.defineProperty(produto, \"stock\", {\n  enumerable: true,\n  get() {\n    return produto._stockInterno;\n  },\n  set(quantidade) {\n    if (quantidade < 0) {\n      throw new RangeError(\"O stock não pode ser negativo.\");\n    }\n    produto._stockInterno = quantidade;\n  },\n});\n\nproduto.id = \"OUTRO\"; // ignorado, writable: false\nproduto.stock = 45;\n\nconsole.log(Object.keys(produto)); // [\"id\", \"stock\"], _stockInterno fica escondido\nconsole.log(Object.getOwnPropertyDescriptor(produto, \"id\"));\n// { value: 'PRD-001', writable: false, enumerable: true, configurable: false }",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Uma propriedade definida com configurable: false não pode voltar a ser apagada nem ter o seu descritor redefinido, com uma única exceção: se ainda for writable, é permitido mudá-la de writable: true para writable: false. Fora desse caso, a decisão é praticamente definitiva.",
+      "table_headers": [
+        "Descritor",
+        "obj.propriedade = valor",
+        "Object.defineProperty (flag omitida)"
+      ],
+      "table_rows": [
+        [
+          "writable",
+          "true",
+          "false"
+        ],
+        [
+          "enumerable",
+          "true",
+          "false"
+        ],
+        [
+          "configurable",
+          "true",
+          "false"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🎛️",
+          "text": "defineProperty controla writable/enumerable/configurable"
+        },
+        {
+          "icon": "🙈",
+          "text": "enumerable:false esconde de Object.keys/for...in"
+        },
+        {
+          "icon": "🔐",
+          "text": "configurable:false é quase irreversível"
+        }
+      ]
+    },
+    {
+      "heading": "Object.is: comparação de igualdade precisa",
+      "body": [
+        "Object.is(valor1, valor2) compara dois valores de forma muito semelhante ao operador ===, mas corrige dois comportamentos do === que por vezes não são os desejados. Primeiro, Object.is(NaN, NaN) devolve true, enquanto NaN === NaN devolve sempre false, porque === trata NaN como diferente de qualquer valor, incluindo de si próprio. Segundo, Object.is(0, -0) devolve false, enquanto 0 === -0 devolve true, porque === não distingue zero positivo de zero negativo.",
+        "Para todos os outros valores (números normais, strings, booleanos, objetos por referência, undefined, null), Object.is comporta-se exatamente como ===. Não é, por isso, um substituto geral para === no dia a dia, mas sim uma ferramenta específica para os casos raros em que a distinção entre NaN e outros valores, ou entre +0 e -0, é relevante, como em algoritmos de comparação de estado ou de deteção de mudanças."
+      ],
+      "code": "console.log(NaN === NaN);        // false\nconsole.log(Object.is(NaN, NaN)); // true\n\nconsole.log(0 === -0);          // true\nconsole.log(Object.is(0, -0));   // false\n\nconsole.log(Object.is(5, 5));           // true\nconsole.log(Object.is(\"abc\", \"abc\"));   // true\nconsole.log(Object.is({}, {}));         // false, continuam a ser referências diferentes",
+      "callout_kind": "NOTA",
+      "callout_text": "Object.is não substitui === no código do dia a dia. Usa-o apenas quando precisares mesmo de distinguir NaN de \"diferente de tudo\" ou +0 de -0, por exemplo ao implementar uma função de comparação genérica ou ao verificar se um valor de estado realmente mudou.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧮",
+          "text": "Object.is(NaN, NaN) é true"
+        },
+        {
+          "icon": "➕➖",
+          "text": "Object.is distingue +0 de -0"
+        }
+      ]
+    },
+    {
+      "heading": "Object.hasOwn vs hasOwnProperty",
+      "body": [
+        "Durante muito tempo, a forma padrão de verificar se um objeto tem uma propriedade própria (não herdada do protótipo) foi chamar obj.hasOwnProperty(chave). Object.hasOwn(obj, chave), introduzido no ES2022, faz exatamente a mesma verificação, mas como método estático de Object, aplicado ao objeto como argumento em vez de como recetor da chamada.",
+        "Esta diferença de desenho resolve dois problemas reais de hasOwnProperty. O primeiro é que objetos criados com Object.create(null) não têm qualquer protótipo, logo não herdam hasOwnProperty, e chamar obj.hasOwnProperty lança um TypeError; Object.hasOwn(obj, chave) funciona sempre, porque não depende da cadeia de protótipos do objeto a inspecionar. O segundo é que um objeto pode definir a sua própria propriedade chamada hasOwnProperty, que sobrepõe (faz shadow de) o método herdado de Object.prototype, invalidando silenciosamente a verificação; Object.hasOwn não pode ser sobreposto desta forma, porque vive em Object, não no objeto a testar.",
+        "Em código novo, Object.hasOwn(obj, chave) deve ser a escolha por omissão para este tipo de verificação, ficando obj.hasOwnProperty(chave) reservado para bases de código que ainda precisam de suportar motores anteriores ao ES2022."
+      ],
+      "code": "const dicionario = Object.create(null); // sem protótipo, sem hasOwnProperty herdado\ndicionario.palavra = \"algoritmo\";\n\nconsole.log(Object.hasOwn(dicionario, \"palavra\")); // true\nconsole.log(Object.hasOwn(dicionario, \"toString\")); // false\n// dicionario.hasOwnProperty(\"palavra\"); // TypeError: dicionario.hasOwnProperty is not a function\n\nconst config = {\n  hasOwnProperty() {\n    return \"intercetado!\";\n  },\n  ativo: true,\n};\n\nconsole.log(config.hasOwnProperty(\"ativo\")); // \"intercetado!\", método foi sobreposto\nconsole.log(Object.hasOwn(config, \"ativo\"));  // true, imune à sobreposição",
+      "callout_kind": "DICA",
+      "callout_text": "Prefere Object.hasOwn(obj, chave) a obj.hasOwnProperty(chave) em código novo: é mais curto de justificar, mais seguro contra objetos sem protótipo ou com hasOwnProperty sobreposto, e já tem suporte alargado em motores modernos.",
+      "table_headers": [
+        "Aspeto",
+        "Object.hasOwn(obj, chave)",
+        "obj.hasOwnProperty(chave)"
+      ],
+      "table_rows": [
+        [
+          "Funciona com Object.create(null)",
+          "Sim",
+          "Não, lança TypeError"
+        ],
+        [
+          "Pode ser sobreposto pelo próprio objeto",
+          "Não",
+          "Sim, risco de bugs silenciosos"
+        ],
+        [
+          "Disponibilidade",
+          "ES2022 em diante",
+          "Desde as primeiras versões da linguagem"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🛡️",
+          "text": "Object.hasOwn é a forma moderna e segura"
+        },
+        {
+          "icon": "🚫",
+          "text": "Funciona mesmo sem protótipo"
+        },
+        {
+          "icon": "🎭",
+          "text": "Imune a hasOwnProperty sobreposto"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Configurações imutáveis",
+      "difficulty": "Iniciante",
+      "statement": "Tens um objeto de configurações padrão: { tema: \"claro\", idioma: \"pt-PT\", notificacoes: true }. Cria uma função criarConfiguracaoFixa(base, substituicoes) que devolva um NOVO objeto, resultado de fundir base com substituicoes (sem alterar base), e que esse objeto resultante seja devolvido já congelado com Object.freeze. Depois de chamares a função com algumas substituições, confirma com Object.isFrozen que o resultado está congelado, confirma que base não foi alterado, e mostra que tentar mudar uma propriedade do resultado não tem qualquer efeito.",
+      "hint": "Usa Object.assign com um objeto vazio {} como primeiro argumento (o alvo), para nunca mutares diretamente o objeto base.",
+      "solution_code": "function criarConfiguracaoFixa(base, substituicoes) {\n  const configuracao = Object.assign({}, base, substituicoes);\n  return Object.freeze(configuracao);\n}\n\nconst padrao = { tema: \"claro\", idioma: \"pt-PT\", notificacoes: true };\nconst config = criarConfiguracaoFixa(padrao, { tema: \"escuro\" });\n\nconsole.log(config); // { tema: 'escuro', idioma: 'pt-PT', notificacoes: true }\nconsole.log(Object.isFrozen(config)); // true\nconsole.log(Object.isFrozen(padrao)); // false, o original nunca foi tocado\n\nconfig.tema = \"azul\"; // ignorado silenciosamente (ou lança TypeError em modo estrito)\nconsole.log(config.tema); // \"escuro\"",
+      "solution_explanation": "Object.assign({}, base, substituicoes) cria sempre um objeto novo, por isso base nunca é mutado, e as propriedades de substituicoes sobrepõem-se às de base por virem depois na lista de fontes. Aplicar Object.freeze só ao resultado final garante que o objeto devolvido é imutável sem afetar o objeto original."
+    },
+    {
+      "title": "Objeto selado vs objeto congelado",
+      "difficulty": "Intermedio",
+      "statement": "A partir do mesmo objeto de base { nome: \"Ana\", idade: 30 }, cria dois objetos independentes com o mesmo conteúdo: objetoSelado (usando Object.seal) e objetoCongelado (usando Object.freeze). Em cada um deles, por esta ordem, tenta: 1) adicionar uma propriedade nova pais; 2) alterar idade para 31; 3) apagar a propriedade nome. Depois regista o conteúdo final de cada objeto com console.log e usa Object.isSealed e Object.isFrozen para confirmares o estado de cada um no final.",
+      "hint": "Em modo não-estrito estas operações inválidas falham silenciosamente, sem lançar erro; por isso tens de inspecionar o objeto depois de cada tentativa em vez de confiares no valor de retorno da operação.",
+      "solution_code": "const base = { nome: \"Ana\", idade: 30 };\n\nconst objetoSelado = Object.seal({ ...base });\nconst objetoCongelado = Object.freeze({ ...base });\n\nobjetoSelado.pais = \"Portugal\";\nobjetoCongelado.pais = \"Portugal\";\n\nobjetoSelado.idade = 31;\nobjetoCongelado.idade = 31;\n\ndelete objetoSelado.nome;\ndelete objetoCongelado.nome;\n\nconsole.log(objetoSelado); // { nome: 'Ana', idade: 31 }\nconsole.log(objetoCongelado); // { nome: 'Ana', idade: 30 }\n\nconsole.log(Object.isSealed(objetoSelado)); // true\nconsole.log(Object.isFrozen(objetoSelado)); // false, idade continua writable\n\nconsole.log(Object.isSealed(objetoCongelado)); // true, todo o objeto congelado está também selado\nconsole.log(Object.isFrozen(objetoCongelado)); // true",
+      "solution_explanation": "Object.seal impede adicionar (pais) ou remover (nome) propriedades, mas como idade continua writable, o valor muda para 31. Object.freeze faz tudo o que seal faz e ainda torna as propriedades existentes non-writable, por isso nenhuma das três operações tem efeito, e por definição um objeto congelado é sempre também um objeto selado. Nota: as atribuições e o delete falham em silêncio porque o exemplo corre em modo não-estrito; num módulo ES ou com \"use strict\" cada uma delas lançaria TypeError, mas os valores finais seriam os mesmos."
+    },
+    {
+      "title": "Propriedade validada com defineProperty",
+      "difficulty": "Avancado",
+      "statement": "Cria uma função criarContaBancaria(saldoInicial) que devolve um objeto com uma propriedade saldo definida através de Object.defineProperty, usando get e set. O getter devolve o valor atual. O setter deve lançar um TypeError se o novo valor não for do tipo number ou for NaN, e um RangeError se for negativo; caso contrário atualiza o saldo. O valor interno deve ser guardado numa propriedade própria chamada _saldo que não seja enumerável (não deve aparecer em Object.keys), mas deve continuar a ser detetável com Object.hasOwn.",
+      "hint": "Define primeiro _saldo com Object.defineProperty (enumerable: false), e só depois define saldo como propriedade de acesso (get/set) que lê e escreve em _saldo.",
+      "solution_code": "function criarContaBancaria(saldoInicial) {\n  const conta = {};\n\n  Object.defineProperty(conta, \"_saldo\", {\n    value: saldoInicial,\n    writable: true,\n    enumerable: false,\n    configurable: false,\n  });\n\n  Object.defineProperty(conta, \"saldo\", {\n    enumerable: true,\n    configurable: false,\n    get() {\n      return conta._saldo;\n    },\n    set(novoValor) {\n      if (typeof novoValor !== \"number\" || Number.isNaN(novoValor)) {\n        throw new TypeError(\"O saldo tem de ser um número.\");\n      }\n      if (novoValor < 0) {\n        throw new RangeError(\"O saldo não pode ser negativo.\");\n      }\n      conta._saldo = novoValor;\n    },\n  });\n\n  return conta;\n}\n\nconst conta = criarContaBancaria(100);\nconsole.log(conta.saldo); // 100\nconta.saldo = 250;\nconsole.log(conta.saldo); // 250\n\nconsole.log(Object.keys(conta)); // [\"saldo\"], _saldo fica escondido\nconsole.log(Object.hasOwn(conta, \"_saldo\")); // true\n\ntry {\n  conta.saldo = -50;\n} catch (erro) {\n  console.log(erro.message); // \"O saldo não pode ser negativo.\"\n}",
+      "solution_explanation": "Marcar _saldo com enumerable:false esconde-o de Object.keys e de for...in sem o tornar inacessível, e Object.hasOwn continua a confirmar que é uma propriedade própria do objeto. A propriedade de acesso saldo centraliza toda a validação no setter, garantindo que o objeto nunca fica num estado inválido."
+    },
+    {
+      "title": "Comparador raso com Object.is e Object.hasOwn",
+      "difficulty": "Avancado",
+      "statement": "Implementa uma função saoIguaisRaso(a, b) que compara dois objetos simples (sem propriedades aninhadas) e devolve true apenas se tiverem exatamente o mesmo número de propriedades próprias enumeráveis, as mesmas chaves, e o mesmo valor em cada chave. Usa Object.keys para obter as chaves, Object.hasOwn (não hasOwnProperty) para verificares a presença de cada chave no segundo objeto, e Object.is (não === nem ==) para comparares os valores, para que a função trate NaN como igual a si próprio e distinga corretamente +0 de -0.",
+      "hint": "Compara primeiro Object.keys(a).length com Object.keys(b).length; se forem diferentes já podes devolver false sem olhar para os valores.",
+      "solution_code": "function saoIguaisRaso(a, b) {\n  if (a === b) {\n    return true;\n  }\n\n  const chavesA = Object.keys(a);\n  const chavesB = Object.keys(b);\n\n  if (chavesA.length !== chavesB.length) {\n    return false;\n  }\n\n  return chavesA.every((chave) => {\n    return Object.hasOwn(b, chave) && Object.is(a[chave], b[chave]);\n  });\n}\n\nconst semPrototipo = Object.create(null);\nsemPrototipo.x = NaN;\nsemPrototipo.y = 0;\n\nconst outro = { x: NaN, y: -0 };\n\nconsole.log(saoIguaisRaso(semPrototipo, outro)); // false, Object.is(0, -0) é false\nconsole.log(saoIguaisRaso({ x: NaN }, { x: NaN })); // true, Object.is(NaN, NaN) é true\nconsole.log(saoIguaisRaso({ a: 1, b: 2 }, { a: 1 })); // false, número de chaves diferente",
+      "solution_explanation": "Usar Object.hasOwn em vez de b.hasOwnProperty garante que a verificação funciona mesmo quando b não tem hasOwnProperty na cadeia de protótipos, como acontece com semPrototipo. Usar Object.is em vez de === evita os dois comportamentos estranhos da igualdade estrita: NaN === NaN é false e 0 === -0 é true, o oposto do que normalmente se quer numa comparação de igualdade rigorosa."
+    }
+  ],
+  "summary": [
+    "Object.freeze torna um objeto totalmente imutável (não acrescenta, não remove, não altera); Object.seal só impede acrescentar e remover, mantendo os valores existentes alteráveis.",
+    "Ambos são superficiais: objetos aninhados dentro de um objeto congelado ou selado continuam totalmente mutáveis.",
+    "Object.isFrozen e Object.isSealed confirmam o estado real de um objeto; freeze implica sempre seal, mas seal não implica freeze.",
+    "Object.assign({}, ...fontes) funde objetos sem os mutar, desde que o alvo seja sempre um objeto novo; a cópia é rasa, tal como o freeze e o seal.",
+    "Object.defineProperty dá controlo total sobre writable, enumerable e configurable de uma propriedade, incluindo criar propriedades de acesso com get/set e esconder propriedades de Object.keys.",
+    "Object.is corrige os dois casos em que === falha (NaN e +0/-0); Object.hasOwn substitui hasOwnProperty de forma mais segura, funcionando mesmo em objetos sem protótipo."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para o Módulo 06",
+  "next_label": "Aula 01 → Métodos de String",
+  "_stage": "revisao"
+}

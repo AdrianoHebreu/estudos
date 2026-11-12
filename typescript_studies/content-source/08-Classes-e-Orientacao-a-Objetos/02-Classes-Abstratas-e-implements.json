@@ -1,0 +1,268 @@
+{
+  "module_num": "08",
+  "module_title": "Classes e Orientação a Objetos",
+  "module_dir": "08-Classes-e-Orientacao-a-Objetos",
+  "lesson_num": "02",
+  "lesson_slug": "Classes-Abstratas-e-implements",
+  "kind": "aula",
+  "title": "Classes Abstratas e implements",
+  "filename_base": "02-Classes-Abstratas-e-implements",
+  "subtitle": "abstract class impede a instanciação direta; implements verifica a forma da interface mas não tipa os membros",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Distinguir uma classe abstrata de uma classe normal e perceber porque não pode ser instanciada",
+    "Declarar membros abstract e obrigar as subclasses concretas a implementá-los",
+    "Perceber que implements verifica a forma final da classe, mas não tipa os parâmetros nem as propriedades por si só",
+    "Escolher entre abstract class e interface consoante há ou não implementação e estado a partilhar",
+    "Combinar extends de uma única classe abstrata com implements de várias interfaces na mesma declaração",
+    "Construir uma hierarquia que junta implementação partilhada com um contrato adicional"
+  ],
+  "sections": [
+    {
+      "heading": "Uma classe que não se pode instanciar",
+      "body": [
+        "Uma classe abstrata declara-se com a palavra abstract antes de class. À primeira vista comporta-se como qualquer classe do curso de JavaScript, com campos, construtor e métodos, mas tenta-se instanciar diretamente e o compilador rejeita de imediato: uma abstract class existe para ser estendida, nunca para ser criada por si.",
+        "Dentro dela podem viver dois tipos de membro: métodos com corpo normal, herdados tal e qual por todas as subclasses, e métodos abstract, que são só uma assinatura, sem chavetas nem implementação. É essa mistura que dá jeito a uma abstract class: código partilhado ao lado de pontos que cada subclasse tem mesmo de preencher."
+      ],
+      "code": "// Uma classe abstrata mistura contrato com implementação, mas não pode ser instanciada.\nabstract class FormaBase {\n  abstract area(): number;\n\n  descrever(): string {\n    return `Esta forma tem área ${this.area()}`;\n  }\n}\n\nclass Quadrado extends FormaBase {\n  constructor(private lado: number) {\n    super();\n  }\n\n  area(): number {\n    return this.lado * this.lado;\n  }\n}\n\nconst quadrado = new Quadrado(3);\nconsole.log(quadrado.descrever());\n// Esta forma tem área 9\n\n// @ts-expect-error FormaBase é abstract: não pode ser instanciada diretamente\nconst generica = new FormaBase();",
+      "callout_kind": "NOTA",
+      "callout_text": "abstract é uma restrição só de compilação, tal como private na Aula 01. O ficheiro JavaScript gerado por este bloco não tem qualquer verificação: FormaBase fica lá uma classe igual às outras, sem marca nenhuma de que era abstract.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🚫",
+          "text": "abstract class nunca é instanciada diretamente"
+        },
+        {
+          "icon": "🧩",
+          "text": "Mistura contrato abstract com implementação normal"
+        },
+        {
+          "icon": "⚙️",
+          "text": "A restrição desaparece no JavaScript gerado"
+        }
+      ]
+    },
+    {
+      "heading": "Membros abstract: a promessa que a subclasse tem de cumprir",
+      "body": [
+        "Um membro abstract pode ser um método, como na secção anterior, ou uma propriedade, incluindo readonly, declarada só com o tipo e sem valor. Em ambos os casos não é a classe abstrata que dá o valor ou a implementação: é cada subclasse concreta que fica obrigada a fazê-lo.",
+        "Se uma subclasse não abstrata deixar por implementar um único membro abstract herdado, o compilador rejeita a declaração da classe inteira, não a chamada a esse membro em particular. Uma subclasse que também precise de deixar algo por implementar tem de se declarar ela própria abstract."
+      ],
+      "code": "abstract class Sensor {\n  abstract readonly unidade: string;\n  abstract ler(): number;\n\n  mostrar(): string {\n    return `${this.ler()} ${this.unidade}`;\n  }\n}\n\nclass Termometro extends Sensor {\n  readonly unidade = \"C\";\n\n  ler(): number {\n    return 21.5;\n  }\n}\n\nconsole.log(new Termometro().mostrar());\n// 21.5 C\n\n// @ts-expect-error Higrometro não implementa o método abstrato ler\nclass Higrometro extends Sensor {\n  readonly unidade = \"%\";\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Medido nesta versão: o erro de Higrometro é TS2515, \"Non-abstract class ... does not implement inherited abstract member ler from class Sensor\", apontado na própria declaração da subclasse, não na chamada ao método em falta.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📐",
+          "text": "abstract method: só assinatura, sem corpo"
+        },
+        {
+          "icon": "✅",
+          "text": "Toda subclasse concreta implementa os membros abstract"
+        },
+        {
+          "icon": "🔒",
+          "text": "abstract readonly funciona também em propriedades"
+        }
+      ]
+    },
+    {
+      "heading": "implements: verifica a forma, não tipa por si só",
+      "body": [
+        "Uma interface descreve só uma forma. Quando uma classe escreve implements NomeDaInterface, está a prometer ao compilador que a sua forma final corresponde à da interface — e o compilador confirma essa promessa depois de a classe estar escrita. O que implements não faz é tipar os membros por conta de quem escreve a classe: os parâmetros dos métodos e as propriedades têm de trazer a anotação de tipo escrita à mão, como se a interface nem existisse.",
+        "É uma diferença real em relação a atribuir um objeto literal a uma variável já tipada, onde a tipagem contextual preenche os tipos sozinha. Numa classe com implements essa tipagem contextual não chega aos membros: sem anotação, um parâmetro fica implicitamente any e o modo strict rejeita-o. Depois de anotado, o corpo do método continua a ser verificado normalmente contra o tipo declarado na interface, por isso um retorno do tipo errado também é apanhado, só que como incompatibilidade de tipos e não como any implícito."
+      ],
+      "code": "interface Formatador {\n  formatar(valor: number): string;\n}\n\nclass FormatadorSemTipo implements Formatador {\n  // @ts-expect-error o parâmetro 'valor' fica implicitamente 'any': implements não o tipa\n  formatar(valor) {\n    return valor.toFixed(2);\n  }\n}\n\nclass FormatadorCorreto implements Formatador {\n  formatar(valor: number): string {\n    return valor.toFixed(2);\n  }\n}\n\nconsole.log(new FormatadorCorreto().formatar(3.14159));\n// 3.14\n\nclass FormatadorComRetornoErrado implements Formatador {\n  // @ts-expect-error o retorno é 'number', mas Formatador exige 'string'\n  formatar(valor: number) {\n    return valor * 2;\n  }\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Ponto central desta aula: implements só verifica a forma final da classe contra a interface. Não anotar os membros não é mais seguro por a interface já existir — o erro muda só de sítio, de TS2416 para TS7006.",
+      "table_headers": [
+        "Situação medida",
+        "O que o compilador faz",
+        "Erro"
+      ],
+      "table_rows": [
+        [
+          "Método sem anotação no parâmetro",
+          "Não herda o tipo da interface; conta como parâmetro sem tipo",
+          "TS7006"
+        ],
+        [
+          "Método anotado, mas com retorno incompatível",
+          "Compara a assinatura final com a da interface",
+          "TS2416"
+        ],
+        [
+          "Campo sem tipo nem valor inicial",
+          "Também não herda o tipo da interface",
+          "TS7008"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧾",
+          "text": "implements verifica a forma final da classe"
+        },
+        {
+          "icon": "❓",
+          "text": "Sem anotação, o parâmetro fica any: TS7006"
+        },
+        {
+          "icon": "⚖️",
+          "text": "Anotado mas incompatível dá TS2416"
+        }
+      ]
+    },
+    {
+      "heading": "abstract class ou interface: estado e implementação contra contrato puro",
+      "body": [
+        "Uma abstract class pode guardar estado real, com campos que já têm valor, e pode dar implementação partilhada por todas as subclasses, como o incrementar() abaixo. Uma interface usada com implements não tem nada disto: é só contrato, zero implementação e zero estado. Uma propriedade de interface como nome: string não tem valor nenhum, só diz que a classe que a implementar tem de ter um campo nome do tipo string.",
+        "Isto também explica porque é que combinar os dois é tão comum: a abstract class trata do que é comum ao grupo de subclasses, e a interface acrescenta um contrato extra que só algumas delas precisam de cumprir."
+      ],
+      "code": "interface ComNome {\n  nome: string;\n}\n\nabstract class Base {\n  contador = 0;\n\n  incrementar(): void {\n    this.contador++;\n  }\n}\n\nclass Filha extends Base implements ComNome {\n  nome = \"filha\";\n}\n\nconst f = new Filha();\nf.incrementar();\nf.incrementar();\nconsole.log(f.nome, f.contador);\n// filha 2",
+      "callout_kind": "DICA",
+      "callout_text": "Se a hierarquia precisa de partilhar um campo ou um método já pronto entre subclasses, isso é abstract class. Se for só a forma, sem nenhum código nem valor associado, é interface.",
+      "table_headers": [
+        "Aspeto",
+        "abstract class",
+        "interface com implements"
+      ],
+      "table_rows": [
+        [
+          "Instanciação direta",
+          "Proibida (TS2511)",
+          "Não se aplica: uma interface nunca se instancia"
+        ],
+        [
+          "Estado (campos com valor)",
+          "Pode ter, partilhado por herança",
+          "Não tem: só descreve o tipo do campo"
+        ],
+        [
+          "Implementação partilhada",
+          "Pode ter métodos já prontos",
+          "Nenhuma: só assinaturas"
+        ],
+        [
+          "O que a subclasse cumpre",
+          "Só os membros marcados abstract",
+          "Todos os membros da interface"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🏗️",
+          "text": "abstract class guarda estado e código partilhado"
+        },
+        {
+          "icon": "📜",
+          "text": "interface com implements é só contrato, sem corpo"
+        },
+        {
+          "icon": "🧭",
+          "text": "A escolha depende de haver implementação a partilhar"
+        }
+      ]
+    },
+    {
+      "heading": "Um só extends, muitas implements",
+      "body": [
+        "Uma classe só pode estender uma única classe, seja ela normal ou abstrata: não existe herança múltipla de classes em TypeScript, tal como já não existia em JavaScript. Estender duas classes ao mesmo tempo nem chega a ser um erro de tipos — é um erro de sintaxe, por isso o compilador rejeita antes de sequer analisar tipos.",
+        "Com implements não há esse limite: uma classe pode prometer a forma de quantas interfaces forem precisas, separadas por vírgula depois da palavra implements. E as duas construções combinam-se na mesma declaração, como a próxima secção mostra."
+      ],
+      "code": "interface ComId {\n  id: number;\n}\n\ninterface ComNome {\n  nome: string;\n}\n\ninterface Ativavel {\n  ativo: boolean;\n  ativar(): void;\n}\n\nclass Utilizador implements ComId, ComNome, Ativavel {\n  ativo = false;\n\n  constructor(public id: number, public nome: string) {}\n\n  ativar(): void {\n    this.ativo = true;\n  }\n}\n\nconst utilizador = new Utilizador(1, \"Ana\");\nutilizador.ativar();\nconsole.log(utilizador.id, utilizador.nome, utilizador.ativo);\n// 1 Ana true",
+      "callout_kind": "NOTA",
+      "callout_text": "extends aceita só um nome depois de si; implements aceita uma lista. É essa assimetria que faz a interface ser a ferramenta certa para acrescentar contratos extra a uma hierarquia já definida por herança.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "1️⃣",
+          "text": "Só uma classe em extends, mesmo sendo abstract"
+        },
+        {
+          "icon": "➕",
+          "text": "implements aceita várias interfaces, com vírgulas"
+        },
+        {
+          "icon": "🔗",
+          "text": "extends e implements combinam-se na mesma declaração"
+        }
+      ]
+    },
+    {
+      "heading": "Juntar tudo: implementação partilhada mais um contrato extra",
+      "body": [
+        "O exemplo final junta as duas peças da aula. Funcionario é uma abstract class: guarda nome e salarioBase, já protegidos, dá um recibo() pronto a todas as subclasses e deixa calcularSalario() como abstract, porque cada tipo de funcionário calcula o salário de maneira diferente. Comissionado é uma interface: só o contrato de quem tem comissão, sem implementação nenhuma.",
+        "Vendedor faz as duas coisas ao mesmo tempo, extends Funcionario implements Comissionado, e por isso tem de cumprir os dois lados: implementar calcularSalario() por ser abstract na classe-mãe, e trazer taxaComissao e calcularComissao() por serem exigidos pela interface. O recibo() continua a vir de graça, herdado sem reescrever nada."
+      ],
+      "code": "abstract class Funcionario {\n  constructor(protected nome: string, protected salarioBase: number) {}\n\n  abstract calcularSalario(): number;\n\n  recibo(): string {\n    return `${this.nome}: ${this.calcularSalario().toFixed(2)}`;\n  }\n}\n\ninterface Comissionado {\n  taxaComissao: number;\n  calcularComissao(vendas: number): number;\n}\n\nclass Vendedor extends Funcionario implements Comissionado {\n  taxaComissao = 0.1;\n\n  constructor(nome: string, salarioBase: number, private vendasMes: number) {\n    super(nome, salarioBase);\n  }\n\n  calcularComissao(vendas: number): number {\n    return vendas * this.taxaComissao;\n  }\n\n  calcularSalario(): number {\n    return this.salarioBase + this.calcularComissao(this.vendasMes);\n  }\n}\n\nconst vendedor = new Vendedor(\"Rui\", 1000, 2000);\nconsole.log(vendedor.recibo());\n// Rui: 1200.00\n\n// @ts-expect-error Funcionario continua abstract: não pode ser instanciada mesmo com calcularSalario definido só nas subclasses\nconst generico = new Funcionario(\"Anon\", 500);",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Acrescente uma segunda subclasse de Funcionario, por exemplo Gerente, com uma interface diferente de Comissionado, como Bonificavel. Confirme que recibo() continua a funcionar sem ser reescrito.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧱",
+          "text": "Hierarquia real: base abstrata mais interface extra"
+        },
+        {
+          "icon": "💶",
+          "text": "calcularSalario vem do abstract, taxaComissao da interface"
+        },
+        {
+          "icon": "♻️",
+          "text": "recibo() fica pronto para todas as subclasses"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Veículos com consumo próprio",
+      "difficulty": "Iniciante",
+      "statement": "Escreva uma classe abstrata Veiculo cujo construtor recebe e guarda um campo protegido velocidadeMaxima do tipo number, com um método abstrato consumoMedio(): number e um método concreto descricao(): string que devolve algo como \"Velocidade máxima: 25 km/h, consumo: 0 l/100km\", usando consumoMedio() internamente. Depois escreva uma subclasse concreta Bicicleta que implemente consumoMedio() devolvendo sempre 0. Prove com uma linha marcada com @ts-expect-error que Veiculo não pode ser instanciada diretamente.",
+      "hint": "O construtor da classe abstrata pode receber e guardar o valor com protected, tal como qualquer outra classe; só falta mesmo implementar, na subclasse, o único método marcado como abstract.",
+      "solution_code": "abstract class Veiculo {\n  constructor(protected velocidadeMaxima: number) {}\n\n  abstract consumoMedio(): number;\n\n  descricao(): string {\n    return `Velocidade máxima: ${this.velocidadeMaxima} km/h, consumo: ${this.consumoMedio()} l/100km`;\n  }\n}\n\nclass Bicicleta extends Veiculo {\n  consumoMedio(): number {\n    return 0;\n  }\n}\n\nconst bicicleta = new Bicicleta(25);\nconsole.log(bicicleta.descricao());\n// Velocidade máxima: 25 km/h, consumo: 0 l/100km\n\n// @ts-expect-error Veiculo é abstract e não pode ser instanciada diretamente\nconst veiculoGenerico = new Veiculo(10);",
+      "solution_explanation": "Veiculo mistura um construtor e um método concretos com um único ponto em aberto, consumoMedio(), que fica por conta de cada subclasse. Bicicleta só precisa de preencher esse método; descricao() e o construtor já vêm herdados e não são reescritos."
+    },
+    {
+      "title": "Um conversor que prova a diferença",
+      "difficulty": "Intermedio",
+      "statement": "Escreva a interface Conversor com um único método converter(valor: number): string. Implemente-a corretamente na classe ConversorMoeda, com o parâmetro anotado, devolvendo `${valor.toFixed(2)} EUR`. Depois escreva uma segunda classe, ConversorSemTipo, que também declare implements Conversor mas cujo método converter não anote o parâmetro; marque essa linha com @ts-expect-error, explicando em comentário porque é que o compilador se queixa mesmo a classe prometendo implementar a interface.",
+      "hint": "implements verifica a forma final da classe contra a interface depois de esta estar escrita; não empresta os tipos dos parâmetros durante a escrita do corpo do método.",
+      "solution_code": "interface Conversor {\n  converter(valor: number): string;\n}\n\nclass ConversorMoeda implements Conversor {\n  converter(valor: number): string {\n    return `${valor.toFixed(2)} EUR`;\n  }\n}\n\nclass ConversorSemTipo implements Conversor {\n  // @ts-expect-error implements verifica a forma final, mas não anota o parâmetro: 'valor' fica implicitamente 'any'\n  converter(valor) {\n    return `${valor} EUR`;\n  }\n}\n\nconst conversor = new ConversorMoeda();\nconsole.log(conversor.converter(9.5));\n// 9.50 EUR",
+      "solution_explanation": "ConversorMoeda cumpre a interface porque o parâmetro valor está anotado como number à mão, exatamente como o corpo do método exige para chamar valor.toFixed(2). Em ConversorSemTipo falta essa anotação, e como implements não a preenche sozinho, o parâmetro fica implicitamente any e o modo strict rejeita com TS7006, apesar de a classe declarar implements Conversor."
+    },
+    {
+      "title": "Um gestor com dois contratos",
+      "difficulty": "Avancado",
+      "statement": "Escreva uma classe abstrata Funcionario cujo construtor guarda um campo protegido nome, com um método abstrato calcularSalario(): number e um método concreto recibo(): string que usa calcularSalario(). Escreva a interface Contactavel, com um campo email: string, e a interface SujeitoAFerias, com um campo diasFerias: number e um método marcarFerias(dias: number): void que subtrai dias a diasFerias. Escreva a classe Gestor, que estende Funcionario e implementa as duas interfaces ao mesmo tempo, com um salário fixo guardado num campo privado.",
+      "hint": "Depois de extends Funcionario já não sobra outra classe para estender; as duas interfaces juntam-se com implements, separadas por vírgula, na mesma declaração da classe.",
+      "solution_code": "abstract class Funcionario {\n  constructor(protected nome: string) {}\n\n  abstract calcularSalario(): number;\n\n  recibo(): string {\n    return `${this.nome}: ${this.calcularSalario().toFixed(2)}`;\n  }\n}\n\ninterface Contactavel {\n  email: string;\n}\n\ninterface SujeitoAFerias {\n  diasFerias: number;\n  marcarFerias(dias: number): void;\n}\n\nclass Gestor extends Funcionario implements Contactavel, SujeitoAFerias {\n  email: string;\n  diasFerias = 22;\n\n  constructor(nome: string, email: string, private salarioFixo: number) {\n    super(nome);\n    this.email = email;\n  }\n\n  marcarFerias(dias: number): void {\n    this.diasFerias -= dias;\n  }\n\n  calcularSalario(): number {\n    return this.salarioFixo;\n  }\n}\n\nconst gestor = new Gestor(\"Marta\", \"marta@exemplo.pt\", 2500);\ngestor.marcarFerias(5);\nconsole.log(gestor.recibo(), gestor.diasFerias, gestor.email);\n// Marta: 2500.00 17 marta@exemplo.pt",
+      "solution_explanation": "Gestor cumpre três obrigações ao mesmo tempo: calcularSalario(), exigido pela abstract class Funcionario, mais email e marcarFerias(), exigidos pelas duas interfaces. recibo() vem herdado de Funcionario sem qualquer alteração, o que mostra a implementação partilhada a funcionar ao lado dos contratos adicionais."
+    },
+    {
+      "title": "Um repositório auditado",
+      "difficulty": "Avancado",
+      "statement": "Escreva uma classe abstrata Repositorio com um campo protegido itens, do tipo string[], inicializado vazio, um método concreto contar(): number que devolve itens.length, e dois métodos abstratos, guardar(item: string): void e listar(): string[]. Escreva a interface Auditavel, com um campo acessos: number e um método registarAcesso(): void. Escreva a classe RepositorioMemoria, que estende Repositorio e implementa Auditavel: guardar() acrescenta a itens, listar() chama registarAcesso() e devolve uma cópia de itens, e registarAcesso() incrementa acessos. Prove com duas linhas marcadas @ts-expect-error que Repositorio não pode ser instanciada diretamente, e que uma subclasse que só implemente guardar(), deixando listar() por fazer, também é rejeitada.",
+      "hint": "O mesmo erro que rejeita a instanciação direta da classe abstrata rejeita também uma subclasse concreta que deixe por implementar qualquer um dos métodos abstract herdados, mesmo que já tenha implementado outro.",
+      "solution_code": "abstract class Repositorio {\n  protected itens: string[] = [];\n\n  abstract guardar(item: string): void;\n  abstract listar(): string[];\n\n  contar(): number {\n    return this.itens.length;\n  }\n}\n\ninterface Auditavel {\n  acessos: number;\n  registarAcesso(): void;\n}\n\nclass RepositorioMemoria extends Repositorio implements Auditavel {\n  acessos = 0;\n\n  guardar(item: string): void {\n    this.itens.push(item);\n  }\n\n  listar(): string[] {\n    this.registarAcesso();\n    return [...this.itens];\n  }\n\n  registarAcesso(): void {\n    this.acessos++;\n  }\n}\n\nconst repo = new RepositorioMemoria();\nrepo.guardar(\"a\");\nrepo.guardar(\"b\");\nconsole.log(repo.listar(), repo.contar(), repo.acessos);\n// [ 'a', 'b' ] 2 1\n\n// @ts-expect-error Repositorio é abstract: não pode ser instanciada diretamente\nconst generico = new Repositorio();\n\n// @ts-expect-error RepositorioIncompleto não implementa o método abstrato listar\nclass RepositorioIncompleto extends Repositorio {\n  guardar(item: string): void {\n    this.itens.push(item);\n  }\n}",
+      "solution_explanation": "RepositorioMemoria cumpre os dois métodos abstract herdados de Repositorio e ainda os dois membros exigidos por Auditavel, ficando com um contador de acessos que sobe sempre que listar() é chamado. RepositorioIncompleto mostra que implementar só um dos métodos abstract não chega: o erro TS2515 aparece na própria declaração da subclasse, o mesmo que rejeita a instanciação direta de Repositorio."
+    }
+  ],
+  "summary": [
+    "Uma abstract class não pode ser instanciada diretamente (TS2511); a restrição é só de compilação e desaparece no JavaScript gerado, tal como private",
+    "Um membro abstract obriga qualquer subclasse concreta a implementá-lo, senão o compilador rejeita a declaração da subclasse com TS2515",
+    "implements verifica a forma final da classe contra a interface, mas não tipa os membros: sem anotação dá TS7006, com anotação mas tipo errado dá TS2416",
+    "abstract class guarda estado e implementação partilhada entre subclasses; uma interface usada com implements é só contrato, sem código nem valor",
+    "Uma classe faz extends de uma única classe, mas implements de quantas interfaces precisar, e as duas construções combinam-se na mesma declaração",
+    "Combinar as duas é o padrão comum: a abstract class trata do que é comum ao grupo, a interface acrescenta um contrato extra só a algumas subclasses"
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 03",
+  "next_label": "Aula 03 → Parameter Properties, Acessores e Membros Estáticos"
+}

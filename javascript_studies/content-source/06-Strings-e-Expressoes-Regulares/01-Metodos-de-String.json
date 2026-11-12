@@ -1,0 +1,290 @@
+{
+  "module_num": "06",
+  "module_title": "Strings e Expressões Regulares",
+  "module_dir": "06-Strings-e-Expressoes-Regulares",
+  "lesson_num": "01",
+  "lesson_slug": "Metodos-de-String",
+  "kind": "aula",
+  "title": "Métodos de String",
+  "filename_base": "01-Metodos-de-String",
+  "subtitle": "Os métodos essenciais para cortar, procurar, limpar e transformar strings em JavaScript",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Aceder a caracteres de uma string com length e at(), incluindo o uso de índices negativos.",
+    "Extrair substrings com slice() e substring(), sabendo escolher o método certo em cada situação.",
+    "Testar o conteúdo de uma string com includes(), startsWith() e endsWith().",
+    "Converter entre strings e arrays com split() e join().",
+    "Limpar e formatar strings com trim(), trimStart()/trimEnd() e padStart()/padEnd().",
+    "Substituir texto com replace() e replaceAll(), e construir strings com concatenação e template literals."
+  ],
+  "sections": [
+    {
+      "heading": "length e at(): aceder a caracteres",
+      "body": [
+        "A propriedade length devolve o número de unidades de código UTF-16 que compõem uma string. Para a esmagadora maioria dos textos isso corresponde ao número de carateres visíveis, mas convém saber que emojis e alguns símbolos fora do plano básico multilingue ocupam duas unidades e por isso contam como 2 no length. Por ser uma propriedade e não um método, usa-se sem parênteses: texto.length, nunca texto.length().",
+        "Para aceder a um caracter específico, a notação com parênteses retos texto[indice] funciona bem para índices positivos, mas devolve undefined para índices negativos, porque nesse caso o motor de JavaScript procura uma propriedade com esse nome literal e não a encontra. O método at(), introduzido no ES2022, resolve essa limitação: aceita índices negativos que contam a partir do fim da string, tornando trivial aceder ao último ou penúltimo caracter sem calcular texto.length - 1."
+      ],
+      "code": "const fruta = \"framboesa\";\nconsole.log(fruta.length); // 9\nconsole.log(fruta[0]); // \"f\"\nconsole.log(fruta[-1]); // undefined - a notação com [] não aceita índices negativos\nconsole.log(fruta.at(-1)); // \"a\" - último caracter\nconsole.log(fruta.at(-2)); // \"s\" - penúltimo caracter\n\nconst saudacao = \"Olá 😀\";\nconsole.log(saudacao.length); // 6 - o emoji ocupa 2 unidades UTF-16, embora seja 1 caracter visível",
+      "callout_kind": "NOTA",
+      "callout_text": "length conta unidades UTF-16, não carateres visíveis. Para texto normal em português isso raramente importa, mas com emojis ou outros símbolos fora do plano básico multilingue o valor pode ser maior do que o esperado.",
+      "table_headers": [
+        "Situação",
+        "texto[indice]",
+        "texto.at(indice)"
+      ],
+      "table_rows": [
+        [
+          "Índice positivo válido",
+          "Devolve o caracter",
+          "Devolve o caracter"
+        ],
+        [
+          "Índice negativo",
+          "undefined",
+          "Conta a partir do fim da string"
+        ],
+        [
+          "Índice fora do intervalo",
+          "undefined",
+          "undefined"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔢",
+          "text": "length devolve o número de unidades da string"
+        },
+        {
+          "icon": "↩️",
+          "text": "at(-1) devolve o último caracter"
+        },
+        {
+          "icon": "🚫",
+          "text": "texto[-1] devolve undefined"
+        }
+      ]
+    },
+    {
+      "heading": "slice() vs substring(): extrair partes de uma string",
+      "body": [
+        "Ambos os métodos slice(inicio, fim) e substring(inicio, fim) devolvem uma nova substring entre os dois índices indicados, sem incluir o caracter na posição fim, e nenhum deles altera a string original, porque as strings são imutáveis em JavaScript. A diferença essencial está na forma como cada um trata valores fora do intervalo habitual.",
+        "slice() aceita índices negativos, que contam a partir do fim da string, o que o torna muito prático para obter, por exemplo, os últimos n caracteres com slice(-n). Se o índice de início for maior do que o de fim, slice() devolve simplesmente uma string vazia. substring(), pelo contrário, trata qualquer índice negativo (ou NaN) como 0 e, quando o início é maior do que o fim, troca automaticamente os dois argumentos antes de extrair a substring - um comportamento que costuma surpreender e é fonte comum de erros subtis."
+      ],
+      "code": "const frase = \"Programação em JavaScript\";\n\nconsole.log(frase.slice(0, 11)); // \"Programação\"\nconsole.log(frase.slice(-10)); // \"JavaScript\" - conta a partir do fim\nconsole.log(frase.slice(11, 0)); // \"\" - início depois do fim devolve string vazia\n\nconsole.log(frase.substring(0, 11)); // \"Programação\"\nconsole.log(frase.substring(-10)); // string completa - índice negativo é tratado como 0\nconsole.log(frase.substring(11, 0)); // \"Programação\" - os argumentos são trocados internamente",
+      "callout_kind": "ATENCAO",
+      "callout_text": "substring() troca os argumentos quando início > fim e trata negativos como 0, o que pode mascarar erros de cálculo de índices. Na dúvida, use slice() como escolha por omissão.",
+      "table_headers": [
+        "Caracteristica",
+        "slice(inicio, fim)",
+        "substring(inicio, fim)"
+      ],
+      "table_rows": [
+        [
+          "Índices negativos",
+          "Contam a partir do fim",
+          "São tratados como 0"
+        ],
+        [
+          "Início maior do que fim",
+          "Devolve string vazia",
+          "Troca os dois argumentos"
+        ],
+        [
+          "Uso recomendado",
+          "Escolha por omissão",
+          "Só quando precisar deste comportamento específico"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "✂️",
+          "text": "slice(inicio, fim) aceita índices negativos"
+        },
+        {
+          "icon": "⚠️",
+          "text": "substring troca argumentos se inicio > fim"
+        },
+        {
+          "icon": "👍",
+          "text": "slice() é a escolha recomendada por omissão"
+        }
+      ]
+    },
+    {
+      "heading": "includes(), startsWith() e endsWith(): testar o conteúdo",
+      "body": [
+        "Estes três métodos devolvem sempre um valor booleano e são a forma idiomática de perguntar se uma string contém, começa por ou termina com determinado texto, substituindo truques antigos como comparar o resultado de indexOf() com -1. Todos são sensíveis a maiúsculas e minúsculas, pelo que \"ABC\".includes(\"abc\") devolve false.",
+        "Os três aceitam um parâmetro opcional para controlar a posição da pesquisa: includes(pesquisa, posicaoInicial) e startsWith(pesquisa, posicaoInicial) ignoram tudo antes dessa posição, enquanto endsWith(pesquisa, posicaoFinal) considera a string como se terminasse nessa posição. Isto é útil para testar sufixos dentro de uma parte da string sem ter de a extrair explicitamente com slice()."
+      ],
+      "code": "const email = \"utilizador@exemplo.pt\";\n\nconsole.log(email.includes(\"@\")); // true\nconsole.log(email.startsWith(\"utilizador\")); // true\nconsole.log(email.endsWith(\".pt\")); // true\nconsole.log(email.endsWith(\"exemplo\", 18)); // true - considera só os primeiros 18 caracteres\nconsole.log(email.startsWith(\"exemplo\", 11)); // true - começa a procurar a partir do índice 11",
+      "callout_kind": "DICA",
+      "callout_text": "Estes métodos são sensíveis a maiúsculas/minúsculas. Combine-os com toLowerCase() quando precisar de uma comparação que ignore a capitalização.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔍",
+          "text": "includes() procura em qualquer posição"
+        },
+        {
+          "icon": "🏁",
+          "text": "startsWith()/endsWith() verificam extremos"
+        },
+        {
+          "icon": "🔡",
+          "text": "todos sensíveis a maiúsculas/minúsculas"
+        }
+      ]
+    },
+    {
+      "heading": "split() e join(): converter entre strings e arrays",
+      "body": [
+        "split(separador, limite) divide uma string em várias partes sempre que encontra o separador indicado, devolvendo um array de substrings. O separador pode ser uma string simples, uma string vazia (para obter um array com cada caracter individual) ou uma expressão regular, um tema que será aprofundado na próxima aula deste módulo. O parâmetro limite, opcional, limita o número de elementos devolvidos, mesmo que existam mais ocorrências do separador no texto original.",
+        "join(separador) faz exatamente o oposto: percorre um array e concatena os seus elementos numa única string, inserindo o separador indicado entre cada par de elementos consecutivos (por omissão, uma vírgula). Usar o mesmo separador nos dois métodos permite reconstruir a string original a partir do array produzido por split(), um padrão muito comum para processar texto delimitado, como linhas de um ficheiro CSV."
+      ],
+      "code": "const csv = \"nome,idade,cidade\";\nconst campos = csv.split(\",\");\nconsole.log(campos); // [\"nome\", \"idade\", \"cidade\"]\nconsole.log(campos.join(\" | \")); // \"nome | idade | cidade\"\nconsole.log(csv.split(\",\", 2)); // [\"nome\", \"idade\"] - o limite corta o resultado\n\nconst frase = \"O rato roeu a rolha\";\nconsole.log(frase.split(\" \").length); // 5 - número de palavras\n\nconst texto = \"um,dois;tres\";\nconsole.log(texto.split(/[,;]/)); // [\"um\", \"dois\", \"tres\"] - regex aprofundada na próxima aula",
+      "callout_kind": "DICA",
+      "callout_text": "join() é o inverso de split(): array.join(separador) só reconstrói a string original se usar exatamente o mesmo separador que foi usado no split().",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "✂️",
+          "text": "split() transforma uma string em array"
+        },
+        {
+          "icon": "🔗",
+          "text": "join() transforma um array em string"
+        },
+        {
+          "icon": "🔄",
+          "text": "são operações inversas uma da outra"
+        }
+      ]
+    },
+    {
+      "heading": "trim(), trimStart(), trimEnd() e padStart()/padEnd()",
+      "body": [
+        "trim() devolve uma nova string sem espaços em branco (incluindo espaços, tabulações e quebras de linha) no início e no fim; trimStart() e trimEnd() fazem o mesmo mas apenas de um dos lados. São indispensáveis para limpar dados introduzidos por utilizadores em formulários antes de os validar ou guardar, evitando por exemplo que \" lisboa \" e \"lisboa\" sejam tratados como valores diferentes.",
+        "padStart(comprimentoAlvo, textoPreenchimento) e padEnd(comprimentoAlvo, textoPreenchimento) completam uma string até atingir o comprimento indicado, acrescentando o texto de preenchimento (por omissão, um espaço) no início ou no fim, respetivamente. Se a string já tiver esse comprimento ou for mais longa, nenhum dos dois métodos a altera nem a corta, o que os torna seguros para formatar valores de comprimento variável, como números, horas ou identificadores."
+      ],
+      "code": "const input = \"   ola mundo   \";\nconsole.log(`\"${input.trim()}\"`); // '\"ola mundo\"'\nconsole.log(`\"${input.trimStart()}\"`); // '\"ola mundo   \"'\nconsole.log(`\"${input.trimEnd()}\"`); // '\"   ola mundo\"'\n\nconsole.log(\"7\".padStart(4, \"0\")); // \"0007\"\nconsole.log(\"42\".padStart(4, \"0\")); // \"0042\"\nconsole.log(\"Nome\".padEnd(10, \".\") + \"Idade\"); // \"Nome......Idade\"\nconsole.log(\"12345\".padStart(3, \"0\")); // \"12345\" - já é maior do que o alvo, não é cortada",
+      "callout_kind": "DICA",
+      "callout_text": "padStart() é muito usado para preencher códigos e horas com zeros à esquerda, como transformar 7 em \"07\" ou 9 em \"09:00\".",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧹",
+          "text": "trim() remove espaços das duas pontas"
+        },
+        {
+          "icon": "📏",
+          "text": "padStart()/padEnd() garantem comprimento fixo"
+        },
+        {
+          "icon": "0️⃣",
+          "text": "úteis para zeros à esquerda e alinhamento"
+        }
+      ]
+    },
+    {
+      "heading": "replace() vs replaceAll(): substituir texto",
+      "body": [
+        "replace(pesquisa, substituicao) substitui apenas a primeira ocorrência de pesquisa encontrada na string, a menos que pesquisa seja uma expressão regular com a flag global g, caso em que substitui todas as ocorrências. replaceAll(pesquisa, substituicao), introduzido no ES2021, substitui sempre todas as ocorrências quando pesquisa é uma string, e se for uma expressão regular exige obrigatoriamente a flag g, lançando um TypeError caso contrário.",
+        "Em ambos os métodos, o segundo argumento pode ser uma função em vez de uma string; essa função é chamada para cada correspondência encontrada e o valor que devolve é usado como substituição, o que permite calcular substituições dinâmicas com base no texto encontrado, em vez de um valor fixo."
+      ],
+      "code": "const frase = \"gato gosta de gato\";\nconsole.log(frase.replace(\"gato\", \"cão\")); // \"cão gosta de gato\" - só a primeira ocorrência\nconsole.log(frase.replaceAll(\"gato\", \"cão\")); // \"cão gosta de cão\" - todas as ocorrências\nconsole.log(frase.replace(/gato/g, \"cão\")); // \"cão gosta de cão\" - regex global também substitui tudo\n\ntry {\n  frase.replaceAll(/gato/, \"cão\");\n} catch (erro) {\n  console.log(erro.message); // regex sem flag global lança TypeError\n}\n\nconst preco = \"custa 100 euros\";\nconsole.log(preco.replace(/\\d+/, (valor) => Number(valor) * 1.1)); // \"custa 110 euros\"",
+      "callout_kind": "ATENCAO",
+      "callout_text": "replaceAll() com uma expressão regular sem a flag g lança sempre um TypeError. Com strings simples não há esse problema.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "1️⃣",
+          "text": "replace() só troca a primeira ocorrência"
+        },
+        {
+          "icon": "♾️",
+          "text": "replaceAll() troca todas as ocorrências"
+        },
+        {
+          "icon": "⚠️",
+          "text": "replaceAll com regex exige a flag /g"
+        }
+      ]
+    },
+    {
+      "heading": "toUpperCase()/toLowerCase() e a construção de strings",
+      "body": [
+        "toUpperCase() e toLowerCase() devolvem uma nova string com todas as letras convertidas para maiúsculas ou minúsculas, respetivamente, sem afetar números, espaços ou símbolos. São muito usados para normalizar texto antes de o comparar, por exemplo para tornar uma pesquisa insensível a maiúsculas e minúsculas, ou simplesmente para apresentação. Existem ainda as variantes toLocaleUpperCase() e toLocaleLowerCase(), que tomam em conta regras específicas de determinados idiomas, mas raramente são necessárias no dia a dia.",
+        "Para construir strings a partir de várias partes, a concatenação tradicional com o operador + (ou +=) sempre funcionou, mas obriga a intercalar aspas e variáveis de forma pouco legível e a converter manualmente valores que não sejam strings. Os template literals, delimitados por crases e com a sintaxe ${expressao} para interpolar qualquer expressão válida, produzem exatamente o mesmo resultado de forma mais clara, convertem automaticamente os valores interpolados para string e ainda suportam strings multilinha sem necessidade de carateres de escape, o que os torna a opção recomendada em código moderno."
+      ],
+      "code": "const nome = \"Ana\";\nconsole.log(nome.toUpperCase()); // \"ANA\"\nconsole.log(\"PROGRAMAÇÃO\".toLowerCase()); // \"programação\"\n\nfunction normalizar(texto) {\n  return texto.trim().toLowerCase();\n}\nconsole.log(normalizar(\"  JavaScript  \") === \"javascript\"); // true\n\nconst idade = 32;\nconst mensagemAntiga = \"O utilizador \" + nome + \" tem \" + idade + \" anos.\";\nconst mensagemModerna = `O utilizador ${nome} tem ${idade} anos.`;\nconsole.log(mensagemAntiga === mensagemModerna); // true\n\nconst bloco = `Linha 1\nLinha 2`;\nconsole.log(bloco.split(\"\\n\").length); // 2 - template literals suportam strings multilinha diretamente",
+      "callout_kind": "DICA",
+      "callout_text": "Prefira sempre template literals em vez de concatenar com +: são mais legíveis, convertem valores automaticamente e suportam texto multilinha sem escapes.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔠",
+          "text": "toUpperCase()/toLowerCase() mudam a capitalização"
+        },
+        {
+          "icon": "🧵",
+          "text": "template literals usam crases e ${}"
+        },
+        {
+          "icon": "✅",
+          "text": "preferir template literals a concatenar com +"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Formatar um nome próprio",
+      "difficulty": "Iniciante",
+      "statement": "Escreva uma função chamada formatarNome que recebe uma string com um nome completo (que pode ter espaços a mais no início, no fim ou entre palavras) e devolve o nome formatado com a primeira letra de cada palavra em maiúscula e as restantes letras em minúscula. Por exemplo, formatarNome(\"  ana PAULA   silva \") deve devolver \"Ana Paula Silva\".",
+      "hint": "Comece por limpar os espaços das extremidades com trim(), depois separe as palavras tendo em conta que podem existir vários espaços seguidos entre elas (uma expressão regular como /\\s+/ resolve isso no split).",
+      "solution_code": "function formatarNome(nome) {\n  return nome\n    .trim()\n    .split(/\\s+/)\n    .map((palavra) => palavra.at(0).toUpperCase() + palavra.slice(1).toLowerCase())\n    .join(\" \");\n}\n\nconsole.log(formatarNome(\"  ana PAULA   silva \")); // \"Ana Paula Silva\"",
+      "solution_explanation": "A função remove espaços das extremidades com trim(), divide a string em palavras com uma regex que apanha um ou mais espaços consecutivos, e para cada palavra usa at(0) mais toUpperCase() para a primeira letra e slice(1) mais toLowerCase() para o resto, voltando a juntar tudo com join(\" \")."
+    },
+    {
+      "title": "Linha de fatura alinhada",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função criarLinhaFatura(produto, preco) que recebe o nome de um produto (string) e o respetivo preço (number) e devolve uma linha de texto onde o nome ocupa sempre uma coluna de 20 caracteres (alinhado à esquerda, completado com espaços) e o preço, convertido para string, ocupa uma coluna de 10 caracteres (alinhado à direita, completado com espaços), seguida de \" €\". Por exemplo, criarLinhaFatura(\"Teclado\", 49).length deve ser igual a 32 (20 + 10 + 2).",
+      "hint": "Converta o preço para string com um template literal, depois use padEnd() no nome e padStart() no preço para obter as larguras fixas pedidas, e junte tudo com \" €\" no final.",
+      "solution_code": "function criarLinhaFatura(produto, preco) {\n  const nomeAlinhado = produto.padEnd(20);\n  const precoAlinhado = `${preco}`.padStart(10);\n  return `${nomeAlinhado}${precoAlinhado} €`;\n}\n\nconsole.log(criarLinhaFatura(\"Teclado\", 49));\nconsole.log(criarLinhaFatura(\"Teclado\", 49).length); // 32",
+      "solution_explanation": "produto.padEnd(20) garante que o nome ocupa sempre 20 caracteres, completando com espaços à direita; o preço é convertido para string com um template literal e alinhado à direita numa coluna de 10 caracteres com padStart(); a concatenação final junta as duas colunas com \" €\"."
+    },
+    {
+      "title": "Mascarar um endereço de email",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função mascararEmail(email) que recebe um endereço de email válido (sempre no formato utilizador@dominio) e devolve uma versão parcialmente oculta, mostrando apenas os 2 primeiros caracteres do utilizador seguidos de asteriscos até completar o mesmo comprimento do utilizador original, mantendo o domínio completo e o símbolo @. Por exemplo, mascararEmail(\"adriano.toledo@casais.pt\") deve devolver \"ad************@casais.pt\".",
+      "hint": "Use split(\"@\") para separar o utilizador do domínio, slice(0, 2) para manter as duas primeiras letras visíveis, e padEnd() para completar o resto com asteriscos até ao comprimento original do utilizador.",
+      "solution_code": "function mascararEmail(email) {\n  const [utilizador, dominio] = email.split(\"@\");\n  const visivel = utilizador.slice(0, 2);\n  const oculto = visivel.padEnd(utilizador.length, \"*\");\n  return `${oculto}@${dominio}`;\n}\n\nconsole.log(mascararEmail(\"adriano.toledo@casais.pt\")); // \"ad************@casais.pt\"",
+      "solution_explanation": "A função separa o email em utilizador e domínio com split(\"@\"), mantém os dois primeiros caracteres do utilizador com slice(0, 2) e usa padEnd() para completar até ao comprimento original com asteriscos, remontando tudo com um template literal."
+    },
+    {
+      "title": "Verificar palíndromos",
+      "difficulty": "Avancado",
+      "statement": "Escreva uma função ehPalindromo(texto) que verifica se uma frase é um palíndromo, ignorando espaços, pontuação e a diferença entre maiúsculas e minúsculas. Por exemplo, ehPalindromo(\"A sacada da casa\") deve devolver true e ehPalindromo(\"Isto não é um palíndromo\") deve devolver false. Um palíndromo lê-se da mesma forma da esquerda para a direita e da direita para a esquerda.",
+      "hint": "Normalize a frase para minúsculas e remova tudo o que não seja letra com replaceAll() e uma expressão regular; depois compare a string normalizada com a sua versão invertida, obtida transformando-a num array de caracteres, invertendo-o e voltando a juntá-lo numa string.",
+      "solution_code": "function ehPalindromo(texto) {\n  const normalizado = texto.toLowerCase().replaceAll(/[^a-zà-ú]/g, \"\");\n  const invertido = normalizado.split(\"\").reverse().join(\"\");\n  return normalizado === invertido;\n}\n\nconsole.log(ehPalindromo(\"A sacada da casa\")); // true\nconsole.log(ehPalindromo(\"Isto não é um palíndromo\")); // false",
+      "solution_explanation": "A função normaliza o texto para minúsculas e remove espaços, pontuação e outros caracteres não alfabéticos com replaceAll() e uma regex, depois usa split(\"\") para transformar a string num array de caracteres, reverse() para o inverter e join(\"\") para reconstruir a string invertida, comparando-a com a original normalizada."
+    }
+  ],
+  "summary": [
+    "length devolve o número de unidades UTF-16 da string; at() aceita índices negativos, ao contrário da notação com [].",
+    "slice() aceita índices negativos e nunca troca argumentos; substring() trata negativos como 0 e troca os argumentos se início > fim - por isso slice() costuma ser a escolha por omissão.",
+    "includes(), startsWith() e endsWith() devolvem booleanos, aceitam uma posição opcional e são sensíveis a maiúsculas/minúsculas.",
+    "split() converte uma string num array e join() faz o inverso; trim()/trimStart()/trimEnd() limpam espaços e padStart()/padEnd() garantem comprimentos fixos.",
+    "replace() só substitui a primeira ocorrência (exceto com regex global); replaceAll() substitui sempre todas as ocorrências.",
+    "toUpperCase()/toLowerCase() normalizam a capitalização; template literals com crases e ${} são a forma moderna e recomendada de construir strings, em vez da concatenação com +."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 02",
+  "next_label": "Aula 02 → Template Literals e Tagged Templates",
+  "_stage": "autoria"
+}

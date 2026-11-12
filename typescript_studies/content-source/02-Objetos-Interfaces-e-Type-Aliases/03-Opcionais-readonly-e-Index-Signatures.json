@@ -1,0 +1,390 @@
+{
+  "module_num": "02",
+  "module_title": "Objetos, Interfaces e Type Aliases",
+  "module_dir": "02-Objetos-Interfaces-e-Type-Aliases",
+  "lesson_num": "03",
+  "lesson_slug": "Opcionais-readonly-e-Index-Signatures",
+  "kind": "aula",
+  "title": "Propriedades Opcionais, readonly e Index Signatures",
+  "filename_base": "03-Opcionais-readonly-e-Index-Signatures",
+  "subtitle": "Propriedades que podem faltar, propriedades que não mudam e chaves desconhecidas",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Declarar propriedades opcionais e lidar com o undefined que elas trazem",
+    "Distinguir uma propriedade opcional de uma obrigatória que aceita undefined",
+    "Saber o que a opção exactOptionalPropertyTypes aperta",
+    "Usar readonly em propriedades e reconhecer os seus limites",
+    "Escrever index signatures para objetos de chaves desconhecidas",
+    "Combinar chaves conhecidas, índices numéricos e acessos seguros"
+  ],
+  "sections": [
+    {
+      "heading": "Propriedades opcionais com o ponto de interrogação",
+      "body": [
+        "Um ponto de interrogação a seguir ao nome da propriedade marca-a como opcional: quem constrói o objeto pode omiti-la por completo e o compilador não se queixa. É a forma de descrever campos que nem sempre existem, como um telefone que o utilizador não preencheu ou um campo que só certas respostas da API trazem.",
+        "O ponto de interrogação faz duas coisas ao mesmo tempo, e só a primeira é óbvia. Além de dispensar a propriedade na criação do objeto, acrescenta undefined ao tipo que se obtém ao lê-la. Uma propriedade declarada como telefone com ponto de interrogação e tipo string lê-se sempre como string unido com undefined, e é por isso que o compilador rejeita chamadas diretas a métodos de string.",
+        "As saídas são as que já conhece do JavaScript: optional chaining, nullish coalescing, ou uma comparação explícita com undefined que estreita o tipo dentro do bloco. A diferença é que agora o compilador o obriga a escolher uma delas antes de deixar o código passar, em vez de o deixar descobrir o problema em produção."
+      ],
+      "code": "interface Utilizador {\n  id: number;\n  nome: string;\n  telefone?: string; // o tipo lido é string | undefined\n}\n\n// Com a propriedade e sem ela: as duas formas são válidas\nconst completo: Utilizador = { id: 1, nome: \"Ana\", telefone: \"912345678\" };\nconst minimo: Utilizador = { id: 2, nome: \"Bruno\" };\n\n// @ts-expect-error id e nome continuam obrigatórios\nconst invalido: Utilizador = { telefone: \"912345678\" };\n\n// @ts-expect-error telefone pode ser undefined: não se lê .length às cegas\nconst tamanho = minimo.telefone.length;\n\n// As saídas habituais\nconst seguro = minimo.telefone?.length ?? 0; // 0\nconst comOmissao = minimo.telefone ?? \"sem telefone\"; // \"sem telefone\"\n\nfunction formatar(u: Utilizador): string {\n  if (u.telefone === undefined) {\n    return u.nome;\n  }\n  // a partir daqui u.telefone é string\n  return `${u.nome} (${u.telefone.trim()})`;\n}\n\nconsole.log(completo, invalido, tamanho, seguro, comOmissao);\nconsole.log(formatar(minimo)); // \"Bruno\"",
+      "callout_kind": "DICA",
+      "callout_text": "Não marque uma propriedade como opcional só para calar o compilador enquanto constrói um objeto por partes. Cada ponto de interrogação é um undefined que se propaga por todo o código que lê essa propriedade. Se o campo existe sempre depois da criação, o tipo deve dizê-lo.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "❓",
+          "text": "O ponto de interrogação dispensa a propriedade na criação"
+        },
+        {
+          "icon": "🕳️",
+          "text": "E acrescenta undefined ao tipo de quem a lê"
+        },
+        {
+          "icon": "🛡️",
+          "text": "Obriga a verificar antes de usar o valor"
+        }
+      ]
+    },
+    {
+      "heading": "Opcional não é o mesmo que aceitar undefined",
+      "body": [
+        "Esta é a distinção que apanha mais gente. Uma propriedade opcional, com ponto de interrogação, pode não estar lá. Uma propriedade obrigatória cujo tipo inclui undefined tem de estar lá, nem que seja escrita à mão com o valor undefined. Ao ler, as duas dão o mesmo tipo; ao construir o objeto, não dão nada a mesma liberdade.",
+        "A diferença não é académica. Object.keys, o operador in, a serialização com JSON.stringify e o espalhamento de objetos distinguem uma chave ausente de uma chave presente com o valor undefined. Em atualizações parciais, por exemplo, a chave presente com undefined costuma significar apagar o campo, enquanto a chave ausente significa deixar como está. Escolher mal entre as duas formas transforma um campo intacto num campo apagado.",
+        "Por omissão, o TypeScript é permissivo num ponto: numa propriedade opcional, aceita que se escreva explicitamente undefined. A opção exactOptionalPropertyTypes fecha essa porta e passa a tratar o ponto de interrogação ao pé da letra: a propriedade pode faltar, mas não pode ser escrita com undefined. Quem quiser as duas coisas tem de as declarar, com ponto de interrogação e com undefined na união. A opção não está incluída no strict e liga-se à mão no tsconfig, tema do módulo 09."
+      ],
+      "code": "interface ComOpcional {\n  nome?: string;\n}\n\ninterface ComUndefined {\n  nome: string | undefined;\n}\n\n// A opcional pode simplesmente faltar\nconst a: ComOpcional = {};\n\n// @ts-expect-error a obrigatória tem de estar presente, nem que seja com undefined\nconst b: ComUndefined = {};\nconst c: ComUndefined = { nome: undefined };\n\n// Ao ler, o tipo é o mesmo nos dois casos\nconst x: string | undefined = a.nome;\nconst y: string | undefined = c.nome;\n\n// A diferença está na presença da chave\nconsole.log(Object.keys(a).length); // 0\nconsole.log(Object.keys(c).length); // 1\nconsole.log(\"nome\" in a); // false\nconsole.log(\"nome\" in c); // true\n\n// Sem exactOptionalPropertyTypes, uma opcional aceita undefined explícito\nconst d: ComOpcional = { nome: undefined }; // aceite por omissão\n// Com exactOptionalPropertyTypes ligada, a linha acima passa a ser erro:\n// o tipo de nome é string, e não string | undefined.\n// Para a continuar a permitir, declarava-se nome?: string | undefined\n\nconsole.log(b, x, y, d);",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Com exactOptionalPropertyTypes ligada, atribuir undefined a uma propriedade opcional passa a ser erro. É a opção certa para código que trata atualizações parciais, onde apagar um campo e não lhe tocar têm de ser coisas diferentes. Em código já existente, ligá-la costuma revelar bastantes linhas para corrigir.",
+      "table_headers": [
+        "Declaração",
+        "Pode faltar?",
+        "Aceita undefined explícito?",
+        "Tipo ao ler"
+      ],
+      "table_rows": [
+        [
+          "nome?: string",
+          "Sim",
+          "Sim por omissão, não com exactOptionalPropertyTypes",
+          "string | undefined"
+        ],
+        [
+          "nome: string | undefined",
+          "Não",
+          "Sim",
+          "string | undefined"
+        ],
+        [
+          "nome?: string | undefined",
+          "Sim",
+          "Sim, sempre",
+          "string | undefined"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔀",
+          "text": "Faltar e valer undefined não são a mesma coisa"
+        },
+        {
+          "icon": "🔑",
+          "text": "Object.keys e o operador in veem a diferença"
+        },
+        {
+          "icon": "⚙️",
+          "text": "exactOptionalPropertyTypes leva o ? à letra"
+        }
+      ]
+    },
+    {
+      "heading": "readonly em propriedades de objeto",
+      "body": [
+        "O modificador readonly antes do nome da propriedade impede que lhe seja atribuído um valor novo depois de o objeto ser criado. A atribuição inicial, dentro do literal, é permitida; é só a reatribuição posterior que o compilador rejeita. Serve para identificadores, datas de criação, configurações carregadas no arranque e tudo o que deva ser fixado uma vez e nunca mais tocado.",
+        "Convém não confundir readonly com const. O const protege a ligação entre o nome e o valor: impede que a variável passe a apontar para outro objeto, mas não diz nada sobre o interior desse objeto. O readonly é exatamente o contrário: protege a propriedade dentro do objeto, seja qual for a variável por onde lá se chega.",
+        "Marcar propriedades como readonly empurra naturalmente para um estilo em que as alterações produzem objetos novos em vez de modificarem os existentes, com espalhamento a copiar o resto. É o mesmo hábito que já terá visto em estado de interface gráfica, agora com o compilador a garanti-lo. Para tornar todas as propriedades de um tipo só de leitura de uma vez existe o utility type Readonly, tema do módulo 07."
+      ],
+      "code": "interface Config {\n  readonly url: string;\n  readonly porta: number;\n  timeout: number;\n}\n\nconst config: Config = {\n  url: \"https://api.exemplo.pt\",\n  porta: 443,\n  timeout: 5000,\n};\n\nconfig.timeout = 10000; // permitido: não é readonly\n\n// @ts-expect-error url é readonly e não pode ser reatribuída\nconfig.url = \"http://outra.pt\";\n\n// readonly protege a propriedade; const protege a variável\n// @ts-expect-error config foi declarado com const\nconfig = { url: \"x\", porta: 80, timeout: 1 };\n\n// O padrão habitual: em vez de alterar, devolver um objeto novo\ntype Ponto = { readonly x: number; readonly y: number };\n\nfunction mover(p: Ponto, dx: number, dy: number): Ponto {\n  return { x: p.x + dx, y: p.y + dy };\n}\n\nconst origem: Ponto = { x: 0, y: 0 };\nconsole.log(mover(origem, 3, 4)); // { x: 3, y: 4 }\n\n// readonly não impede a atribuição inicial nem a criação por spread\nconst copia: Ponto = { ...origem, x: 10 };\nconsole.log(config.timeout, copia); // 10000 { x: 10, y: 0 }",
+      "callout_kind": "NOTA",
+      "callout_text": "O readonly não entra na compatibilidade entre tipos como seria de esperar: um objeto com propriedades mutáveis é aceite onde se espera um tipo com as mesmas propriedades readonly, e o contrário também passa. É uma ajuda para quem escreve o código, não uma barreira à prova de tudo.",
+      "table_headers": [
+        "Mecanismo",
+        "O que protege",
+        "Exemplo rejeitado"
+      ],
+      "table_rows": [
+        [
+          "const",
+          "A ligação entre o nome e o valor",
+          "config = { ... }"
+        ],
+        [
+          "readonly",
+          "A propriedade dentro do objeto",
+          "config.url = \"...\""
+        ],
+        [
+          "Object.freeze",
+          "O objeto em tempo de execução",
+          "Alteração silenciosa em runtime"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔒",
+          "text": "readonly impede reatribuir a propriedade depois de criada"
+        },
+        {
+          "icon": "🪢",
+          "text": "const protege a variável, readonly protege a propriedade"
+        },
+        {
+          "icon": "♻️",
+          "text": "Empurra para objetos novos em vez de alterações"
+        }
+      ]
+    },
+    {
+      "heading": "A proteção de readonly é rasa e só existe no compilador",
+      "body": [
+        "O readonly aplica-se a uma propriedade e não ao que está dentro dela. Se a propriedade guarda um objeto ou um array, o compilador impede que essa propriedade passe a apontar para outro objeto, mas não impede que se altere o interior do que lá está. Mudar a cidade dentro da morada, ou fazer push nas etiquetas, compila sem uma única queixa. É a mesma imutabilidade rasa que já viu em readonly string[] no módulo 01.",
+        "A segunda limitação é mais profunda e liga à ideia do módulo 00: os tipos desaparecem na compilação. O JavaScript emitido não sabe o que é readonly e nada nele impede a alteração. Basta uma asserção de tipo, um any vindo de uma biblioteca, ou um objeto que chegou de JSON.parse, para que a propriedade mude sem que o compilador tenha tido oportunidade de dizer alguma coisa.",
+        "Quando é mesmo preciso impedir a alteração em tempo de execução, a ferramenta é o JavaScript e não o TypeScript: Object.freeze. E tem a vantagem de o TypeScript reconhecer a assinatura do freeze e devolver um tipo só de leitura, pelo que passa a haver proteção dos dois lados. Continua a ser rasa: congela um nível, não a árvore inteira."
+      ],
+      "code": "interface Perfil {\n  readonly nome: string;\n  readonly morada: { rua: string; cidade: string };\n  readonly etiquetas: string[];\n}\n\nconst perfil: Perfil = {\n  nome: \"Ana\",\n  morada: { rua: \"Rua A\", cidade: \"Porto\" },\n  etiquetas: [\"admin\"],\n};\n\n// @ts-expect-error a propriedade morada está protegida\nperfil.morada = { rua: \"Rua B\", cidade: \"Braga\" };\n\n// O interior do objeto aninhado não está: readonly é raso\nperfil.morada.cidade = \"Braga\"; // compila sem uma queixa\nperfil.etiquetas.push(\"editor\"); // idem\n\nconsole.log(perfil.morada.cidade); // \"Braga\"\nconsole.log(perfil.etiquetas); // [\"admin\", \"editor\"]\n\n// E desaparece na compilação: o JavaScript emitido não sabe o que é readonly\nconst comoObjetoQualquer = perfil as { nome: string };\ncomoObjetoQualquer.nome = \"Bruno\";\nconsole.log(perfil.nome); // \"Bruno\"\n\n// A proteção em tempo de execução tem outro nome\nconst congelado = Object.freeze({ id: 1, total: 10 });\n// @ts-expect-error Object.freeze devolve um tipo Readonly\ncongelado.total = 20; // em modo estrito lança TypeError; sem ele, é ignorada\nconsole.log(congelado.total); // 10, o objeto está mesmo protegido",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Nunca use readonly como medida de segurança. Não protege contra dados que chegam do exterior, contra código em JavaScript puro, nem contra qualquer asserção de tipo. É documentação executável para a equipa, verificada enquanto escreve, e nada mais do que isso.",
+      "table_headers": [
+        "Operação",
+        "readonly morada",
+        "Porquê"
+      ],
+      "table_rows": [
+        [
+          "perfil.morada = { ... }",
+          "Erro de compilação",
+          "A propriedade em si está protegida"
+        ],
+        [
+          "perfil.morada.cidade = \"Braga\"",
+          "Permitido",
+          "A proteção não desce ao objeto aninhado"
+        ],
+        [
+          "perfil.etiquetas.push(\"x\")",
+          "Permitido",
+          "O array continua a ser um array mutável"
+        ],
+        [
+          "Alteração em tempo de execução",
+          "Nada a impede",
+          "O tipo não existe depois da compilação"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🫧",
+          "text": "readonly é raso: o objeto aninhado continua alterável"
+        },
+        {
+          "icon": "👻",
+          "text": "Desaparece na compilação, não protege em runtime"
+        },
+        {
+          "icon": "🧊",
+          "text": "Object.freeze é a versão que existe em execução"
+        }
+      ]
+    },
+    {
+      "heading": "Index signatures: chaves desconhecidas de antemão",
+      "body": [
+        "Nem todos os objetos têm um conjunto fixo de propriedades. Um dicionário de traduções, um mapa de preços por referência de artigo, um conjunto de cabeçalhos HTTP: em todos eles as chaves só se conhecem em tempo de execução. Para os descrever existe a index signature, escrita entre parênteses retos com um nome para a chave, o seu tipo, e o tipo do valor: abre parênteses reto, chave, dois pontos, string, fecha, dois pontos, tipo do valor.",
+        "O nome da chave é puramente documental, tal como nos parâmetros de uma função: escrever chave, referencia ou artigo não muda nada no tipo, só torna a declaração legível. O que conta é o tipo da chave, que só pode ser string, number, symbol ou um tipo template literal, e o tipo do valor.",
+        "A limitação central é que o tipo do valor se aplica a todas as propriedades, sem exceção. Assim que declara que os valores são strings, nenhuma propriedade daquele objeto pode ser outra coisa. Quando os valores são heterogéneos, a saída é uma união, e aí o preço é ter de estreitar o tipo sempre que se lê. O readonly também funciona numa index signature e torna o objeto inteiro só de leitura."
+      ],
+      "code": "// Chaves desconhecidas de antemão, todos os valores do mesmo tipo\ninterface Traducoes {\n  [chave: string]: string;\n}\n\nconst pt: Traducoes = { hello: \"olá\", bye: \"adeus\" };\npt.thanks = \"obrigado\";\npt[\"please\"] = \"por favor\";\n\n// @ts-expect-error o valor tem de ser compatível com o tipo do índice\npt.idade = 42;\n\n// O acesso devolve sempre o tipo declarado, mesmo para chaves que não existem\nconst nada = pt[\"inexistente\"]; // tipo string; em execução, undefined\n\n// Também se escreve com type alias, e o valor pode ser qualquer tipo\ntype Stock = { [referencia: string]: number };\nconst stock: Stock = { \"ABC-1\": 10 };\nstock[\"XYZ-9\"] = 4;\n\n// readonly aplica-se à própria index signature\ntype Tabela = { readonly [chave: string]: number };\nconst tabela: Tabela = { a: 1 };\n// @ts-expect-error a index signature só permite leitura\ntabela.a = 2;\n\nconsole.log(pt, nada, stock, tabela); // nada é undefined",
+      "callout_kind": "DICA",
+      "callout_text": "Se as chaves forem mesmo dinâmicas e o objeto for só um mapa, considere antes um Map do JavaScript: aceita chaves de qualquer tipo, tem tamanho, não herda propriedades do prototype e não confunde chaves numéricas com strings. A index signature ganha quando os dados vêm em JSON, que só tem objetos.",
+      "table_headers": [
+        "Escrita",
+        "Significado"
+      ],
+      "table_rows": [
+        [
+          "[chave: string]: string",
+          "Qualquer chave de texto, valores sempre string"
+        ],
+        [
+          "[indice: number]: string",
+          "Chaves numéricas, valores string"
+        ],
+        [
+          "readonly [chave: string]: number",
+          "Leitura apenas, em qualquer chave"
+        ],
+        [
+          "[chave: string]: string | number",
+          "Valores heterogéneos, exigem estreitar ao ler"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🗂️",
+          "text": "Descreve objetos cujas chaves só se sabem em execução"
+        },
+        {
+          "icon": "📏",
+          "text": "Um único tipo de valor para todas as propriedades"
+        },
+        {
+          "icon": "🏷️",
+          "text": "O nome da chave é documentação, não muda o tipo"
+        }
+      ]
+    },
+    {
+      "heading": "Chaves conhecidas, índices numéricos e as suas regras",
+      "body": [
+        "Uma index signature pode conviver com propriedades declaradas à mão, e é assim que se descrevem objetos com alguns campos garantidos mais um número indeterminado de extras. Há uma regra que não se contorna: todas as propriedades declaradas têm de ser compatíveis com o tipo do índice. Declarar um campo booleano num objeto cujo índice de string promete valores string é um erro, e o compilador aponta-o na linha da propriedade.",
+        "É uma restrição lógica, e não uma chatice do compilador: se qualquer chave de texto devolve uma string, uma propriedade chamada ativo também é uma chave de texto e não pode ser exceção. A saída passa por alargar o tipo do índice com uma união, o que obriga a estreitar ao ler, ou por separar os dois grupos de campos em tipos diferentes e juntá-los depois, tema da próxima aula.",
+        "O índice numérico existe porque os arrays e os objetos indexados por posição são comuns, mas tem uma particularidade herdada do JavaScript: as chaves dos objetos são sempre strings, e uma chave numérica é convertida em texto antes da procura. Por isso, quando os dois índices coexistem, o tipo do valor do índice numérico tem de ser compatível com o do índice de string. Um índice de string continua a aceitar acessos com números."
+      ],
+      "code": "// Propriedades conhecidas ao lado de uma index signature\ninterface Resposta {\n  estado: number;\n  mensagem: string;\n  [cabecalho: string]: string | number;\n}\n\nconst r: Resposta = {\n  estado: 200,\n  mensagem: \"OK\",\n  \"x-request-id\": \"abc-123\",\n};\nconsole.log(r.estado, r[\"x-request-id\"]); // 200 \"abc-123\"\n\n// A regra: cada propriedade declarada tem de caber no tipo do índice\ninterface Invalida {\n  // @ts-expect-error boolean não cabe na index signature de string\n  ativo: boolean;\n  [chave: string]: string;\n}\n\n// Índice numérico: as chaves são números, não strings\ninterface Linhas {\n  [indice: number]: string;\n}\nconst linhas: Linhas = { 0: \"primeira\", 1: \"segunda\" };\nconsole.log(linhas[0]); // \"primeira\"\n\n// Os dois índices podem coexistir, mas o numérico tem de caber no de string,\n// porque em JavaScript obj[0] e obj[\"0\"] são a mesma chave\ninterface Misto {\n  [chave: string]: string | number;\n  [indice: number]: number;\n}\nconst misto: Misto = { titulo: \"relatório\", 0: 10 };\nconsole.log(misto[0], misto[\"titulo\"]); // 10 \"relatório\"\n\ninterface Conflito {\n  [chave: string]: number;\n  // @ts-expect-error o índice numérico tem de ser compatível com o de string\n  [indice: number]: string;\n}\n\nconst conflito: Conflito = {};\nconsole.log(conflito);",
+      "callout_kind": "NOTA",
+      "callout_text": "Uma index signature de string desliga também a verificação de propriedades em excesso: qualquer chave passa a ser aceite, incluindo nomes escritos com erro. Quando o conjunto de chaves é conhecido, prefira declarar as propriedades ou usar um Record com uma união de chaves, tema do módulo 07.",
+      "table_headers": [
+        "Situação",
+        "Aceite?",
+        "Motivo"
+      ],
+      "table_rows": [
+        [
+          "estado: number com índice string | number",
+          "Sim",
+          "number cabe na união do índice"
+        ],
+        [
+          "ativo: boolean com índice string",
+          "Não",
+          "boolean não é compatível com o tipo do índice"
+        ],
+        [
+          "Índice string de string | number e numérico de number",
+          "Sim",
+          "number cabe no tipo do índice de string"
+        ],
+        [
+          "Índice string de number e numérico de string",
+          "Não",
+          "As chaves numéricas são também chaves de texto"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧩",
+          "text": "Campos fixos e index signature convivem no mesmo tipo"
+        },
+        {
+          "icon": "⛔",
+          "text": "Toda a propriedade tem de caber no tipo do índice"
+        },
+        {
+          "icon": "🔢",
+          "text": "O índice numérico tem de caber no de string"
+        }
+      ]
+    },
+    {
+      "heading": "noUncheckedIndexedAccess: mais seguro e mais chato",
+      "body": [
+        "Há uma mentira confortável no acesso por índice. Ao ler precos com uma chave que não existe, o compilador diz que o resultado é number, porque é isso que a index signature promete, quando em tempo de execução o valor é undefined. É a mesma brecha que viu nos arrays, no módulo 01, e por isso o método seguinte rebenta com um erro que nada no editor tinha assinalado.",
+        "A opção noUncheckedIndexedAccess corrige esta assinatura: com ela ligada, qualquer acesso por índice, em arrays ou em objetos com index signature, devolve o tipo unido com undefined. Passa a ser preciso verificar antes de usar, e o compilador apanha uma classe inteira de erros que antes só apareciam em produção. As propriedades declaradas explicitamente não são afetadas: apenas os acessos que passam pela index signature.",
+        "O custo é real: em código que percorre e preenche dicionários, a opção obriga a acrescentar verificações em vários sítios, e algumas delas são de facto redundantes. Não está incluída no strict, precisamente por ser tão incómoda. O hábito que vale a pena adotar, com ou sem a opção ligada, é anotar o resultado do acesso como o tipo unido com undefined e tratar o caso ausente logo ali."
+      ],
+      "code": "type Precos = { [artigo: string]: number };\n\nconst precos: Precos = { cafe: 0.8, agua: 0.6 };\n\n// Sem noUncheckedIndexedAccess, o tipo declarado é number e isto compila\nconst cha = precos[\"cha\"]; // tipo number; valor real: undefined\ntry {\n  console.log(cha.toFixed(2)); // TypeError em tempo de execução\n} catch (erro) {\n  console.log((erro as TypeError).message); // \"Cannot read properties of undefined...\"\n}\n\n// Com noUncheckedIndexedAccess ligada, precos[\"cha\"] passa a ser\n// number | undefined e a linha acima deixa de compilar\n\n// A defesa que funciona com ou sem a opção: anotar o que é verdade\nconst talvez: number | undefined = precos[\"cha\"];\nif (talvez !== undefined) {\n  console.log(talvez.toFixed(2));\n}\n\n// Ou usar os operadores que já conhece\nconsole.log(precos[\"cha\"] ?? 0); // 0\n\n// A opção não afeta as propriedades declaradas explicitamente\ninterface Carrinho {\n  total: number;\n  [artigo: string]: number;\n}\nconst carrinho: Carrinho = { total: 1.4, cafe: 0.8 };\nconsole.log(carrinho.total.toFixed(2)); // \"1.40\", seguro em qualquer caso",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Ligue noUncheckedIndexedAccess num projeto pequeno e conte os erros que aparecem. Em cada um, pergunte-se se a chave podia mesmo não existir. Se a resposta for sim mais do que duas ou três vezes, acabou de encontrar bugs que estavam à espera de dados reais.",
+      "table_headers": [
+        "Acesso",
+        "Tipo sem a opção",
+        "Tipo com a opção"
+      ],
+      "table_rows": [
+        [
+          "precos[\"cha\"]",
+          "number",
+          "number | undefined"
+        ],
+        [
+          "carrinho.total",
+          "number",
+          "number"
+        ],
+        [
+          "lista[0] num array",
+          "string",
+          "string | undefined"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🎭",
+          "text": "Por omissão o índice mente: diz number, dá undefined"
+        },
+        {
+          "icon": "✅",
+          "text": "A opção acrescenta | undefined a cada acesso"
+        },
+        {
+          "icon": "🧯",
+          "text": "Anotar | undefined à mão protege sem depender dela"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Ficha de livro com campos opcionais",
+      "difficulty": "Iniciante",
+      "statement": "Defina uma interface Livro com isbn de tipo string e só de leitura, titulo e autor obrigatórios, e ano de tipo number e editora de tipo string, ambos opcionais. Crie um livro só com os campos obrigatórios e outro com todos. Demonstre, com o comentário de erro esperado, que o isbn não pode ser alterado depois da criação, e altere o titulo para mostrar que esse é permitido. Escreva depois uma função descrever que devolva uma linha com o titulo, o autor, o ano ou o texto sem data, e a editora ou o texto editora desconhecida.",
+      "hint": "Para o ano precisa de comparar com undefined antes de o converter em texto, porque o número zero não é o problema aqui mas o hábito é o mesmo. Para a editora, o operador de coalescência nula resolve numa linha.",
+      "solution_code": "interface Livro {\n  readonly isbn: string;\n  titulo: string;\n  autor: string;\n  ano?: number;\n  editora?: string;\n}\n\nconst minimo: Livro = { isbn: \"978-989-1\", titulo: \"Ensaio\", autor: \"Ana\" };\nconst completo: Livro = {\n  isbn: \"978-989-2\",\n  titulo: \"Rede\",\n  autor: \"Bruno\",\n  ano: 2020,\n  editora: \"Norte\",\n};\n\n// @ts-expect-error o isbn é readonly e não pode mudar depois de criado\nminimo.isbn = \"978-989-9\";\n\nminimo.titulo = \"Ensaio revisto\"; // permitido: titulo não é readonly\n\nfunction descrever(livro: Livro): string {\n  const ano = livro.ano === undefined ? \"sem data\" : String(livro.ano);\n  const editora = livro.editora ?? \"editora desconhecida\";\n  return `${livro.titulo}, ${livro.autor} (${ano}, ${editora})`;\n}\n\nconsole.log(descrever(minimo)); // \"Ensaio revisto, Ana (sem data, editora desconhecida)\"\nconsole.log(descrever(completo)); // \"Rede, Bruno (2020, Norte)\"",
+      "solution_explanation": "O readonly no isbn transforma uma regra de negócio numa verificação do compilador, sem impedir que o titulo mude. Os dois campos opcionais chegam à função como tipos unidos com undefined, e a função é obrigada a decidir o que fazer com a ausência antes de usar o valor. Repare que o objeto mínimo é válido sem sequer mencionar ano ou editora."
+    },
+    {
+      "title": "Ausente ou definido como undefined",
+      "difficulty": "Intermedio",
+      "statement": "Defina uma interface Preferencias com idioma opcional de tipo string e notificacoes obrigatório de tipo boolean unido com undefined. Mostre, com o comentário de erro esperado, que um objeto vazio não satisfaz a interface. Crie um objeto sem idioma e outro com idioma definido explicitamente como undefined. Escreva uma função foiDecidido que receba as preferências e o nome de uma das chaves e diga se essa chave está presente no objeto, e uma função resumir que aplique os valores por omissão pt e false.",
+      "hint": "O operador in distingue a chave ausente da chave presente com valor undefined, coisa que uma comparação com undefined nunca conseguiria. Para o parâmetro do nome da chave, keyof Preferencias evita repetir os nomes à mão.",
+      "solution_code": "interface Preferencias {\n  idioma?: string;\n  notificacoes: boolean | undefined;\n}\n\n// @ts-expect-error notificacoes é obrigatória, mesmo aceitando undefined\nconst emFalta: Preferencias = {};\n\nconst semIdioma: Preferencias = { notificacoes: undefined };\nconst comIdiomaIndefinido: Preferencias = {\n  idioma: undefined,\n  notificacoes: true,\n};\n\nfunction foiDecidido(p: Preferencias, chave: keyof Preferencias): boolean {\n  return chave in p;\n}\n\nconsole.log(foiDecidido(semIdioma, \"idioma\")); // false\nconsole.log(foiDecidido(comIdiomaIndefinido, \"idioma\")); // true\nconsole.log(foiDecidido(semIdioma, \"notificacoes\")); // true\n\nfunction resumir(p: Preferencias): string {\n  const idioma = p.idioma ?? \"pt\";\n  const notificacoes = p.notificacoes ?? false;\n  return `${idioma}/${notificacoes}`;\n}\n\nconsole.log(resumir(semIdioma)); // \"pt/false\"\nconsole.log(resumir(comIdiomaIndefinido)); // \"pt/true\"\nconsole.log(emFalta);",
+      "solution_explanation": "O objeto vazio é rejeitado porque notificacoes é obrigatória, apesar de o seu tipo incluir undefined: a chave tem de lá estar. A função foiDecidido mostra que os dois objetos são distinguíveis em tempo de execução, embora leiam o mesmo tipo, e é essa diferença que interessa em atualizações parciais. Com exactOptionalPropertyTypes ligada, o objeto que define idioma como undefined deixaria de compilar."
+    },
+    {
+      "title": "Contador de palavras com index signature",
+      "difficulty": "Intermedio",
+      "statement": "Defina um tipo Contagem cujas chaves sejam strings e os valores números. Escreva uma função contar que receba um array só de leitura de strings e devolva a Contagem de quantas vezes cada palavra aparece, ignorando maiúsculas e minúsculas. Escreva também uma função vezes que devolva o número de ocorrências de uma palavra, ou zero se ela não constar. Termine demonstrando, com o comentário de erro esperado, que a index signature não deixa guardar um valor de texto.",
+      "hint": "Ao ler uma chave que pode não existir, anote o resultado como number unido com undefined: o compilador aceita porque number cabe nessa união, e passa a obrigá-lo a tratar o caso ausente, tal como faria com noUncheckedIndexedAccess.",
+      "solution_code": "type Contagem = { [palavra: string]: number };\n\nfunction contar(palavras: readonly string[]): Contagem {\n  const resultado: Contagem = {};\n  for (const palavra of palavras) {\n    const chave = palavra.toLowerCase();\n    const atual: number | undefined = resultado[chave];\n    resultado[chave] = (atual ?? 0) + 1;\n  }\n  return resultado;\n}\n\nfunction vezes(contagem: Contagem, palavra: string): number {\n  const valor: number | undefined = contagem[palavra.toLowerCase()];\n  return valor ?? 0;\n}\n\nconst contagem = contar([\"Sim\", \"não\", \"sim\", \"Talvez\", \"SIM\"]);\n\nconsole.log(contagem); // { sim: 3, \"não\": 1, talvez: 1 }\nconsole.log(vezes(contagem, \"SIM\")); // 3\nconsole.log(vezes(contagem, \"nunca\")); // 0\n\n// @ts-expect-error a index signature obriga a valores do tipo number\ncontagem.sim = \"três\";",
+      "solution_explanation": "A index signature é a escolha certa aqui porque as palavras só se conhecem quando a função corre. Anotar a leitura como number unido com undefined é o hábito que torna o código correto mesmo sem noUncheckedIndexedAccess, já que o compilador, por omissão, afirmaria que resultado da chave é sempre um número. O parâmetro só de leitura declara que a função não altera o array que recebeu."
+    },
+    {
+      "title": "Resposta HTTP imutável com cabeçalhos livres",
+      "difficulty": "Avancado",
+      "statement": "Defina uma interface RespostaHttp com estado de tipo number e só de leitura, duracaoMs opcional de tipo number e só de leitura, e uma index signature de string, também só de leitura, cujos valores sejam string, number ou undefined. Crie uma resposta com estado, duração e dois cabeçalhos. Demonstre, com comentários de erro esperado, que nem os cabeçalhos nem o estado podem ser alterados. Escreva uma função cabecalho que devolva o valor de um cabeçalho em texto, procurando o nome em minúsculas e devolvendo undefined se não existir ou se o valor não for texto, e uma função descrever que junte estado, tipo de conteúdo e duração numa linha, com valores por omissão para o que faltar.",
+      "hint": "A index signature tem de incluir undefined na união dos valores, porque duracaoMs é opcional e o seu tipo, com undefined incluído, também tem de caber no tipo do índice. Para garantir que o valor lido é texto, use typeof antes de o devolver.",
+      "solution_code": "interface RespostaHttp {\n  readonly estado: number;\n  readonly duracaoMs?: number;\n  readonly [cabecalho: string]: string | number | undefined;\n}\n\nconst resposta: RespostaHttp = {\n  estado: 200,\n  duracaoMs: 34,\n  \"content-type\": \"application/json\",\n  \"x-cache\": \"HIT\",\n};\n\n// @ts-expect-error a index signature é readonly: nada se escreve depois\nresposta[\"content-type\"] = \"text/html\";\n\n// @ts-expect-error estado é readonly\nresposta.estado = 500;\n\nfunction cabecalho(r: RespostaHttp, nome: string): string | undefined {\n  const valor = r[nome.toLowerCase()]; // string | number | undefined\n  return typeof valor === \"string\" ? valor : undefined;\n}\n\nfunction descrever(r: RespostaHttp): string {\n  const tipo = cabecalho(r, \"Content-Type\") ?? \"desconhecido\";\n  const duracao = r.duracaoMs === undefined ? \"?\" : `${r.duracaoMs}ms`;\n  return `${r.estado} ${tipo} em ${duracao}`;\n}\n\nconsole.log(descrever(resposta)); // \"200 application/json em 34ms\"\nconsole.log(cabecalho(resposta, \"x-nao-existe\")); // undefined\nconsole.log(descrever({ estado: 404 })); // \"404 desconhecido em ?\"",
+      "solution_explanation": "O exercício junta as três peças da aula: uma propriedade opcional, readonly em propriedades e na própria index signature, e a regra de que todas as propriedades declaradas têm de caber no tipo do índice, que aqui obriga a incluir undefined na união por causa de duracaoMs. A função cabecalho estreita com typeof porque o índice devolve uma união, e assim quem chama recebe sempre texto ou nada. Como a leitura por índice pode falhar, todo o acesso dinâmico passa por essa função em vez de confiar no tipo declarado."
+    }
+  ],
+  "summary": [
+    "Uma propriedade opcional pode faltar e passa a ler-se como o seu tipo unido com undefined.",
+    "Faltar não é o mesmo que valer undefined: Object.keys e o operador in veem a diferença, e exactOptionalPropertyTypes leva o ponto de interrogação à letra.",
+    "readonly impede reatribuir a propriedade, ao contrário do const, que protege a variável.",
+    "A proteção de readonly é rasa, não desce aos objetos aninhados, e desaparece na compilação.",
+    "Uma index signature descreve chaves desconhecidas, mas obriga todas as propriedades a caber no tipo do índice.",
+    "Por omissão o acesso por índice mente sobre o undefined; noUncheckedIndexedAccess corrige isso, ao preço de mais verificações."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 04",
+  "next_label": "Aula 04 → Extensão e Composição de Tipos"
+}

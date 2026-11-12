@@ -1,0 +1,244 @@
+{
+  "module_num": "02",
+  "module_title": "Estruturas de Controlo",
+  "module_dir": "02-Estruturas-de-Controlo",
+  "lesson_num": "05",
+  "lesson_slug": "Break-Continue-e-Labels",
+  "kind": "aula",
+  "title": "break, continue e Labels",
+  "filename_base": "05-Break-Continue-e-Labels",
+  "subtitle": "Controle ciclos com break, continue e labels, mesmo quando estão aninhados.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Usar break para terminar de imediato um ciclo ou uma instrução switch.",
+    "Usar continue para saltar o resto da iteração atual e avançar para a seguinte.",
+    "Reconhecer que break e continue, sozinhos, afetam apenas o ciclo ou switch mais interno.",
+    "Aplicar labels para que break e continue controlem um ciclo exterior específico em estruturas aninhadas.",
+    "Distinguir situações em que uma label torna o código mais claro das que o tornam confuso, e saber quando preferir extrair a lógica para uma função."
+  ],
+  "sections": [
+    {
+      "heading": "break: terminar um ciclo de imediato",
+      "body": [
+        "A instrução break interrompe a execução do ciclo em que se encontra, seja um for, while, do...while, for...of ou for...in, fazendo o programa avançar imediatamente para a primeira instrução a seguir a esse ciclo. É a ferramenta certa quando já não faz sentido continuar a percorrer os restantes elementos ou iterações, por exemplo depois de encontrar o valor que se procurava.",
+        "Sem break, um ciclo teria sempre de percorrer todas as iterações previstas pela sua condição, mesmo que o resultado já esteja determinado a meio. Usar break nesses casos evita trabalho desnecessário e torna a intenção do código mais explícita: assim que esta condição se verificar, paramos aqui."
+      ],
+      "code": "const numeros = [4, 9, 15, 23, 42, 8];\nlet encontrado = null;\n\nfor (const numero of numeros) {\n  if (numero > 20) {\n    encontrado = numero;\n    break;\n  }\n}\n\nconsole.log(encontrado); // 23",
+      "callout_kind": "NOTA",
+      "callout_text": "break funciona em qualquer tipo de ciclo (for, while, do...while, for...of, for...in), não apenas no for.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⏹️",
+          "text": "break sai do ciclo imediatamente"
+        },
+        {
+          "icon": "🎯",
+          "text": "Ideal para parar assim que encontra o alvo"
+        }
+      ]
+    },
+    {
+      "heading": "break dentro de um switch",
+      "body": [
+        "Dentro de uma instrução switch, break tem um papel semelhante: termina a execução do switch e impede que o código passe (fall-through) para o case seguinte. Este comportamento já foi apresentado nas aulas anteriores deste módulo sobre estruturas de controlo; aqui interessa perceber a interação entre break e os ciclos que envolvem um switch.",
+        "Quando um switch está dentro de um ciclo, o break de um case termina apenas o switch — o ciclo continua normalmente para a iteração seguinte. Se o objetivo for terminar o próprio ciclo a partir de dentro do switch, break sozinho não chega; é necessário recorrer a uma label, como se vê mais à frente nesta unidade."
+      ],
+      "code": "const acoes = ['somar', 'subtrair', 'multiplicar', 'ignorar'];\n\nfor (const acao of acoes) {\n  switch (acao) {\n    case 'somar':\n      console.log('A somar valores...');\n      break;\n    case 'subtrair':\n      console.log('A subtrair valores...');\n      break;\n    case 'multiplicar':\n      console.log('A multiplicar valores...');\n      break;\n    default:\n      console.log(`Ação desconhecida: ${acao}`);\n  }\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Um break dentro de um case só termina o switch. Se esse switch estiver dentro de um ciclo e for preciso terminar também o ciclo, break sozinho não é suficiente — combine com uma label.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔀",
+          "text": "break no switch só sai do switch"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Não termina o ciclo que envolve o switch"
+        }
+      ]
+    },
+    {
+      "heading": "continue: avançar para a próxima iteração",
+      "body": [
+        "A instrução continue interrompe apenas a iteração atual do ciclo, saltando o código restante do seu corpo, e avança diretamente para a verificação seguinte: num for isso significa executar a expressão de incremento e depois reavaliar a condição; num while ou do...while significa reavaliar a condição de imediato, sem executar mais nenhuma instrução dessa iteração.",
+        "Esta diferença tem uma consequência prática importante nos ciclos while: se a variável usada na condição só fosse atualizada depois do continue, essa atualização seria saltada e o ciclo podia nunca terminar. Por isso, num while, a variável de controlo tem de ser atualizada antes do continue, como no exemplo a seguir."
+      ],
+      "code": "const valores = [12, -5, 8, 0, -3, 20];\nlet soma = 0;\nlet indice = 0;\n\nwhile (indice < valores.length) {\n  const valor = valores[indice];\n\n  if (valor <= 0) {\n    indice++; // importante: atualizar antes do continue\n    continue;\n  }\n\n  soma += valor;\n  indice++;\n}\n\nconsole.log(soma); // 40",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Em ciclos while, atualize sempre a variável de controlo antes de um continue. Caso contrário, a condição do while nunca muda e o ciclo torna-se infinito.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⏭️",
+          "text": "continue salta para a próxima iteração"
+        },
+        {
+          "icon": "🔁",
+          "text": "Em while, atualize a variável antes do continue"
+        }
+      ]
+    },
+    {
+      "heading": "Labels: dar nome a um ciclo",
+      "body": [
+        "Uma label é um identificador seguido de dois pontos, colocado imediatamente antes de um ciclo, que passa a servir de referência para esse ciclo específico. Por si só, uma label não faz nada — o seu efeito só se manifesta quando é usada junto com break ou continue, permitindo indicar exatamente a qual ciclo essa instrução se aplica, mesmo havendo vários ciclos aninhados.",
+        "Isto resolve uma limitação direta de break e continue simples: sozinhos, atuam sempre sobre o ciclo mais interno onde são escritos. Quando há ciclos aninhados e é preciso agir sobre um ciclo exterior, terminá-lo ou avançar para a sua próxima iteração, a label é o mecanismo que a linguagem oferece para o fazer sem recorrer a variáveis auxiliares."
+      ],
+      "code": "externo: for (let linha = 0; linha < 3; linha++) {\n  for (let coluna = 0; coluna < 3; coluna++) {\n    console.log(`linha ${linha}, coluna ${coluna}`);\n  }\n}",
+      "callout_kind": "NOTA",
+      "callout_text": "O nome da label segue as regras normais de um identificador (sem palavras reservadas) e não leva ponto e vírgula a seguir — apenas os dois pontos antes do ciclo.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏷️",
+          "text": "Label: nome antes de um ciclo (nome:)"
+        },
+        {
+          "icon": "🧩",
+          "text": "Só é útil combinada com break ou continue"
+        }
+      ]
+    },
+    {
+      "heading": "break com label: sair de um ciclo exterior",
+      "body": [
+        "Quando break é seguido do nome de uma label, break nomeLabel;, o efeito deixa de se limitar ao ciclo mais interno: o programa termina de imediato o ciclo identificado por essa label, e todos os ciclos aninhados dentro dele, avançando para o código a seguir a esse ciclo exterior. É a forma direta de abandonar uma pesquisa em estruturas aninhadas, como uma matriz, assim que a condição pretendida é satisfeita."
+      ],
+      "code": "const matriz = [\n  [1, 2, 3],\n  [4, 5, 6],\n  [7, 8, 9],\n];\n\nlet posicao = null;\n\nprocura: for (let linha = 0; linha < matriz.length; linha++) {\n  for (let coluna = 0; coluna < matriz[linha].length; coluna++) {\n    if (matriz[linha][coluna] === 5) {\n      posicao = { linha, coluna };\n      break procura;\n    }\n  }\n}\n\nconsole.log(posicao); // { linha: 1, coluna: 1 }",
+      "callout_kind": "DICA",
+      "callout_text": "Sem a label, sair dos dois ciclos exigiria uma variável booleana extra, verificada na condição do ciclo exterior ou logo a seguir ao ciclo interior. break com label substitui essa variável por uma única instrução clara.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎯",
+          "text": "break label sai de todos os ciclos aninhados"
+        },
+        {
+          "icon": "🧭",
+          "text": "Substitui variáveis de controlo (flags)"
+        }
+      ]
+    },
+    {
+      "heading": "continue com label: saltar a iteração de um ciclo exterior",
+      "body": [
+        "continue nomeLabel; funciona de forma equivalente para saltar iterações: em vez de avançar apenas para a próxima iteração do ciclo mais interno, avança diretamente para a próxima iteração do ciclo identificado pela label, abandonando por completo o que restava do ciclo interior nessa passagem. Esta distinção é fácil de confundir com um continue simples, pelo que vale a pena comparar os dois lado a lado."
+      ],
+      "code": "linhas: for (let linha = 0; linha < 3; linha++) {\n  for (let coluna = 0; coluna < 3; coluna++) {\n    if (coluna === 1) {\n      continue linhas;\n    }\n    console.log(`linha ${linha}, coluna ${coluna}`);\n  }\n}\n// Imprime apenas a coluna 0 de cada linha:\n// linha 0, coluna 0\n// linha 1, coluna 0\n// linha 2, coluna 0",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Experimente substituir continue linhas; por um continue simples e compare o resultado: sem a label, cada linha imprimiria também a coluna 2, porque o continue simples só saltaria para a próxima coluna, não para a próxima linha.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⏭️",
+          "text": "continue label avança o ciclo exterior"
+        },
+        {
+          "icon": "🔬",
+          "text": "Diferente de continue simples — compare os dois"
+        }
+      ]
+    },
+    {
+      "heading": "Quando as labels ajudam e quando confundem",
+      "body": [
+        "Labels resolvem um problema real: evitar variáveis de flag e condições extra só para propagar uma decisão de um ciclo interior para um exterior. Em estruturas de dois níveis, com um nome de label que descreve claramente a sua intenção, por exemplo procuraMatriz ou linhasValidas, o código tende a ficar mais direto de ler do que o equivalente com flags.",
+        "O problema surge quando há várias labels em simultâneo, ciclos com mais de dois níveis de profundidade, ou labels com nomes genéricos como loop1 ou outer, que obrigam quem lê o código a saltar entre pontos distantes para perceber o fluxo — um efeito muito semelhante ao de um goto, que a maioria das linguagens modernas evita precisamente por essa razão. Nesses casos, é normalmente mais claro extrair os ciclos aninhados para uma função própria e usar return para sair, técnica que será aprofundada no módulo sobre funções."
+      ],
+      "code": "",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Regra prática: uma label bem nomeada, em dois níveis de aninhamento, costuma ser clara. A partir daí, ou com mais do que uma label na mesma estrutura, prefira extrair a lógica para uma função e usar return.",
+      "table_headers": [
+        "Abordagem",
+        "Quando funciona bem",
+        "Limitação"
+      ],
+      "table_rows": [
+        [
+          "break simples",
+          "Sair do ciclo mais interno",
+          "Não chega a ciclos exteriores"
+        ],
+        [
+          "break/continue com label",
+          "Sair ou saltar um ciclo exterior específico, em poucos níveis de aninhamento",
+          "Fica confuso com muitos níveis ou labels mal nomeadas"
+        ],
+        [
+          "Variável de flag",
+          "Comunicar uma decisão entre ciclos sem usar labels",
+          "Obriga a verificar a flag em cada nível, mais verboso"
+        ],
+        [
+          "Extrair para função com return",
+          "Lógica complexa ou reutilizável",
+          "Exige reestruturar o código numa função separada"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "✅",
+          "text": "1 label, 2 níveis, nome claro: geralmente OK"
+        },
+        {
+          "icon": "🚫",
+          "text": "Várias labels ou nomes genéricos: prefira uma função"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Parar a procura com break",
+      "difficulty": "Iniciante",
+      "statement": "Escreva uma função encontrarPrimeiroNegativo(numeros) que percorre o array numeros com um ciclo for e usa break para parar assim que encontrar o primeiro número negativo, devolvendo o seu índice. Se não existir nenhum número negativo no array, a função deve devolver -1.",
+      "hint": "Guarde o índice numa variável antes do ciclo, com o valor -1 por defeito, e só a atualize quando encontrar a condição; break faz o ciclo terminar de imediato, sem percorrer o resto do array.",
+      "solution_code": "function encontrarPrimeiroNegativo(numeros) {\n  let indice = -1;\n\n  for (let i = 0; i < numeros.length; i++) {\n    if (numeros[i] < 0) {\n      indice = i;\n      break;\n    }\n  }\n\n  return indice;\n}\n\nconsole.log(encontrarPrimeiroNegativo([4, 7, -2, 9])); // 2\nconsole.log(encontrarPrimeiroNegativo([4, 7, 2, 9])); // -1",
+      "solution_explanation": "A variável indice começa em -1, o valor por defeito devolvido quando não há negativos. Assim que um número negativo é encontrado, o índice é guardado e break termina o ciclo imediatamente, evitando percorrer o resto do array sem necessidade."
+    },
+    {
+      "title": "Filtrar valores com continue",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função somarPares(valores) que recebe um array que pode conter números e outros tipos de dados misturados. A função deve percorrer o array com um ciclo for...of, usar continue para ignorar qualquer valor que não seja do tipo number ou que seja um número ímpar, e devolver a soma de todos os números pares encontrados.",
+      "hint": "Verifique o tipo do valor com typeof e se é ímpar com o operador %; combine as duas condições de exclusão com || e chame continue assim que uma delas se verificar, antes de somar.",
+      "solution_code": "function somarPares(valores) {\n  let soma = 0;\n\n  for (const valor of valores) {\n    if (typeof valor !== 'number' || valor % 2 !== 0) {\n      continue;\n    }\n    soma += valor;\n  }\n\n  return soma;\n}\n\nconsole.log(somarPares([1, 2, '3', 4, 5, 6, null, 8])); // 20",
+      "solution_explanation": "O continue salta imediatamente para o próximo elemento sempre que o valor não é um number ou é ímpar, sem chegar a executar soma += valor. Só os números pares passam essa verificação, pelo que a soma final resulta de 2 + 4 + 6 + 8."
+    },
+    {
+      "title": "Procurar um par em ciclos aninhados com break e label",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função encontrarPar(listaA, listaB, alvo) que usa dois ciclos for aninhados para procurar um par de números, um de listaA e outro de listaB, cuja soma seja igual a alvo. Coloque uma label no ciclo exterior e use break com essa label para terminar imediatamente os dois ciclos assim que o par for encontrado. A função deve devolver um array [valorA, valorB] com o par encontrado, ou null se não existir nenhum par cuja soma seja alvo.",
+      "hint": "Declare a label antes do for exterior, por exemplo procura: for (...), e escreva break procura; dentro do ciclo interior, no momento em que valorA + valorB === alvo.",
+      "solution_code": "function encontrarPar(listaA, listaB, alvo) {\n  let resultado = null;\n\n  procura: for (const valorA of listaA) {\n    for (const valorB of listaB) {\n      if (valorA + valorB === alvo) {\n        resultado = [valorA, valorB];\n        break procura;\n      }\n    }\n  }\n\n  return resultado;\n}\n\nconsole.log(encontrarPar([1, 2, 3], [10, 20, 30], 23)); // [3, 20]\nconsole.log(encontrarPar([1, 2], [10, 20], 100)); // null",
+      "solution_explanation": "Sem a label, break procura terminaria apenas o ciclo interior, e o ciclo exterior continuaria a testar os restantes valores de listaA. Com break procura, assim que o par certo é encontrado, ambos os ciclos terminam de imediato, evitando comparações desnecessárias."
+    },
+    {
+      "title": "Validar uma matriz de notas combinando continue e break com label",
+      "difficulty": "Avancado",
+      "statement": "Tem uma matriz turmas (um array de arrays) em que cada linha representa uma turma e cada valor é a nota de um aluno, entre 0 e 20. Escreva uma função validarNotas(turmas) que percorre a matriz com dois ciclos for aninhados e uma label no ciclo exterior chamada turmaLoop. Para cada turma: se o primeiro valor da linha for a string 'ISENTA', essa turma deve ser ignorada por completo, avançando de imediato para a turma seguinte com continue turmaLoop, sem validar mais nenhum valor dessa linha. Caso contrário, valide cada nota da turma; se encontrar algum valor que não seja do tipo number ou que esteja fora do intervalo de 0 a 20 (inclusive), a função deve parar de imediato toda a validação com break turmaLoop e devolver um objeto { valido: false, turma: indiceDaTurma, aluno: indiceDoAluno }. Se percorrer toda a matriz sem encontrar problemas, deve devolver { valido: true }.",
+      "hint": "Use continue turmaLoop assim que detetar 'ISENTA', ainda antes de entrar no ciclo interior das notas; guarde o resultado do erro numa variável antes de chamar break turmaLoop dentro do ciclo interior, porque nada depois do break volta a executar.",
+      "solution_code": "function validarNotas(turmas) {\n  let resultado = { valido: true };\n\n  turmaLoop: for (let t = 0; t < turmas.length; t++) {\n    const turma = turmas[t];\n\n    if (turma[0] === 'ISENTA') {\n      continue turmaLoop;\n    }\n\n    for (let a = 0; a < turma.length; a++) {\n      const nota = turma[a];\n      if (typeof nota !== 'number' || nota < 0 || nota > 20) {\n        resultado = { valido: false, turma: t, aluno: a };\n        break turmaLoop;\n      }\n    }\n  }\n\n  return resultado;\n}\n\nconsole.log(validarNotas([[15, 18, 20], ['ISENTA'], [10, 25, 12]]));\n// { valido: false, turma: 2, aluno: 1 }\n\nconsole.log(validarNotas([[15, 18, 20], ['ISENTA'], [10, 12, 14]]));\n// { valido: true }",
+      "solution_explanation": "continue turmaLoop ignora de imediato a turma marcada como 'ISENTA', sem sequer entrar no ciclo interior. break turmaLoop, usado dentro do ciclo interior, interrompe simultaneamente o ciclo das notas e o ciclo das turmas assim que encontra um valor inválido, e o resultado é guardado antes desse break porque nenhuma instrução seguinte dentro dos ciclos volta a executar."
+    }
+  ],
+  "summary": [
+    "break termina de imediato o ciclo (ou switch) mais interno onde é executado, saltando para o código a seguir a esse ciclo.",
+    "continue termina apenas a iteração atual e avança para a seguinte, sem sair do ciclo.",
+    "Em ciclos while, um continue mal colocado pode saltar a atualização da variável de controlo e causar um ciclo infinito.",
+    "Uma label antes de um ciclo dá-lhe um nome que break e continue podem referenciar para agir especificamente sobre esse ciclo, mesmo estando aninhado dentro de outros.",
+    "break nomeLabel; sai completamente do ciclo identificado; continue nomeLabel; salta para a próxima iteração desse ciclo, ignorando o que restava dos ciclos interiores.",
+    "Labels são úteis em poucos níveis de aninhamento com nomes claros; várias labels ou lógica complexa devem ser resolvidas extraindo o código para uma função com return."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para o Módulo 03",
+  "next_label": "Aula 01 → Declarações, Expressões e Arrow Functions",
+  "_stage": "revisao"
+}

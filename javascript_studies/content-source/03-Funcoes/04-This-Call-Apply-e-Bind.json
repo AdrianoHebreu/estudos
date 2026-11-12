@@ -1,0 +1,290 @@
+{
+  "module_num": "03",
+  "module_title": "Funções",
+  "module_dir": "03-Funcoes",
+  "lesson_num": "04",
+  "lesson_slug": "This-Call-Apply-e-Bind",
+  "kind": "aula",
+  "title": "this, call, apply e bind",
+  "filename_base": "04-This-Call-Apply-e-Bind",
+  "subtitle": "Como o JavaScript decide o valor de this e como controlá-lo com call, apply e bind",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Compreender que o valor de this é determinado pela forma como uma função é invocada, e não pelo local onde foi definida.",
+    "Aplicar as quatro regras de binding de this: por defeito, implícito, explícito e new, e saber qual delas tem prioridade sobre as outras.",
+    "Usar call, apply e bind para controlar explicitamente o valor de this numa chamada ou numa nova função.",
+    "Perceber como as arrow functions não têm this próprio e o herdam do âmbito léxico envolvente.",
+    "Identificar e corrigir os erros mais comuns de perda de contexto de this, como passar um método isolado como callback."
+  ],
+  "sections": [
+    {
+      "heading": "Binding por defeito e binding implícito",
+      "body": [
+        "Ao contrário de outras linguagens, em JavaScript o valor de this não é fixado no momento em que a função é escrita, mas determinado no momento em que a função é invocada, olhando para o local de chamada. A mesma função pode ter valores de this completamente diferentes consoante seja invocada de formas diferentes, e por isso a primeira pergunta a fazer perante qualquer função é sempre: como é que esta função foi chamada?",
+        "A regra mais simples é o binding por defeito: quando uma função é invocada isoladamente, sem estar associada a nenhum objeto antes do ponto, this vale undefined em modo estrito (o modo usado automaticamente em módulos ES) ou refere-se ao objeto global em modo não estrito. A segunda regra é o binding implícito: quando a função é invocada como método de um objeto, isto é, existe um objeto imediatamente antes do ponto na chamada, this refere-se a esse objeto."
+      ],
+      "code": "function mostrarThis() {\n  console.log(this);\n}\n\nmostrarThis(); // binding por defeito: undefined (modo estrito)\n\nconst utilizador = {\n  nome: \"Marta\",\n  cumprimentar() {\n    console.log(`Olá, sou ${this.nome}`); // binding implícito\n  },\n};\n\nutilizador.cumprimentar(); // \"Olá, sou Marta\" — this é `utilizador`",
+      "callout_kind": "ATENCAO",
+      "callout_text": "O que importa é o objeto imediatamente antes do ponto na chamada, nunca onde a função foi definida. Se guardar uma referência a um método numa variável e a invocar sozinha (const fn = utilizador.cumprimentar; fn();), o binding implícito perde-se e cai-se no binding por defeito.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎯",
+          "text": "this depende de como a função é chamada"
+        },
+        {
+          "icon": "🚫",
+          "text": "Chamada isolada → this é undefined"
+        },
+        {
+          "icon": "📦",
+          "text": "obj.metodo() → this é obj"
+        }
+      ]
+    },
+    {
+      "heading": "Binding explícito com call e apply",
+      "body": [
+        "Além de deixar o motor de JavaScript escolher this pelas regras anteriores, é possível impor explicitamente qual o valor de this numa chamada, usando os métodos call e apply, disponíveis em qualquer função através de Function.prototype. Ambos invocam a função de imediato, recebendo como primeiro argumento o objeto a usar como this; a diferença está apenas na forma como se passam os restantes argumentos: call recebe-os um a um, separados por vírgulas, enquanto apply recebe um único array (ou objeto semelhante a um array) com todos eles.",
+        "Este mecanismo é útil sempre que se quer reutilizar uma função com objetos diferentes sem duplicar código, ou emprestar temporariamente um método de um objeto para o aplicar a outro."
+      ],
+      "code": "function apresentar(saudacao, pontuacao) {\n  console.log(`${saudacao}, ${this.nome}${pontuacao}`);\n}\n\nconst maria = { nome: \"Maria\" };\nconst joao = { nome: \"João\" };\n\napresentar.call(maria, \"Bom dia\", \"!\");   // \"Bom dia, Maria!\" — argumentos passados um a um\napresentar.apply(joao, [\"Olá\", \"...\"]);   // \"Olá, João...\" — argumentos passados num array\n\nconst numeros = { 0: 10, 1: 25, 2: 7, length: 3 };\nconst maior = Math.max.apply(null, numeros); // \"empresta\" Math.max para um array-like\nconsole.log(maior); // 25",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [
+        "Método",
+        "Invoca de imediato?",
+        "Como passa os argumentos"
+      ],
+      "table_rows": [
+        [
+          "call",
+          "Sim",
+          "um a um, separados por vírgula"
+        ],
+        [
+          "apply",
+          "Sim",
+          "todos juntos, num array (ou array-like)"
+        ],
+        [
+          "bind",
+          "Não, devolve nova função",
+          "um a um, na criação e/ou na chamada"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📞",
+          "text": "call: argumentos um a um"
+        },
+        {
+          "icon": "📚",
+          "text": "apply: argumentos num array"
+        },
+        {
+          "icon": "⚡",
+          "text": "Ambos invocam a função de imediato"
+        }
+      ]
+    },
+    {
+      "heading": "bind: fixar this de forma permanente",
+      "body": [
+        "bind não invoca a função; em vez disso devolve uma nova função, com o mesmo corpo da original, mas com this permanentemente associado ao objeto passado como primeiro argumento. Essa associação não pode ser alterada por chamadas implícitas ou explícitas posteriores, o que torna bind especialmente útil para criar callbacks que vão ser invocados mais tarde, por exemplo por um temporizador ou por uma API assíncrona, e que precisam de manter o this correto independentemente de como acabam por ser chamados.",
+        "Além de fixar this, bind aceita argumentos adicionais que ficam igualmente fixados na frente da lista de parâmetros, criando uma aplicação parcial da função: a função devolvida pode ser chamada com menos argumentos porque alguns já vêm pré-preenchidos."
+      ],
+      "code": "const contador = {\n  valor: 0,\n  incrementar() {\n    this.valor++;\n    console.log(this.valor);\n  },\n};\n\nconst incrementarFixo = contador.incrementar.bind(contador);\nsetTimeout(incrementarFixo, 100); // this continua a ser `contador`\n\nfunction multiplicar(a, b) {\n  return a * b;\n}\n\nconst duplicar = multiplicar.bind(null, 2); // fixa o primeiro argumento\nconsole.log(duplicar(21)); // 42",
+      "callout_kind": "DICA",
+      "callout_text": "bind(null, ...) ou bind(undefined, ...) é uma forma comum de fixar apenas argumentos, sem se preocupar com this, quando a função não o utiliza.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔒",
+          "text": "bind fixa this de forma definitiva"
+        },
+        {
+          "icon": "🕒",
+          "text": "Não invoca — devolve nova função"
+        },
+        {
+          "icon": "🧩",
+          "text": "Permite aplicação parcial de argumentos"
+        }
+      ]
+    },
+    {
+      "heading": "new binding: this dentro de construtores",
+      "body": [
+        "A quarta regra aplica-se quando uma função é invocada precedida do operador new, usada como construtor. Nesse caso, o motor de JavaScript cria um objeto novo e vazio, liga o seu prototype ao prototype da função, e invoca a função com this a apontar para esse objeto recém-criado; se a função não devolver explicitamente outro objeto, o objeto criado é devolvido automaticamente como resultado da expressão new.",
+        "Esta regra tem prioridade sobre o binding implícito e sobre o binding por defeito: mesmo que o construtor use this.propriedade sem qualquer referência a um objeto externo, this aponta sempre para a nova instância enquanto a função for invocada com new. Este mesmo mecanismo está por trás dos construtores das classes, que serão estudadas em detalhe no módulo 5."
+      ],
+      "code": "function Produto(nome, preco) {\n  this.nome = nome;\n  this.preco = preco;\n}\n\nconst cadeira = new Produto(\"Cadeira\", 89.9);\nconsole.log(cadeira.nome, cadeira.preco); // \"Cadeira\" 89.9\n\nfunction ProdutoComDesconto(nome, preco) {\n  this.nome = nome;\n  this.preco = preco * 0.9;\n}\n\nconst mesa = new ProdutoComDesconto(\"Mesa\", 100);\nconsole.log(mesa.preco); // 90 — `this` dentro do construtor era a nova instância",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Chamar um construtor sem new (por exemplo, Produto(\"Mesa\", 100) em vez de new Produto(\"Mesa\", 100)) não gera a nova instância: em modo estrito this é undefined e this.nome = nome lança logo um TypeError; em modo não estrito, this passa a ser o objeto global e as propriedades acabam atribuídas a ele. As classes, que serão estudadas em detalhe no módulo 5, protegem automaticamente deste erro.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏗️",
+          "text": "new cria um objeto novo e liga this a ele"
+        },
+        {
+          "icon": "🥇",
+          "text": "new binding tem prioridade sobre as outras regras"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Construtor sem new perde o this correto"
+        }
+      ]
+    },
+    {
+      "heading": "Ordem de precedência entre as quatro regras",
+      "body": [
+        "Quando mais do que uma regra parece aplicável à mesma chamada, existe uma ordem de precedência fixa que resolve o conflito: new binding vence sempre sobre binding explícito; binding explícito, através de call, apply ou de uma função criada com bind, vence sobre binding implícito; e binding implícito vence sobre o binding por defeito, que é a regra mais fraca e só se aplica quando nenhuma das outras se verifica.",
+        "Saber esta ordem evita ter de decorar casos especiais: basta perguntar, por esta sequência, se a função foi chamada com new, depois se foi chamada através de call, apply ou de uma função criada com bind, depois se foi chamada como método de um objeto, e só por fim assumir o binding por defeito."
+      ],
+      "code": "function mostrar() {\n  console.log(this.nome);\n}\n\nconst objeto = { nome: \"Objeto\", mostrar };\nconst mostrarComOutroThis = mostrar.bind({ nome: \"Bind\" });\n\nobjeto.mostrar();          // \"Objeto\" — binding implícito\nmostrarComOutroThis();    // \"Bind\"   — binding explícito vence sobre o implícito\nnew mostrarComOutroThis(); // undefined — `new` cria um novo objeto (sem a propriedade nome) e ignora o this fixado por bind: new vence sobre o binding explícito",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [
+        "Precedência",
+        "Regra",
+        "Como se aplica"
+      ],
+      "table_rows": [
+        [
+          "1 (mais forte)",
+          "new binding",
+          "função invocada com new"
+        ],
+        [
+          "2",
+          "binding explícito",
+          "call, apply ou função criada com bind"
+        ],
+        [
+          "3",
+          "binding implícito",
+          "objeto.metodo()"
+        ],
+        [
+          "4 (mais fraca)",
+          "binding por defeito",
+          "função invocada isoladamente"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🥇",
+          "text": "new > explícito > implícito > por defeito"
+        },
+        {
+          "icon": "❓",
+          "text": "Pergunte sempre: como foi chamada a função?"
+        }
+      ]
+    },
+    {
+      "heading": "Arrow functions e o this léxico",
+      "body": [
+        "As arrow functions não têm o seu próprio this. Em vez de o determinar no momento da chamada, como acontece com funções normais, uma arrow function captura o this do âmbito léxico onde foi definida, ou seja, do bloco de código que a envolve textualmente, exatamente como aconteceria com uma variável comum. Por isso, chamar uma arrow function com call, apply ou bind para tentar alterar o seu this não tem qualquer efeito sobre o valor de this dentro dela: esses métodos continuam a poder passar argumentos, mas o primeiro argumento, o suposto this, é ignorado.",
+        "Esta caraterística torna as arrow functions especialmente adequadas para funções que correm dentro de métodos e precisam de aceder ao this do método envolvente, como acontece tipicamente em callbacks de temporizadores ou de métodos de array, evitando o problema clássico de perder o this ao passar uma função para outro contexto."
+      ],
+      "code": "const relogio = {\n  horas: 0,\n  iniciar() {\n    // arrow function: `this` aqui é herdado de `iniciar`, ou seja, é `relogio`\n    setInterval(() => {\n      this.horas++;\n      console.log(this.horas);\n    }, 1000);\n  },\n  iniciarComProblema() {\n    // function tradicional: não herda `this` — perde a ligação a `relogio`\n    setInterval(function () {\n      console.log(this); // undefined ou objeto global, não `relogio`\n    }, 1000);\n  },\n};",
+      "callout_kind": "DICA",
+      "callout_text": "Por não terem this próprio, as arrow functions também não devem ser usadas como métodos de um objeto quando o método precisa de aceder às propriedades desse objeto através de this: nesse caso this apontaria para o âmbito exterior onde o objeto foi definido, não para o próprio objeto.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔗",
+          "text": "Arrow function herda this do âmbito léxico"
+        },
+        {
+          "icon": "🚫",
+          "text": "call/apply/bind não alteram o this de arrows"
+        },
+        {
+          "icon": "✅",
+          "text": "Ideal para callbacks dentro de métodos"
+        }
+      ]
+    },
+    {
+      "heading": "Erros comuns: perder o this em callbacks",
+      "body": [
+        "O erro mais frequente com this acontece quando se retira uma referência a um método de um objeto e se passa essa referência isolada para outro lugar, por exemplo como callback de um temporizador ou de uma função de ordem superior. Nesse momento, a ligação entre a função e o objeto original desaparece: a função passa a ser invocada isoladamente, sem nada antes de um ponto, e cai-se no binding por defeito, com this a valer undefined em modo estrito. O sintoma típico é um TypeError do tipo Cannot read properties of undefined, ao tentar aceder a this.qualquerCoisa dentro do método.",
+        "Há duas formas correntes de resolver este problema sem alterar a função que recebe o callback: fixar o this com bind antes de passar a função, ou envolver a chamada numa arrow function definida no momento da passagem, para que seja essa arrow function, e não o método original, a ser invocada como callback. Mais adiante, no módulo sobre objetos e orientação a objetos, há ainda uma terceira forma, estrutural, que aproveita os campos de instância das classes para garantir este comportamento automaticamente."
+      ],
+      "code": "const botao = {\n  rotulo: \"Guardar\",\n  aoClicar() {\n    console.log(`Clicado: ${this.rotulo}`);\n  },\n};\n\nfunction simularClique(callback) {\n  callback(); // chamada isolada, sem objeto antes do ponto\n}\n\nsimularClique(botao.aoClicar);\n// -> TypeError: Cannot read properties of undefined (reading 'rotulo')\n\nsimularClique(botao.aoClicar.bind(botao));\n// -> \"Clicado: Guardar\" — this fixado explicitamente com bind\n\nsimularClique(() => botao.aoClicar());\n// -> \"Clicado: Guardar\" — arrow function preserva o binding implícito no momento da chamada",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Experimente remover o .bind(botao) do segundo exemplo e confirme na consola que o TypeError descrito acontece exatamente como previsto; depois repare que o terceiro exemplo funciona sem qualquer bind.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "💥",
+          "text": "Passar obj.metodo isolado perde o this"
+        },
+        {
+          "icon": "🔧",
+          "text": "Corrige-se com bind ou com arrow wrapper"
+        },
+        {
+          "icon": "🐛",
+          "text": "Sintoma: TypeError ao ler this.propriedade"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Prever o valor de this",
+      "difficulty": "Iniciante",
+      "statement": "Dado o código abaixo, sem o executar, indique o que é impresso na consola em cada uma das três chamadas e diga qual das três regras de binding (por defeito, implícito ou explícito) está a ser aplicada em cada caso.\n\nfunction mostrarNome() {\n  console.log(this?.nome);\n}\n\nconst pessoa = { nome: \"Rita\", mostrarNome };\n\nmostrarNome();\npessoa.mostrarNome();\nmostrarNome.call({ nome: \"Tiago\" });",
+      "hint": "Para cada chamada, olhe apenas para o que está imediatamente antes do ponto (ou para a ausência de qualquer objeto) na expressão de chamada, ignorando onde a função foi definida.",
+      "solution_code": "function mostrarNome() {\n  console.log(this?.nome);\n}\n\nconst pessoa = { nome: \"Rita\", mostrarNome };\n\nmostrarNome();                        // undefined — binding por defeito (this é undefined em modo estrito)\npessoa.mostrarNome();                 // \"Rita\"    — binding implícito (this é `pessoa`)\nmostrarNome.call({ nome: \"Tiago\" });  // \"Tiago\"   — binding explícito (this fixado por `call`)",
+      "solution_explanation": "Na primeira chamada não há nenhum objeto antes do ponto, logo aplica-se o binding por defeito e this vale undefined; o encadeamento opcional (?.) evita o erro e devolve undefined. Na segunda chamada, pessoa está imediatamente antes do ponto, pelo que se aplica o binding implícito e this passa a ser pessoa. Na terceira, call impõe explicitamente o objeto {nome: \"Tiago\"} como this, sobrepondo-se a qualquer outra regra."
+    },
+    {
+      "title": "Aplicação parcial com bind",
+      "difficulty": "Intermedio",
+      "statement": "Tem um objeto contador com um método incrementar(passo) que soma passo a this.valor e devolve o novo valor. Usando bind, crie uma função incrementarEmDois que já esteja ligada ao objeto contador e que tenha o argumento passo fixado em 2, de modo a que baste chamá-la sem argumentos. Escreva o objeto, a criação de incrementarEmDois e o resultado de duas chamadas seguidas a incrementarEmDois().",
+      "hint": "bind aceita o valor de this como primeiro argumento e pode ainda receber, a seguir, argumentos que ficam fixados na função devolvida.",
+      "solution_code": "const contador = {\n  valor: 0,\n  incrementar(passo) {\n    this.valor += passo;\n    return this.valor;\n  },\n};\n\nconst incrementarEmDois = contador.incrementar.bind(contador, 2);\n\nconsole.log(incrementarEmDois()); // 2\nconsole.log(incrementarEmDois()); // 4",
+      "solution_explanation": "bind(contador, 2) devolve uma nova função em que this está permanentemente fixado a contador e o primeiro argumento de incrementar já vem preenchido com 2; por isso, cada chamada a incrementarEmDois() equivale a contador.incrementar(2), e o valor acumulado mantém-se entre chamadas porque é sempre o mesmo objeto contador a ser alterado."
+    },
+    {
+      "title": "Corrigir a perda de this num callback",
+      "difficulty": "Intermedio",
+      "statement": "O código abaixo tem um erro: quando obj.processar é passado como callback para a função executar, this deixa de apontar para obj e o programa lança um TypeError ao tentar ler this.total dentro do método. Sem alterar a função executar, escreva a chamada a executar de duas formas diferentes que corrijam o problema — uma usando bind, outra usando uma arrow function que envolve a chamada ao método — e mostre que ambas imprimem 10.\n\nconst obj = {\n  total: 10,\n  processar() {\n    console.log(this.total);\n  },\n};\n\nfunction executar(callback) {\n  callback();\n}\n\nexecutar(obj.processar); // TypeError: Cannot read properties of undefined (reading 'total')",
+      "hint": "A chamada callback() dentro de executar é sempre uma chamada isolada (binding por defeito); para evitar isso, o this de obj tem de ficar garantido antes de a função executar sequer receber a callback.",
+      "solution_code": "const obj = {\n  total: 10,\n  processar() {\n    console.log(this.total);\n  },\n};\n\nfunction executar(callback) {\n  callback();\n}\n\n// versão 1: bind fixa `this` explicitamente antes de passar a função\nexecutar(obj.processar.bind(obj)); // 10\n\n// versão 2: a arrow function preserva o binding implícito no momento da chamada\nexecutar(() => obj.processar()); // 10",
+      "solution_explanation": "Em ambas as versões evita-se que processar seja alguma vez invocado isoladamente. bind cria uma nova função com this permanentemente fixado a obj. A arrow function não tem this próprio; ela apenas invoca obj.processar() no seu corpo, e essa chamada interna já tem obj antes do ponto, o que ativa o binding implícito."
+    },
+    {
+      "title": "Implementar uma versão simplificada de bind",
+      "difficulty": "Avancado",
+      "statement": "Implemente uma função meuBind(fn, thisArg, ...argsFixos) que se comporte como Function.prototype.bind, sem usar o bind nativo: deve devolver uma nova função que, ao ser chamada com quaisquer argumentos, invoca fn com this igual a thisArg e com argsFixos seguidos dos novos argumentos. Pode usar call ou apply na implementação. Teste-a com uma função que soma três números e fixa o primeiro, e com uma função que usa this.fator para multiplicar um valor.",
+      "hint": "A função devolvida por meuBind deve ser uma closure que memoriza fn, thisArg e argsFixos, e deve juntar argsFixos aos argumentos da nova chamada (por exemplo, com spread) antes de invocar fn através de apply.",
+      "solution_code": "function meuBind(fn, thisArg, ...argsFixos) {\n  return function (...argsChamada) {\n    return fn.apply(thisArg, [...argsFixos, ...argsChamada]);\n  };\n}\n\nfunction somar(a, b, c) {\n  return a + b + c;\n}\n\nconst somarComPrimeiroFixo = meuBind(somar, null, 10);\nconsole.log(somarComPrimeiroFixo(5, 2)); // 17\n\nconst objeto = { fator: 3 };\nfunction multiplicarPorFator(valor) {\n  return valor * this.fator;\n}\n\nconst multiplicarFixo = meuBind(multiplicarPorFator, objeto);\nconsole.log(multiplicarFixo(7)); // 21",
+      "solution_explanation": "meuBind guarda fn, thisArg e os argumentos fixos numa closure e devolve imediatamente uma nova função, sem invocar fn. Só quando essa nova função é chamada é que os argumentos fixos são combinados com os novos através do spread, e fn é finalmente invocada com apply, garantindo que this é sempre thisArg, exatamente como faria o bind nativo."
+    }
+  ],
+  "summary": [
+    "this é determinado no momento da chamada da função, não no local onde ela foi definida — exceto nas arrow functions.",
+    "Binding por defeito: uma chamada isolada (sem objeto antes do ponto) dá this igual a undefined em modo estrito, ou ao objeto global em modo não estrito.",
+    "Binding implícito: objeto.metodo() faz com que this seja o objeto imediatamente antes do ponto.",
+    "Binding explícito: call e apply invocam a função de imediato com o this indicado; bind devolve uma nova função com this fixado para sempre, útil em callbacks.",
+    "new binding: new Construtor() cria uma nova instância e liga this a ela; tem prioridade sobre todas as outras regras (new > explícito > implícito > por defeito).",
+    "Arrow functions não têm this próprio: herdam-no do âmbito léxico envolvente e ignoram call, apply e bind quanto a esse valor — por isso são a forma mais segura de escrever callbacks dentro de métodos."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 05",
+  "next_label": "Aula 05 → Funções Recursivas e IIFE",
+  "_stage": "revisao"
+}

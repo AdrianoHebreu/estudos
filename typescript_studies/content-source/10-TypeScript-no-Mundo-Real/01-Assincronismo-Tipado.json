@@ -1,0 +1,332 @@
+{
+  "module_num": "10",
+  "module_title": "TypeScript no Mundo Real",
+  "module_dir": "10-TypeScript-no-Mundo-Real",
+  "lesson_num": "01",
+  "lesson_slug": "Assincronismo-Tipado",
+  "kind": "aula",
+  "title": "Assincronismo Tipado: Promise e async/await",
+  "filename_base": "01-Assincronismo-Tipado",
+  "subtitle": "Tipar promessas, funções async, await e os combinadores de Promise",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Anotar valores, parâmetros e retornos com Promise<T>",
+    "Perceber porque uma função async devolve sempre Promise<X>",
+    "Prever o tipo produzido por await e por Awaited",
+    "Ler os tipos de Promise.all, allSettled, race e any",
+    "Reconhecer os erros de await esquecido que o compilador apanha e os que não apanha",
+    "Tipar callbacks assíncronos e evitar forEach com async"
+  ],
+  "sections": [
+    {
+      "heading": "Promise<T> é um tipo genérico",
+      "body": [
+        "Uma promessa tem um tipo genérico: Promise<T>, onde T é o tipo do valor que vai ser resolvido. Anota-se como qualquer outro genérico do Módulo 05, em variáveis, parâmetros e tipos de retorno.",
+        "Ao criar uma promessa com new Promise, o argumento de tipo diz ao compilador o que resolve pode receber. Quando o contexto não o indica (uma variável sem anotação), o compilador infere Promise<unknown> e o valor resolvido fica inutilizável sem narrowing. Quando a função tem retorno anotado, esse contexto chega para inferir T."
+      ],
+      "code": "function lerNumero(): Promise<number> {\n  // O retorno anotado dá contexto: isto é Promise<number>\n  return new Promise((resolve) => setTimeout(() => resolve(42), 10));\n}\n\nfunction dobrarDepois(p: Promise<number>): Promise<number> {\n  return p.then((n) => n * 2);\n}\n\nconst pedido: Promise<number> = dobrarDepois(lerNumero());\n\n// Com argumento de tipo explícito, resolve só aceita number\n// @ts-expect-error TS2345: Argument of type 'string' is not assignable to parameter of type 'number | PromiseLike<number>'\nconst errada = new Promise<number>((resolve) => resolve(\"42\"));\n\n// Sem contexto nem argumento de tipo: Promise<unknown>\nconst semTipo = new Promise((resolve) => setTimeout(() => resolve(42), 10));\nsemTipo.then((valor) => {\n  // @ts-expect-error TS18046: 'valor' is of type 'unknown'\n  console.log(valor.toFixed(2));\n});",
+      "callout_kind": "DICA",
+      "callout_text": "Ao criar uma promessa numa variável solta, escreva sempre new Promise<T>(...). Sem isso o valor resolvido chega como unknown.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧩",
+          "text": "Promise<T>: T é o tipo do valor resolvido"
+        },
+        {
+          "icon": "✍️",
+          "text": "Anota-se em variáveis, parâmetros e retornos"
+        },
+        {
+          "icon": "⚠️",
+          "text": "new Promise sem contexto infere Promise<unknown>"
+        },
+        {
+          "icon": "✅",
+          "text": "new Promise<number>(...) faz resolve aceitar só number"
+        }
+      ]
+    },
+    {
+      "heading": "async devolve sempre Promise<X>",
+      "body": [
+        "Uma função async devolve sempre uma promessa, mesmo quando o corpo faz return de um valor simples. Por isso o tipo de retorno é Promise<X>, nunca X. Anotar : number numa função async é rejeitado com o erro TS1064.",
+        "Se o corpo de uma async devolver ele próprio uma Promise<X>, o resultado continua a ser Promise<X> e não Promise<Promise<X>>: as promessas achatam-se sozinhas em runtime e o tipo acompanha esse comportamento."
+      ],
+      "code": "async function contar(): Promise<number> {\n  return 3; // o corpo devolve number, a função devolve Promise<number>\n}\n\n// Sem anotação a inferência dá o mesmo: () => Promise<string>\nasync function saudar() {\n  return \"olá\";\n}\n\n// @ts-expect-error TS1064: The return type of an async function or method must be the global Promise<T> type\nasync function errada(): number {\n  return 1;\n}\n\nfunction buscarNome(): Promise<string> {\n  return new Promise((resolve) => setTimeout(() => resolve(\"Ana\"), 10));\n}\n\n// Devolver uma promessa dentro de async não a embrulha outra vez\nasync function nomeDoServico() {\n  return buscarNome();\n}\n\nconst final: Promise<string> = nomeDoServico();\n// @ts-expect-error TS2322: Type 'Promise<string>' is not assignable to type 'string'\nconst direto: string = nomeDoServico();",
+      "callout_kind": "NOTA",
+      "callout_text": "A mensagem do TS1064 até sugere a correção: Did you mean to write 'Promise<number>'?",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔁",
+          "text": "Uma função async devolve sempre Promise<X>"
+        },
+        {
+          "icon": "⛔",
+          "text": "Anotar : number numa async dá erro TS1064"
+        },
+        {
+          "icon": "🪆",
+          "text": "Devolver Promise<X> dentro de async não dá Promise<Promise<X>>"
+        },
+        {
+          "icon": "🔍",
+          "text": "Sem anotação, a inferência já dá Promise<X>"
+        }
+      ]
+    },
+    {
+      "heading": "O que await faz ao tipo",
+      "body": [
+        "O await desembrulha o tipo: aplicado a Promise<T>, a expressão passa a ter tipo T. O compilador usa internamente a mesma regra do utility type Awaited, visto no Módulo 07, que também desembrulha promessas encaixadas.",
+        "Fazer await de um valor que não é promessa é permitido e devolve o próprio valor com o mesmo tipo. Isso torna simples aceitar parâmetros do tipo T | Promise<T>: depois do await fica sempre T."
+      ],
+      "code": "type Utilizador = { id: number; nome: string };\n\nfunction obterUtilizador(id: number): Promise<Utilizador> {\n  return new Promise((resolve) => setTimeout(() => resolve({ id, nome: \"Ana\" }), 10));\n}\n\nconst promessa = obterUtilizador(1); // Promise<Utilizador>\nconst utilizador = await promessa;   // Utilizador\nconsole.log(utilizador.nome);        // Ana\n\nconst cinco = await 5;               // number: await num valor simples devolve-o tal como está\nconsole.log(cinco + 1);              // 6\n\nasync function maisUm(valor: number | Promise<number>): Promise<number> {\n  const n = await valor; // number em ambos os casos\n  return n + 1;\n}\nconsole.log(await maisUm(1), await maisUm(Promise.resolve(10))); // 2 11\n\ntype Dentro = Awaited<Promise<Promise<number>>>; // number\nconst d: Dentro = 7;\nconsole.log(d); // 7",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "await Promise<T> dá um valor do tipo T"
+        },
+        {
+          "icon": "🧮",
+          "text": "Segue a mesma regra de Awaited<T>"
+        },
+        {
+          "icon": "🔓",
+          "text": "await num valor simples devolve o próprio valor"
+        },
+        {
+          "icon": "🔀",
+          "text": "T | Promise<T> fica T depois do await"
+        }
+      ]
+    },
+    {
+      "heading": "Promise.all, race e any",
+      "body": [
+        "Com um array literal de promessas de tipos diferentes, Promise.all infere um tuplo: cada posição do resultado mantém o seu tipo, e a desestruturação dá variáveis já tipadas. Com um array comum do tipo Promise<number>[], o resultado é number[].",
+        "Promise.race e Promise.any devolvem um único valor, mas não se sabe qual das promessas o vai fornecer, por isso o tipo é a união dos tipos. As promessas criadas com Promise.reject têm tipo Promise<never> e desaparecem dessa união."
+      ],
+      "code": "function atrasar<T>(valor: T, ms: number): Promise<T> {\n  return new Promise((resolve) => setTimeout(() => resolve(valor), ms));\n}\n\n// Resultado: [string, number, boolean]\nconst [nome, idade, ativo] = await Promise.all([\n  atrasar(\"Rita\", 30),\n  atrasar(28, 10),\n  atrasar(true, 20),\n]);\nconsole.log(nome.toUpperCase(), idade + 1, ativo); // RITA 29 true\n\nconst lista = [atrasar(1, 10), atrasar(2, 20)]; // Promise<number>[]\nconst numeros = await Promise.all(lista);         // number[]\nconsole.log(numeros); // [ 1, 2 ]\n\n// string | number: qualquer uma pode chegar primeiro\nconst maisRapido = await Promise.race([atrasar(\"texto\", 30), atrasar(99, 10)]);\nconsole.log(maisRapido); // 99\n\n// string: Promise.reject(...) é Promise<never> e não entra na união\nconst primeiroSucesso = await Promise.any([\n  Promise.reject(new Error(\"falhou\")),\n  atrasar(\"ok\", 10),\n]);\nconsole.log(primeiroSucesso); // ok",
+      "callout_kind": "ATENCAO",
+      "callout_text": "O tuplo só é inferido quando as promessas são passadas num array literal. Se o array for guardado antes numa variável com tipos mistos, o tipo fica (Promise<string> | Promise<number>)[] e o resultado passa a (string | number)[].",
+      "table_headers": [
+        "Combinador",
+        "Tipo do resultado com Promise<A> e Promise<B>"
+      ],
+      "table_rows": [
+        [
+          "Promise.all([...])",
+          "[A, B]"
+        ],
+        [
+          "Promise.allSettled([...])",
+          "[PromiseSettledResult<A>, PromiseSettledResult<B>]"
+        ],
+        [
+          "Promise.race([...])",
+          "A | B"
+        ],
+        [
+          "Promise.any([...])",
+          "A | B"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧷",
+          "text": "Promise.all com array literal infere um tuplo"
+        },
+        {
+          "icon": "📚",
+          "text": "Com Promise<T>[] o resultado é T[]"
+        },
+        {
+          "icon": "🏁",
+          "text": "race e any devolvem a união dos tipos"
+        },
+        {
+          "icon": "🚫",
+          "text": "Promise.reject dá Promise<never>, que some da união"
+        }
+      ]
+    },
+    {
+      "heading": "Promise.allSettled e narrowing por status",
+      "body": [
+        "Promise.allSettled nunca rejeita: devolve um PromiseSettledResult<T> por promessa. Esse tipo é uma união discriminada, exatamente como as do Módulo 04, com a propriedade status como discriminante.",
+        "Com status igual a \"fulfilled\" o TypeScript estreita para PromiseFulfilledResult<T> e value fica acessível com o tipo T. No outro ramo fica PromiseRejectedResult, com reason do tipo any. Antes de verificar status, aceder a value dá erro TS2339."
+      ],
+      "code": "function tarefa(nome: string, ms: number, falhar: boolean): Promise<string> {\n  return new Promise((resolve, reject) =>\n    setTimeout(() => (falhar ? reject(new Error(`${nome} falhou`)) : resolve(`${nome} feita`)), ms),\n  );\n}\n\n// [PromiseSettledResult<string>, PromiseSettledResult<string>, PromiseSettledResult<string>]\nconst resultados = await Promise.allSettled([\n  tarefa(\"A\", 20, false),\n  tarefa(\"B\", 10, true),\n  tarefa(\"C\", 30, false),\n]);\n\nfor (const r of resultados) {\n  if (r.status === \"fulfilled\") {\n    console.log(\"ok:\", r.value);             // r: PromiseFulfilledResult<string>\n  } else {\n    console.log(\"falha:\", String(r.reason)); // r: PromiseRejectedResult\n  }\n}\n// ok: A feita\n// falha: Error: B falhou\n// ok: C feita",
+      "callout_kind": "NOTA",
+      "callout_text": "O reason é any porque uma promessa pode ser rejeitada com qualquer valor. Tratá-lo com segurança é o tema da Aula 04 deste módulo.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🗂️",
+          "text": "allSettled devolve PromiseSettledResult<T> por promessa"
+        },
+        {
+          "icon": "🏷️",
+          "text": "É uma união discriminada pela propriedade status"
+        },
+        {
+          "icon": "✅",
+          "text": "status \"fulfilled\" dá acesso a value do tipo T"
+        },
+        {
+          "icon": "❌",
+          "text": "status \"rejected\" dá reason, do tipo any"
+        }
+      ]
+    },
+    {
+      "heading": "Esquecer o await e promessas flutuantes",
+      "body": [
+        "O erro mais comum é esquecer o await e usar a promessa como se fosse o valor. Como o tipo é Promise<Encomenda> e não Encomenda, o compilador apanha quase todos os usos: aceder a propriedades, operações aritméticas e comparações.",
+        "A condição if (promessa) é apanhada com TS2801, mas só quando o corpo do if não usa a variável; if (!promessa) e while (promessa) passam sem aviso. Já uma promessa flutuante, chamada sem await, sem then e sem ser guardada, é código válido para o tsc: detetá-la é trabalho de um linter, com a regra @typescript-eslint/no-floating-promises."
+      ],
+      "code": "type Encomenda = { id: number; total: number };\n\nasync function obterEncomenda(id: number): Promise<Encomenda> {\n  return { id, total: 50 };\n}\n\nasync function processar() {\n  const encomenda = obterEncomenda(1); // falta o await: Promise<Encomenda>\n\n  // @ts-expect-error TS2339: Property 'total' does not exist on type 'Promise<Encomenda>'\n  console.log(encomenda.total);\n\n  // @ts-expect-error TS2365: Operator '>' cannot be applied to types 'Promise<Encomenda>' and 'number'\n  if (encomenda > 100) console.log(\"cara\");\n\n  // @ts-expect-error TS2801: This condition will always return true since this 'Promise<Encomenda>' is always defined\n  if (encomenda) console.log(\"existe\");\n\n  // Promessa flutuante: compila sem erro, mas ninguém espera por ela\n  obterEncomenda(2);\n\n  const certa = await obterEncomenda(3); // Encomenda\n  console.log(certa.total);\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "O tsc não deteta promessas flutuantes. Em projetos reais, ative @typescript-eslint/no-floating-promises (exige lint com informação de tipos) para apanhar chamadas async esquecidas.",
+      "table_headers": [
+        "Situação",
+        "O tsc apanha?",
+        "Erro"
+      ],
+      "table_rows": [
+        [
+          "promessa.propriedade",
+          "Sim",
+          "TS2339"
+        ],
+        [
+          "promessa > 100 ou promessa + 1",
+          "Sim",
+          "TS2365"
+        ],
+        [
+          "promessa === 1",
+          "Sim",
+          "TS2367"
+        ],
+        [
+          "if (promessa) sem a usar no corpo",
+          "Sim",
+          "TS2801"
+        ],
+        [
+          "if (!promessa) ou while (promessa)",
+          "Não",
+          "nenhum"
+        ],
+        [
+          "chamada async sem await",
+          "Não",
+          "só com linter"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🕳️",
+          "text": "Sem await a variável é Promise<T>, não T"
+        },
+        {
+          "icon": "🛑",
+          "text": "Propriedades e operadores sobre a promessa dão erro"
+        },
+        {
+          "icon": "❓",
+          "text": "if (promessa) dá TS2801, mas if (!promessa) passa"
+        },
+        {
+          "icon": "🧹",
+          "text": "Promessas flutuantes: regra no-floating-promises do linter"
+        }
+      ]
+    },
+    {
+      "heading": "Callbacks assíncronos",
+      "body": [
+        "O tipo de uma função assíncrona sem valor útil escreve-se () => Promise<void>. Quem recebe um callback deste tipo sabe que pode e deve fazer await do resultado.",
+        "Ao contrário, uma função async é atribuível a () => void, porque um tipo de retorno void aceita funções que devolvam qualquer coisa. O compilador aceita, mas quem chama ignora a promessa. É o que acontece com arr.forEach(async ...): o forEach não espera por nada e o código seguinte corre antes de as tarefas terminarem. Para tarefas em série use for...of com await; em paralelo, map seguido de Promise.all."
+      ],
+      "code": "function esperar(ms: number): Promise<void> {\n  return new Promise((resolve) => setTimeout(resolve, ms));\n}\n\ntype Tarefa = () => Promise<void>;\n\nasync function executarTodas(tarefas: Tarefa[]): Promise<void> {\n  for (const t of tarefas) await t();\n}\n\nconst registo: string[] = [];\nconst ids = [1, 2, 3];\n\n// Aceite pelo compilador: o callback de forEach é (...) => void\nids.forEach(async (id) => {\n  await esperar(10);\n  registo.push(`forEach ${id}`);\n});\nconsole.log(\"depois do forEach:\", registo.length); // depois do forEach: 0\n\nawait executarTodas(ids.map((id) => async () => {\n  await esperar(20);\n  registo.push(`em série ${id}`);\n}));\nconsole.log(registo);\n// [ 'forEach 1', 'forEach 2', 'forEach 3', 'em série 1', 'em série 2', 'em série 3' ]",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Troque o forEach por await Promise.all(ids.map(async (id) => { ... })) e confirme que o console.log seguinte já mostra 3.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📞",
+          "text": "Callback assíncrono: () => Promise<void>"
+        },
+        {
+          "icon": "🤐",
+          "text": "Uma async é atribuível a () => void sem erro"
+        },
+        {
+          "icon": "⚠️",
+          "text": "forEach(async ...) não espera pelas tarefas"
+        },
+        {
+          "icon": "🔂",
+          "text": "Use for...of com await ou map com Promise.all"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Tipar uma espera com valor",
+      "difficulty": "Iniciante",
+      "statement": "Escreva uma função genérica depois que recebe um valor do tipo T e um número de milissegundos e devolve uma promessa que resolve com esse valor após o atraso. Use-a com await para obter uma string e um number e mostre-os com console.log.",
+      "hint": "O tipo de retorno é Promise<T>; dentro da função, new Promise recebe o contexto desse retorno.",
+      "solution_code": "function depois<T>(valor: T, ms: number): Promise<T> {\n  return new Promise((resolve) => setTimeout(() => resolve(valor), ms));\n}\n\nconst texto = await depois(\"pronto\", 10); // string\nconst numero = await depois(7, 20);       // number\nconsole.log(texto.toUpperCase(), numero * 2); // PRONTO 14",
+      "solution_explanation": "O parâmetro de tipo T liga o argumento ao tipo resolvido, por isso depois(\"pronto\", 10) é Promise<string>. O await desembrulha para string e os métodos de string ficam disponíveis sem conversões."
+    },
+    {
+      "title": "Carregar dados em paralelo",
+      "difficulty": "Intermedio",
+      "statement": "Existem duas funções simuladas: obterCliente(id), que devolve Promise<{ id: number; nome: string }>, e obterPontos(id), que devolve Promise<number>. Escreva uma função async carregarResumo(id) com retorno anotado Promise<string> que as chame em paralelo com Promise.all e devolva a frase \"Nome tem N pontos\". Mostre o resultado para o id 5.",
+      "hint": "Passe as duas chamadas num array literal a Promise.all e desestruture o resultado: o tuplo dá o tipo certo a cada variável.",
+      "solution_code": "type Cliente = { id: number; nome: string };\n\nfunction obterCliente(id: number): Promise<Cliente> {\n  return new Promise((resolve) => setTimeout(() => resolve({ id, nome: \"Marta\" }), 20));\n}\n\nfunction obterPontos(id: number): Promise<number> {\n  return new Promise((resolve) => setTimeout(() => resolve(id * 10), 10));\n}\n\nasync function carregarResumo(id: number): Promise<string> {\n  const [cliente, pontos] = await Promise.all([obterCliente(id), obterPontos(id)]);\n  return `${cliente.nome} tem ${pontos} pontos`;\n}\n\nconsole.log(await carregarResumo(5)); // Marta tem 50 pontos",
+      "solution_explanation": "Promise.all com um array literal infere o tuplo [Cliente, number], por isso cliente.nome e pontos têm os tipos certos. A função devolve uma string no corpo, mas o tipo anotado é Promise<string>, como em qualquer função async."
+    },
+    {
+      "title": "Separar sucessos de falhas",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função genérica async separar<T>(promessas: Promise<T>[]) que use Promise.allSettled e devolva um objeto { valores: Awaited<T>[]; falhas: string[] }. Os valores vêm dos resultados com status \"fulfilled\" e as falhas são String(reason) dos rejeitados. Teste com três promessas de number, uma delas rejeitada.",
+      "hint": "Veja o tipo que Promise.allSettled devolve para Promise<T>[]: os elementos são PromiseSettledResult<Awaited<T>>. Um type predicate no filter permite ficar só com os resultados cumpridos.",
+      "solution_code": "async function separar<T>(promessas: Promise<T>[]): Promise<{ valores: Awaited<T>[]; falhas: string[] }> {\n  const resultados = await Promise.allSettled(promessas);\n  const valores = resultados\n    .filter((r): r is PromiseFulfilledResult<Awaited<T>> => r.status === \"fulfilled\")\n    .map((r) => r.value);\n  const falhas = resultados\n    .filter((r): r is PromiseRejectedResult => r.status === \"rejected\")\n    .map((r) => String(r.reason));\n  return { valores, falhas };\n}\n\nconst falhaSimulada = new Promise<number>((_, reject) =>\n  setTimeout(() => reject(new Error(\"sem stock\")), 10),\n);\n\nconst resumo = await separar([Promise.resolve(1), falhaSimulada, Promise.resolve(3)]);\nconsole.log(resumo.valores); // [ 1, 3 ]\nconsole.log(resumo.falhas);  // [ 'Error: sem stock' ]",
+      "solution_explanation": "Com um T genérico, allSettled devolve PromiseSettledResult<Awaited<T>>, por isso o predicate e o retorno têm de usar Awaited<T> (com T = number, fica simplesmente number). Os type predicates ensinam ao filter que o array resultante só tem PromiseFulfilledResult<T> ou PromiseRejectedResult, e por isso value e reason ficam acessíveis sem erros."
+    },
+    {
+      "title": "Limite de tempo genérico",
+      "difficulty": "Avancado",
+      "statement": "Escreva uma função comLimite<T>(p: Promise<T>, ms: number, reserva: T): Promise<T> que use Promise.race para devolver o valor de p se chegar dentro de ms milissegundos, ou reserva caso contrário. O temporizador tem de ser cancelado quando a corrida termina. Teste com uma promessa rápida e uma lenta.",
+      "hint": "Crie uma segunda promessa do tipo Promise<T> que resolve com reserva após ms; guarde o id devolvido por setTimeout e use finally para chamar clearTimeout.",
+      "solution_code": "function atrasar<T>(valor: T, ms: number): Promise<T> {\n  return new Promise((resolve) => setTimeout(() => resolve(valor), ms));\n}\n\nasync function comLimite<T>(p: Promise<T>, ms: number, reserva: T): Promise<T> {\n  let temporizador: ReturnType<typeof setTimeout> | undefined;\n  const limite = new Promise<T>((resolve) => {\n    temporizador = setTimeout(() => resolve(reserva), ms);\n  });\n  try {\n    return await Promise.race([p, limite]);\n  } finally {\n    clearTimeout(temporizador);\n  }\n}\n\nconsole.log(await comLimite(atrasar(\"rápida\", 10), 40, \"reserva\")); // rápida\nconsole.log(await comLimite(atrasar(\"lenta\", 50), 20, \"reserva\"));  // reserva",
+      "solution_explanation": "As duas promessas da corrida são Promise<T>, por isso Promise.race devolve T e não uma união. O argumento de tipo em new Promise<T> é necessário porque a variável limite não tem outro contexto, e ReturnType<typeof setTimeout> evita depender do tipo concreto do temporizador."
+    }
+  ],
+  "summary": [
+    "Promise<T> é um genérico; new Promise sem contexto infere Promise<unknown>.",
+    "Uma função async devolve sempre Promise<X>; anotar só X dá TS1064.",
+    "await desembrulha Promise<T> para T, com a mesma regra de Awaited.",
+    "Promise.all com array literal devolve um tuplo; race e any devolvem a união.",
+    "allSettled devolve uma união discriminada por status.",
+    "O tsc apanha a maioria dos usos de promessas sem await, mas não as promessas flutuantes nem forEach(async ...)."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 02",
+  "next_label": "Aula 02 → Consumir APIs com Segurança: unknown na Fronteira"
+}

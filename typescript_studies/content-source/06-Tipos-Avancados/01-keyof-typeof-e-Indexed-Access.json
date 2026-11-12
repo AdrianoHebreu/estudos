@@ -1,0 +1,328 @@
+{
+  "module_num": "06",
+  "module_title": "Tipos Avançados",
+  "module_dir": "06-Tipos-Avancados",
+  "lesson_num": "01",
+  "lesson_slug": "keyof-typeof-e-Indexed-Access",
+  "kind": "aula",
+  "title": "keyof, typeof e Indexed Access Types",
+  "filename_base": "01-keyof-typeof-e-Indexed-Access",
+  "subtitle": "Ler tipos a partir de outros tipos e de valores, sem os escrever duas vezes",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Obter com keyof a união das chaves de um tipo de objeto",
+    "Distinguir o typeof de valores do operador de tipo typeof",
+    "Derivar tipos a partir de objetos de constantes com keyof typeof",
+    "Ler tipos por dentro com acesso indexado, T[keyof T] e T[number]",
+    "Usar as const para estreitar literais e derivar uniões de um array",
+    "Escrever acessos a propriedades seguros com K extends keyof T"
+  ],
+  "sections": [
+    {
+      "heading": "keyof: as chaves de um tipo, como tipo",
+      "body": [
+        "O operador keyof recebe um tipo de objeto e devolve a união dos nomes das suas propriedades, cada um como tipo literal de string. Não lê um valor nem corre em tempo de execução: opera sobre a declaração e desaparece na compilação. Onde Object.keys devolve um array de strings genéricas, keyof devolve um tipo que o compilador sabe restringir a nomes concretos.",
+        "O ganho imediato é deixar de escrever à mão listas de nomes de propriedades que já existem noutro sítio. Se a interface ganhar uma propriedade, a união cresce sozinha; se perder uma, todo o código que dependia dela passa a dar erro em vez de falhar em silêncio."
+      ],
+      "code": "interface Produto {\n  id: number;\n  nome: string;\n  preco: number;\n  emStock: boolean;\n}\n\ntype ChaveProduto = keyof Produto;\n// ChaveProduto = \"id\" | \"nome\" | \"preco\" | \"emStock\"\n\nconst chave: ChaveProduto = \"preco\";\nconsole.log(chave); // preco\n\n// @ts-expect-error \"desconto\" não é uma propriedade de Produto, logo não pertence a keyof Produto\nconst inexistente: ChaveProduto = \"desconto\";\n\nconst todasAsChaves: ChaveProduto[] = [\"id\", \"nome\", \"preco\", \"emStock\"];\nconsole.log(todasAsChaves.length); // 4\n\nfunction existe(produto: Produto, k: keyof Produto): boolean {\n  return produto[k] !== undefined;\n}\n\nconsole.log(existe({ id: 1, nome: \"cabo\", preco: 4.5, emStock: true }, \"nome\")); // true",
+      "callout_kind": "NOTA",
+      "callout_text": "keyof vive apenas no mundo dos tipos. Para percorrer as chaves em tempo de execução continua a ser preciso Object.keys, que devolve string e não a união literal.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔑",
+          "text": "keyof T é a união dos nomes das propriedades de T"
+        },
+        {
+          "icon": "🔤",
+          "text": "Cada nome entra como tipo literal de string"
+        },
+        {
+          "icon": "🔄",
+          "text": "A união acompanha o tipo quando ele muda"
+        }
+      ]
+    },
+    {
+      "heading": "keyof nos casos de fronteira",
+      "body": [
+        "Nem todo o tipo tem uma lista fechada de propriedades, e nesses casos o resultado de keyof pode surpreender. Um tipo com index signature de string dá string e number, porque em JavaScript uma chave numérica é convertida em string antes de ser usada: aceder pela posição zero e pela chave textual zero é a mesma coisa. Uma index signature numérica, essa, dá apenas number.",
+        "Nos extremos, um tipo sem propriedade nenhuma dá never, o tipo que não admite valor algum. E keyof sobre uma união só inclui as chaves presentes em todos os membros, porque só essas existem garantidamente seja qual for o membro em mãos; quando não há chaves comuns, o resultado é outra vez never."
+      ],
+      "code": "interface Contagens {\n  [chave: string]: number;\n}\ntype ChavesContagens = keyof Contagens; // string | number\n\nconst porTexto: ChavesContagens = \"total\";\nconst porIndice: ChavesContagens = 3;\nconsole.log(porTexto, porIndice); // total 3\n\ninterface Linhas {\n  [indice: number]: string;\n}\ntype ChavesLinhas = keyof Linhas; // number\n\n// @ts-expect-error uma index signature numérica só aceita chaves numéricas\nconst textual: ChavesLinhas = \"0\";\n\ntype Vazio = {};\ntype ChavesVazio = keyof Vazio; // never\n\n// @ts-expect-error never não admite valor nenhum, nem sequer uma string\nconst impossivel: ChavesVazio = \"nome\";\n\ntype Forma = { lado: number } | { raio: number };\ntype ChavesForma = keyof Forma; // never, porque não há chave comum aos dois membros\n\nconsole.log(typeof porTexto); // string",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Um keyof que dá never costuma ser sinal de que o tipo de partida é mais aberto do que se pensava, ou de que é uma união sem chaves comuns.",
+      "table_headers": [
+        "Tipo",
+        "Resultado de keyof",
+        "Porquê"
+      ],
+      "table_rows": [
+        [
+          "{ a: string; b: number }",
+          "\"a\" | \"b\"",
+          "a união dos nomes declarados"
+        ],
+        [
+          "{ [k: string]: number }",
+          "string | number",
+          "uma chave numérica também indexa por string"
+        ],
+        [
+          "{ [i: number]: string }",
+          "number",
+          "só são aceites chaves numéricas"
+        ],
+        [
+          "{}",
+          "never",
+          "não há chave nenhuma para incluir"
+        ],
+        [
+          "{ a: string } | { b: number }",
+          "never",
+          "só entram as chaves comuns a todos os membros"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧮",
+          "text": "Index signature de string dá string e number"
+        },
+        {
+          "icon": "🚫",
+          "text": "Tipo sem propriedades dá never"
+        },
+        {
+          "icon": "🔗",
+          "text": "Numa união só entram as chaves comuns"
+        }
+      ]
+    },
+    {
+      "heading": "typeof, o operador de tipo",
+      "body": [
+        "O typeof do narrowing recebe um valor e devolve uma string em tempo de execução. Existe um segundo typeof, escrito da mesma maneira mas em posição de tipo, que recebe o nome de um valor e devolve o tipo completo desse valor. Não são o mesmo operador: partilham a palavra e nada mais. O primeiro corre no browser, o segundo desaparece na compilação.",
+        "A utilidade é grande sempre que a fonte da verdade é um valor e não um tipo. Objetos de configuração, tabelas de constantes e funções já existentes ficam com a forma descrita uma vez só, no próprio valor, e tudo o resto passa a derivar dele. O operando tem de ser um valor: aplicar este typeof a um nome que já é tipo é erro."
+      ],
+      "code": "const PORTA = 8080;\n\nconst definicoes = {\n  porta: PORTA,\n  anfitriao: \"localhost\",\n  tentativas: 3,\n  verboso: false,\n};\n\ntype Definicoes = typeof definicoes;\n// { porta: number; anfitriao: string; tentativas: number; verboso: boolean }\n\nconst emTeste: Definicoes = {\n  porta: 9090,\n  anfitriao: \"127.0.0.1\",\n  tentativas: 1,\n  verboso: true,\n};\nconsole.log(emTeste.porta); // 9090\n\nfunction formatar(valor: number, casas: number): string {\n  return valor.toFixed(casas);\n}\n\ntype Formatador = typeof formatar; // (valor: number, casas: number) => string\n\nconst comMoeda: Formatador = (valor, casas) => `${valor.toFixed(casas)} EUR`;\nconsole.log(comMoeda(3.14159, 2)); // 3.14 EUR\n\n// O typeof de valores continua a existir e devolve uma string em tempo de execução\nconsole.log(typeof PORTA); // number\n\n// @ts-expect-error o typeof de tipo aplica-se a valores; Definicoes já é um tipo\ntype Duplicado = typeof Definicoes;",
+      "callout_kind": "ATENCAO",
+      "callout_text": "O typeof de tipo só aceita identificadores de valores e os seus acessos a propriedades. Não aceita chamadas de função nem expressões arbitrárias.",
+      "table_headers": [
+        "Aspeto",
+        "typeof de valores",
+        "typeof de tipo"
+      ],
+      "table_rows": [
+        [
+          "Onde se escreve",
+          "numa expressão",
+          "em posição de tipo"
+        ],
+        [
+          "Quando corre",
+          "em tempo de execução",
+          "só na compilação"
+        ],
+        [
+          "O que produz",
+          "uma string como number ou object",
+          "o tipo completo do valor"
+        ],
+        [
+          "Sobre uma função",
+          "a string function",
+          "a assinatura completa da função"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🪞",
+          "text": "Dois operadores com o mesmo nome e mundos diferentes"
+        },
+        {
+          "icon": "📦",
+          "text": "typeof valor dá o tipo inferido desse valor"
+        },
+        {
+          "icon": "✍️",
+          "text": "A forma é escrita uma vez, no valor"
+        }
+      ]
+    },
+    {
+      "heading": "keyof typeof: das constantes para os tipos",
+      "body": [
+        "Os dois operadores encadeiam-se e é assim que aparecem na maior parte do código real. Primeiro typeof transforma o objeto de constantes num tipo, depois keyof extrai dele a união das chaves. O resultado é uma união de literais mantida automaticamente: acrescentar uma entrada ao objeto acrescenta-a à união, sem tocar em mais nada.",
+        "Este é o padrão que substitui, na prática, muito do que noutras linguagens seria uma enumeração. O objeto continua a ser um valor normal, utilizável em tempo de execução, e o tipo das suas chaves passa a estar disponível para assinaturas de funções e anotações."
+      ],
+      "code": "const ESTADOS = {\n  pendente: \"PENDENTE\",\n  emCurso: \"EM_CURSO\",\n  concluido: \"CONCLUIDO\",\n};\n\ntype FormaDeEstados = typeof ESTADOS;\n// { pendente: string; emCurso: string; concluido: string }\n\ntype Estado = keyof typeof ESTADOS;\n// \"pendente\" | \"emCurso\" | \"concluido\"\n\nfunction descrever(estado: Estado): string {\n  return `código interno: ${ESTADOS[estado]}`;\n}\n\nconsole.log(descrever(\"emCurso\")); // código interno: EM_CURSO\nconsole.log(descrever(\"pendente\")); // código interno: PENDENTE\n\n// @ts-expect-error \"cancelado\" não é chave de ESTADOS, logo não pertence a Estado\nconst fora: Estado = \"cancelado\";\n\nconst todos: Estado[] = Object.keys(ESTADOS) as Estado[];\nconsole.log(todos.join(\", \")); // pendente, emCurso, concluido\n\nconst soParaVerificar: FormaDeEstados = ESTADOS;\nconsole.log(soParaVerificar.concluido); // CONCLUIDO",
+      "callout_kind": "DICA",
+      "callout_text": "A ordem importa e lê-se de dentro para fora: primeiro typeof sobre o valor, só depois keyof sobre o tipo resultante.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧩",
+          "text": "typeof converte o valor em tipo, keyof tira-lhe as chaves"
+        },
+        {
+          "icon": "📋",
+          "text": "Uma união de literais sempre em dia com o objeto"
+        },
+        {
+          "icon": "⚙️",
+          "text": "O objeto continua a existir em tempo de execução"
+        }
+      ]
+    },
+    {
+      "heading": "Acesso indexado: ler o tipo por dentro",
+      "body": [
+        "Um tipo de objeto pode ser indexado como se fosse um valor, mas com um tipo entre os parênteses retos. O resultado é o tipo dessa propriedade. Funciona com um literal isolado, com uma união de chaves, que devolve a união dos tipos correspondentes, e encadeado, para descer por propriedades aninhadas sem inventar nomes intermédios.",
+        "Duas combinações valem por si. Indexar com keyof do próprio tipo devolve a união de todos os tipos de valores. E indexar com number devolve o tipo dos elementos de um array, ou, sobre uma tupla, a união dos tipos das suas posições. A notação com ponto não serve aqui: o acesso indexado exige sempre parênteses retos."
+      ],
+      "code": "interface Encomenda {\n  id: number;\n  cliente: { nome: string; nif: string };\n  total: number;\n  pago: boolean;\n}\n\ntype Id = Encomenda[\"id\"]; // number\ntype Cliente = Encomenda[\"cliente\"]; // { nome: string; nif: string }\ntype Nif = Encomenda[\"cliente\"][\"nif\"]; // string\ntype TotalOuPago = Encomenda[\"total\" | \"pago\"]; // number | boolean\ntype ValoresDeEncomenda = Encomenda[keyof Encomenda];\n// number | boolean | { nome: string; nif: string }\n\nconst id: Id = 17;\nconst cliente: Cliente = { nome: \"Rita\", nif: \"123456789\" };\nconst nif: Nif = cliente.nif;\nconst totalOuPago: TotalOuPago = true;\nconsole.log(id, nif, totalOuPago); // 17 123456789 true\n\nconst valor: ValoresDeEncomenda = 42;\nconsole.log(valor); // 42\n\n// @ts-expect-error o acesso indexado usa parênteses retos e um tipo, não a notação com ponto\ntype Errado = Encomenda.total;\n\ntype Linha = { produto: string; quantidade: number };\ninterface Fatura {\n  linhas: Linha[];\n  data: string;\n}\n\ntype UmaLinha = Fatura[\"linhas\"][number]; // Linha\nconst primeira: UmaLinha = { produto: \"cabo HDMI\", quantidade: 2 };\nconsole.log(primeira.quantidade); // 2\n\ntype Coordenada = [number, number, string];\ntype PartesDaCoordenada = Coordenada[number]; // number | string\nconst parte: PartesDaCoordenada = \"norte\";\nconsole.log(parte); // norte",
+      "callout_kind": "DICA",
+      "callout_text": "Indexar com number é a forma habitual de apanhar o tipo de um elemento a partir do tipo do array, sem o declarar à parte.",
+      "table_headers": [
+        "Forma",
+        "O que devolve"
+      ],
+      "table_rows": [
+        [
+          "T[\"prop\"]",
+          "o tipo da propriedade prop"
+        ],
+        [
+          "T[\"a\" | \"b\"]",
+          "a união dos tipos de a e de b"
+        ],
+        [
+          "T[\"a\"][\"b\"]",
+          "o tipo de b dentro de a"
+        ],
+        [
+          "T[keyof T]",
+          "a união dos tipos de todos os valores"
+        ],
+        [
+          "T[number]",
+          "o tipo dos elementos, se T for array ou tupla"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📐",
+          "text": "Entre parênteses retos vai um tipo, não um valor"
+        },
+        {
+          "icon": "🌊",
+          "text": "T[keyof T] dá a união dos tipos dos valores"
+        },
+        {
+          "icon": "🔢",
+          "text": "T[number] dá o tipo dos elementos do array"
+        }
+      ]
+    },
+    {
+      "heading": "as const e as uniões derivadas de um array",
+      "body": [
+        "Por omissão, o compilador alarga os literais de um objeto ou array: o texto producao passa a string e o array passa a array mutável. A asserção as const desliga esse alargamento. As propriedades ficam apenas de leitura e com o tipo literal exato, e um array passa a tupla apenas de leitura com cada posição no seu tipo literal.",
+        "Daí nasce o padrão mais rentável desta aula: declarar a lista uma vez como array com as const e derivar dela a união de literais indexando com number. A lista deixa de estar escrita em dois sítios, o valor e o tipo, e passa a haver uma só fonte da verdade. Os parênteses à volta de typeof são opcionais, porque em posição de tipo a indexação já se aplica ao resultado do typeof, mas tornam a leitura bem mais clara."
+      ],
+      "code": "const semAsConst = { ambiente: \"producao\", porta: 443 };\n// { ambiente: string; porta: number }\nsemAsConst.ambiente = \"teste\";\nconsole.log(semAsConst.ambiente); // teste\n\nconst config = { ambiente: \"producao\", porta: 443 } as const;\n// { readonly ambiente: \"producao\"; readonly porta: 443 }\nconsole.log(config.porta); // 443\n\n// @ts-expect-error as const tornou todas as propriedades apenas de leitura\nconfig.ambiente = \"teste\";\n\nconst CORES = [\"vermelho\", \"verde\", \"azul\"] as const;\n// readonly [\"vermelho\", \"verde\", \"azul\"]\nconsole.log(CORES.length); // 3\n\ntype Cor = (typeof CORES)[number]; // \"vermelho\" | \"verde\" | \"azul\"\n\nconst preferida: Cor = \"verde\";\nconsole.log(preferida); // verde\n\nfunction pintar(cor: Cor): string {\n  return `a pintar de ${cor}`;\n}\nconsole.log(pintar(CORES[2])); // a pintar de azul\n\n// @ts-expect-error \"roxo\" não está no array CORES, logo não pertence a Cor\nconst ausente: Cor = \"roxo\";\n\n// @ts-expect-error uma tupla apenas de leitura não tem push\nCORES.push(\"preto\");",
+      "callout_kind": "DICA",
+      "callout_text": "Sempre que uma lista de valores permitidos existir também como array em tempo de execução, declare o array com as const e derive dele o tipo, nunca o contrário.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧊",
+          "text": "as const congela literais e propriedades"
+        },
+        {
+          "icon": "📎",
+          "text": "Um array com as const vira tupla apenas de leitura"
+        },
+        {
+          "icon": "🎯",
+          "text": "Indexar com number dá a união dos literais"
+        }
+      ]
+    },
+    {
+      "heading": "Tudo junto: acesso seguro a uma configuração",
+      "body": [
+        "Juntando as peças, um objeto de configuração declarado com as const chega para alimentar toda a tipagem à sua volta. O tipo vem de typeof, a união das chaves vem de keyof, os tipos dos valores vêm do acesso indexado e as listas internas dão uniões de literais com number. Nada disto é escrito à mão e nada fica desatualizado.",
+        "Falta só ligar a um genérico, que já é território conhecido. Uma função com K extends keyof T aceita apenas chaves que existam e devolve T[K], ou seja, o tipo exato da propriedade pedida e não uma união de todos os valores possíveis. Uma chave inventada nem sequer chega a compilar."
+      ],
+      "code": "function obter<T, K extends keyof T>(objeto: T, chave: K): T[K] {\n  return objeto[chave];\n}\n\nconst CONFIG = {\n  ambiente: \"producao\",\n  porta: 443,\n  tls: true,\n  regioes: [\"pt\", \"es\", \"fr\"],\n} as const;\n\ntype Config = typeof CONFIG;\ntype ChaveConfig = keyof Config; // \"ambiente\" | \"porta\" | \"tls\" | \"regioes\"\ntype Regiao = Config[\"regioes\"][number]; // \"pt\" | \"es\" | \"fr\"\ntype ValorConfig = Config[ChaveConfig];\n\nconst porta = obter(CONFIG, \"porta\");\nconsole.log(porta); // 443\n\nconst ambiente: Config[\"ambiente\"] = \"producao\";\nconsole.log(ambiente); // producao\n\nconst regiao: Regiao = \"es\";\nconsole.log(regiao); // es\n\nconst qualquerValor: ValorConfig = true;\nconsole.log(qualquerValor); // true\n\n// @ts-expect-error \"idioma\" não é chave de CONFIG, logo não satisfaz K extends keyof Config\nobter(CONFIG, \"idioma\");\n\nfunction descrever<K extends ChaveConfig>(chave: K): string {\n  return `${chave} = ${String(CONFIG[chave])}`;\n}\nconsole.log(descrever(\"tls\")); // tls = true\nconsole.log(descrever(\"regioes\")); // regioes = pt,es,fr",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Pegue num objeto de configuração de um projeto seu, acrescente as const e substitua as anotações escritas à mão por tipos derivados. O que sobrar escrito à mão é candidato a ficar fora de sincronia.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🛡️",
+          "text": "K extends keyof T só deixa passar chaves reais"
+        },
+        {
+          "icon": "🎁",
+          "text": "O retorno T[K] é o tipo exato da propriedade"
+        },
+        {
+          "icon": "🏗️",
+          "text": "Uma configuração com as const tipa tudo à volta"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Códigos de idioma a partir de um objeto",
+      "difficulty": "Iniciante",
+      "statement": "Declare um objeto IDIOMAS com as chaves pt, en e fr e, como valores, os nomes Português, Inglês e Francês. Derive dele, sem escrever a lista outra vez, um tipo CodigoIdioma com a união das chaves e um tipo NomeIdioma com o tipo dos valores. Escreva depois a função nomeDoIdioma, que recebe um CodigoIdioma e devolve um NomeIdioma, e demonstre com um comentário ts-expect-error que um código ausente do objeto, como o do alemão, não é aceite.",
+      "hint": "Para as chaves precisa de encadear dois operadores, o de tipo sobre o valor e o que extrai as chaves. Para os valores, indexe o tipo do objeto com a união das chaves.",
+      "solution_code": "const IDIOMAS = {\n  pt: \"Português\",\n  en: \"Inglês\",\n  fr: \"Francês\",\n};\n\ntype CodigoIdioma = keyof typeof IDIOMAS; // \"pt\" | \"en\" | \"fr\"\ntype NomeIdioma = (typeof IDIOMAS)[CodigoIdioma]; // string\n\nfunction nomeDoIdioma(codigo: CodigoIdioma): NomeIdioma {\n  return IDIOMAS[codigo];\n}\n\nconsole.log(nomeDoIdioma(\"pt\")); // Português\nconsole.log(nomeDoIdioma(\"fr\")); // Francês\n\n// @ts-expect-error \"de\" não é chave de IDIOMAS, logo não pertence a CodigoIdioma\nnomeDoIdioma(\"de\");",
+      "solution_explanation": "O operador de tipo typeof transforma o objeto de constantes no seu tipo e keyof extrai-lhe a união das chaves. Indexar esse tipo com a união das chaves dá o tipo dos valores, que aqui é string porque o objeto não foi declarado com as const. Acrescentar um idioma ao objeto atualiza os dois tipos sem mais nenhuma alteração."
+    },
+    {
+      "title": "Níveis de registo derivados de um array",
+      "difficulty": "Intermedio",
+      "statement": "Declare a constante NIVEIS com os textos debug, info, aviso e erro, de forma que cada posição fique com o seu tipo literal e o array fique apenas de leitura. Derive dela o tipo Nivel com a união dos quatro literais e escreva a função registar, que recebe um Nivel e uma mensagem e devolve o texto formado pelo nível em maiúsculas entre parênteses retos, um espaço e a mensagem. Demonstre com comentários ts-expect-error que um nível inventado é recusado e que o array não pode ser alterado.",
+      "hint": "A asserção que estreita os literais vai no fim do array. Para obter a união a partir do tipo do array, indexe-o com number.",
+      "solution_code": "const NIVEIS = [\"debug\", \"info\", \"aviso\", \"erro\"] as const;\n\ntype Nivel = (typeof NIVEIS)[number]; // \"debug\" | \"info\" | \"aviso\" | \"erro\"\n\nfunction registar(nivel: Nivel, mensagem: string): string {\n  return `[${nivel.toUpperCase()}] ${mensagem}`;\n}\n\nconsole.log(registar(\"aviso\", \"disco quase cheio\")); // [AVISO] disco quase cheio\nconsole.log(registar(NIVEIS[0], \"a iniciar\")); // [DEBUG] a iniciar\n\n// @ts-expect-error \"fatal\" não está em NIVEIS\nregistar(\"fatal\", \"tudo em baixo\");\n\n// @ts-expect-error NIVEIS é uma tupla apenas de leitura\nNIVEIS[0] = \"verbose\";",
+      "solution_explanation": "Com as const o array passa a tupla apenas de leitura com cada posição no seu tipo literal, e indexar o seu tipo com number junta essas posições numa união. A lista fica escrita uma única vez e serve ao mesmo tempo de valor percorrível e de fonte do tipo. Como a tupla é apenas de leitura, qualquer escrita numa posição é recusada pelo compilador."
+    },
+    {
+      "title": "Navegar um tipo aninhado sem o repetir",
+      "difficulty": "Intermedio",
+      "statement": "Dada uma interface Empresa com nome do tipo string, morada com rua, codigoPostal e pais, trabalhadores como array de objetos com nome e departamento, e ativa do tipo boolean, declare por acesso indexado, sem repetir nenhuma forma escrita à mão, os tipos Morada, Pais, Trabalhador, Departamento e ValorDeEmpresa com a união de todos os tipos de valores da interface. Use cada um deles numa constante e demonstre com um comentário ts-expect-error que não existe uma propriedade cidade dentro de morada.",
+      "hint": "Para chegar ao tipo de um elemento do array de trabalhadores indexe a propriedade com number. Para a união de todos os valores, indexe a interface com as suas próprias chaves.",
+      "solution_code": "interface Empresa {\n  nome: string;\n  morada: {\n    rua: string;\n    codigoPostal: string;\n    pais: string;\n  };\n  trabalhadores: { nome: string; departamento: string }[];\n  ativa: boolean;\n}\n\ntype Morada = Empresa[\"morada\"];\ntype Pais = Empresa[\"morada\"][\"pais\"]; // string\ntype Trabalhador = Empresa[\"trabalhadores\"][number];\ntype Departamento = Trabalhador[\"departamento\"]; // string\ntype ValorDeEmpresa = Empresa[keyof Empresa];\n// string | boolean | { rua: string; codigoPostal: string; pais: string } | { nome: string; departamento: string }[]\n\nconst morada: Morada = {\n  rua: \"Rua das Flores, 10\",\n  codigoPostal: \"4700-000\",\n  pais: \"Portugal\",\n};\n\nconst pais: Pais = morada.pais;\nconst trabalhador: Trabalhador = { nome: \"Sofia\", departamento: \"Engenharia\" };\nconst departamento: Departamento = trabalhador.departamento;\n\nconsole.log(pais); // Portugal\nconsole.log(departamento); // Engenharia\n\nconst valor: ValorDeEmpresa = true;\nconsole.log(valor); // true\n\n// @ts-expect-error \"cidade\" não é propriedade de Empresa[\"morada\"]\ntype Cidade = Empresa[\"morada\"][\"cidade\"];",
+      "solution_explanation": "O acesso indexado encadeia-se livremente, e por isso desce por morada até pais e atravessa o array de trabalhadores com number antes de apanhar departamento. Indexar a interface com keyof dela própria produz a união de todos os tipos de valores. Nenhum destes tipos está escrito duas vezes, por isso uma alteração na interface propaga-se a todos."
+    },
+    {
+      "title": "Acesso genérico a duas propriedades de profundidade",
+      "difficulty": "Avancado",
+      "statement": "Escreva a função genérica obterEncaixado, que recebe um objeto e duas chaves e devolve o valor que está na segunda chave dentro da primeira. A tipagem tem de garantir três coisas: a primeira chave só pode ser chave do objeto, a segunda só pode ser chave daquilo que está na primeira, e o tipo devolvido é o tipo exato da propriedade final, e não uma união. Demonstre com constantes anotadas que os tipos devolvidos são os esperados e com comentários ts-expect-error que uma segunda chave inexistente e uma primeira chave inexistente são ambas recusadas.",
+      "hint": "São precisos três parâmetros de tipo. A restrição do segundo apoia-se no tipo que resulta de indexar o objeto com a primeira chave.",
+      "solution_code": "function obterEncaixado<T, K1 extends keyof T, K2 extends keyof T[K1]>(\n  objeto: T,\n  primeira: K1,\n  segunda: K2,\n): T[K1][K2] {\n  return objeto[primeira][segunda];\n}\n\nconst definicoes = {\n  janela: { largura: 1280, altura: 720, titulo: \"Editor\" },\n  utilizador: { nome: \"Inês\", administrador: true },\n};\n\nconst largura = obterEncaixado(definicoes, \"janela\", \"largura\");\nconst nome = obterEncaixado(definicoes, \"utilizador\", \"nome\");\nconst admin = obterEncaixado(definicoes, \"utilizador\", \"administrador\");\n\nconsole.log(largura); // 1280\nconsole.log(nome.toUpperCase()); // INÊS\nconsole.log(admin); // true\n\nconst verificaLargura: number = largura;\nconst verificaNome: string = nome;\nconsole.log(verificaLargura + verificaNome.length); // 1284\n\n// @ts-expect-error \"profundidade\" não é chave de definicoes[\"janela\"]\nobterEncaixado(definicoes, \"janela\", \"profundidade\");\n\ntry {\n  // @ts-expect-error \"rede\" não é chave de definicoes\n  obterEncaixado(definicoes, \"rede\", \"porta\");\n} catch {\n  console.log(\"não existe janela rede nas definições\"); // não existe janela rede nas definições\n}",
+      "solution_explanation": "A constraint do segundo parâmetro de tipo é escrita sobre o acesso indexado T[K1], por isso só aceita chaves do nível que a primeira chave alcançou. O retorno T[K1][K2] repete esse caminho e devolve o tipo exato da propriedade final, o que permite chamar toUpperCase sobre o nome sem qualquer verificação adicional. A chamada com a primeira chave inexistente é recusada pelo compilador mas, se chegasse a correr, rebentaria em tempo de execução, e por isso está dentro de um try."
+    }
+  ],
+  "summary": [
+    "keyof aplicado a um tipo de objeto devolve a união dos nomes das suas propriedades como tipos literais de string.",
+    "Nos casos de fronteira, uma index signature de string dá string e number, um tipo sem propriedades dá never e uma união só contribui com as chaves comuns.",
+    "O operador de tipo typeof recebe um valor e devolve o seu tipo, e não tem relação com o typeof que corre em tempo de execução, apesar do nome.",
+    "keyof typeof sobre um objeto de constantes é a maneira habitual de derivar uma união de chaves que se mantém atualizada sozinha.",
+    "O acesso indexado lê tipos por dentro: por uma chave, por uma união de chaves, encadeado, T[keyof T] para os valores e T[number] para os elementos.",
+    "as const estreita literais, torna as propriedades apenas de leitura e transforma arrays em tuplas, permitindo derivar uniões a partir de um array escrito uma só vez."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 02",
+  "next_label": "Aula 02 → Conditional Types"
+}

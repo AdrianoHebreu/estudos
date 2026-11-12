@@ -1,0 +1,354 @@
+{
+  "module_num": "01",
+  "module_title": "Fundamentos de Tipos",
+  "module_dir": "01-Fundamentos-de-Tipos",
+  "lesson_num": "01",
+  "lesson_slug": "Anotacoes-de-Tipo-e-Inferencia",
+  "kind": "aula",
+  "title": "Anotações de Tipo e Inferência",
+  "filename_base": "01-Anotacoes-de-Tipo-e-Inferencia",
+  "subtitle": "Como se escreve um tipo, e porque muitas vezes o melhor é não escrever nenhum",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Escrever anotações de tipo em variáveis, parâmetros e retornos de função",
+    "Perceber o que o TypeScript infere sozinho e quando vale mesmo a pena anotar",
+    "Distinguir a inferência com const da inferência com let: tipos literais e alargamento",
+    "Usar type assertions com as e as const, e reconhecer quando são perigosas",
+    "Perceber porque é que o tipo de uma variável não muda depois de declarado",
+    "Ler no editor o tipo que o compilador atribuiu a cada expressão"
+  ],
+  "sections": [
+    {
+      "heading": "A Sintaxe da Anotação de Tipo",
+      "body": [
+        "Toda a sintaxe de tipos do TypeScript assenta num único sinal: dois pontos a seguir ao nome, e depois o tipo. Funciona em três sítios: na declaração de uma variável, em cada parâmetro de uma função e no valor de retorno de uma função, que se anota depois dos parênteses.",
+        "Os tipos primitivos escrevem-se em minúsculas: string, number, boolean, null, undefined, symbol e bigint. Repare que são os nomes que o operador typeof do JavaScript devolve, e não os construtores String, Number ou Boolean, que existem mas designam outra coisa e raramente são o que quer.",
+        "A anotação é uma afirmação verificada, não uma conversão. Se disser que uma variável é number e lhe atribuir texto, o compilador recusa o programa; não converte nada nem tenta adivinhar a sua intenção."
+      ],
+      "code": "// Anotação em variáveis: o tipo vem a seguir a dois pontos\nconst cidade: string = \"Braga\";\nconst habitantes: number = 193333;\nconst capitalDeDistrito: boolean = true;\n\n// Anotação em parâmetros e no valor de retorno\nfunction descrever(nome: string, populacao: number): string {\n  return `${nome} tem ${populacao} habitantes.`;\n}\n\nconsole.log(descrever(cidade, habitantes)); // \"Braga tem 193333 habitantes.\"\nconsole.log(capitalDeDistrito); // true\n\n// @ts-expect-error o parâmetro populacao é number e não aceita uma string\nconsole.log(descrever(cidade, \"193333\"));",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Escreva sempre string, number e boolean em minúsculas. String, Number e Boolean com maiúscula são os objetos wrapper do JavaScript, aceitam menos coisas do que parece e nunca são a anotação que quer.",
+      "table_headers": [
+        "Onde",
+        "Sintaxe"
+      ],
+      "table_rows": [
+        [
+          "Variável",
+          "const total: number = 0;"
+        ],
+        [
+          "Parâmetro",
+          "function f(nome: string) { }"
+        ],
+        [
+          "Retorno",
+          "function f(): boolean { return true; }"
+        ],
+        [
+          "Parâmetro e retorno",
+          "function f(n: number): string { return String(n); }"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "✏️",
+          "text": "Dois pontos, e depois o tipo"
+        },
+        {
+          "icon": "📍",
+          "text": "Variáveis, parâmetros e retorno de função"
+        },
+        {
+          "icon": "🔡",
+          "text": "Primitivos sempre em minúsculas"
+        },
+        {
+          "icon": "🚫",
+          "text": "A anotação verifica, não converte"
+        }
+      ]
+    },
+    {
+      "heading": "Deixar o TypeScript Inferir",
+      "body": [
+        "Quem chega ao TypeScript vindo do JavaScript tende a anotar tudo, por achar que é isso que a linguagem pede. Não é. O compilador deduz sozinho o tipo na esmagadora maioria dos casos: a partir do valor inicial de uma variável, a partir dos return de uma função, a partir dos elementos de um array. Esse mecanismo chama-se inferência, e é a razão pela qual o TypeScript não se torna insuportavelmente verboso.",
+        "A boa prática é deixar inferir. Escrever const habitantes: number = 193333 não acrescenta segurança nenhuma em relação a const habitantes = 193333, porque o tipo que o compilador atribui é exatamente o mesmo. Acrescenta apenas ruído e mais um sítio para atualizar quando o código mudar.",
+        "O retorno das funções segue a mesma lógica: se a função devolve valor * 2 e valor é number, o retorno é number sem que precise de o dizer."
+      ],
+      "code": "// Sem uma única anotação: o TypeScript deduz tudo\nconst cidade = \"Braga\";              // cidade: \"Braga\"\nlet habitantes = 193333;             // habitantes: number\nconst coordenadas = [41.55, -8.42];  // coordenadas: number[]\nconst morada = { rua: \"Rua Nova\", numero: 12 }; // { rua: string; numero: number }\n\n// O tipo de retorno também é inferido a partir do return\nfunction duplicar(valor: number) {   // retorno inferido: number\n  return valor * 2;\n}\n\nhabitantes = duplicar(habitantes);\n\nconsole.log(cidade, habitantes); // \"Braga\" 386666\nconsole.log(coordenadas.length, morada.numero); // 2 12",
+      "callout_kind": "DICA",
+      "callout_text": "Regra prática: escreva primeiro sem anotações e só acrescente uma quando o tipo inferido não for o que quer, ou quando a anotação servir de contrato para quem usa o código. Anotar por anotar não torna o programa mais seguro.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧠",
+          "text": "O compilador deduz o tipo quase sempre"
+        },
+        {
+          "icon": "🪶",
+          "text": "Menos anotações, menos ruído a manter"
+        },
+        {
+          "icon": "↩️",
+          "text": "O retorno é inferido a partir dos return"
+        }
+      ]
+    },
+    {
+      "heading": "Quando Anotar Mesmo Assim",
+      "body": [
+        "Há três situações em que a anotação é necessária ou claramente vantajosa. A primeira são os parâmetros de função: o compilador não tem por onde adivinhar o que a função vai receber, e com strict ligado um parâmetro sem tipo é um erro de any implícito.",
+        "A segunda são as estruturas que nascem vazias e só depois são preenchidas. Um objeto literal vazio tem o tipo {}, que não tem propriedade nenhuma, e um array vazio não dá ao compilador nenhuma pista sobre o que vai lá dentro. Aqui a anotação é que fixa a forma dos dados.",
+        "A terceira é o retorno de funções que fazem parte da API pública de um módulo. Não é por o compilador precisar, mas porque a anotação passa a ser um contrato: se alterar a implementação e o retorno deixar de corresponder, o erro aparece dentro da própria função, e não espalhado por todos os sítios que a chamam."
+      ],
+      "code": "// 1. Parâmetros: o compilador não tem de onde os inferir\nfunction aplicarDesconto(preco: number, percentagem: number): number {\n  return preco - (preco * percentagem) / 100;\n}\n\nconsole.log(aplicarDesconto(100, 25)); // 75\n\n// 2. Estruturas que nascem vazias e só depois são preenchidas\nconst carrinho: { artigo: string; preco: number }[] = [];\ncarrinho.push({ artigo: \"Teclado\", preco: 49.9 });\n\nconsole.log(carrinho.length); // 1\n\nconst semAnotacao = {};\n// @ts-expect-error o tipo de semAnotacao é {}, que não tem propriedade artigo\nsemAnotacao.artigo = \"Rato\";\n\n// 3. Anotar documenta a intenção e apanha o erro no sítio certo\nconst precos: number[] = [10, 20, 30];\n\n// @ts-expect-error o array é de number e não aceita a string \"40\"\nprecos.push(\"40\");",
+      "callout_kind": "NOTA",
+      "callout_text": "Anotar o retorno de uma função pública é uma escolha de arquitetura, não uma exigência do compilador. Serve para que uma alteração errada rebente junto à causa, em vez de aparecer dez ficheiros mais à frente.",
+      "table_headers": [
+        "Situação",
+        "Anotar?"
+      ],
+      "table_rows": [
+        [
+          "Parâmetros de função",
+          "Sempre, é obrigatório com strict"
+        ],
+        [
+          "Variável com valor inicial claro",
+          "Não, deixe inferir"
+        ],
+        [
+          "Array ou objeto que começa vazio",
+          "Sim, é a única forma de fixar a forma"
+        ],
+        [
+          "Retorno de função interna e curta",
+          "Normalmente não"
+        ],
+        [
+          "Retorno de API pública de um módulo",
+          "Sim, funciona como contrato"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📥",
+          "text": "Parâmetros: sempre anotados"
+        },
+        {
+          "icon": "📭",
+          "text": "Estruturas vazias: anotar a forma"
+        },
+        {
+          "icon": "🤝",
+          "text": "Retorno público: anotar como contrato"
+        }
+      ]
+    },
+    {
+      "heading": "const, let e os Tipos Literais",
+      "body": [
+        "Esta é a ideia mais subtil da aula. O TypeScript não tem apenas o tipo string: tem também o tipo \"POST\", cujo único valor possível é exatamente esse texto. Chamam-se tipos literais e existem para string, number e boolean.",
+        "Quando escreve const metodo = \"POST\", o compilador sabe que aquela variável nunca poderá ser reatribuída, por isso guarda a informação mais precisa que tem: o tipo é o literal \"POST\". Com let metodo = \"POST\", a variável pode receber outro texto a qualquer momento, por isso o compilador alarga o literal para string. A esse alargamento chama-se widening.",
+        "A consequência prática aparece logo que uma função aceite apenas alguns valores. Um valor declarado com const encaixa nessa restrição; o mesmo valor declarado com let já não encaixa, porque pelo caminho passou a ser um string qualquer. E atenção: dentro de um objeto literal, mesmo que o objeto seja const, as propriedades são mutáveis e por isso também alargam."
+      ],
+      "code": "const metodo = \"POST\"; // tipo inferido: \"POST\" (tipo literal)\nlet verbo = \"POST\";    // tipo inferido: string (o literal foi alargado)\n\nverbo = \"GET\"; // permitido: qualquer string serve\n\nfunction pedir(url: string, metodoHttp: \"GET\" | \"POST\"): string {\n  return `${metodoHttp} ${url}`;\n}\n\nconsole.log(pedir(\"/clientes\", metodo)); // \"POST /clientes\"\n\n// @ts-expect-error verbo é string, e string não cabe em \"GET\" | \"POST\"\nconsole.log(pedir(\"/clientes\", verbo));\n\n// Atenção: dentro de um objeto, mesmo declarado com const, as propriedades alargam\nconst config = { metodo: \"POST\" }; // config.metodo: string, não \"POST\"\n\n// @ts-expect-error config.metodo é string porque a propriedade é mutável\nconsole.log(pedir(\"/clientes\", config.metodo));",
+      "callout_kind": "ATENCAO",
+      "callout_text": "O widening não é um defeito: o compilador alarga o tipo porque a variável pode mesmo mudar de valor. O erro é do programador que esperava um tipo literal onde declarou algo mutável. As uniões de literais são o tema da Aula 04 deste módulo.",
+      "table_headers": [
+        "Declaração",
+        "Tipo inferido",
+        "Porquê"
+      ],
+      "table_rows": [
+        [
+          "const metodo = \"POST\"",
+          "\"POST\"",
+          "Não pode ser reatribuída, o literal mantém-se"
+        ],
+        [
+          "let verbo = \"POST\"",
+          "string",
+          "Pode receber outro texto, o literal alarga"
+        ],
+        [
+          "const n = 10",
+          "10",
+          "Literal numérico, pelo mesmo motivo"
+        ],
+        [
+          "let n = 10",
+          "number",
+          "Alargado para o tipo geral"
+        ],
+        [
+          "const o = { m: \"POST\" }",
+          "{ m: string }",
+          "A propriedade é mutável, logo alarga"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📌",
+          "text": "const infere o tipo literal exato"
+        },
+        {
+          "icon": "↔️",
+          "text": "let alarga o literal para o tipo geral"
+        },
+        {
+          "icon": "🔓",
+          "text": "Propriedades de objeto alargam sempre"
+        }
+      ]
+    },
+    {
+      "heading": "Type Assertions com as",
+      "body": [
+        "Uma type assertion escreve-se valor as Tipo e serve para dizer ao compilador que confie em si. Não gera código nenhum, não converte nada e não verifica nada em tempo de execução: muda apenas o que o compilador pensa que ali está, e o valor em memória fica exatamente como estava.",
+        "É legítima quando sabe alguma coisa que o compilador não tem como saber, tipicamente ao lidar com dados que vêm de fora, como o resultado de JSON.parse. É perigosa porque desliga a verificação precisamente no ponto em que ela seria mais útil: se a sua promessa for falsa, o programa vai falhar em runtime como falharia em JavaScript, e sem aviso nenhum do compilador.",
+        "Há uma assertion diferente e muito útil: as const. Aplicada a um valor literal, impede o alargamento visto na secção anterior e torna todas as propriedades e elementos só de leitura. É a forma normal de declarar tabelas de configuração e conjuntos fixos de valores."
+      ],
+      "code": "const resposta: unknown = JSON.parse('{\"nome\":\"Ana\"}');\n\n// Legítimo: sabemos algo que o compilador não pode saber\nconst utilizador = resposta as { nome: string };\nconsole.log(utilizador.nome); // \"Ana\"\n\n// as const: impede o alargamento e torna tudo só de leitura\nconst metodos = [\"GET\", \"POST\"] as const; // readonly [\"GET\", \"POST\"]\nconst definicoes = { timeout: 30 } as const; // { readonly timeout: 30 }\n\n// @ts-expect-error um array readonly não tem push\nmetodos.push(\"PUT\");\n\nconsole.log(metodos[0], definicoes.timeout); // \"GET\" 30\n\n// Perigoso: a assertion cala o compilador, não converte nada\nconst idade = \"quarenta\" as unknown as number;\nconsole.log(typeof idade); // \"string\" — em memória continua a ser texto",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Sempre que escrever as, está a assumir a responsabilidade que era do compilador. A dupla assertion valor as unknown as Tipo é o sinal mais claro de que se está a forçar algo que o TypeScript já tinha considerado impossível. Validar dados externos em runtime é outro assunto, tratado no Módulo 10.",
+      "table_headers": [
+        "Forma",
+        "O que faz"
+      ],
+      "table_rows": [
+        [
+          "valor as Tipo",
+          "Muda o que o compilador pensa; não altera o valor"
+        ],
+        [
+          "valor as unknown as Tipo",
+          "Força uma conversão que o compilador recusou; quase sempre um erro"
+        ],
+        [
+          "valor as const",
+          "Impede o alargamento e torna o valor só de leitura"
+        ],
+        [
+          "Anotação com dois pontos",
+          "Verifica a compatibilidade em vez de a assumir"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🗣️",
+          "text": "as muda a opinião do compilador, não o valor"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Se a promessa for falsa, rebenta em runtime"
+        },
+        {
+          "icon": "🧊",
+          "text": "as const congela literais e torna tudo readonly"
+        }
+      ]
+    },
+    {
+      "heading": "O Tipo Não Muda Depois de Declarado",
+      "body": [
+        "Em JavaScript uma variável guarda hoje um número e amanhã um texto, sem qualquer consequência. Em TypeScript não: o tipo é fixado no momento da declaração, por anotação ou por inferência, e vale para todo o âmbito da variável. Atribuir-lhe depois um valor de outro tipo é um erro de compilação.",
+        "O caso típico é reaproveitar a mesma variável para o valor lido e para o valor convertido, um hábito comum em JavaScript. Há duas saídas corretas: dar um nome novo ao valor convertido, que é quase sempre a melhor, ou declarar desde o início uma união com os tipos que a variável vai mesmo ter.",
+        "Repare que a segunda saída não é uma desistência. Declarar string ou number diz ao compilador exatamente o que esperar e obriga-o a exigir uma verificação antes de usar o valor, que é o tema do Módulo 04."
+      ],
+      "code": "let resultado = 42; // inferido: number, e assim fica até ao fim do âmbito\n\n// @ts-expect-error resultado é number e nunca poderá guardar uma string\nresultado = \"quarenta e dois\";\n\n// O erro típico: reaproveitar a variável do valor lido para o valor convertido\nlet entrada = \"10\"; // inferido: string\n\n// @ts-expect-error entrada é string e não aceita o número convertido\nentrada = Number(entrada);\n\n// Forma correta A: um nome novo para o valor convertido\nconst texto = \"10\";\nconst numero = Number(texto);\n\n// Forma correta B: declarar desde o início os tipos que a variável vai ter\nlet campo: string | number = \"10\";\ncampo = 10;\n\nconsole.log(numero, typeof campo); // 10 \"number\"",
+      "callout_kind": "DICA",
+      "callout_text": "Se se vir a lutar para que uma variável mude de tipo, o problema costuma ser o nome: está a usar uma variável para duas coisas diferentes. Duas constantes com nomes claros resolvem o erro e melhoram o código.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔒",
+          "text": "O tipo fixa-se na declaração e não muda"
+        },
+        {
+          "icon": "🏷️",
+          "text": "Valor convertido, nome novo"
+        },
+        {
+          "icon": "🔀",
+          "text": "Ou uma união declarada desde o início"
+        }
+      ]
+    },
+    {
+      "heading": "Ver os Tipos que o Compilador Inferiu",
+      "body": [
+        "Como a maior parte dos tipos não está escrita no código, precisa de uma forma de os ver. A principal é o editor: passar o rato por cima de uma variável, de um parâmetro ou de uma chamada de função mostra o tipo que o compilador lhe atribuiu. No Visual Studio Code isto funciona de origem, sem instalar nada.",
+        "Na documentação e no TypeScript Playground é comum ver um comentário com uma seta, na linha imediatamente abaixo, apontado para o identificador: é uma convenção que pede ao Playground para mostrar ali o tipo inferido. Em qualquer editor pode fazer o mesmo à mão, escrevendo o tipo num comentário normal, como se faz nos exemplos deste curso.",
+        "Ganhe o hábito de verificar. Muitos erros de TypeScript que parecem inexplicáveis desaparecem quando descobre que o tipo inferido não era o que assumia, normalmente por causa do alargamento visto há duas secções."
+      ],
+      "code": "const ficheiros = [\"indice.ts\", \"utils.ts\"];\n//    ^? const ficheiros: string[]\n\nfunction contar(itens: string[]) {\n  return itens.length;\n}\n//       ^? function contar(itens: string[]): number\n\nconst total = contar(ficheiros);\n//    ^? const total: number\n\nconsole.log(total); // 2",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Abra o editor e escreva as duas linhas const a = \"ola\" e let b = \"ola\". Passe o rato por cima de cada uma e confirme com os seus olhos que a primeira é \"ola\" e a segunda é string. Esta diferença vai voltar a aparecer em quase todos os módulos seguintes.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🖱️",
+          "text": "Passe o rato por cima para ver o tipo"
+        },
+        {
+          "icon": "💬",
+          "text": "Comentários com o tipo inferido nos exemplos"
+        },
+        {
+          "icon": "🔍",
+          "text": "Erro estranho? Confirme primeiro o tipo real"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Anotar o Essencial",
+      "difficulty": "Iniciante",
+      "statement": "Declare três constantes com anotação explícita: largura e altura do tipo number e unidade do tipo string. Escreva depois duas funções anotadas: area, que recebe dois números e devolve o produto, e etiqueta, que recebe um nome, um valor numérico e um sufixo de texto e devolve uma frase formatada. Chame etiqueta com o resultado de area e imprima o resultado.",
+      "hint": "O tipo vem sempre a seguir a dois pontos. Nos parâmetros fica a seguir ao nome de cada um; no retorno fica depois do parêntesis de fecho da lista de parâmetros.",
+      "solution_code": "const largura: number = 3;\nconst altura: number = 4;\nconst unidade: string = \"m\";\n\nfunction area(l: number, a: number): number {\n  return l * a;\n}\n\nfunction etiqueta(nome: string, valor: number, sufixo: string): string {\n  return `${nome}: ${valor} ${sufixo}`;\n}\n\nconsole.log(etiqueta(\"Área\", area(largura, altura), unidade)); // \"Área: 12 m\"",
+      "solution_explanation": "Cada parâmetro tem a sua própria anotação, e o tipo de retorno vem depois dos parênteses. Repare que as anotações das três constantes são tecnicamente dispensáveis, porque o compilador inferiria o mesmo a partir dos valores iniciais; o exercício pede-as apenas para fixar a sintaxe."
+    },
+    {
+      "title": "Deixar o Compilador Trabalhar",
+      "difficulty": "Iniciante",
+      "statement": "Reescreva o mesmo tipo de código sem nenhuma anotação desnecessária. Declare nome, idade, ativo e um array linguagens sem anotar nada, e uma função saudar que recebe uma string, sem anotar o retorno. Escreva ao lado de cada declaração, em comentário, o tipo que o TypeScript infere, e confirme cada um passando o rato por cima no editor.",
+      "hint": "Atenção aos valores declarados com const: o tipo inferido não é string nem number, é mais preciso do que isso. Só os parâmetros continuam obrigatoriamente anotados.",
+      "solution_code": "const nome = \"Ana\";               // \"Ana\"\nconst idade = 34;                 // 34\nconst ativo = true;               // true\nconst linguagens = [\"ts\", \"js\"];  // string[]\n\nfunction saudar(pessoa: string) { // retorno inferido: string\n  return `Olá, ${pessoa}`;\n}\n\nconst mensagem = saudar(nome);    // string\n\nconsole.log(mensagem);            // \"Olá, Ana\"\nconsole.log(idade, ativo, linguagens.length); // 34 true 2",
+      "solution_explanation": "As três primeiras constantes recebem tipos literais, porque const garante que o valor nunca muda. O array é a exceção: os seus elementos são mutáveis, por isso alarga para string[]. O retorno de saudar é inferido como string a partir do template literal, e mensagem herda esse tipo."
+    },
+    {
+      "title": "const, let e uma União de Literais",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função descrever que aceite apenas os valores \"pendente\", \"enviado\" ou \"entregue\" e devolva uma frase. Chame-a com uma constante declarada sem anotação e confirme que compila. Declare depois uma variável com let e sem anotação com o mesmo valor, chame a função com ela e marque a linha com o comentário de erro esperado. Por fim, mostre como corrigir esse segundo caso com uma anotação.",
+      "hint": "A união escreve-se com barras verticais entre os literais. A diferença entre os dois casos não está no valor, está na forma como a variável foi declarada.",
+      "solution_code": "function descrever(estado: \"pendente\" | \"enviado\" | \"entregue\"): string {\n  return `Encomenda ${estado}`;\n}\n\nconst inicial = \"pendente\";     // const infere o tipo literal \"pendente\"\nconsole.log(descrever(inicial)); // \"Encomenda pendente\"\n\nlet atual: \"pendente\" | \"enviado\" | \"entregue\" = \"pendente\";\natual = \"entregue\";\nconsole.log(descrever(atual)); // \"Encomenda entregue\"\n\nlet solto = \"pendente\"; // let infere string\n// @ts-expect-error string não é atribuível a \"pendente\" | \"enviado\" | \"entregue\"\nconsole.log(descrever(solto));",
+      "solution_explanation": "A constante inicial tem o tipo literal \"pendente\", que é um dos três valores aceites, por isso passa. A variável solto foi alargada para string no momento da declaração e já não cabe na união. A anotação em atual resolve o problema na origem: em vez de deixar o compilador alargar, declara-se qual é o conjunto de valores permitidos."
+    },
+    {
+      "title": "Configuração Segura com as const",
+      "difficulty": "Avancado",
+      "statement": "Crie um objeto de configuração com as propriedades nivel, com o valor \"info\", e tentativas, com o valor 3, aplicando as const. Crie um segundo objeto igual mas sem as const. Escreva uma função registar que só aceita os níveis \"debug\", \"info\" ou \"erro\" e uma mensagem. Chame-a com a propriedade de cada um dos objetos e marque com o comentário de erro esperado a chamada que o compilador rejeita. Demonstre ainda que o objeto com as const é só de leitura.",
+      "hint": "Sem as const, o valor de uma propriedade de objeto é sempre alargado, mesmo que o objeto seja declarado com const. E as const faz mais do que fixar o literal.",
+      "solution_code": "const definicoes = { nivel: \"info\", tentativas: 3 } as const;\nconst definicoesSoltas = { nivel: \"info\", tentativas: 3 };\n\nfunction registar(nivel: \"debug\" | \"info\" | \"erro\", mensagem: string): string {\n  return `[${nivel}] ${mensagem}`;\n}\n\nconsole.log(registar(definicoes.nivel, \"arranque\")); // \"[info] arranque\"\nconsole.log(definicoes.tentativas); // 3\n\n// @ts-expect-error sem as const, a propriedade nivel foi alargada para string\nconsole.log(registar(definicoesSoltas.nivel, \"arranque\"));\n\n// @ts-expect-error as const torna todas as propriedades só de leitura\ndefinicoes.tentativas = 5;",
+      "solution_explanation": "Com as const, nivel mantém o tipo literal \"info\" e encaixa na união exigida pela função, enquanto tentativas passa a ser o literal 3. Sem as const, ambas as propriedades são alargadas para string e number, porque são mutáveis, e a chamada deixa de compilar. A última linha mostra a segunda metade do efeito: as const marca todas as propriedades como readonly."
+    }
+  ],
+  "summary": [
+    "A anotação de tipo escreve-se com dois pontos a seguir ao nome, em variáveis, parâmetros e retornos",
+    "O TypeScript infere o tipo quase sempre, e a boa prática é deixá-lo inferir em vez de anotar tudo",
+    "Anote os parâmetros, as estruturas que começam vazias e o retorno das funções públicas de um módulo",
+    "const infere o tipo literal exato; let alarga-o para o tipo geral, e as propriedades de objeto também",
+    "as muda o que o compilador pensa, não o valor em memória; as const impede o alargamento e torna readonly",
+    "O tipo de uma variável fica fixo na declaração: para guardar outro tipo, use outro nome ou declare uma união"
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 02",
+  "next_label": "Aula 02 → Tipos Primitivos e Especiais: any, unknown e never"
+}

@@ -1,0 +1,297 @@
+{
+  "module_num": "12",
+  "module_title": "Padrões de Projeto e Boas Práticas",
+  "module_dir": "12-Padroes-de-Projeto-e-Boas-Praticas",
+  "lesson_num": "01",
+  "lesson_slug": "Padroes-de-Projeto-em-JavaScript",
+  "kind": "aula",
+  "title": "Padrões de Projeto em JavaScript",
+  "filename_base": "01-Padroes-de-Projeto-em-JavaScript",
+  "subtitle": "Seis padrões de projeto essenciais em JavaScript, com exemplos práticos e idiomáticos.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Reconhecer o padrão módulo e saber quando faz sentido usar IIFE versus ES Modules para encapsular estado.",
+    "Implementar um Singleton em JavaScript e perceber os riscos de o usar em excesso.",
+    "Criar factory functions para centralizar e desacoplar a criação de objetos.",
+    "Construir um sistema de eventos simples com o padrão Observer, a base de qualquer EventEmitter.",
+    "Adicionar comportamento a funções existentes sem as alterar, usando o padrão Decorator.",
+    "Escolher entre algoritmos intercambiáveis em tempo de execução com o padrão Strategy."
+  ],
+  "sections": [
+    {
+      "heading": "O padrão Módulo: IIFE e ES Modules",
+      "body": [
+        "A intenção do padrão módulo é simples: encapsular estado e esconder detalhes de implementação, expondo apenas uma API pública mínima. Antes de existirem os ES Modules, a única forma prática de conseguir isto em JavaScript era tirar partido dos closures através de uma IIFE (Immediately Invoked Function Expression) - uma função anónima invocada de imediato, que cria o seu próprio âmbito e devolve um objeto apenas com os métodos que devem ser públicos.",
+        "Hoje, com ES Modules nativos, cada ficheiro já é um módulo com âmbito próprio: tudo o que não é exportado permanece privado automaticamente, pelo que a IIFE deixou de ser necessária para este fim. O princípio de desenho, porém, mantém-se exatamente o mesmo - isolar estado, expor só o necessário - e é essa ideia, mais do que a sintaxe concreta, que vale a pena reter aqui."
+      ],
+      "code": "// Padrão módulo com IIFE: encapsula um contador privado\nconst ContadorModulo = (function () {\n  let contador = 0; // estado privado, inacessível de fora\n\n  function incrementar() {\n    contador += 1;\n    return contador;\n  }\n\n  function obterValor() {\n    return contador;\n  }\n\n  return { incrementar, obterValor }; // API pública\n})();\n\nContadorModulo.incrementar();\nContadorModulo.incrementar();\nconsole.log(ContadorModulo.obterValor()); // 2\nconsole.log(ContadorModulo.contador); // undefined - permanece privado\n\n// Equivalente idiomático hoje, num ficheiro contador.js:\n// let contador = 0;\n// export function incrementar() { contador += 1; return contador; }\n// export function obterValor() { return contador; }",
+      "callout_kind": "NOTA",
+      "callout_text": "Antes dos ES Modules, a IIFE era a única forma de simular privacidade em JavaScript. Hoje é sobretudo um padrão histórico, mas ainda aparece em bibliotecas antigas e em scripts standalone carregados diretamente no browser sem sistema de módulos.",
+      "table_headers": [
+        "Aspeto",
+        "IIFE",
+        "ES Modules"
+      ],
+      "table_rows": [
+        [
+          "Encapsulamento",
+          "Via closure, manual",
+          "Nativo, por ficheiro"
+        ],
+        [
+          "Suporte no browser",
+          "Sempre funcionou",
+          "Requer type=\"module\" ou bundler"
+        ],
+        [
+          "Estado privado",
+          "Variáveis fora do return",
+          "Bindings não exportados"
+        ],
+        [
+          "Uso recomendado hoje",
+          "Scripts legados, sem build",
+          "Projetos modernos"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "Encapsula estado privado"
+        },
+        {
+          "icon": "🔒",
+          "text": "Expõe só a API pública"
+        },
+        {
+          "icon": "🕰️",
+          "text": "IIFE: solução pré-ES Modules"
+        }
+      ]
+    },
+    {
+      "heading": "Singleton: uma única instância partilhada",
+      "body": [
+        "O Singleton garante que uma classe ou objeto tem apenas uma instância em toda a aplicação e fornece um ponto de acesso global a ela. É útil para recursos genuinamente únicos e partilhados: configuração da aplicação, uma ligação a uma base de dados, um logger central. Em JavaScript há duas formas naturais de o conseguir: um módulo ES é, por si só, um singleton, porque o motor só o avalia uma vez e devolve sempre a mesma referência a quem o importa; em alternativa, uma classe pode controlar a sua própria instanciação através de um campo estático que guarda a única instância criada.",
+        "Convém usar o Singleton com moderação. Ele introduz estado global implícito, dificulta testes unitários isolados (a instância persiste entre testes a menos que seja explicitamente reposta) e pode esconder acoplamento entre partes distantes do código. Sempre que possível, prefere passar a instância explicitamente como parâmetro (injeção de dependência), reservando o Singleton para casos em que a unicidade é mesmo um requisito do domínio."
+      ],
+      "code": "class GestorConfiguracao {\n  static #instancia;\n\n  #definicoes;\n\n  constructor() {\n    if (GestorConfiguracao.#instancia) {\n      throw new Error(\"Usa GestorConfiguracao.obterInstancia()\");\n    }\n    this.#definicoes = new Map();\n    GestorConfiguracao.#instancia = this;\n  }\n\n  static obterInstancia() {\n    return GestorConfiguracao.#instancia ?? new GestorConfiguracao();\n  }\n\n  definir(chave, valor) {\n    this.#definicoes.set(chave, valor);\n  }\n\n  obter(chave) {\n    return this.#definicoes.get(chave);\n  }\n}\n\nconst config1 = GestorConfiguracao.obterInstancia();\nconfig1.definir(\"tema\", \"escuro\");\n\nconst config2 = GestorConfiguracao.obterInstancia();\nconsole.log(config2.obter(\"tema\")); // \"escuro\" - mesma instância\nconsole.log(config1 === config2); // true",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Singleton é um dos padrões mais fáceis de abusar: torna o estado global implícito e dificulta testes isolados, porque a instância persiste entre testes a menos que seja explicitamente reposta. Reserva-o para recursos genuinamente únicos na aplicação.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "1️⃣",
+          "text": "Garante uma única instância"
+        },
+        {
+          "icon": "🌍",
+          "text": "Ponto de acesso global"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Cuidado: dificulta testes"
+        }
+      ]
+    },
+    {
+      "heading": "Factory: centralizar a criação de objetos",
+      "body": [
+        "O padrão Factory consiste numa função (ou método) que cria e devolve objetos, escondendo do código cliente a lógica ou a decisão de qual tipo concreto instanciar. É especialmente útil quando a criação depende de condições em tempo de execução, ou quando usar new diretamente com uma classe específica acoplaria o código cliente demasiado a essa classe.",
+        "Em JavaScript, como funções e objetos literais são baratos e flexíveis, uma factory implementa-se normalmente como uma simples função que devolve um objeto literal já configurado, ou que escolhe entre várias classes com base num parâmetro de tipo - sem necessidade de construir hierarquias formais de \"classes fábrica\" como seria comum noutras linguagens mais rígidas."
+      ],
+      "code": "class Retangulo {\n  constructor(largura, altura) {\n    this.largura = largura;\n    this.altura = altura;\n  }\n  area() {\n    return this.largura * this.altura;\n  }\n}\n\nclass Circulo {\n  constructor(raio) {\n    this.raio = raio;\n  }\n  area() {\n    return Math.PI * this.raio ** 2;\n  }\n}\n\n// Factory: o código cliente nunca faz \"new Retangulo\" ou \"new Circulo\" diretamente\nfunction criarForma(tipo, medidas) {\n  switch (tipo) {\n    case \"retangulo\":\n      return new Retangulo(medidas.largura, medidas.altura);\n    case \"circulo\":\n      return new Circulo(medidas.raio);\n    default:\n      throw new Error(`Tipo de forma desconhecido: ${tipo}`);\n  }\n}\n\nconst formas = [\n  criarForma(\"retangulo\", { largura: 4, altura: 3 }),\n  criarForma(\"circulo\", { raio: 2 }),\n];\n\nformas.forEach((forma) => console.log(forma.area().toFixed(2)));",
+      "callout_kind": "DICA",
+      "callout_text": "Uma factory function não precisa de devolver instâncias de classes - muitas vezes basta devolver um objeto literal já configurado. Usa classes só quando o objeto precisa mesmo de comportamento associado ou de estado privado.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏭",
+          "text": "Esconde a lógica de criação"
+        },
+        {
+          "icon": "🔀",
+          "text": "Escolhe o tipo em runtime"
+        },
+        {
+          "icon": "🧩",
+          "text": "Desacopla cliente da classe concreta"
+        }
+      ]
+    },
+    {
+      "heading": "Observer: a base dos sistemas de eventos",
+      "body": [
+        "O Observer define uma dependência de um-para-muitos: quando o estado de um sujeito muda, todos os seus subscritores são automaticamente notificados. É exatamente este o mecanismo por trás do addEventListener do DOM, do EventEmitter do Node e dos sistemas de reatividade de frameworks modernas. Implementá-lo do zero ajuda a perceber o que se passa por trás dessas APIs.",
+        "Uma implementação de Observer precisa de três peças: uma forma de subscrever (on), uma forma de cancelar a subscrição (off), para evitar chamadas duplicadas ou fugas de memória, e uma forma de notificar (emit), que invoca todas as funções subscritas com os dados relevantes da mudança."
+      ],
+      "code": "class EmissorDeEventos {\n  #ouvintes = new Map(); // evento -> Set de callbacks\n\n  on(evento, callback) {\n    if (!this.#ouvintes.has(evento)) {\n      this.#ouvintes.set(evento, new Set());\n    }\n    this.#ouvintes.get(evento).add(callback);\n    return () => this.off(evento, callback); // devolve função para cancelar subscrição\n  }\n\n  off(evento, callback) {\n    this.#ouvintes.get(evento)?.delete(callback);\n  }\n\n  emit(evento, dados) {\n    this.#ouvintes.get(evento)?.forEach((callback) => callback(dados));\n  }\n}\n\nconst carrinho = new EmissorDeEventos();\n\nconst cancelar = carrinho.on(\"item-adicionado\", (item) => {\n  console.log(`Novo item: ${item.nome} (${item.preco}€)`);\n});\n\ncarrinho.emit(\"item-adicionado\", { nome: \"Teclado\", preco: 45 });\ncancelar(); // remove este observador; deixa de ser notificado",
+      "callout_kind": "NOTA",
+      "callout_text": "addEventListener, o EventEmitter do Node e a reatividade de frameworks como Vue ou React seguem exatamente esta ideia: um sujeito mantém uma lista de subscritores e notifica-os quando algo muda.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📡",
+          "text": "Um-para-muitos: notifica subscritores"
+        },
+        {
+          "icon": "➕",
+          "text": "on/off para subscrever e cancelar"
+        },
+        {
+          "icon": "⚡",
+          "text": "Base de addEventListener e EventEmitter"
+        }
+      ]
+    },
+    {
+      "heading": "Decorator: adicionar comportamento sem alterar o original",
+      "body": [
+        "O Decorator acrescenta responsabilidades a um objeto ou função de forma dinâmica, sem modificar o seu código original, envolvendo-o numa camada extra. Como o JavaScript ainda não tem uma sintaxe nativa de decoradores universalmente estável para funções (a sintaxe @decorator é uma proposta que se aplica sobretudo a classes e é usada com ferramentas como TypeScript ou Babel), a forma idiomática e amplamente suportada é a função de ordem superior: uma função que recebe outra função e devolve uma nova função que envolve a original, acrescentando comportamento antes ou depois de a chamar.",
+        "Esta abordagem compõe-se bem: vários decoradores podem ser aplicados à mesma função, cada um permanecendo independente e reutilizável. Isto respeita uma boa separação de responsabilidades - registo, cronometragem, validação, cache - sem poluir a função de base com preocupações que lhe são alheias."
+      ],
+      "code": "function comLog(funcaoOriginal) {\n  return function (...args) {\n    console.log(`A chamar ${funcaoOriginal.name} com`, args);\n    const resultado = funcaoOriginal(...args);\n    console.log(`${funcaoOriginal.name} devolveu`, resultado);\n    return resultado;\n  };\n}\n\nfunction comCronometragem(funcaoOriginal) {\n  return function (...args) {\n    const inicio = performance.now();\n    const resultado = funcaoOriginal(...args);\n    console.log(`${funcaoOriginal.name} demorou ${(performance.now() - inicio).toFixed(2)}ms`);\n    return resultado;\n  };\n}\n\nfunction somar(a, b) {\n  return a + b;\n}\n\n// Compõe os dois decoradores: cada um acrescenta comportamento, sem tocar em \"somar\"\nconst somarDecorado = comLog(comCronometragem(somar));\n\nsomarDecorado(2, 3);",
+      "callout_kind": "NOTA",
+      "callout_text": "Existe uma proposta oficial de sintaxe @decorator para classes, já usada por alguns frameworks e por TypeScript, mas ainda não é universalmente suportada em JavaScript puro. O padrão com funções de ordem superior funciona em qualquer ambiente e é a base conceptual dessa sintaxe.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎁",
+          "text": "Envolve uma função com extras"
+        },
+        {
+          "icon": "🧱",
+          "text": "Não altera o código original"
+        },
+        {
+          "icon": "🔗",
+          "text": "Decoradores compõem-se entre si"
+        }
+      ]
+    },
+    {
+      "heading": "Strategy: algoritmos intercambiáveis em runtime",
+      "body": [
+        "O Strategy define uma família de algoritmos ou comportamentos, encapsula cada um deles e torna-os intercambiáveis em tempo de execução, em vez de os embutir num longo if/else ou switch dentro da função que os usa. Em JavaScript, como as funções são valores de primeira classe, uma \"estratégia\" é normalmente apenas uma função passada como argumento ou guardada num objeto ou Map indexado por uma chave - sem necessidade de criar uma interface formal e uma classe por estratégia, como seria típico numa linguagem estritamente orientada a objetos.",
+        "Este padrão aparece constantemente: um comparador personalizado passado a Array.prototype.sort, uma função de validação escolhida consoante o tipo de um campo, ou, como no exemplo abaixo, uma política de desconto escolhida consoante o tipo de cliente."
+      ],
+      "code": "const estrategiasDesconto = {\n  nenhum: (total) => total,\n  estudante: (total) => total * 0.9,\n  vip: (total) => total * 0.8,\n};\n\nfunction calcularTotal(total, tipoCliente) {\n  const aplicarDesconto = estrategiasDesconto[tipoCliente] ?? estrategiasDesconto.nenhum;\n  return aplicarDesconto(total);\n}\n\nconsole.log(calcularTotal(100, \"estudante\")); // 90\nconsole.log(calcularTotal(100, \"vip\")); // 80\nconsole.log(calcularTotal(100, \"desconhecido\")); // 100 - estratégia por omissão\n\n// Nova estratégia sem alterar calcularTotal:\nestrategiasDesconto.blackFriday = (total) => total * 0.5;\nconsole.log(calcularTotal(100, \"blackFriday\")); // 50",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Repara que acrescentar a estratégia blackFriday não exigiu tocar em calcularTotal - é esta abertura à extensão, sem modificar código existente, que torna o Strategy tão útil.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎯",
+          "text": "Troca o algoritmo em runtime"
+        },
+        {
+          "icon": "🗂️",
+          "text": "Funções guardadas por chave"
+        },
+        {
+          "icon": "➕",
+          "text": "Fácil acrescentar nova estratégia"
+        }
+      ]
+    },
+    {
+      "heading": "Que padrão usar em cada situação",
+      "body": [
+        "Estes seis padrões respondem a problemas diferentes e a escolha depende do que se precisa de resolver: para esconder estado e expor só uma API, usa-se o padrão módulo; para garantir uma única instância partilhada, o Singleton, com as devidas cautelas; para centralizar e desacoplar a criação de objetos, a Factory; para que várias partes reajam a uma mudança noutra, o Observer; para acrescentar comportamento a código já existente sem o tocar, o Decorator; e para escolher, em runtime, entre várias formas de fazer o mesmo cálculo, o Strategy.",
+        "Estes padrões não são mutuamente exclusivos - é comum, por exemplo, um ficheiro ES Module (padrão módulo) implementar internamente um Singleton, ou um Observer cujos callbacks são escolhidos através de um Strategy. Reter a intenção de cada padrão vale sempre mais do que decorar o seu nome."
+      ],
+      "code": "",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [
+        "Padrão",
+        "Problema que resolve",
+        "Exemplo típico"
+      ],
+      "table_rows": [
+        [
+          "Módulo",
+          "Esconder estado, expor só a API pública",
+          "IIFE legada / ficheiro ES Module"
+        ],
+        [
+          "Singleton",
+          "Garantir uma única instância partilhada",
+          "Configuração global, ligação à base de dados"
+        ],
+        [
+          "Factory",
+          "Centralizar e desacoplar a criação de objetos",
+          "Criar formas, notificações ou pedidos por tipo"
+        ],
+        [
+          "Observer",
+          "Notificar vários subscritores de uma mudança",
+          "addEventListener, EventEmitter"
+        ],
+        [
+          "Decorator",
+          "Acrescentar comportamento sem alterar o original",
+          "Registo, cronometragem, validação"
+        ],
+        [
+          "Strategy",
+          "Escolher um algoritmo entre vários em runtime",
+          "Comparador de sort, cálculo de descontos"
+        ]
+      ],
+      "slide_bullets": []
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Carteira encapsulada com IIFE",
+      "difficulty": "Iniciante",
+      "statement": "Usa o padrão módulo com uma IIFE para criar um objeto Carteira que encapsula um saldo privado, inicializado a 0. A Carteira deve expor três métodos públicos: depositar(valor), que soma valor ao saldo (só aceita valores positivos; caso contrário ignora e devolve o saldo sem alterar); levantar(valor), que subtrai valor ao saldo apenas se houver saldo suficiente (caso contrário devolve o saldo sem alterar); e obterSaldo(), que devolve o saldo atual. Confirma que, de fora da IIFE, não é possível aceder diretamente à variável do saldo.",
+      "hint": "Lembra-te que tudo o que é declarado dentro da função da IIFE só fica acessível de fora se for explicitamente incluído no objeto devolvido no final.",
+      "solution_code": "const Carteira = (function () {\n  let saldo = 0;\n\n  function depositar(valor) {\n    if (valor > 0) {\n      saldo += valor;\n    }\n    return saldo;\n  }\n\n  function levantar(valor) {\n    if (valor > 0 && valor <= saldo) {\n      saldo -= valor;\n    }\n    return saldo;\n  }\n\n  function obterSaldo() {\n    return saldo;\n  }\n\n  return { depositar, levantar, obterSaldo };\n})();\n\nCarteira.depositar(100);\nCarteira.levantar(30);\nCarteira.levantar(1000); // ignorado, saldo insuficiente\nconsole.log(Carteira.obterSaldo()); // 70\nconsole.log(Carteira.saldo); // undefined",
+      "solution_explanation": "A IIFE cria um âmbito isolado que é executado uma única vez; a variável saldo vive dentro desse âmbito e nunca é devolvida, por isso é inacessível de fora, enquanto os três métodos, capturados por closure, continuam a poder lê-la e alterá-la."
+    },
+    {
+      "title": "Fábrica de notificações",
+      "difficulty": "Intermedio",
+      "statement": "Escreve uma factory function chamada criarNotificacao(tipo, mensagem) que devolve um objeto de notificação adequado ao tipo indicado: \"email\", \"sms\" ou \"push\". Todas as notificações devem ter a mesma forma - um método enviar() - mas cada tipo deve escrever uma mensagem diferente na consola ao ser enviada (por exemplo, o email prefixa \"A enviar email:\", o sms prefixa \"A enviar SMS:\"). Se o tipo não for reconhecido, a função deve lançar um Error com uma mensagem clara. Testa a factory criando uma notificação de cada tipo e chamando enviar() em cada uma.",
+      "hint": "Não precisas de classes - cada ramo pode devolver simplesmente um objeto literal diferente com o seu próprio método enviar(); usa um switch para escolher o ramo certo.",
+      "solution_code": "function criarNotificacao(tipo, mensagem) {\n  switch (tipo) {\n    case \"email\":\n      return {\n        tipo,\n        mensagem,\n        enviar() {\n          console.log(`A enviar email: ${mensagem}`);\n        },\n      };\n    case \"sms\":\n      return {\n        tipo,\n        mensagem,\n        enviar() {\n          console.log(`A enviar SMS: ${mensagem}`);\n        },\n      };\n    case \"push\":\n      return {\n        tipo,\n        mensagem,\n        enviar() {\n          console.log(`A enviar notificação push: ${mensagem}`);\n        },\n      };\n    default:\n      throw new Error(`Tipo de notificação desconhecido: ${tipo}`);\n  }\n}\n\nconst notificacoes = [\n  criarNotificacao(\"email\", \"A tua encomenda foi enviada\"),\n  criarNotificacao(\"sms\", \"Código de confirmação: 4821\"),\n  criarNotificacao(\"push\", \"Tens uma nova mensagem\"),\n];\n\nnotificacoes.forEach((notificacao) => notificacao.enviar());",
+      "solution_explanation": "A factory function esconde do código cliente a decisão de qual objeto criar - quem chama criarNotificacao nunca precisa de saber que existem três implementações internas diferentes. Todas respeitam o mesmo contrato (um método enviar()), o que permite tratá-las de forma uniforme no forEach."
+    },
+    {
+      "title": "Preço de ação com Observer",
+      "difficulty": "Intermedio",
+      "statement": "Usando como base a classe EmissorDeEventos apresentada nesta aula, cria uma classe PrecoAcao que representa o preço de uma ação em bolsa. O construtor recebe o preço inicial. A classe deve ter um método atualizarPreco(novoPreco) que só emite o evento \"alteracao\" (com um objeto { anterior, atual }) quando o novo preço for realmente diferente do preço atual - se for igual, não deve notificar ninguém. Cria duas funções observadoras: uma que regista na consola sempre que o preço sobe, outra que regista sempre que desce. Subscreve as duas, atualiza o preço três vezes (uma subida, uma descida, e uma repetição do último valor) e confirma que a repetição não gera notificações.",
+      "hint": "PrecoAcao pode herdar de EmissorDeEventos (extends) para reaproveitar on/off/emit, guardando o preço atual num campo privado e comparando-o antes de chamar this.emit(...).",
+      "solution_code": "class EmissorDeEventos {\n  #ouvintes = new Map();\n\n  on(evento, callback) {\n    if (!this.#ouvintes.has(evento)) {\n      this.#ouvintes.set(evento, new Set());\n    }\n    this.#ouvintes.get(evento).add(callback);\n    return () => this.off(evento, callback);\n  }\n\n  off(evento, callback) {\n    this.#ouvintes.get(evento)?.delete(callback);\n  }\n\n  emit(evento, dados) {\n    this.#ouvintes.get(evento)?.forEach((callback) => callback(dados));\n  }\n}\n\nclass PrecoAcao extends EmissorDeEventos {\n  #precoAtual;\n\n  constructor(precoInicial) {\n    super();\n    this.#precoAtual = precoInicial;\n  }\n\n  atualizarPreco(novoPreco) {\n    if (novoPreco === this.#precoAtual) return;\n    const anterior = this.#precoAtual;\n    this.#precoAtual = novoPreco;\n    this.emit(\"alteracao\", { anterior, atual: novoPreco });\n  }\n}\n\nconst acao = new PrecoAcao(100);\n\nacao.on(\"alteracao\", ({ anterior, atual }) => {\n  if (atual > anterior) console.log(`Subida: ${anterior} -> ${atual}`);\n});\n\nacao.on(\"alteracao\", ({ anterior, atual }) => {\n  if (atual < anterior) console.log(`Descida: ${anterior} -> ${atual}`);\n});\n\nacao.atualizarPreco(110); // Subida: 100 -> 110\nacao.atualizarPreco(95); // Descida: 110 -> 95\nacao.atualizarPreco(95); // nada é emitido, preço igual",
+      "solution_explanation": "PrecoAcao herda o mecanismo genérico on/off/emit e acrescenta-lhe apenas a regra de negócio de comparar o novo valor com o atual antes de emitir. Guardar o preço num campo privado (#precoAtual) garante que ninguém o altera sem passar por atualizarPreco, mantendo o Observer como única via de notificação."
+    },
+    {
+      "title": "Pagamentos com Strategy decorada",
+      "difficulty": "Avancado",
+      "statement": "Cria um objeto estrategiasPagamentoBase com três estratégias - multibanco, mbway e cartao - cada uma uma função que recebe um valor e devolve uma string de confirmação. Depois escreve uma função decoradora comMedicaoEValidacao(funcaoOriginal) que devolve uma nova função: essa nova função deve validar que o valor recebido é um número positivo (lançando um Error caso contrário, sem chamar a função original), medir com performance.now() quanto tempo demorou a execução da função original e registar isso na consola, e devolver o resultado da função original. Aplica o decorador a cada estratégia antes de as guardares num novo objeto estrategiasPagamento, e escreve uma função processarPagamento(metodo, valor) que escolhe a estratégia certa (já decorada) pelo nome do método e a executa, lançando um Error claro se o método não existir.",
+      "hint": "Aplica o decorador logo ao criar o objeto de estratégias, por exemplo mapeando Object.entries do objeto original com comMedicaoEValidacao, para que processarPagamento nunca precise de saber que existe validação ou medição de tempo.",
+      "solution_code": "const estrategiasPagamentoBase = {\n  multibanco: (valor) => `Referência Multibanco gerada para ${valor}€`,\n  mbway: (valor) => `Pedido MB WAY enviado para ${valor}€`,\n  cartao: (valor) => `Pagamento com cartão aprovado: ${valor}€`,\n};\n\nfunction comMedicaoEValidacao(funcaoOriginal) {\n  return function (valor) {\n    if (typeof valor !== \"number\" || valor <= 0) {\n      throw new Error(`Valor inválido para pagamento: ${valor}`);\n    }\n    const inicio = performance.now();\n    const resultado = funcaoOriginal(valor);\n    console.log(`${funcaoOriginal.name} demorou ${(performance.now() - inicio).toFixed(3)}ms`);\n    return resultado;\n  };\n}\n\nconst estrategiasPagamento = Object.fromEntries(\n  Object.entries(estrategiasPagamentoBase).map(([nome, funcao]) => [\n    nome,\n    comMedicaoEValidacao(funcao),\n  ])\n);\n\nfunction processarPagamento(metodo, valor) {\n  const estrategia = estrategiasPagamento[metodo];\n  if (!estrategia) {\n    throw new Error(`Método de pagamento não suportado: ${metodo}`);\n  }\n  return estrategia(valor);\n}\n\nconsole.log(processarPagamento(\"mbway\", 25));\n// processarPagamento(\"mbway\", -10); // lançaria Error: Valor inválido para pagamento: -10\n// processarPagamento(\"paypal\", 10); // lançaria Error: Método de pagamento não suportado: paypal",
+      "solution_explanation": "O Strategy escolhe qual função executar a partir de uma chave, enquanto o Decorator embrulha cada estratégia com validação e medição sem alterar uma única linha das funções originais. Como o decorador é aplicado uma vez, ao construir estrategiasPagamento, a função processarPagamento fica totalmente alheia a essa preocupação - exatamente o benefício de compor estes dois padrões."
+    }
+  ],
+  "summary": [
+    "O padrão módulo isola estado privado e expõe só uma API pública - com IIFE no passado, nativamente com ES Modules hoje.",
+    "Singleton garante uma única instância partilhada, mas introduz estado global e deve ser usado com moderação.",
+    "Factory centraliza a decisão de que objeto criar, desacoplando o código cliente das classes concretas.",
+    "Observer notifica vários subscritores quando algo muda - é o mecanismo por trás de addEventListener e EventEmitter.",
+    "Decorator acrescenta comportamento a uma função existente, envolvendo-a numa função de ordem superior, sem a alterar.",
+    "Strategy troca algoritmos intercambiáveis em runtime, normalmente apenas guardando funções num objeto ou Map."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 02",
+  "next_label": "Aula 02 → Clean Code e Convenções",
+  "_stage": "autoria"
+}

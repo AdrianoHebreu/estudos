@@ -1,0 +1,310 @@
+{
+  "module_num": "02",
+  "module_title": "Objetos, Interfaces e Type Aliases",
+  "module_dir": "02-Objetos-Interfaces-e-Type-Aliases",
+  "lesson_num": "02",
+  "lesson_slug": "Interface-vs-Type-Alias",
+  "kind": "aula",
+  "title": "interface vs type: quando usar cada um",
+  "filename_base": "02-Interface-vs-Type-Alias",
+  "subtitle": "Duas formas de nomear tipos, o que cada uma faz sozinha e como escolher sem hesitar",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Escrever a mesma forma de objeto com interface e com type alias",
+    "Reconhecer os casos que só o type alias consegue nomear",
+    "Perceber o declaration merging das interfaces e vê-lo a funcionar",
+    "Saber onde o merging é uma vantagem real e onde é uma armadilha",
+    "Aplicar uma regra de escolha simples e mantê-la consistente no projeto",
+    "Descartar os critérios que não devem pesar na decisão"
+  ],
+  "sections": [
+    {
+      "heading": "Duas sintaxes para a mesma forma",
+      "body": [
+        "Para descrever a forma de um objeto, o TypeScript oferece duas construções. A interface abre com a palavra interface, o nome e um bloco de chavetas, sem sinal de igual. O type alias abre com a palavra type, o nome, um sinal de igual e o tipo, e termina com ponto e vírgula como qualquer outra declaração.",
+        "Na prática, para esse caso, são quase equivalentes. Os dois nomes descrevem exatamente a mesma forma e um valor declarado com um deles é aceite onde o outro é esperado, nos dois sentidos. Não existe conversão nem perda de informação: o compilador compara formas, não nomes.",
+        "Toda a discussão desta aula vive fora deste caso comum. Enquanto só escrever formas de objeto simples, a escolha é de estilo. As diferenças aparecem quando se sai daí."
+      ],
+      "code": "interface Utilizador {\n  id: number;\n  nome: string;\n  ativo: boolean;\n}\n\ntype UtilizadorAlias = {\n  id: number;\n  nome: string;\n  ativo: boolean;\n};\n\nconst a: Utilizador = { id: 1, nome: \"Ana\", ativo: true };\nconst b: UtilizadorAlias = a;\nconst c: Utilizador = b;\n\nconsole.log(c.nome); // \"Ana\"",
+      "callout_kind": "NOTA",
+      "callout_text": "Repare na pontuação: a interface não leva sinal de igual e o bloco não termina com ponto e vírgula. O type alias leva os dois. Trocar isto é o erro de sintaxe mais frequente de quem começa.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📐",
+          "text": "interface Nome { ... } sem sinal de igual"
+        },
+        {
+          "icon": "🏷️",
+          "text": "type Nome = { ... }; com igual e ponto e vírgula"
+        },
+        {
+          "icon": "🔁",
+          "text": "Para formas de objeto, são intermutáveis"
+        }
+      ]
+    },
+    {
+      "heading": "O que só o type alias consegue nomear",
+      "body": [
+        "A interface só sabe descrever a forma de um objeto. O type alias dá nome a qualquer tipo, e é por isso que aparece em muito mais sítios. Dá nome a uma união, a uma interseção, a um primitivo, a uma função e a uma tupla. Nada disto tem equivalente com interface.",
+        "Há ainda uma categoria inteira que pertence só ao type alias: os tipos derivados de outros tipos, os mapped types e os conditional types. Esses ficam para o Módulo 06, mas convém saber desde já que vivem todos do lado do type alias, o que por si só decide muitos casos.",
+        "Dar nome a um primitivo, como em type Email = string, não cria um tipo novo nem impede que se passe qualquer string. Serve de documentação e de ponto único de alteração, não de proteção."
+      ],
+      "code": "// Um nome para uma união\ntype Estado = \"pendente\" | \"ativo\" | \"suspenso\";\n\n// Um nome para uma interseção\ntype ComId = { id: string };\ntype ComData = { criadoEm: string };\ntype Registo = ComId & ComData;\n\n// Um nome para um primitivo e para uma função\ntype Email = string;\ntype Validador = (valor: string) => boolean;\n\n// Um nome para uma tupla\ntype Coordenada = [latitude: number, longitude: number];\n\nconst estado: Estado = \"ativo\";\nconst registo: Registo = { id: \"r1\", criadoEm: \"2024-01-01\" };\nconst email: Email = \"ana@exemplo.pt\";\nconst naoVazio: Validador = (v) => v.length > 0;\nconst lisboa: Coordenada = [38.72, -9.14];\n\nconsole.log(estado, registo.id, naoVazio(email), lisboa[0]);\n// \"ativo\" \"r1\" true 38.72\n\n// @ts-expect-error a tupla tem exatamente dois números: falta a longitude\nconst porto: Coordenada = [41.15];\nconsole.log(porto);",
+      "callout_kind": "DICA",
+      "callout_text": "Se o tipo que quer nomear não é um objeto com campos, a decisão já está tomada: é type alias. Não há hesitação possível.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔀",
+          "text": "Uniões e interseções: só com type"
+        },
+        {
+          "icon": "📦",
+          "text": "Tuplas, funções e primitivos: só com type"
+        },
+        {
+          "icon": "🧪",
+          "text": "Tipos derivados do Módulo 06: só com type"
+        }
+      ]
+    },
+    {
+      "heading": "O que só a interface faz: declaration merging",
+      "body": [
+        "Duas interfaces com o mesmo nome, no mesmo âmbito, não entram em conflito: fundem-se numa só. O resultado tem todos os campos de todas as declarações, como se tivessem sido escritas juntas. Chama-se declaration merging e é a única capacidade exclusiva da interface.",
+        "Com type alias isto é simplesmente impossível. Declarar duas vezes o mesmo nome é um erro de identificador duplicado, e o compilador assinala as duas declarações, não apenas a segunda. Um type alias fica fechado no momento em que é escrito.",
+        "Note que o merging não é aditivo sem regras. Se as duas declarações definirem o mesmo campo com tipos diferentes, o compilador rejeita. A fusão acrescenta campos novos, não redefine os que já existem."
+      ],
+      "code": "interface Janela {\n  largura: number;\n}\n\ninterface Janela {\n  altura: number;\n}\n\n// As duas declarações fundiram-se numa só\nconst j: Janela = { largura: 800, altura: 600 };\nconsole.log(j.largura + j.altura); // 1400\n\n// @ts-expect-error o nome Caixa fica duplicado: o type alias não se funde\ntype Caixa = { largura: number };\n// @ts-expect-error o nome Caixa fica duplicado: o type alias não se funde\ntype Caixa = { altura: number };",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Quando um type alias é declarado duas vezes, o erro aparece nas duas linhas, não só na segunda. O compilador não sabe qual delas é a intrusa.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧩",
+          "text": "Interfaces com o mesmo nome fundem-se"
+        },
+        {
+          "icon": "🚫",
+          "text": "Type alias repetido é erro de nome duplicado"
+        },
+        {
+          "icon": "⚖️",
+          "text": "A fusão acrescenta campos, não os redefine"
+        }
+      ]
+    },
+    {
+      "heading": "Onde o merging vale a pena e onde é um risco",
+      "body": [
+        "O merging existe por uma razão concreta: permitir acrescentar campos a tipos que não são nossos. Quando uma biblioteca publica uma interface de opções e falta lá um campo que a versão instalada já aceita, ou quando um plugin acrescenta propriedades a um objeto global, basta declarar uma interface com o mesmo nome no nosso projeto e o tipo passa a incluir o que precisamos. Isto chama-se aumento de tipos e é tratado a sério no Módulo 09, junto com os ficheiros de declaração.",
+        "Dentro do nosso próprio código, a mesma capacidade é sobretudo um perigo. Escrever interface Utilizador em dois ficheiros por distração não dá erro nenhum: o tipo cresce em silêncio e passa a exigir campos que quem o escreveu nunca previu. Com type alias, esse engano é apanhado imediatamente.",
+        "A conclusão prática não é evitar interfaces. É saber que a fusão está sempre disponível e tratá-la como uma ferramenta deliberada, reservada para tipos que vêm de fora."
+      ],
+      "code": "// Simula o que vem de dentro de uma biblioteca instalada\ninterface OpcoesDoPlugin {\n  debug: boolean;\n}\n\n// Noutro ficheiro do nosso projeto, acrescentamos o campo que falta nos tipos publicados\ninterface OpcoesDoPlugin {\n  timeoutMs: number;\n}\n\nconst opcoes: OpcoesDoPlugin = { debug: true, timeoutMs: 5000 };\nconsole.log(opcoes.timeoutMs); // 5000\n\ninterface Config {\n  porta: number;\n}\n\ninterface Config {\n  // @ts-expect-error a fusão exige o mesmo tipo para o mesmo campo: number contra string\n  porta: string;\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Duas interfaces com o mesmo nome no mesmo projeto não levantam qualquer aviso. Se o nome colidir por acidente, só vai perceber quando um objeto começar a exigir campos que não conhece.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔌",
+          "text": "Útil para aumentar tipos de bibliotecas externas"
+        },
+        {
+          "icon": "📚",
+          "text": "Aumento de tipos é tema do Módulo 09"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Em código próprio, colisões silenciosas"
+        }
+      ]
+    },
+    {
+      "heading": "A comparação honesta, critério a critério",
+      "body": [
+        "Posta a mecânica de lado, vale a pena ver tudo lado a lado. A tabela abaixo não inventa diferenças: a maioria das linhas dá empate, e é isso que torna a decisão menos dramática do que costuma ser apresentada.",
+        "Só três linhas decidem alguma coisa a sério: nomear tipos que não são objetos, tipos derivados, e o merging. Tudo o resto é preferência."
+      ],
+      "code": "",
+      "callout_kind": "NOTA",
+      "callout_text": "Sobre as mensagens de erro: o compilador tende a mostrar o nome da interface, enquanto com type alias às vezes expande a forma inteira. É uma diferença de leitura, não de comportamento, e as versões recentes esbateram-na muito.",
+      "table_headers": [
+        "Critério",
+        "interface",
+        "type alias"
+      ],
+      "table_rows": [
+        [
+          "Descrever a forma de um objeto",
+          "Sim",
+          "Sim"
+        ],
+        [
+          "Dar nome a uma união",
+          "Não",
+          "Sim"
+        ],
+        [
+          "Dar nome a uma interseção",
+          "Não",
+          "Sim, com o operador &"
+        ],
+        [
+          "Dar nome a um primitivo, função ou tupla",
+          "Não",
+          "Sim"
+        ],
+        [
+          "Tipos derivados (Módulo 06)",
+          "Não",
+          "Sim"
+        ],
+        [
+          "Declaration merging",
+          "Sim",
+          "Não: nome duplicado é erro"
+        ],
+        [
+          "Aumentar tipos de pacotes externos",
+          "Sim",
+          "Não"
+        ],
+        [
+          "Participa na tipagem estrutural",
+          "Sim",
+          "Sim"
+        ],
+        [
+          "Legibilidade das mensagens de erro",
+          "Costuma mostrar o nome",
+          "Pode expandir a forma"
+        ],
+        [
+          "Peso no tempo de compilação",
+          "Irrelevante em código normal",
+          "Irrelevante em código normal"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📊",
+          "text": "A maioria dos critérios dá empate"
+        },
+        {
+          "icon": "🎯",
+          "text": "Só três linhas decidem mesmo"
+        },
+        {
+          "icon": "🤝",
+          "text": "Ambas descrevem formas de objeto igualmente bem"
+        }
+      ]
+    },
+    {
+      "heading": "A recomendação prática",
+      "body": [
+        "A regra que funciona na maioria das equipas é curta. Use interface para formas de objeto que representem um contrato, sobretudo as que vão ser estendidas ou implementadas por classes. Use type para tudo o resto: uniões, interseções, tuplas, assinaturas de função, nomes para primitivos e qualquer tipo derivado de outro.",
+        "A extensão de interfaces é o tema da próxima aula e o implements das classes aparece no Módulo 08. Basta, por agora, guardar a intenção: quando um tipo é pensado para crescer ou para ser cumprido por outra coisa, a interface é a escolha natural.",
+        "Acima de qualquer destas regras está a consistência. Um projeto onde metade dos ficheiros usa uma construção e a outra metade usa a outra, sem critério, custa mais a ler do que qualquer escolha feita por igual em todo o lado. Decida uma vez, escreva a decisão onde a equipa a veja, e siga-a."
+      ],
+      "code": "// Forma de objeto pensada para ser estendida ou implementada: interface\ninterface Repositorio {\n  guardar(chave: string, valor: string): void;\n  ler(chave: string): string | undefined;\n}\n\n// União, tupla e função com nome: type\ntype Resultado = \"ok\" | \"erro\";\ntype ParChaveValor = [string, string];\ntype Transformador = (entrada: string) => string;\n\nconst memoria = new Map<string, string>();\n\nconst repo: Repositorio = {\n  guardar: (chave, valor) => {\n    memoria.set(chave, valor);\n  },\n  ler: (chave) => memoria.get(chave),\n};\n\nrepo.guardar(\"lingua\", \"pt-PT\");\n\nconst r: Resultado = repo.ler(\"lingua\") === undefined ? \"erro\" : \"ok\";\nconst par: ParChaveValor = [\"lingua\", \"pt-PT\"];\nconst maiusculas: Transformador = (e) => e.toUpperCase();\n\nconsole.log(r, par[1], maiusculas(\"ok\")); // \"ok\" \"pt-PT\" \"OK\"",
+      "callout_kind": "DICA",
+      "callout_text": "Se a equipa não chegar a acordo, escolha type para tudo excepto os contratos destinados a classes. É a opção com menos exceções, porque o type alias cobre todos os casos que a interface não cobre.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧱",
+          "text": "interface para contratos e formas extensíveis"
+        },
+        {
+          "icon": "🧰",
+          "text": "type para tudo o resto"
+        },
+        {
+          "icon": "🧭",
+          "text": "Consistência vale mais do que a regra escolhida"
+        }
+      ]
+    },
+    {
+      "heading": "O que não deve pesar na decisão",
+      "body": [
+        "Circulam dois argumentos que raramente se aplicam. O primeiro é o desempenho do compilador: em teoria, uma cadeia longa de interseções obriga a mais trabalho do que uma hierarquia de interfaces, mas isso só se nota em bases de código enormes com tipos muito profundos. Num projeto normal, a diferença não é mensurável e não justifica escolher nada.",
+        "O segundo é a ideia de que uma das construções é mais rigorosa do que a outra. Não é. As duas participam exatamente da mesma maneira na tipagem estrutural: o que conta é a forma do valor, não o nome com que foi declarado. Uma função que espera um objeto com x e y aceita tanto um valor tipado por interface como um valor tipado por type alias, e até um objeto literal escrito ali mesmo. Esse mecanismo é o tema da última aula deste módulo.",
+        "O que deve pesar é aquilo que cada construção consegue exprimir e a clareza que o código ganha. Nada mais."
+      ],
+      "code": "interface Ponto {\n  x: number;\n  y: number;\n}\n\ntype PontoAlias = {\n  x: number;\n  y: number;\n};\n\nfunction distancia(p: { x: number; y: number }): number {\n  return Math.sqrt(p.x ** 2 + p.y ** 2);\n}\n\nconst p1: Ponto = { x: 3, y: 4 };\nconst p2: PontoAlias = { x: 6, y: 8 };\n\nconsole.log(distancia(p1)); // 5\nconsole.log(distancia(p2)); // 10\nconsole.log(distancia({ x: 0, y: 1 })); // 1",
+      "callout_kind": "NOTA",
+      "callout_text": "O compilador nunca compara nomes de tipos. Compara formas. É por isso que interface e type alias com os mesmos campos são, para todos os efeitos de verificação, o mesmo tipo.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⏱️",
+          "text": "Desempenho do compilador: irrelevante aqui"
+        },
+        {
+          "icon": "🟰",
+          "text": "Nenhuma das duas é mais rigorosa"
+        },
+        {
+          "icon": "🔍",
+          "text": "Ambas seguem a tipagem estrutural"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "A mesma forma, duas escritas",
+      "difficulty": "Iniciante",
+      "statement": "Declare uma interface chamada Livro com os campos titulo (string), autor (string) e paginas (number). Declare a seguir um type alias chamado LivroAlias com exatamente os mesmos campos. Escreva uma função resumo que receba um parâmetro do tipo Livro e devolva uma string no formato titulo, de autor (paginas páginas). Crie um valor tipado com Livro e outro tipado com LivroAlias, passe os dois à mesma função e mostre os resultados. Por fim, atribua o valor tipado com Livro a uma variável declarada como LivroAlias para confirmar que o compilador aceita.",
+      "hint": "A interface abre com interface Nome e um bloco de chavetas, sem sinal de igual. O type alias usa type Nome = e termina com ponto e vírgula. A função aceita os dois porque o compilador compara os campos, não os nomes.",
+      "solution_code": "interface Livro {\n  titulo: string;\n  autor: string;\n  paginas: number;\n}\n\ntype LivroAlias = {\n  titulo: string;\n  autor: string;\n  paginas: number;\n};\n\nfunction resumo(l: Livro): string {\n  return `${l.titulo}, de ${l.autor} (${l.paginas} páginas)`;\n}\n\nconst comInterface: Livro = { titulo: \"Ensaio\", autor: \"Saramago\", paginas: 310 };\nconst comAlias: LivroAlias = { titulo: \"Jangada\", autor: \"Saramago\", paginas: 366 };\n\nconsole.log(resumo(comInterface)); // \"Ensaio, de Saramago (310 páginas)\"\nconsole.log(resumo(comAlias)); // \"Jangada, de Saramago (366 páginas)\"\n\nconst trocado: LivroAlias = comInterface;\nconsole.log(trocado.paginas); // 310",
+      "solution_explanation": "As duas declarações descrevem a mesma forma, por isso o compilador trata-as como o mesmo tipo. A função declarada com Livro aceita um valor tipado com LivroAlias sem qualquer conversão, e a atribuição no sentido inverso também passa. Para formas de objeto simples, a escolha entre as duas construções não tem consequências."
+    },
+    {
+      "title": "Escolher a construção certa para cada caso",
+      "difficulty": "Iniciante",
+      "statement": "Modele uma tarefa de uma aplicação de gestão. Precisa de: um conjunto fechado com os valores baixa, media e alta; um nome legível para uma duração em milissegundos, que é apenas um number; uma tupla com dois números que represente um intervalo de tempo, com os elementos chamados inicio e fim; uma assinatura de função que recebe um number e devolve uma string; e a forma do objeto Tarefa com os campos id (number), titulo (string), prioridade, duracao e janela, usando os nomes anteriores. Use type alias onde a interface não consegue chegar e interface onde faz sentido. Crie uma tarefa de exemplo e mostre alguns campos.",
+      "hint": "Quatro dos cinco nomes não descrevem a forma de um objeto. A tupla com elementos nomeados escreve-se com os nomes seguidos de dois pontos dentro dos parênteses retos.",
+      "solution_code": "type Prioridade = \"baixa\" | \"media\" | \"alta\";\ntype Milissegundos = number;\ntype IntervaloDeTempo = [inicio: number, fim: number];\ntype Formatador = (valor: number) => string;\n\ninterface Tarefa {\n  id: number;\n  titulo: string;\n  prioridade: Prioridade;\n  duracao: Milissegundos;\n  janela: IntervaloDeTempo;\n}\n\nconst formatarMs: Formatador = (v) => `${v} ms`;\n\nconst tarefa: Tarefa = {\n  id: 1,\n  titulo: \"Rever contrato\",\n  prioridade: \"alta\",\n  duracao: 1500,\n  janela: [0, 3600000],\n};\n\nconsole.log(tarefa.prioridade, formatarMs(tarefa.duracao), tarefa.janela[1]);\n// \"alta\" \"1500 ms\" 3600000",
+      "solution_explanation": "A união, o nome para o primitivo, a tupla e a assinatura de função só se escrevem com type alias, porque nenhum deles é a forma de um objeto. Só Tarefa é um contrato de objeto, e é aí que a interface se aplica. Repare que Milissegundos não impede que se passe qualquer number: serve de documentação e de ponto único de alteração."
+    },
+    {
+      "title": "Aumentar uma interface que não é sua",
+      "difficulty": "Intermedio",
+      "statement": "Imagine uma biblioteca instalada que publica uma interface DefinicoesDaApp com um único campo tema, do tipo união entre claro e escuro. A versão instalada já aceita mais dois campos que ficaram de fora dos tipos publicados: idioma (string) e versao (number). Acrescente esses campos sem tocar na declaração original, usando declaration merging, e crie um objeto com os três campos preenchidos. Depois, no mesmo ficheiro, demonstre que a mesma técnica não funciona com type alias: declare duas vezes um type alias chamado Definicoes e marque as linhas que o compilador rejeita com a diretiva de erro esperado.",
+      "hint": "Basta declarar outra vez uma interface com o mesmo nome. Quanto ao type alias, lembre-se de que o erro de nome duplicado é assinalado nas duas declarações, não apenas na segunda.",
+      "solution_code": "// Simula os tipos publicados por uma biblioteca instalada\ninterface DefinicoesDaApp {\n  tema: \"claro\" | \"escuro\";\n}\n\n// A nossa extensão local, escrita noutro ficheiro do projeto\ninterface DefinicoesDaApp {\n  idioma: string;\n  versao: number;\n}\n\nconst definicoes: DefinicoesDaApp = {\n  tema: \"escuro\",\n  idioma: \"pt-PT\",\n  versao: 3,\n};\n\nconsole.log(definicoes.tema, definicoes.idioma, definicoes.versao);\n// \"escuro\" \"pt-PT\" 3\n\n// @ts-expect-error o nome Definicoes fica duplicado: o type alias não se funde\ntype Definicoes = { tema: \"claro\" | \"escuro\" };\n// @ts-expect-error o nome Definicoes fica duplicado: o type alias não se funde\ntype Definicoes = { idioma: string };",
+      "solution_explanation": "As duas declarações de DefinicoesDaApp fundem-se numa só, e o objeto passa a exigir os três campos. Esta é a única coisa que a interface faz e o type alias não faz, e é a razão pela qual os tipos das bibliotecas são quase sempre publicados como interfaces. Com type alias, repetir o nome é erro de identificador duplicado nas duas linhas."
+    },
+    {
+      "title": "Um tipo global aumentado, com a regra aplicada",
+      "difficulty": "Avancado",
+      "statement": "Escreva um módulo que acrescenta uma propriedade opcional ao objeto global window, chamada __APP__, com a forma de um objeto que tem versao (string) e ambiente. O ambiente só pode valer dev ou prod. Aplique a recomendação da aula na escolha de cada construção. Exporte duas funções: versaoOuOmissao, que recebe uma string de omissão e devolve a versão se existir ou essa omissão caso contrário, e eProducao, que devolve true apenas quando o ambiente é prod. O ficheiro tem de ser um módulo para que o bloco de aumento global seja válido.",
+      "hint": "Um bloco declare global só é permitido dentro de um módulo, e um ficheiro sem import nem export não é um módulo. Uma linha export vazia resolve isso. Para ler uma propriedade opcional dentro de outra opcional, o encadeamento opcional evita verificações manuais.",
+      "solution_code": "export {};\n\n// Conjunto fechado de valores: type\ntype Ambiente = \"dev\" | \"prod\";\n\n// Forma de objeto que outros módulos podem estender: interface\ninterface LeituraDoApp {\n  versao: string;\n  ambiente: Ambiente;\n}\n\n// Só a interface se funde com um tipo global já declarado noutro sítio\ndeclare global {\n  interface Window {\n    __APP__?: LeituraDoApp;\n  }\n}\n\nexport function versaoOuOmissao(omissao: string): string {\n  return window.__APP__?.versao ?? omissao;\n}\n\nexport function eProducao(): boolean {\n  return window.__APP__?.ambiente === \"prod\";\n}",
+      "solution_explanation": "O bloco declare global reabre a interface Window, que vem das declarações do ambiente do navegador, e acrescenta-lhe um campo. Nenhum type alias consegue fazer isto, porque não há forma de reabrir um nome já declarado. Dentro do módulo, a regra prática aplica-se sem conflito: Ambiente é uma união e fica em type, LeituraDoApp é uma forma de objeto e fica em interface."
+    }
+  ],
+  "summary": [
+    "Para descrever a forma de um objeto, interface e type alias são praticamente equivalentes, e a diferença é de sintaxe.",
+    "Só o type alias dá nome a uniões, interseções, primitivos, funções, tuplas e tipos derivados.",
+    "Só a interface faz declaration merging: duas declarações com o mesmo nome fundem-se numa só.",
+    "O merging serve para aumentar tipos de pacotes externos, tema do Módulo 09, e é uma fonte de colisões silenciosas em código próprio.",
+    "Regra prática: interface para contratos de objeto que serão estendidos ou implementados, type para tudo o resto.",
+    "Não decida pelo desempenho do compilador nem por rigor: é irrelevante e as duas participam igualmente na tipagem estrutural."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 03",
+  "next_label": "Aula 03 → Propriedades Opcionais, readonly e Index Signatures"
+}

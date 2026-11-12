@@ -1,0 +1,226 @@
+{
+  "module_num": "07",
+  "module_title": "Assincronismo",
+  "module_dir": "07-Assincronismo",
+  "lesson_num": "06",
+  "lesson_slug": "Generators-Assincronos-e-for-await-of",
+  "kind": "aula",
+  "title": "Generators Assíncronos e for await...of",
+  "filename_base": "06-Generators-Assincronos-e-for-await-of",
+  "subtitle": "Produza e consuma dados assíncronos item a item, sem bloquear nem carregar tudo de vez.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Compreender como async function* combina yield com await para produzir valores de forma assíncrona.",
+    "Conhecer o protocolo Symbol.asyncIterator e como um objeto se torna assincronamente iterável.",
+    "Usar for await...of para consumir dados de forma preguiçosa, item a item, em vez de os carregar todos de uma vez.",
+    "Perceber como break, return e erros interagem com a limpeza (finally / return()) num generator assíncrono.",
+    "Implementar paginação preguiçosa de uma API real com um generator assíncrono e yield*."
+  ],
+  "sections": [
+    {
+      "heading": "De generator a async generator",
+      "body": [
+        "Um generator assíncrono é uma função declarada com async function*, que combina duas capacidades já conhecidas: a de um generator normal, capaz de pausar e retomar a sua execução com yield, e a de uma função assíncrona, capaz de usar await para esperar por promises. Dentro do corpo de um async function* é legítimo escrever await antes de qualquer yield, o que permite produzir valores que dependem do resultado de operações assíncronas, como um atraso temporizado ou uma chamada de rede.",
+        "Ao contrário de um generator síncrono, chamar .next() num generator assíncrono não devolve diretamente um objeto { value, done }, mas sim uma Promise que resolve para esse objeto. Quem consumir o generator manualmente tem de fazer await a cada chamada de next(), e é exatamente esta necessidade que motiva a existência de for await...of, apresentado mais à frente nesta aula."
+      ],
+      "code": "function esperar(ms) {\n  return new Promise((resolve) => setTimeout(resolve, ms));\n}\n\nasync function* contarComAtraso(limite) {\n  for (let i = 1; i <= limite; i++) {\n    await esperar(300); // simula trabalho assíncrono entre valores\n    yield i;\n  }\n}\n\nasync function exemplo() {\n  const gerador = contarComAtraso(3);\n  console.log(await gerador.next()); // { value: 1, done: false }, após ~300ms\n  console.log(await gerador.next()); // { value: 2, done: false }\n  console.log(await gerador.next()); // { value: 3, done: false }\n  console.log(await gerador.next()); // { value: undefined, done: true }\n}\n\nexemplo();",
+      "callout_kind": "NOTA",
+      "callout_text": "Um async generator não pode ser percorrido com um for...of comum (síncrono); é preciso for await...of, ou chamar manualmente await gerador.next().",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⚙️",
+          "text": "async function* = generator + async"
+        },
+        {
+          "icon": "⏳",
+          "text": "await antes de yield, sem problemas"
+        },
+        {
+          "icon": "🔄",
+          "text": "next() devolve sempre uma Promise"
+        }
+      ]
+    },
+    {
+      "heading": "O protocolo Symbol.asyncIterator",
+      "body": [
+        "Assim como um objeto se torna iterável ao implementar Symbol.iterator, um objeto torna-se assincronamente iterável ao implementar a propriedade computada Symbol.asyncIterator. Este método, quando invocado, tem de devolver um iterador cujo método next() devolve uma Promise que resolve para um objeto com as propriedades value e done, exatamente o mesmo formato que um async generator já produz de forma automática.",
+        "Escrever este protocolo à mão, sem recorrer a async function*, ajuda a perceber o que o generator faz por trás dos panos, e é útil quando se quer expor uma interface assincronamente iterável a partir de uma estrutura de dados ou de uma classe já existente, sem a reescrever inteiramente como um generator."
+      ],
+      "code": "function esperar(ms) {\n  return new Promise((resolve) => setTimeout(resolve, ms));\n}\n\nconst fonteAssincrona = {\n  [Symbol.asyncIterator]() {\n    const dados = [10, 20, 30];\n    let indice = 0;\n\n    return {\n      async next() {\n        await esperar(100);\n        if (indice < dados.length) {\n          return { value: dados[indice++], done: false };\n        }\n        return { value: undefined, done: true };\n      },\n    };\n  },\n};\n\nasync function consumirManualmente() {\n  for await (const valor of fonteAssincrona) {\n    console.log(valor); // 10, depois 20, depois 30\n  }\n}\n\nconsumirManualmente();",
+      "callout_kind": "DICA",
+      "callout_text": "Se só precisa de produzir valores simples com atrasos ou chamadas assíncronas, normalmente é mais simples escrever um async function* do que implementar Symbol.asyncIterator à mão.",
+      "table_headers": [
+        "Aspeto",
+        "Iterador síncrono",
+        "Iterador assíncrono"
+      ],
+      "table_rows": [
+        [
+          "Método de obtenção",
+          "obj[Symbol.iterator]()",
+          "obj[Symbol.asyncIterator]()"
+        ],
+        [
+          "Retorno de next()",
+          "{ value, done }",
+          "Promise que resolve para { value, done }"
+        ],
+        [
+          "Consumido com",
+          "for...of",
+          "for await...of"
+        ],
+        [
+          "Criado com generator",
+          "function*",
+          "async function*"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔌",
+          "text": "Symbol.asyncIterator define o protocolo"
+        },
+        {
+          "icon": "📦",
+          "text": "next() devolve Promise<{ value, done }>"
+        },
+        {
+          "icon": "🛠️",
+          "text": "útil sem usar async function*"
+        }
+      ]
+    },
+    {
+      "heading": "for await...of: consumo preguiçoso e limpeza",
+      "body": [
+        "O ciclo for await...of foi desenhado para consumir iteráveis assíncronos: a cada iteração faz automaticamente await ao resultado devolvido por next(), extrai value e verifica done, sem que o consumidor precise de gerir promises explicitamente. Isto torna o consumo preguiçoso: o próximo valor só é pedido ao generator quando o ciclo avança para a iteração seguinte, o que é essencial ao trabalhar com fontes de dados grandes ou potencialmente infinitas, onde algo como Promise.all seria impossível ou desperdiçaria memória e largura de banda.",
+        "Quando o ciclo termina antecipadamente, seja por um break, um return da função envolvente ou uma exceção não apanhada, o motor de JavaScript chama automaticamente o método return() do iterador assíncrono subjacente. Num async generator, isto faz a execução saltar para o bloco finally mais próximo, permitindo libertar recursos como ligações de rede ou temporizadores pendentes. Erros lançados dentro do generator propagam-se naturalmente para fora do for await...of, podendo ser apanhados com um try/catch normal à volta do ciclo."
+      ],
+      "code": "function esperar(ms) {\n  return new Promise((resolve) => setTimeout(resolve, ms));\n}\n\nasync function* gerarNumeros() {\n  try {\n    for (let i = 1; i <= 5; i++) {\n      await esperar(200);\n      yield i;\n    }\n  } finally {\n    console.log(\"Limpeza executada: recursos libertados\");\n  }\n}\n\nasync function processar() {\n  try {\n    for await (const numero of gerarNumeros()) {\n      console.log(\"Recebido:\", numero);\n      if (numero === 3) {\n        break; // provoca a chamada a return() no generator\n      }\n    }\n  } catch (erro) {\n    console.error(\"Falhou:\", erro.message);\n  }\n}\n\nprocessar();",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Não confunda for await...of com paralelismo: o ciclo processa sempre um valor de cada vez, pela ordem em que são produzidos, tal como um for...of normal.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🐢",
+          "text": "for await...of é sempre preguiçoso"
+        },
+        {
+          "icon": "🧹",
+          "text": "break chama return() no generator"
+        },
+        {
+          "icon": "🧯",
+          "text": "finally trata da limpeza"
+        },
+        {
+          "icon": "🚨",
+          "text": "erros propagam-se para try/catch"
+        }
+      ]
+    },
+    {
+      "heading": "Caso real: paginar resultados de uma API",
+      "body": [
+        "Um dos usos mais práticos de generators assíncronos é consumir uma API paginada como se fosse uma única sequência contínua de itens, sem que o código consumidor precise de saber que, por trás, existem várias chamadas de rede sequenciais. O generator mantém internamente a página atual, pede-a com fetch, e usa yield* para entregar cada item dessa página ao consumidor antes de avançar para a página seguinte.",
+        "Esta abordagem é preguiçosa por construção: se o consumidor parar de iterar a meio, por exemplo porque já encontrou o resultado que procurava, as páginas seguintes nunca chegam a ser pedidas ao servidor. Isto contrasta com estratégias que primeiro buscam todas as páginas para depois processar os dados, e que desperdiçam pedidos de rede sempre que o consumidor não precisa do conjunto completo."
+      ],
+      "code": "async function* obterTodosOsUtilizadores(urlInicial) {\n  let proximaUrl = urlInicial;\n\n  while (proximaUrl) {\n    const resposta = await fetch(proximaUrl);\n\n    if (!resposta.ok) {\n      throw new Error(`Falha ao obter página: ${resposta.status}`);\n    }\n\n    const pagina = await resposta.json();\n    yield* pagina.resultados; // entrega cada utilizador individualmente\n\n    proximaUrl = pagina.proximaPagina ?? null; // null quando não há mais páginas\n  }\n}\n\nasync function encontrarPrimeiroAdmin() {\n  for await (const utilizador of obterTodosOsUtilizadores(\"/api/utilizadores?pagina=1\")) {\n    if (utilizador.role === \"admin\") {\n      console.log(\"Encontrado:\", utilizador.nome);\n      break; // as páginas seguintes nunca chegam a ser pedidas\n    }\n  }\n}\n\nencontrarPrimeiroAdmin();",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Experimente adaptar este generator a uma API real com paginação (por número de página ou por cursor) e conte quantos pedidos de rede poupa ao parar cedo com break.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📄",
+          "text": "cada página só é pedida quando necessário"
+        },
+        {
+          "icon": "➡️",
+          "text": "yield* entrega itens de cada página"
+        },
+        {
+          "icon": "🌐",
+          "text": "parar cedo poupa pedidos de rede"
+        }
+      ]
+    },
+    {
+      "heading": "Envolver streams com um generator assíncrono",
+      "body": [
+        "Muitas APIs baseadas em streams, como o corpo de uma resposta fetch acedido através de resposta.body.getReader(), expõem um método read() que devolve uma Promise resolvida para { value, done }, seguindo exatamente o mesmo formato do protocolo de iteração assíncrona. Isto torna trivial envolver esse leitor num async generator: um simples ciclo com await leitor.read() e yield value transforma qualquer stream deste estilo numa fonte que se consome naturalmente com for await...of.",
+        "Colocar a chamada a leitor.releaseLock() num bloco finally dentro do generator garante que o recurso é libertado tanto quando o stream termina normalmente como quando o consumidor interrompe a iteração com break, reforçando o mesmo padrão de limpeza já visto para for await...of em geral."
+      ],
+      "code": "async function* lerStream(leitor) {\n  try {\n    while (true) {\n      const { value, done } = await leitor.read();\n      if (done) return;\n      yield value; // cada value é tipicamente um Uint8Array\n    }\n  } finally {\n    leitor.releaseLock();\n  }\n}\n\nasync function processarResposta(url) {\n  const resposta = await fetch(url);\n  const leitor = resposta.body.getReader();\n\n  for await (const chunk of lerStream(leitor)) {\n    console.log(\"Chunk recebido:\", chunk.byteLength, \"bytes\");\n  }\n}",
+      "callout_kind": "NOTA",
+      "callout_text": "Em runtimes mais recentes, alguns objetos ReadableStream já implementam diretamente Symbol.asyncIterator, mas envolver manualmente o leitor com um generator funciona em qualquer ambiente e deixa explícita a lógica de limpeza.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🌊",
+          "text": "getReader().read() já segue o protocolo"
+        },
+        {
+          "icon": "🎁",
+          "text": "envolver num async generator"
+        },
+        {
+          "icon": "🔓",
+          "text": "releaseLock() dentro do finally"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Contagem assíncrona simples",
+      "difficulty": "Iniciante",
+      "statement": "Crie uma async generator function chamada contarAte que recebe um número n e produz (yield) os números inteiros de 1 até n, aguardando 200 milissegundos entre cada valor. Pode usar uma função auxiliar esperar(ms) que devolve uma Promise resolvida através de setTimeout. De seguida, escreva uma função assíncrona que consuma contarAte(5) com for await...of e imprima cada número na consola.",
+      "hint": "Dentro de um async function* pode escrever await normalmente antes de cada yield; o for await...of trata automaticamente das promises devolvidas por next().",
+      "solution_code": "function esperar(ms) {\n  return new Promise((resolve) => setTimeout(resolve, ms));\n}\n\nasync function* contarAte(n) {\n  for (let i = 1; i <= n; i++) {\n    await esperar(200);\n    yield i;\n  }\n}\n\nasync function executar() {\n  for await (const numero of contarAte(5)) {\n    console.log(numero);\n  }\n}\n\nexecutar();",
+      "solution_explanation": "contarAte é um async generator: em cada passagem do ciclo espera 200 ms com await antes de produzir o valor seguinte com yield. O for await...of resolve automaticamente cada Promise devolvida por next(), pelo que o consumidor só precisa de escrever um ciclo simples."
+    },
+    {
+      "title": "Um iterável assíncrono à mão",
+      "difficulty": "Intermedio",
+      "statement": "Implemente uma função intervaloAssincrono(inicio, fim) que devolve um objeto assincronamente iterável, implementando diretamente [Symbol.asyncIterator] (sem usar async function*). O iterador desse objeto deve produzir, um a um, os números inteiros entre inicio e fim (inclusive), aguardando 100 milissegundos entre cada valor. Depois, use for await...of para somar os valores produzidos por intervaloAssincrono(1, 10), imprimindo o valor e a soma acumulada a cada passo, e termine o ciclo assim que a soma ultrapassar 15.",
+      "hint": "[Symbol.asyncIterator]() tem de devolver um objeto com um método next() assíncrono (ou que devolva uma Promise) que resolve para { value, done }.",
+      "solution_code": "function esperar(ms) {\n  return new Promise((resolve) => setTimeout(resolve, ms));\n}\n\nfunction intervaloAssincrono(inicio, fim) {\n  return {\n    [Symbol.asyncIterator]() {\n      let atual = inicio;\n      return {\n        async next() {\n          await esperar(100);\n          if (atual > fim) {\n            return { value: undefined, done: true };\n          }\n          return { value: atual++, done: false };\n        },\n      };\n    },\n  };\n}\n\nasync function somarAteLimite() {\n  let soma = 0;\n\n  for await (const numero of intervaloAssincrono(1, 10)) {\n    soma += numero;\n    console.log(\"Valor:\", numero, \"Soma:\", soma);\n\n    if (soma > 15) {\n      break;\n    }\n  }\n\n  console.log(\"Soma final:\", soma);\n}\n\nsomarAteLimite();",
+      "solution_explanation": "O objeto devolvido por intervaloAssincrono implementa o protocolo assíncrono manualmente: [Symbol.asyncIterator] devolve um iterador cujo next() é assíncrono e resolve para { value, done }. O for await...of consome estes valores de forma preguiçosa, permitindo terminar com break assim que a soma ultrapassa 15, sem gerar os valores restantes até 10."
+    },
+    {
+      "title": "Paginação preguiçosa de uma API",
+      "difficulty": "Avancado",
+      "statement": "Dada a função já implementada obterPagina(pagina), que devolve uma Promise resolvida com { resultados: string[], temMaisPaginas: boolean }:\n\nfunction obterPagina(pagina) {\n  const todasAsPaginas = [\n    [\"maçã\", \"banana\"],\n    [\"pera\", \"uva\"],\n    [\"manga\"],\n  ];\n  return new Promise((resolve) => {\n    setTimeout(() => {\n      resolve({\n        resultados: todasAsPaginas[pagina - 1] ?? [],\n        temMaisPaginas: pagina < todasAsPaginas.length,\n      });\n    }, 150);\n  });\n}\n\nEscreva uma async generator function obterTodosOsResultados() que chama obterPagina de forma sequencial (página 1, depois 2, etc.), produzindo (yield) cada item individualmente, e que para assim que temMaisPaginas for false, após entregar os itens dessa última página. Consuma-a com for await...of, imprimindo cada item, mas pare assim que tiverem sido impressos 4 itens no total, mesmo que existam mais páginas por buscar. Use um bloco finally dentro do generator para confirmar, com um console.log, que ele foi corretamente fechado.",
+      "hint": "Use um while(true) dentro do async generator para ir pedindo páginas sucessivas com await, entregue os itens de cada página com yield* resultados, e saia com return quando temMaisPaginas for false.",
+      "solution_code": "function obterPagina(pagina) {\n  const todasAsPaginas = [\n    [\"maçã\", \"banana\"],\n    [\"pera\", \"uva\"],\n    [\"manga\"],\n  ];\n  return new Promise((resolve) => {\n    setTimeout(() => {\n      resolve({\n        resultados: todasAsPaginas[pagina - 1] ?? [],\n        temMaisPaginas: pagina < todasAsPaginas.length,\n      });\n    }, 150);\n  });\n}\n\nasync function* obterTodosOsResultados() {\n  let pagina = 1;\n\n  try {\n    while (true) {\n      const { resultados, temMaisPaginas } = await obterPagina(pagina);\n      yield* resultados;\n\n      if (!temMaisPaginas) {\n        return;\n      }\n      pagina++;\n    }\n  } finally {\n    console.log(\"A fechar o generator de paginação\");\n  }\n}\n\nasync function listarPrimeirosQuatro() {\n  let contados = 0;\n\n  for await (const item of obterTodosOsResultados()) {\n    console.log(item);\n    contados++;\n\n    if (contados === 4) {\n      break;\n    }\n  }\n}\n\nlistarPrimeirosQuatro();",
+      "solution_explanation": "obterTodosOsResultados vai buscando páginas sequencialmente com await obterPagina(pagina) e entrega os itens de cada uma com yield* resultados, terminando quando temMaisPaginas é false. Como o consumidor faz break ao atingir 4 itens, ainda dentro da segunda página, a terceira página nunca chega a ser pedida, e o bloco finally confirma que o generator foi corretamente fechado quando o break dispara return() no iterador."
+    },
+    {
+      "title": "Transformar um pipeline assíncrono",
+      "difficulty": "Avancado",
+      "statement": "Escreva uma async generator function chamada mapAsync(iteravelAssincrono, funcaoTransformacao) que recebe qualquer iterável assíncrono e uma função de transformação, e produz, um a um, o resultado de aplicar funcaoTransformacao a cada valor produzido pelo iterável original (assuma que pode fazer await ao resultado da transformação, seja ela síncrona ou devolva uma Promise). Depois, usando o generator obterTodosOsResultados do exercício anterior, use mapAsync para transformar cada item em maiúsculas e consuma o resultado com for await...of, imprimindo cada valor já transformado.",
+      "hint": "Dentro de mapAsync pode usar for await...of para percorrer o iteravelAssincrono recebido como argumento, e yield para produzir cada valor já transformado.",
+      "solution_code": "async function* mapAsync(iteravelAssincrono, funcaoTransformacao) {\n  for await (const valor of iteravelAssincrono) {\n    yield await funcaoTransformacao(valor);\n  }\n}\n\n// Reaproveitando obterTodosOsResultados do exercício anterior\nasync function listarEmMaiusculas() {\n  const iteravelTransformado = mapAsync(\n    obterTodosOsResultados(),\n    (item) => item.toUpperCase()\n  );\n\n  for await (const item of iteravelTransformado) {\n    console.log(item);\n  }\n}\n\nlistarEmMaiusculas();",
+      "solution_explanation": "mapAsync é um generator assíncrono genérico que consome qualquer iterável assíncrono com for await...of e produz cada valor já transformado, mantendo a preguiça: só pede o próximo valor a obterTodosOsResultados quando o consumidor final pedir o próximo valor a mapAsync. Isto mostra como generators assíncronos se compõem, formando um pipeline de transformação sem carregar tudo em memória."
+    }
+  ],
+  "summary": [
+    "async function* combina generator e função assíncrona: pode usar await antes de cada yield.",
+    "Um objeto torna-se assincronamente iterável ao implementar [Symbol.asyncIterator], cujo next() devolve uma Promise que resolve para { value, done }.",
+    "for await...of consome iteráveis assíncronos de forma preguiçosa, pedindo um valor de cada vez, só quando o ciclo avança.",
+    "break, return ou uma exceção dentro de for await...of chamam return() no iterador, o que faz um async generator saltar para o seu bloco finally.",
+    "yield* num async generator delega itens de outro iterável, síncrono ou assíncrono, o que é ideal para compor pipelines e para paginação.",
+    "Paginar uma API com um async generator evita carregar todos os resultados em memória: cada página só é pedida quando o consumidor efetivamente avança até lá."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para o Módulo 08",
+  "next_label": "Aula 01 → ES Modules: import e export",
+  "_stage": "autoria"
+}

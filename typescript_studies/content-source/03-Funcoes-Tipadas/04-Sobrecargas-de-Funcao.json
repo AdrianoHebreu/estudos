@@ -1,0 +1,279 @@
+{
+  "module_num": "03",
+  "module_title": "Funções Tipadas",
+  "module_dir": "03-Funcoes-Tipadas",
+  "lesson_num": "04",
+  "lesson_slug": "Sobrecargas-de-Funcao",
+  "kind": "aula",
+  "title": "Sobrecargas de Função",
+  "filename_base": "04-Sobrecargas-de-Funcao",
+  "subtitle": "Várias assinaturas para a mesma função, quando o retorno depende do argumento",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Reconhecer o caso em que uma união simples torna o retorno impreciso",
+    "Escrever assinaturas de sobrecarga seguidas da assinatura de implementação",
+    "Perceber porque a assinatura de implementação não é visível para quem chama",
+    "Ordenar as sobrecargas da mais específica para a mais geral",
+    "Declarar sobrecargas em métodos de interfaces e ligá-las a uma implementação",
+    "Decidir quando uma sobrecarga é a ferramenta certa e quando é exagero"
+  ],
+  "sections": [
+    {
+      "heading": "Quando uma união não chega",
+      "body": [
+        "Há funções cujo tipo de retorno depende do tipo do argumento. Dar-lhe um parâmetro em união e um retorno em união compila, mas é uma descrição pobre: o compilador passa a dizer que o resultado pode ser qualquer um dos membros, mesmo nos casos em que o próprio código da chamada já sabe exatamente qual é.",
+        "O custo aparece no lado de quem chama. Cada chamada fica obrigada a estreitar um valor cujo tipo já era conhecido no momento em que se escreveu o argumento. É trabalho repetido para recuperar informação que existia e se perdeu na assinatura."
+      ],
+      "code": "// Sem sobrecargas: o retorno só pode ser uma união, e a precisão perde-se\nfunction primeiro(valor: string | number[]): string | number {\n  return valor[0];\n}\n\nconst letra = primeiro(\"olá\");     // string | number\nconst numero = primeiro([10, 20]); // string | number\n\n// @ts-expect-error o tipo declarado é string | number, logo toUpperCase não existe em number\nletra.toUpperCase();\n\n// quem chama fica obrigado a estreitar um resultado que já se sabia\nif (typeof letra === \"string\") {\n  console.log(letra.toUpperCase()); // \"O\"\n}\nconsole.log(numero); // 10",
+      "callout_kind": "NOTA",
+      "callout_text": "Em JavaScript esta função funcionava na perfeição. O problema é só de descrição: o tipo diz menos do que a função realmente garante.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🪢",
+          "text": "Retorno em união apaga a relação entrada-saída"
+        },
+        {
+          "icon": "🔁",
+          "text": "Quem chama repete narrowing que já era desnecessário"
+        },
+        {
+          "icon": "🎯",
+          "text": "O objetivo é devolver o tipo exato de cada caso"
+        }
+      ]
+    },
+    {
+      "heading": "A sintaxe: assinaturas e implementação",
+      "body": [
+        "Uma sobrecarga escreve-se declarando a função várias vezes. Primeiro vêm as assinaturas de sobrecarga, que terminam em ponto e vírgula e não têm corpo. A seguir vem a assinatura de implementação, essa sim com corpo, que executa todos os casos.",
+        "Repetir o nome da função é a sintaxe correta e não é uma redeclaração. As assinaturas de sobrecarga e a de implementação têm de ficar juntas, sem nada pelo meio, e a implementação é sempre a última."
+      ],
+      "code": "// Duas assinaturas de sobrecarga: é só isto que quem chama vê\nfunction primeiro(valor: string): string;\nfunction primeiro(valor: number[]): number;\n// Assinatura de implementação mais corpo: trata os dois casos\nfunction primeiro(valor: string | number[]): string | number {\n  return valor[0];\n}\n\nconst letra = primeiro(\"olá\");     // string\nconst numero = primeiro([10, 20]); // number\n\nconsole.log(letra.toUpperCase()); // \"O\"\nconsole.log(numero.toFixed(2));   // \"10.00\"",
+      "callout_kind": "DICA",
+      "callout_text": "As assinaturas de sobrecarga desaparecem na compilação, tal como qualquer anotação de tipo. O JavaScript gerado tem uma única função, a da implementação.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📝",
+          "text": "Assinaturas sem corpo, terminadas em ponto e vírgula"
+        },
+        {
+          "icon": "⚙️",
+          "text": "Uma só implementação, sempre em último lugar"
+        },
+        {
+          "icon": "🔗",
+          "text": "Repetir o nome é sintaxe, não redeclaração"
+        }
+      ]
+    },
+    {
+      "heading": "A assinatura de implementação é invisível",
+      "body": [
+        "Esta é a regra que mais confunde. A assinatura de implementação não faz parte da lista de assinaturas disponíveis. Serve apenas para o compilador verificar o corpo e confirmar que as sobrecargas são cumpríveis. Do lado de fora, a função tem exatamente as assinaturas de sobrecarga declaradas, nem mais uma.",
+        "A consequência prática surpreende: uma chamada que encaixa perfeitamente na implementação pode ser rejeitada por não corresponder a nenhuma sobrecarga. É o que acontece quando se passa a união inteira em vez de um membro concreto."
+      ],
+      "code": "function idParaTexto(id: string): string;\nfunction idParaTexto(id: number): string;\nfunction idParaTexto(id: string | number): string {\n  return typeof id === \"string\" ? id : id.toString(10);\n}\n\nconsole.log(idParaTexto(\"a1\")); // \"a1\"\nconsole.log(idParaTexto(7));    // \"7\"\n\ndeclare const talvez: string | number;\n\n// @ts-expect-error o argumento encaixa na implementação, mas em nenhuma das duas sobrecargas\nidParaTexto(talvez);",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Se precisar de aceitar também a união inteira, tem de a declarar como mais uma sobrecarga. A implementação aceitá-la não basta.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🙈",
+          "text": "A implementação não conta para quem chama"
+        },
+        {
+          "icon": "📋",
+          "text": "A função tem só as assinaturas de sobrecarga"
+        },
+        {
+          "icon": "🚫",
+          "text": "Passar a união inteira é rejeitado"
+        }
+      ]
+    },
+    {
+      "heading": "A implementação tem de servir todas as sobrecargas",
+      "body": [
+        "Cada sobrecarga é uma promessa, e a implementação tem de a poder cumprir. Por isso os parâmetros da implementação costumam ser uniões dos tipos prometidos e ficam opcionais quando alguma sobrecarga não os recebe. É a única assinatura que tem de abranger tudo.",
+        "Se declarar uma sobrecarga que a implementação não consegue aceitar, o erro aparece na linha da sobrecarga, com a mensagem de que não é compatível com a assinatura de implementação. A verificação é deliberadamente permissiva noutros pontos, e é por isso que o corpo pode precisar de narrowing explícito para devolver o tipo certo."
+      ],
+      "code": "// A implementação usa união e parâmetro opcional para servir as duas sobrecargas\nfunction criar(titulo: string): { titulo: string };\nfunction criar(titulo: string, ativo: boolean): { titulo: string; ativo: boolean };\nfunction criar(titulo: string, ativo?: boolean): { titulo: string; ativo?: boolean } {\n  return ativo === undefined ? { titulo } : { titulo, ativo };\n}\n\nconsole.log(criar(\"Aula\"));       // { titulo: \"Aula\" }\nconsole.log(criar(\"Aula\", true)); // { titulo: \"Aula\", ativo: true }\n\nfunction medir(valor: string): number;\n// @ts-expect-error esta sobrecarga promete aceitar Date, mas a implementação só aceita string\nfunction medir(valor: Date): number;\nfunction medir(valor: string): number {\n  return valor.length;\n}\n\nconsole.log(medir(\"abc\")); // 3",
+      "callout_kind": "NOTA",
+      "callout_text": "O compilador não verifica se o corpo devolve o tipo certo para cada sobrecarga em particular. Confirma apenas que respeita a assinatura de implementação, e essa responsabilidade fica do lado de quem escreve.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧩",
+          "text": "Implementação com uniões e parâmetros opcionais"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Sobrecarga incompatível dá erro na própria linha"
+        },
+        {
+          "icon": "🙋",
+          "text": "A coerência do corpo é responsabilidade sua"
+        }
+      ]
+    },
+    {
+      "heading": "A ordem das sobrecargas decide",
+      "body": [
+        "O TypeScript percorre as sobrecargas de cima para baixo e fica pela primeira que aceita os argumentos. Não procura a melhor: fica pela primeira. Uma sobrecarga geral colocada em primeiro lugar apanha todas as chamadas e as que vêm depois nunca são escolhidas.",
+        "A regra prática é simples. As assinaturas mais específicas ficam em cima e as mais gerais em baixo, exatamente ao contrário da ordem em que costumam vir à cabeça."
+      ],
+      "code": "// Ordem errada: a sobrecarga geral vem primeiro e apanha todas as chamadas\nfunction lerErrado(chave: string): string | null;\nfunction lerErrado(chave: \"porta\"): string;\nfunction lerErrado(chave: string): string | null {\n  return chave === \"porta\" ? \"8080\" : null;\n}\n\n// Ordem certa: a sobrecarga específica vem primeiro\nfunction lerCerto(chave: \"porta\"): string;\nfunction lerCerto(chave: string): string | null;\nfunction lerCerto(chave: string): string | null {\n  return chave === \"porta\" ? \"8080\" : null;\n}\n\nconst a = lerErrado(\"porta\"); // string | null\nconst b = lerCerto(\"porta\");  // string\n\nconsole.log(a);        // \"8080\"\nconsole.log(b.length); // 4",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Passe o rato por cima de cada chamada no editor. O número da sobrecarga escolhida aparece na dica, no formato um de dois, e é a forma mais rápida de confirmar a ordem.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⬇️",
+          "text": "Escolhe a primeira que encaixa, não a melhor"
+        },
+        {
+          "icon": "🔬",
+          "text": "Específicas em cima, gerais em baixo"
+        },
+        {
+          "icon": "👻",
+          "text": "Uma geral à frente torna as seguintes inúteis"
+        }
+      ]
+    },
+    {
+      "heading": "Sobrecargas em métodos e interfaces",
+      "body": [
+        "Dentro de uma interface ou de um tipo de objeto, sobrecarregar um método é ainda mais direto: basta repetir o membro com assinaturas diferentes. Como não há corpo nenhum a declarar, também não há assinatura de implementação.",
+        "Quem implementa esse contrato precisa de uma função que satisfaça todas as assinaturas ao mesmo tempo. Um método escrito à mão num objeto literal não consegue sobrecarregar-se, por isso a solução habitual é declarar a função sobrecarregada à parte e ligá-la ao objeto. Nas classes, que são o Módulo 08, os métodos aceitam sobrecargas diretamente no corpo da classe."
+      ],
+      "code": "// Numa interface basta repetir o método: não há corpo, logo não há implementação\ninterface Repositorio {\n  buscar(id: number): string;\n  buscar(ids: number[]): string[];\n}\n\n// A implementação vive numa função com sobrecargas, depois ligada ao objeto\nfunction buscar(id: number): string;\nfunction buscar(ids: number[]): string[];\nfunction buscar(alvo: number | number[]): string | string[] {\n  return Array.isArray(alvo) ? alvo.map((n) => `item-${n}`) : `item-${alvo}`;\n}\n\nconst repo: Repositorio = { buscar };\n\nconst um = repo.buscar(1);         // string\nconst lista = repo.buscar([1, 2]); // string[]\n\nconsole.log(um.toUpperCase()); // \"ITEM-1\"\nconsole.log(lista.length);     // 2",
+      "callout_kind": "DICA",
+      "callout_text": "As bibliotecas de tipos do próprio TypeScript estão cheias de métodos sobrecarregados. O addEventListener do DOM é o exemplo clássico: cada nome de evento tem a sua assinatura para o tipo do evento chegar certo ao callback.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧾",
+          "text": "Na interface, repetir o membro chega"
+        },
+        {
+          "icon": "🔌",
+          "text": "Objeto literal: função sobrecarregada à parte"
+        },
+        {
+          "icon": "🏛️",
+          "text": "Classes aceitam sobrecargas nos métodos"
+        }
+      ]
+    },
+    {
+      "heading": "Quando não vale a pena",
+      "body": [
+        "As sobrecargas são verbosas e não escalam: cada caso novo obriga a escrever mais uma assinatura e a rever a implementação. Na maioria das situações em que aparecem, há uma ferramenta mais simples. Se o retorno é do mesmo tipo do que entrou, o problema é de genéricos, que são o Módulo 05. Se o argumento é um objeto com um campo que identifica a variante, a resposta é uma união discriminada, no Módulo 04. Se a relação entre entrada e saída é uma regra geral, o instrumento certo é um conditional type, no Módulo 06.",
+        "Ficam a valer a pena quando as formas de chamada são realmente diferentes umas das outras, com números ou tipos de parâmetros distintos e retornos sem relação entre si, e quando esse conjunto é pequeno e estável. É isso que descrevem bem e nenhuma das alternativas descreve melhor."
+      ],
+      "code": "// Com sobrecargas: cada tipo novo obriga a mais duas linhas\nfunction primeiroOv(itens: string[]): string | undefined;\nfunction primeiroOv(itens: number[]): number | undefined;\nfunction primeiroOv(itens: string[] | number[]): string | number | undefined {\n  return itens[0];\n}\n\n// Com um genérico (Módulo 05): uma assinatura serve todos os tipos\nfunction primeiroGen<T>(itens: T[]): T | undefined {\n  return itens[0];\n}\n\nconsole.log(primeiroOv([\"a\", \"b\"])); // \"a\"\nconsole.log(primeiroGen([1, 2]));    // 1\nconsole.log(primeiroGen([true]));    // true",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Um sinal claro de exagero é ver as sobrecargas a crescer de cada vez que se acrescenta um tipo. Se a lista tende a aumentar, é porque existe uma regra por escrever, e a regra pertence a um genérico ou a um conditional type.",
+      "table_headers": [
+        "Situação",
+        "Ferramenta mais adequada",
+        "Motivo"
+      ],
+      "table_rows": [
+        [
+          "Poucas formas de chamada fixas, com retornos sem relação entre si",
+          "Sobrecargas",
+          "É o único mecanismo que descreve listas de parâmetros diferentes"
+        ],
+        [
+          "O retorno é do mesmo tipo do que entrou",
+          "Genérico, Módulo 05",
+          "Uma assinatura serve todos os tipos, sem manutenção"
+        ],
+        [
+          "O argumento é um objeto com um campo que identifica a variante",
+          "União discriminada, Módulo 04",
+          "O narrowing resolve sem duplicar assinaturas"
+        ],
+        [
+          "A relação entre entrada e saída é uma regra geral",
+          "Conditional type, Módulo 06",
+          "Escreve-se a regra uma vez em vez de enumerar casos"
+        ],
+        [
+          "As variantes só diferem em argumentos que podem faltar",
+          "Parâmetros opcionais ou com valor por omissão",
+          "Uma só assinatura chega e lê-se melhor"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📈",
+          "text": "Sobrecargas não escalam: cada caso custa linhas"
+        },
+        {
+          "icon": "🧬",
+          "text": "Mesmo tipo a entrar e a sair pede um genérico"
+        },
+        {
+          "icon": "✅",
+          "text": "Valem quando as formas de chamada são mesmo diferentes"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Duplicar texto ou número",
+      "difficulty": "Iniciante",
+      "statement": "Escreva uma função chamada duplicar com duas sobrecargas. Quando recebe uma string, devolve uma string com o texto repetido duas vezes. Quando recebe um number, devolve um number com o dobro do valor. Depois guarde o resultado de duplicar com o texto ab numa constante e o resultado de duplicar com o número 21 noutra, e confirme que a primeira aceita toUpperCase e a segunda aceita toFixed sem qualquer verificação de tipo.",
+      "hint": "Comece pelas duas linhas sem corpo, uma por cada caso. Só depois escreva a assinatura de implementação, que tem de aceitar os dois tipos e devolver os dois tipos.",
+      "solution_code": "function duplicar(valor: string): string;\nfunction duplicar(valor: number): number;\nfunction duplicar(valor: string | number): string | number {\n  return typeof valor === \"string\" ? valor + valor : valor * 2;\n}\n\nconst texto = duplicar(\"ab\"); // string\nconst conta = duplicar(21);   // number\n\nconsole.log(texto.toUpperCase()); // \"ABAB\"\nconsole.log(conta.toFixed(1));    // \"42.0\"",
+      "solution_explanation": "As duas assinaturas de sobrecarga fixam a relação entre o tipo que entra e o tipo que sai. A assinatura de implementação usa uniões nos dois lados porque tem de cobrir os dois casos, mas fica invisível para quem chama. Por isso texto é string e conta é number, sem narrowing nenhum na chamada."
+    },
+    {
+      "title": "A sobrecarga específica primeiro",
+      "difficulty": "Intermedio",
+      "statement": "Crie o tipo Nivel como a união dos literais info e erro. Escreva uma função registar que recebe um nivel e uma mensagem. Ela deve ter duas sobrecargas: uma específica em que o nivel é o literal erro e o retorno é Error, e uma geral em que o nivel é Nivel e o retorno é Error ou string. A implementação devolve um novo Error com a mensagem quando o nivel é erro, e a mensagem prefixada com info entre parênteses retos nos restantes casos. Ordene as sobrecargas de forma a que uma chamada com o literal erro devolva Error, e confirme-o acedendo à propriedade message sem qualquer verificação.",
+      "hint": "O TypeScript fica pela primeira sobrecarga que aceita os argumentos. Se a assinatura geral estiver em cima, a específica nunca chega a ser escolhida.",
+      "solution_code": "type Nivel = \"info\" | \"erro\";\n\nfunction registar(nivel: \"erro\", mensagem: string): Error;\nfunction registar(nivel: Nivel, mensagem: string): Error | string;\nfunction registar(nivel: Nivel, mensagem: string): Error | string {\n  return nivel === \"erro\" ? new Error(mensagem) : `[info] ${mensagem}`;\n}\n\nconst falha = registar(\"erro\", \"disco cheio\"); // Error\nconsole.log(falha.message); // \"disco cheio\"\n\nconst nivelDinamico: Nivel = Math.random() > 0.5 ? \"info\" : \"erro\";\nconst qualquer = registar(nivelDinamico, \"ola\"); // Error | string\nconsole.log(typeof qualquer); // \"object\" ou \"string\"",
+      "solution_explanation": "Com a assinatura do literal erro em primeiro lugar, uma chamada literal encontra-a logo e recebe Error puro. Se as duas trocassem de posição, a geral aceitaria essa mesma chamada e o resultado passaria a Error ou string. A sobrecarga geral continua a ser precisa para os casos em que o nivel só se conhece em execução."
+    },
+    {
+      "title": "Um método sobrecarregado numa interface",
+      "difficulty": "Intermedio",
+      "statement": "Declare uma interface Conversor com um método converter sobrecarregado: recebendo uma string devolve um number, recebendo um array de strings devolve um array de numbers. Escreva à parte uma função converter com as mesmas duas sobrecargas, cuja implementação converte cada valor com Number, e use-a para construir um objeto do tipo Conversor. Verifique que o resultado da chamada com uma string aceita toFixed e o da chamada com um array aceita length. Por fim, demonstre com um comentário de erro esperado que passar um valor do tipo string ou array de strings é rejeitado.",
+      "hint": "Numa interface não há corpo, por isso não existe assinatura de implementação, apenas o membro repetido. Um método escrito dentro de um objeto literal não consegue ter sobrecargas, por isso declare a função primeiro e depois passe-a para o objeto.",
+      "solution_code": "interface Conversor {\n  converter(valor: string): number;\n  converter(valores: string[]): number[];\n}\n\nfunction converter(valor: string): number;\nfunction converter(valores: string[]): number[];\nfunction converter(entrada: string | string[]): number | number[] {\n  return Array.isArray(entrada)\n    ? entrada.map((v) => Number(v))\n    : Number(entrada);\n}\n\nconst conversor: Conversor = { converter };\n\nconst unico = conversor.converter(\"3.5\");       // number\nconst varios = conversor.converter([\"1\", \"2\"]); // number[]\n\nconsole.log(unico.toFixed(1)); // \"3.5\"\nconsole.log(varios.length);    // 2\n\ndeclare const misto: string | string[];\n// @ts-expect-error encaixa na implementação, mas em nenhuma das sobrecargas declaradas\nconversor.converter(misto);",
+      "solution_explanation": "A interface descreve o contrato repetindo o membro, e a função sobrecarregada satisfaz as duas assinaturas de uma só vez, o que permite passá-la diretamente no objeto literal. A última chamada mostra de novo a regra central: a implementação aceita a união, mas como nenhuma sobrecarga a declara, o compilador rejeita."
+    },
+    {
+      "title": "Leitor de configuração tipado por chave",
+      "difficulty": "Avancado",
+      "statement": "Declare uma interface Config com porta do tipo number, host do tipo string e debug do tipo boolean, e uma constante com valores concretos para as três. Escreva uma função ler com três sobrecargas, uma por chave literal, em que cada uma devolve o tipo exato do respetivo campo. A implementação recebe uma chave do tipo keyof Config e devolve a união dos três tipos. Confirme que cada chamada literal devolve o tipo certo usando toFixed, toUpperCase e uma comparação booleana, e demonstre com um comentário de erro esperado que passar uma chave cujo tipo é keyof Config não corresponde a nenhuma sobrecarga.",
+      "hint": "O tipo keyof Config é a união dos três literais. Serve bem na assinatura de implementação, mas nenhuma das sobrecargas o declara, e só as sobrecargas contam para quem chama.",
+      "solution_code": "interface Config {\n  porta: number;\n  host: string;\n  debug: boolean;\n}\n\nconst valores: Config = { porta: 8080, host: \"localhost\", debug: true };\n\nfunction ler(chave: \"porta\"): number;\nfunction ler(chave: \"host\"): string;\nfunction ler(chave: \"debug\"): boolean;\nfunction ler(chave: keyof Config): number | string | boolean {\n  return valores[chave];\n}\n\nconst porta = ler(\"porta\"); // number\nconst host = ler(\"host\");   // string\nconst debug = ler(\"debug\"); // boolean\n\nconsole.log(porta.toFixed(0));   // \"8080\"\nconsole.log(host.toUpperCase()); // \"LOCALHOST\"\nconsole.log(debug === true);     // true\n\ndeclare const chaveDinamica: keyof Config;\n// @ts-expect-error keyof Config encaixa na implementação, mas em nenhuma das três sobrecargas\nler(chaveDinamica);",
+      "solution_explanation": "Cada sobrecarga liga uma chave literal ao tipo exato do campo, e é por isso que porta, host e debug saem já com o tipo certo. A implementação usa keyof Config apenas para o corpo funcionar, e a última linha mostra que isso não abre a porta a chaves dinâmicas. Note que este é precisamente o caso em que um genérico com indexação por chave, no Módulo 05, faria o mesmo trabalho numa só assinatura."
+    }
+  ],
+  "summary": [
+    "Sobrecargas dão várias assinaturas à mesma função, para o retorno acompanhar o tipo dos argumentos",
+    "Escrevem-se como assinaturas sem corpo seguidas de uma assinatura de implementação com corpo",
+    "A assinatura de implementação não é visível: uma chamada que só encaixa nela é rejeitada",
+    "A implementação tem de servir todas as sobrecargas, e daí as uniões e os parâmetros opcionais",
+    "O compilador escolhe a primeira sobrecarga que encaixa, por isso as específicas vêm primeiro",
+    "Antes de sobrecarregar, pergunte se um genérico, uma união discriminada ou um conditional type não resolvem melhor"
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para o Módulo 04",
+  "next_label": "Aula 01 → Narrowing: typeof, instanceof e in"
+}

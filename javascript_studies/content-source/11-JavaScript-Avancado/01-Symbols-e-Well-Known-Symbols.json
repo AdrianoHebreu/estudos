@@ -1,0 +1,258 @@
+{
+  "module_num": "11",
+  "module_title": "JavaScript Avançado",
+  "module_dir": "11-JavaScript-Avancado",
+  "lesson_num": "01",
+  "lesson_slug": "Symbols-e-Well-Known-Symbols",
+  "kind": "aula",
+  "title": "Symbols e Well-Known Symbols",
+  "filename_base": "01-Symbols-e-Well-Known-Symbols",
+  "subtitle": "Identificadores únicos e os símbolos que controlam o comportamento interno do JavaScript",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Compreender o Symbol como tipo primitivo único e imutável, distinto de todos os outros valores.",
+    "Usar symbols como chaves de propriedade que nunca colidem com outras chaves existentes ou futuras.",
+    "Criar propriedades \"ocultas\" que Object.keys, for-in e JSON.stringify ignoram por defeito.",
+    "Partilhar symbols entre partes de código independentes com Symbol.for e Symbol.keyFor.",
+    "Implementar Symbol.iterator para tornar objetos e classes personalizadas iteráveis.",
+    "Controlar a conversão de objetos para valores primitivos com Symbol.toPrimitive."
+  ],
+  "sections": [
+    {
+      "heading": "O Symbol como tipo primitivo",
+      "body": [
+        "Symbol é o sétimo tipo primitivo da linguagem, juntando-se a string, number, boolean, undefined, null e bigint. Ao contrário desses outros tipos, um symbol não representa um dado com significado próprio, como um texto ou um número; representa apenas uma identidade única. Cada chamada à função Symbol() devolve um valor completamente novo e distinto de qualquer outro symbol alguma vez criado, mesmo que se lhe passe a mesma descrição de texto.",
+        "A descrição opcional, escrita como Symbol('descricao'), não afeta a identidade do symbol nem é usada em nenhuma comparação; serve apenas para tornar o valor legível quando aparece num console.log, numa mensagem de erro ou no resultado de .toString(). É acedida através da propriedade description. Symbol também não é um construtor no sentido orientado a objetos: chamar new Symbol() lança um TypeError, porque a linguagem impede explicitamente a criação de objetos-invólucro para symbols."
+      ],
+      "code": "const a = Symbol('id');\nconst b = Symbol('id');\n\nconsole.log(a === b); // false\nconsole.log(typeof a); // \"symbol\"\nconsole.log(a.description); // \"id\"\nconsole.log(a.toString()); // \"Symbol(id)\"\n\ntry {\n  new Symbol();\n} catch (erro) {\n  console.log(erro instanceof TypeError); // true\n}",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔑",
+          "text": "7º tipo primitivo: symbol"
+        },
+        {
+          "icon": "♾️",
+          "text": "Cada Symbol() é sempre único"
+        },
+        {
+          "icon": "🚫",
+          "text": "new Symbol() lança TypeError"
+        },
+        {
+          "icon": "🏷️",
+          "text": "A descrição é só para depuração"
+        }
+      ]
+    },
+    {
+      "heading": "Chaves de propriedade únicas e propriedades ocultas",
+      "body": [
+        "Um symbol pode ser usado como chave de propriedade em qualquer objeto, através da sintaxe de chave computada [meuSymbol]: valor. Como cada symbol é único, uma propriedade guardada sob essa chave nunca colide com propriedades de string já existentes ou que venham a ser adicionadas mais tarde, mesmo que várias partes do código, incluindo bibliotecas de terceiros, estejam a escrever no mesmo objeto.",
+        "As propriedades cuja chave é um symbol comportam-se como propriedades ocultas perante as ferramentas mais comuns de inspeção: Object.keys(), Object.values(), Object.entries(), o ciclo for-in e JSON.stringify() ignoram-nas todas. Isto torna-as úteis para guardar metadados internos num objeto público sem poluir a sua superfície visível. Ainda assim, não são privadas no sentido estrito: quem tiver acesso ao symbol pode ler ou escrever a propriedade diretamente, e Object.getOwnPropertySymbols() permite descobrir todas as chaves symbol de um objeto, mesmo sem se ter a referência ao symbol original."
+      ],
+      "code": "const ID_INTERNO = Symbol('idInterno');\n\nfunction criarUtilizador(nome) {\n  return {\n    nome,\n    [ID_INTERNO]: Date.now(),\n  };\n}\n\nconst utilizador = criarUtilizador('Marta');\n\nconsole.log(Object.keys(utilizador)); // ['nome']\nconsole.log(JSON.stringify(utilizador)); // {\"nome\":\"Marta\"}\nconsole.log(typeof utilizador[ID_INTERNO]); // \"number\"\nconsole.log(Object.getOwnPropertySymbols(utilizador)); // [Symbol(idInterno)]",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🙈",
+          "text": "Ignoradas por Object.keys e JSON.stringify"
+        },
+        {
+          "icon": "🔓",
+          "text": "Acessíveis só com a referência ao symbol"
+        },
+        {
+          "icon": "🔍",
+          "text": "getOwnPropertySymbols revela-as na mesma"
+        }
+      ]
+    },
+    {
+      "heading": "Symbol.for e Symbol.keyFor: o registo global",
+      "body": [
+        "Symbol() cria sempre um valor local: só quem tiver guardado a referência, por exemplo numa variável, consegue voltar a obter o mesmo symbol. Quando é necessário que duas partes de código completamente independentes, como dois módulos separados ou até dois realms diferentes, concordem no mesmo symbol sem partilharem uma variável, usa-se Symbol.for(chave). Esta função consulta um registo global do motor JavaScript: se já existir um symbol registado com aquela chave de texto, devolve-o; caso contrário, cria um novo, regista-o e devolve-o.",
+        "A operação inversa, Symbol.keyFor(symbol), devolve a chave de texto com que um symbol foi registado no registo global, ou undefined se o symbol não vier desse registo, por exemplo se tiver sido criado com um Symbol() normal."
+      ],
+      "code": "const s1 = Symbol.for('app.config');\nconst s2 = Symbol.for('app.config');\n\nconsole.log(s1 === s2); // true - vieram do mesmo registo global\nconsole.log(Symbol.keyFor(s1)); // \"app.config\"\n\nconst local = Symbol('privado');\nconsole.log(Symbol.keyFor(local)); // undefined - nao esta no registo",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Symbol.for('chave') e Symbol('chave') não são a mesma coisa. O primeiro procura ou regista num registo global e devolve sempre o mesmo valor para a mesma chave de texto; o segundo cria sempre um symbol novo e local, mesmo que se use a mesma descrição.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🌐",
+          "text": "Symbol.for usa um registo global"
+        },
+        {
+          "icon": "🔁",
+          "text": "Mesma chave devolve o mesmo symbol"
+        },
+        {
+          "icon": "🗝️",
+          "text": "keyFor devolve a chave registada"
+        }
+      ]
+    },
+    {
+      "heading": "Well-known symbols e Symbol.iterator",
+      "body": [
+        "Well-known symbols são um conjunto fixo de symbols definidos pela própria especificação do ECMAScript, expostos como propriedades estáticas do objeto Symbol, como Symbol.iterator ou Symbol.toPrimitive. Ao contrário de um symbol criado com Symbol('x'), estes já existem à partida e têm um significado atribuído pelo motor: quando um objeto define um método guardado sob uma dessas chaves, está a ligar-se a um mecanismo interno da linguagem.",
+        "Symbol.iterator é o mais usado: é a chave que o for-of, o operador de espalhamento (...), o Array.from() e a desestruturação de iteráveis procuram num objeto para obter o respetivo iterador. Se um objeto, ou uma classe, definir um método [Symbol.iterator](), que devolve um objeto com um método next() a seguir o protocolo de iteração, esse objeto passa automaticamente a poder ser percorrido por todas essas construções da linguagem."
+      ],
+      "code": "class Intervalo {\n  constructor(inicio, fim) {\n    this.inicio = inicio;\n    this.fim = fim;\n  }\n\n  [Symbol.iterator]() {\n    let atual = this.inicio;\n    const fim = this.fim;\n\n    return {\n      next() {\n        if (atual <= fim) {\n          return { value: atual++, done: false };\n        }\n        return { value: undefined, done: true };\n      },\n    };\n  }\n}\n\nconst intervalo = new Intervalo(1, 5);\n\nconsole.log([...intervalo]); // [1, 2, 3, 4, 5]\n\nfor (const numero of intervalo) {\n  console.log(numero);\n}",
+      "callout_kind": "DICA",
+      "callout_text": "O protocolo de iteradores e os generators (function*) já foram explicados em detalhe no módulo 04, Arrays e Coleções. Aqui o foco é perceber Symbol.iterator como o well-known symbol que ativa esse protocolo em for-of, spread e afins.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔄",
+          "text": "Symbol.iterator ativa for-of e spread"
+        },
+        {
+          "icon": "⚙️",
+          "text": "Método que devolve um iterador"
+        },
+        {
+          "icon": "📦",
+          "text": "Torna classes próprias iteráveis"
+        }
+      ]
+    },
+    {
+      "heading": "Symbol.toPrimitive: controlar a conversão para primitivo",
+      "body": [
+        "Quando o motor JavaScript precisa de converter um objeto num valor primitivo, por exemplo numa operação aritmética, numa comparação com < ou >, ou dentro de um template literal, procura primeiro um método guardado sob a chave Symbol.toPrimitive. Se existir, o motor chama-o passando um hint, uma string que indica o contexto da conversão: \"number\" para contexto numérico, \"string\" para contexto textual, ou \"default\" para contexto ambíguo, como o operador + ou uma comparação com ==.",
+        "Definir Symbol.toPrimitive dá controlo total sobre a conversão, substituindo por completo a cadeia habitual de valueOf() seguido de toString() que os objetos usam por defeito. É a ferramenta certa quando um objeto representa um valor que faz sentido converter de formas diferentes consoante o contexto, como um valor monetário, uma percentagem ou uma medida."
+      ],
+      "code": "class Dinheiro {\n  constructor(valor, moeda) {\n    this.valor = valor;\n    this.moeda = moeda;\n  }\n\n  [Symbol.toPrimitive](hint) {\n    if (hint === 'number') {\n      return this.valor;\n    }\n    return `${this.valor} ${this.moeda}`; // hint \"string\" ou \"default\"\n  }\n}\n\nconst preco = new Dinheiro(19.9, 'EUR');\n\nconsole.log(`Preço: ${preco}`); // \"Preço: 19.9 EUR\" (hint \"string\")\nconsole.log(preco + 10); // 29.9 (hint \"default\")\nconsole.log(Number(preco)); // 19.9 (hint \"number\")",
+      "callout_kind": "NOTA",
+      "callout_text": "O hint \"default\" aplica-se ao operador + e a comparações com ==; hint \"number\" aplica-se a operações aritméticas explícitas como -, * e a Number(); hint \"string\" aplica-se a template literals e a String().",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔢",
+          "text": "Controla +, template literals e Number()"
+        },
+        {
+          "icon": "🎯",
+          "text": "Recebe hint: number, string ou default"
+        },
+        {
+          "icon": "🛠️",
+          "text": "Substitui valueOf/toString por defeito"
+        }
+      ]
+    },
+    {
+      "heading": "Outros well-known symbols do motor JavaScript",
+      "body": [
+        "Symbol.iterator e Symbol.toPrimitive são os well-known symbols mais usados no dia a dia, mas a especificação define vários outros, cada um a controlar um mecanismo interno diferente. Symbol.toStringTag permite personalizar o texto devolvido por Object.prototype.toString.call(objeto), que por defeito mostra algo como [object Object]. Symbol.hasInstance permite personalizar o comportamento do operador instanceof para uma classe ou objeto específico, substituindo a verificação habitual da cadeia de protótipos por uma lógica própria.",
+        "Symbol.asyncIterator é o equivalente assíncrono de Symbol.iterator, usado pelo ciclo for-await-of. Symbol.isConcatSpreadable controla se um objeto do tipo array-like deve ser achatado quando passado a Array.prototype.concat(). Todos partilham a mesma ideia: são pontos de extensão que o motor já reserva, prontos a ser implementados nos objetos e classes de quem escreve o código."
+      ],
+      "code": "class Pilha {\n  get [Symbol.toStringTag]() {\n    return 'Pilha';\n  }\n}\n\nconsole.log(Object.prototype.toString.call(new Pilha())); // \"[object Pilha]\"\n\nclass TipoPar {\n  static [Symbol.hasInstance](valor) {\n    return typeof valor === 'number' && valor % 2 === 0;\n  }\n}\n\nconsole.log(4 instanceof TipoPar); // true\nconsole.log(3 instanceof TipoPar); // false",
+      "callout_kind": "NOTA",
+      "callout_text": "A iteração assíncrona com for-await-of e Symbol.asyncIterator é explicada com mais detalhe no módulo 07, Assincronismo, a par das promises e do async/await.",
+      "table_headers": [
+        "Well-known symbol",
+        "O que controla",
+        "Exemplo de uso típico"
+      ],
+      "table_rows": [
+        [
+          "Symbol.iterator",
+          "Comportamento de for-of, spread e Array.from",
+          "Tornar uma classe personalizada iterável"
+        ],
+        [
+          "Symbol.asyncIterator",
+          "Comportamento de for-await-of",
+          "Iteração assíncrona sobre dados que chegam aos poucos"
+        ],
+        [
+          "Symbol.toPrimitive",
+          "Conversão para primitivo em +, template literals, Number()",
+          "Classes com valor numérico e representação textual"
+        ],
+        [
+          "Symbol.toStringTag",
+          "Texto devolvido por Object.prototype.toString.call()",
+          "Identificar o tipo de instâncias personalizadas"
+        ],
+        [
+          "Symbol.hasInstance",
+          "Comportamento do operador instanceof",
+          "Verificações de tipo personalizadas"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🏷️",
+          "text": "toStringTag muda o [object Tag]"
+        },
+        {
+          "icon": "🧬",
+          "text": "hasInstance personaliza o instanceof"
+        },
+        {
+          "icon": "⏳",
+          "text": "asyncIterator usa-se em for-await-of"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Identificadores únicos com Symbol",
+      "difficulty": "Iniciante",
+      "statement": "Escreva uma função gerarEtiquetas(n) que recebe um número n e devolve um array com n symbols, cada um criado com a descrição \"etiqueta-\" seguida do respetivo índice (por exemplo, \"etiqueta-0\", \"etiqueta-1\"). De seguida, escreva código que confirma que todos os symbols do array são diferentes entre si, mesmo tendo descrições diferentes, e que imprime a descrição do primeiro symbol usando a propriedade adequada.",
+      "hint": "Symbol() nunca deve ser chamado com new; a descrição passada ao criar o symbol é apenas informativa e fica acessível através de uma propriedade do próprio valor.",
+      "solution_code": "function gerarEtiquetas(n) {\n  const etiquetas = [];\n  for (let i = 0; i < n; i++) {\n    etiquetas.push(Symbol(`etiqueta-${i}`));\n  }\n  return etiquetas;\n}\n\nconst etiquetas = gerarEtiquetas(3);\n\nconst todasDiferentes = etiquetas.every((simbolo, indice) =>\n  etiquetas.every((outro, outroIndice) => indice === outroIndice || simbolo !== outro)\n);\n\nconsole.log(todasDiferentes); // true\nconsole.log(etiquetas[0].description); // \"etiqueta-0\"",
+      "solution_explanation": "Cada chamada a Symbol() devolve um valor completamente novo, por isso a verificação par a par confirma que nenhum symbol é igual a outro, mesmo com descrições distintas de índice para índice. A descrição em si só é usada para leitura humana, através da propriedade description."
+    },
+    {
+      "title": "Propriedade oculta num objeto de configuração",
+      "difficulty": "Intermedio",
+      "statement": "Tem uma função criarConfig(nome, valor) que devolve um objeto { nome, valor }. Sem alterar a forma como o resto do código acede a nome e valor, adicione a cada configuração criada uma propriedade extra guardada sob um symbol CRIADO_EM, com o instante de criação (Date.now()). Demonstre depois que: 1) Object.keys() e JSON.stringify() do objeto não revelam essa propriedade; 2) o valor pode ser lido através do symbol; 3) Object.getOwnPropertySymbols() permite descobrir que a propriedade oculta existe.",
+      "hint": "Use a sintaxe de chave computada [meuSymbol]: valor dentro do objeto literal que a função devolve.",
+      "solution_code": "const CRIADO_EM = Symbol('criadoEm');\n\nfunction criarConfig(nome, valor) {\n  return {\n    nome,\n    valor,\n    [CRIADO_EM]: Date.now(),\n  };\n}\n\nconst config = criarConfig('tema', 'escuro');\n\nconsole.log(Object.keys(config)); // ['nome', 'valor']\nconsole.log(JSON.stringify(config)); // {\"nome\":\"tema\",\"valor\":\"escuro\"}\nconsole.log(typeof config[CRIADO_EM]); // \"number\"\nconsole.log(Object.getOwnPropertySymbols(config)); // [Symbol(criadoEm)]",
+      "solution_explanation": "Object.keys, for-in e JSON.stringify ignoram sistematicamente propriedades cuja chave é um symbol, por isso a propriedade fica invisível para essas ferramentas. Continua, no entanto, a ser uma propriedade própria comum, acessível por quem tiver a referência ao symbol ou através de Object.getOwnPropertySymbols."
+    },
+    {
+      "title": "Marca partilhada entre módulos com Symbol.for",
+      "difficulty": "Avancado",
+      "statement": "Simule dois módulos independentes através de duas funções autoexecutáveis que não partilham nenhuma variável entre si. O primeiro módulo cria entidades e marca-as como válidas usando um symbol obtido com Symbol.for('app.entidadeValida'). O segundo módulo recebe objetos de origem desconhecida e precisa de verificar se foram marcados como válidos pelo primeiro, usando apenas o mesmo nome de chave no registo global (sem qualquer referência direta ao primeiro módulo). Escreva o código dos dois módulos e demonstre a verificação a funcionar com uma entidade válida e a falhar com um objeto criado à parte.",
+      "hint": "Symbol.for(chave) devolve sempre o mesmo symbol para a mesma chave de texto, seja qual for o ponto do código onde é chamado - é isso que permite aos dois módulos combinarem sem partilhar uma variável.",
+      "solution_code": "const moduloA = (() => {\n  const MARCA_VALIDA = Symbol.for('app.entidadeValida');\n\n  function criarEntidade(nome) {\n    return { nome, [MARCA_VALIDA]: true };\n  }\n\n  return { criarEntidade };\n})();\n\nconst moduloB = (() => {\n  function ehEntidadeValida(objeto) {\n    const marca = Symbol.for('app.entidadeValida');\n    return Boolean(objeto?.[marca]);\n  }\n\n  return { ehEntidadeValida };\n})();\n\nconst entidade = moduloA.criarEntidade('Produto X');\nconst objetoQualquer = { nome: 'Produto Falso' };\n\nconsole.log(moduloB.ehEntidadeValida(entidade)); // true\nconsole.log(moduloB.ehEntidadeValida(objetoQualquer)); // false",
+      "solution_explanation": "Como os dois módulos chamam Symbol.for com a mesma chave de texto, recebem exatamente o mesmo symbol a partir do registo global, sem precisarem de partilhar uma variável de módulo. Isto permite ao segundo módulo reconhecer objetos marcados pelo primeiro apenas por convenção sobre o nome da chave."
+    },
+    {
+      "title": "Carrinho iterável e conversível a primitivo",
+      "difficulty": "Avancado",
+      "statement": "Crie uma classe CarrinhoCompras que guarda internamente uma lista de itens ({ nome, preco }) adicionados através de um método adicionar(nome, preco). Implemente [Symbol.iterator] para que o carrinho possa ser percorrido com for-of e usado com o operador de espalhamento, devolvendo os itens pela ordem em que foram adicionados. Implemente também [Symbol.toPrimitive] de forma a que: converter o carrinho para número (hint \"number\") devolva a soma de todos os preços; converter para string (hints \"string\" e \"default\") devolva uma frase do tipo \"Carrinho com N item(ns), total X€\".",
+      "hint": "Pode implementar o iterador delegando diretamente no iterador nativo do array interno, sem escrever o protocolo next() à mão.",
+      "solution_code": "class CarrinhoCompras {\n  #itens = [];\n\n  adicionar(nome, preco) {\n    this.#itens.push({ nome, preco });\n    return this;\n  }\n\n  get total() {\n    return this.#itens.reduce((soma, item) => soma + item.preco, 0);\n  }\n\n  [Symbol.iterator]() {\n    return this.#itens[Symbol.iterator]();\n  }\n\n  [Symbol.toPrimitive](hint) {\n    if (hint === 'number') {\n      return this.total;\n    }\n    return `Carrinho com ${this.#itens.length} item(ns), total ${this.total}€`;\n  }\n}\n\nconst carrinho = new CarrinhoCompras()\n  .adicionar('Teclado', 45)\n  .adicionar('Rato', 20);\n\nfor (const item of carrinho) {\n  console.log(item.nome, item.preco);\n}\n\nconsole.log([...carrinho]); // [{ nome: 'Teclado', preco: 45 }, { nome: 'Rato', preco: 20 }]\nconsole.log(+carrinho); // 65\nconsole.log(`${carrinho}`); // \"Carrinho com 2 item(ns), total 65€\"",
+      "solution_explanation": "Delegar [Symbol.iterator] no iterador do array privado reaproveita o protocolo de iteração já implementado nos arrays nativos, sem duplicar lógica. [Symbol.toPrimitive] intercepta todas as conversões para primitivo e escolhe o comportamento a partir do hint recebido, substituindo por completo a cadeia habitual de valueOf/toString."
+    }
+  ],
+  "summary": [
+    "Symbol é o 7º tipo primitivo: cada Symbol() cria um valor único e imutável, mesmo com descrições de texto iguais.",
+    "Symbols como chaves de propriedade evitam colisões de nomes e criam propriedades que Object.keys, for-in e JSON.stringify ignoram por defeito.",
+    "Object.getOwnPropertySymbols() é a única forma de descobrir propriedades symbol de um objeto sem ter a referência ao symbol.",
+    "Symbol.for(chave) e Symbol.keyFor(symbol) usam um registo global partilhado entre partes de código que não partilham variáveis, ao contrário de Symbol() que é sempre local.",
+    "Symbol.iterator é o well-known symbol que ativa for-of, spread e Array.from ao definir um método que devolve um iterador.",
+    "Symbol.toPrimitive controla a conversão de um objeto para primitivo consoante o hint (number, string ou default), substituindo valueOf/toString; outros well-known symbols, como toStringTag, hasInstance e asyncIterator, personalizam outros comportamentos internos do motor."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 02",
+  "next_label": "Aula 02 → Proxy e Reflect",
+  "_stage": "autoria"
+}

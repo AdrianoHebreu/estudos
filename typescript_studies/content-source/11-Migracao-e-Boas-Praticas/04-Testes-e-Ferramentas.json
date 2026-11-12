@@ -1,0 +1,463 @@
+{
+  "module_num": "11",
+  "module_title": "Migração e Boas Práticas",
+  "module_dir": "11-Migracao-e-Boas-Praticas",
+  "lesson_num": "04",
+  "lesson_slug": "Testes-e-Ferramentas",
+  "kind": "aula",
+  "title": "Testes e Ferramentas em TypeScript",
+  "filename_base": "04-Testes-e-Ferramentas",
+  "subtitle": "Testes de comportamento, testes de tipos e as ferramentas que os correm",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Distinguir testes de comportamento de testes de tipos",
+    "Escrever Igual<A, B> e Esperar<T> sem bibliotecas e saber porque a versão ingénua falha",
+    "Usar @ts-expect-error para testes negativos que avisam quando deixam de falhar",
+    "Escrever asserções de runtime que o próprio compilador verifica",
+    "Situar Vitest, Jest, tsd, node:test, ESLint e Prettier num pipeline de qualidade",
+    "Saber o que o type stripping do Node faz e o que a flag erasableSyntaxOnly impede"
+  ],
+  "sections": [
+    {
+      "heading": "Dois tipos de testes",
+      "body": [
+        "Num projeto TypeScript há duas perguntas diferentes a responder. A primeira é a de sempre: o código faz o que devia? Isso só se sabe executando-o, com testes de comportamento. O tsc não os substitui: um tipo diz que uma função devolve um number, não que devolve o number certo.",
+        "A segunda pergunta é nova: os tipos fazem o que deviam? Quem escreve um genérico, um conditional type ou um utility type precisa de garantir que produz o tipo esperado e que certas chamadas são rejeitadas. Esses são os testes de tipos, e correm no compilador, não no Node."
+      ],
+      "code": "// O tipo está certo; a lógica não.\nfunction media(valores: readonly number[]): number {\n  let total = 0;\n  for (const v of valores) total += v;\n  return total / (valores.length - 1); // bug: devia ser valores.length\n}\n\nconst m: number = media([2, 4, 6]);\nconsole.log(m); // 6  (o tsc aceita; o valor certo seria 4)",
+      "callout_kind": "NOTA",
+      "callout_text": "Os tipos eliminam uma classe inteira de testes (passar undefined, trocar a ordem dos argumentos, esquecer um campo), mas não eliminam os testes de lógica. Poupam testes, não os dispensam.",
+      "table_headers": [
+        "Tipo de teste",
+        "Pergunta",
+        "Onde corre",
+        "Falha quando"
+      ],
+      "table_rows": [
+        [
+          "Comportamento",
+          "O resultado está certo?",
+          "Node (ou o corredor de testes)",
+          "Uma asserção não se verifica em runtime"
+        ],
+        [
+          "Tipos",
+          "O tipo produzido é o esperado?",
+          "tsc --noEmit",
+          "O ficheiro deixa de compilar"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧪",
+          "text": "Testes de comportamento: o código faz o que devia?"
+        },
+        {
+          "icon": "🔠",
+          "text": "Testes de tipos: os tipos produzem o que se espera?"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Um tipo certo não prova que a lógica está certa"
+        },
+        {
+          "icon": "⚙️",
+          "text": "Os testes de tipos correm no tsc, não no Node"
+        }
+      ]
+    },
+    {
+      "heading": "Igual e Esperar, escritos à mão",
+      "body": [
+        "Um teste de tipos precisa de duas peças. Igual<A, B> dá true ou false conforme os dois tipos são idênticos; Esperar<T extends true> só exige que o argumento seja true, e se não for o tsc dá TS2344 nessa linha. A tentação é escrever Igual como A extends B ? (B extends A ? true : false) : false, mas atribuível nos dois sentidos não é o mesmo que igual: readonly não afeta a atribuibilidade, e any e unknown são atribuíveis a quase tudo, por isso esses pares passam como iguais.",
+        "A distribuição agrava o problema. Com uma união em A, o conditional type é avaliado membro a membro e dá boolean; com never em A, a distribuição sobre zero membros dá never, e never satisfaz extends true, portanto Esperar<never> compila e o teste passa sem testar nada. Envolver em tuplos ([A] extends [B]) acaba com a distribuição, mas não resolve readonly nem any.",
+        "A versão robusta compara duas funções genéricas. Para decidir se (<T>() => T extends A ? 1 : 2) é atribuível à versão com B, o compilador não consegue avaliar os conditional types (T ainda não é conhecido) e exige que A e B sejam idênticos pela sua regra interna de identidade, que distingue any de unknown, readonly de mutável e não distribui."
+      ],
+      "code": "type IgualIngenuo<A, B> = A extends B ? (B extends A ? true : false) : false;\ntype Igual<A, B> =\n  (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;\ntype Esperar<T extends true> = T;\n\ntype a1 = IgualIngenuo<{ readonly id: 1 }, { id: 1 }>; // true    (errado)\ntype a2 = IgualIngenuo<any, unknown>;                  // true    (errado)\ntype a3 = IgualIngenuo<never, string>;                 // never\ntype a4 = IgualIngenuo<string | number, string>;       // boolean (distribuiu)\n\ntype b1 = Igual<{ readonly id: 1 }, { id: 1 }>;        // false\ntype b2 = Igual<any, unknown>;                         // false\ntype b3 = Igual<never, string>;                        // false\ntype b4 = Igual<string | number, string>;              // false\n\n// Testes a sério: agrupados num tuplo, cada elemento é verificado.\ntype testes = [\n  Esperar<Igual<Partial<{ id: number }>, { id?: number }>>,\n  Esperar<Igual<b1, false>>,\n];\n\n// Compila sem erro: never satisfaz \"extends true\".\ntype passaSemDever = Esperar<a3>;\n\n// Um teste falhado é um erro de compilação (TS2344):\n// @ts-expect-error\ntype falha = Esperar<Igual<Partial<{ id: number }>, { id: number }>>;",
+      "callout_kind": "ATENCAO",
+      "callout_text": "A versão robusta é estrita ao ponto de Igual<{ a: 1 } & { b: 2 }, { a: 1; b: 2 }> dar false: para a regra de identidade, uma interseção e o objeto equivalente não são o mesmo tipo. Quando o tipo testado é uma interseção, achatá-lo primeiro com { [K in keyof T]: T[K] }.",
+      "table_headers": [
+        "Comparação",
+        "Versão ingénua",
+        "Com tuplos [A] extends [B]",
+        "Versão robusta"
+      ],
+      "table_rows": [
+        [
+          "{ readonly id: 1 } vs { id: 1 }",
+          "true",
+          "true",
+          "false"
+        ],
+        [
+          "any vs unknown",
+          "true",
+          "true",
+          "false"
+        ],
+        [
+          "any vs string",
+          "boolean",
+          "true",
+          "false"
+        ],
+        [
+          "never vs string",
+          "never (Esperar aceita)",
+          "false",
+          "false"
+        ],
+        [
+          "string | number vs string",
+          "boolean",
+          "false",
+          "false"
+        ],
+        [
+          "string vs string",
+          "true",
+          "true",
+          "true"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🟰",
+          "text": "Igual<A, B> robusto compara duas funções genéricas"
+        },
+        {
+          "icon": "✅",
+          "text": "Esperar<T extends true> falha com TS2344 se T não for true"
+        },
+        {
+          "icon": "🔓",
+          "text": "readonly e any enganam a versão ingénua"
+        },
+        {
+          "icon": "🕳️",
+          "text": "never dá never, e Esperar<never> passa sem testar nada"
+        }
+      ]
+    },
+    {
+      "heading": "Testes negativos com @ts-expect-error",
+      "body": [
+        "Um bom tipo também se mede pelo que rejeita. Um teste negativo é uma chamada que tem de falhar, precedida de // @ts-expect-error. Enquanto a linha seguinte der erro, o compilador fica calado. Se um dia alguém alargar o tipo e a chamada passar a compilar, o próprio comentário vira erro: TS2578, Unused '@ts-expect-error' directive.",
+        "É isso que torna @ts-expect-error superior a @ts-ignore neste papel. O @ts-ignore suprime o erro se existir e fica calado se não existir, por isso um teste negativo escrito com ele nunca falha. Estes testes não precisam de corredor: correm com tsc --noEmit no CI, ao lado dos testes de Igual e Esperar."
+      ],
+      "code": "interface Encomenda { id: number; quantidade: number }\n\nfunction criarEncomenda(dados: Encomenda): Encomenda {\n  return { ...dados };\n}\n\n// Chamada válida: tem de compilar.\ncriarEncomenda({ id: 1, quantidade: 2 });\n\n// Cada chamada seguinte TEM de falhar.\n// @ts-expect-error falta quantidade\ncriarEncomenda({ id: 1 });\n// @ts-expect-error quantidade tem de ser number\ncriarEncomenda({ id: 1, quantidade: \"2\" });\n// @ts-expect-error propriedade a mais num literal\ncriarEncomenda({ id: 1, quantidade: 2, desconto: 5 });",
+      "callout_kind": "DICA",
+      "callout_text": "Medido: se quantidade passar a quantidade?: number, o primeiro teste deixa de ter erro e o tsc responde com TS2578 nessa linha. Com @ts-ignore no mesmo sítio não há aviso nenhum. O texto depois da diretiva é livre e serve de descrição do teste.",
+      "table_headers": [
+        "Diretiva",
+        "Linha seguinte tem erro",
+        "Linha seguinte não tem erro"
+      ],
+      "table_rows": [
+        [
+          "// @ts-expect-error",
+          "Erro suprimido",
+          "TS2578: o teste falha"
+        ],
+        [
+          "// @ts-ignore",
+          "Erro suprimido",
+          "Silêncio: o teste nunca falha"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🚫",
+          "text": "Teste negativo: uma chamada que tem de ser rejeitada"
+        },
+        {
+          "icon": "🔔",
+          "text": "Se passar a compilar, TS2578 avisa"
+        },
+        {
+          "icon": "🙈",
+          "text": "@ts-ignore fica calado: não serve para testar"
+        },
+        {
+          "icon": "🏗️",
+          "text": "Tudo corre com tsc --noEmit no CI"
+        }
+      ]
+    },
+    {
+      "heading": "Asserções de runtime escritas à mão",
+      "body": [
+        "Para testar comportamento não é preciso framework para perceber a ideia. Uma função assertIgual<T>(real: T, esperado: T) e um pequeno teste(nome, corpo) chegam. O ganho do TypeScript está no genérico: T é inferido a partir do primeiro argumento, e um valor esperado com o tipo errado é rejeitado antes de o teste correr. Os próprios testes são verificados pelo compilador.",
+        "O exemplo mostra também o outro lado: iniciais compila em modo strict, mas rebenta com um espaço duplo, porque p[0] numa string vazia é undefined e o tipo diz string. Foi o teste de comportamento que o apanhou (a opção noUncheckedIndexedAccess do tsconfig teria obrigado a tratar o caso)."
+      ],
+      "code": "function assertIgual<T>(real: T, esperado: T): void {\n  const r = JSON.stringify(real);\n  const e = JSON.stringify(esperado);\n  if (r !== e) throw new Error(\"esperado \" + e + \", obtido \" + r);\n}\n\nfunction teste(nome: string, corpo: () => void): void {\n  try {\n    corpo();\n    console.log(\"ok    \" + nome);\n  } catch (e) {\n    console.log(\"FALHA \" + nome + \": \" + (e as Error).message);\n  }\n}\n\nfunction iniciais(nome: string): string {\n  return nome.split(\" \").map((p) => p[0].toUpperCase()).join(\"\");\n}\n\nteste(\"duas palavras\", () => assertIgual(iniciais(\"ana silva\"), \"AS\"));\nteste(\"espaço duplo\", () => assertIgual(iniciais(\"ana  silva\"), \"AS\"));\n// ok    duas palavras\n// FALHA espaço duplo: Cannot read properties of undefined (reading 'toUpperCase')\n\n// Um teste com o tipo errado nem compila (TS2345: number vs string):\n// @ts-expect-error\nteste(\"tipo errado\", () => assertIgual(iniciais(\"ana\"), 1));",
+      "callout_kind": "NOTA",
+      "callout_text": "Comparar com JSON.stringify é uma simplificação: depende da ordem das chaves e não distingue undefined de propriedade ausente. Os frameworks reais têm comparações profundas feitas com cuidado; aqui o objetivo é só ver o compilador a verificar os testes.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧰",
+          "text": "assertIgual<T>(real: T, esperado: T) e teste(nome, corpo)"
+        },
+        {
+          "icon": "🛡️",
+          "text": "Esperado com tipo errado: o teste nem compila"
+        },
+        {
+          "icon": "🐞",
+          "text": "O bug de runtime passou no tsc e caiu no teste"
+        },
+        {
+          "icon": "📏",
+          "text": "JSON.stringify é uma comparação simplificada"
+        }
+      ]
+    },
+    {
+      "heading": "O ecossistema e o type stripping do Node",
+      "body": [
+        "Na prática usa-se um corredor de testes. Vitest e Jest correm ficheiros .test.ts, mas a maioria das configurações transforma o TypeScript com esbuild ou SWC, que apenas apagam os tipos, ficheiro a ficheiro, sem os verificar. É a mesma lógica do isolatedModules visto na Aula 05 do Módulo 09: um teste pode passar com um erro de tipos no ficheiro. Por isso o tsc --noEmit corre à parte. O bloco seguinte é ilustrativo e exige o Vitest instalado.",
+        "O Node 24 também corre .ts diretamente por type stripping: substitui as anotações por espaços e executa o resto. Medido com o Node 24.18.0, node ficheiro.ts corre sem flag e sem aviso nenhum; a flag --experimental-strip-types continua aceite mas já não é necessária. Não há verificação: const x: string = 42 corre e imprime 42. Sintaxe que gera código (enum, parameter properties, namespace com valores) dá SyntaxError ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX. A flag erasableSyntaxOnly do TS 5.8+ (aceite pelo tsc 5.9.3) faz o compilador rejeitar essa sintaxe com TS1294, antes de chegar ao Node."
+      ],
+      "code": "// soma.ts\nexport function soma(a: number, b: number): number {\n  return a + b;\n}\n\n// soma.test.ts\n// Ilustrativo: exige o Vitest instalado; não corre neste curso.\nimport { describe, it, expect, expectTypeOf } from \"vitest\";\nimport { soma } from \"./soma\";\n\ndescribe(\"soma\", () => {\n  it(\"soma dois números\", () => {\n    expect(soma(2, 3)).toBe(5);\n  });\n  it(\"devolve number\", () => {\n    expectTypeOf(soma).returns.toEqualTypeOf<number>();\n  });\n});",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Os testes de tipos do Vitest (expectTypeOf, assertType) só são verificados com vitest --typecheck, que corre o tsc por baixo. Num vitest normal são apagados como qualquer outro tipo e passam sempre.",
+      "table_headers": [
+        "Ferramenta",
+        "Para que serve",
+        "Verifica tipos?"
+      ],
+      "table_rows": [
+        [
+          "Vitest",
+          "Corredor de testes; transforma TS com esbuild",
+          "Não, exceto no modo --typecheck"
+        ],
+        [
+          "Jest com ts-jest",
+          "Corredor de testes; ts-jest usa o compilador",
+          "Sim por omissão (mais lento); não no modo só de transpilação (isolatedModules)"
+        ],
+        [
+          "Jest com SWC ou esbuild",
+          "Corredor de testes com transformação rápida",
+          "Não: só remove tipos"
+        ],
+        [
+          "expectTypeOf e assertType",
+          "Testes de tipos dentro dos ficheiros do Vitest",
+          "Sim, com vitest --typecheck"
+        ],
+        [
+          "tsd e expect-type",
+          "Bibliotecas de testes de tipos (a ideia de Igual e Esperar, empacotada)",
+          "tsd corre o seu verificador; expect-type depende do tsc"
+        ],
+        [
+          "node:test",
+          "Corredor nativo do Node, com node --test",
+          "Não: usa type stripping"
+        ],
+        [
+          "ESLint com typescript-eslint",
+          "Regras de risco e estilo; as type-aware usam o verificador",
+          "Usa os tipos, mas não substitui o tsc"
+        ],
+        [
+          "Prettier",
+          "Formatação",
+          "Não"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "⚡",
+          "text": "esbuild e SWC apagam tipos, não os verificam"
+        },
+        {
+          "icon": "🔁",
+          "text": "tsc --noEmit corre sempre à parte dos testes"
+        },
+        {
+          "icon": "🟢",
+          "text": "Node 24: node ficheiro.ts corre sem flag nem aviso"
+        },
+        {
+          "icon": "⛔",
+          "text": "enum, parameter properties e namespace: SyntaxError"
+        },
+        {
+          "icon": "🧹",
+          "text": "erasableSyntaxOnly: o tsc rejeita-os com TS1294"
+        }
+      ]
+    },
+    {
+      "heading": "Escrever TypeScript que o Node consegue apagar",
+      "body": [
+        "Com erasableSyntaxOnly ligado, cada construção que gera JavaScript tem uma alternativa apagável. Um enum dá lugar a um objeto as const mais um tipo derivado; uma parameter property dá lugar a um campo declarado e atribuído no construtor; um namespace dá lugar a um módulo.",
+        "Há mais uma armadilha medida: import { Ponto } from \"./tipos.ts\", em que Ponto é só uma interface, rebenta no Node com SyntaxError: The requested module './tipos.ts' does not provide an export named 'Ponto', porque o type stripping não sabe que Ponto é um tipo. Com import type corre. A opção verbatimModuleSyntax faz o tsc exigir import type (TS1484), e importar com extensão .ts exige allowImportingTsExtensions (senão TS5097), que o tsc só aceita com noEmit (senão TS5096); para emitir JavaScript, a alternativa é rewriteRelativeImportExtensions."
+      ],
+      "code": "// Em vez de: enum Estado { Ativo, Suspenso }\nconst Estado = { Ativo: \"ativo\", Suspenso: \"suspenso\" } as const;\ntype Estado = (typeof Estado)[keyof typeof Estado]; // \"ativo\" | \"suspenso\"\n\n// Em vez de: constructor(public nome: string) {}\nclass Cliente {\n  nome: string;\n  estado: Estado;\n  constructor(nome: string, estado: Estado) {\n    this.nome = nome;\n    this.estado = estado;\n  }\n}\n\nconst c = new Cliente(\"Rita\", Estado.Suspenso);\nconsole.log(c.nome, c.estado); // Rita suspenso",
+      "callout_kind": "DICA",
+      "callout_text": "No tsconfig de um projeto que corra .ts diretamente no Node: erasableSyntaxOnly e verbatimModuleSyntax, mais allowImportingTsExtensions com noEmit (quando o tsc só verifica) ou rewriteRelativeImportExtensions (quando também emite).",
+      "table_headers": [
+        "Teste medido (Node 24.18.0)",
+        "Resultado"
+      ],
+      "table_rows": [
+        [
+          "node ok.ts (interfaces e anotações)",
+          "Corre, sem avisos"
+        ],
+        [
+          "node bad.ts (const x: string = 42)",
+          "Corre e imprime 42"
+        ],
+        [
+          "enum",
+          "SyntaxError: TypeScript enum is not supported in strip-only mode"
+        ],
+        [
+          "constructor(public nome: string)",
+          "SyntaxError: TypeScript parameter property is not supported in strip-only mode"
+        ],
+        [
+          "namespace N { export const a = 1 }",
+          "SyntaxError: TypeScript namespace declaration is not supported in strip-only mode"
+        ],
+        [
+          "declare namespace (só tipos)",
+          "Corre"
+        ],
+        [
+          "node --experimental-transform-types com enum",
+          "Corre, com ExperimentalWarning: Transform Types is an experimental feature"
+        ],
+        [
+          "tsc --erasableSyntaxOnly sobre enum, namespace e parameter property",
+          "TS1294: This syntax is not allowed when 'erasableSyntaxOnly' is enabled"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔄",
+          "text": "enum passa a objeto as const mais tipo derivado"
+        },
+        {
+          "icon": "🏷️",
+          "text": "Parameter property passa a campo atribuído no construtor"
+        },
+        {
+          "icon": "📥",
+          "text": "Tipos importam-se com import type"
+        },
+        {
+          "icon": "🧾",
+          "text": "verbatimModuleSyntax exige import type (TS1484)"
+        }
+      ]
+    },
+    {
+      "heading": "Um pipeline de qualidade",
+      "body": [
+        "Um CI típico de TypeScript tem três passos independentes: tsc --noEmit, o lint e os testes (mais um prettier --check, se a equipa o usar). Cada um apanha coisas que os outros deixam passar, por isso nenhum substitui outro. Os testes de tipos das secções anteriores vivem dentro do primeiro passo; os de comportamento, no último.",
+        "Correr o tsc primeiro é o mais barato: é rápido, não executa nada e falha logo se um teste de tipos ou um @ts-expect-error deixou de se verificar."
+      ],
+      "code": "npx tsc --noEmit\nnpx eslint .\nnpx prettier --check .\nnpx vitest run",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Num projeto próprio, introduzir de propósito três defeitos: um tipo errado, um any implícito vindo de JSON.parse e uma lógica errada. Verificar qual dos passos do pipeline apanha cada um.",
+      "table_headers": [
+        "Ferramenta",
+        "O que apanha",
+        "O que não apanha"
+      ],
+      "table_rows": [
+        [
+          "tsc --noEmit",
+          "Erros de tipos, testes de tipos, @ts-expect-error sem uso",
+          "Lógica errada; tudo o que passa por any"
+        ],
+        [
+          "ESLint com typescript-eslint",
+          "any explícito, no-unsafe-*, promessas esquecidas, padrões de risco",
+          "Erros de tipos que só o tsc deteta; lógica errada"
+        ],
+        [
+          "Testes de comportamento",
+          "Resultados errados, exceções, casos-limite",
+          "Erros de tipos (se o corredor só apagar tipos)"
+        ],
+        [
+          "Prettier",
+          "Formatação inconsistente",
+          "Qualquer erro de tipos ou de lógica"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "1️⃣",
+          "text": "tsc --noEmit: tipos e testes de tipos"
+        },
+        {
+          "icon": "2️⃣",
+          "text": "ESLint: any, no-unsafe-* e padrões de risco"
+        },
+        {
+          "icon": "3️⃣",
+          "text": "Testes: a lógica, em runtime"
+        },
+        {
+          "icon": "🎨",
+          "text": "Prettier formata, não verifica nada"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Testar um SoLeitura",
+      "difficulty": "Iniciante",
+      "statement": "Dado type SoLeitura<T> = { readonly [K in keyof T]: T[K] } e interface Config { porta: number; host: string }, escrever Igual e Esperar e três testes de tipos: SoLeitura<Config> é igual a { readonly porta: number; readonly host: string }; SoLeitura<Config> não é igual a Config; aplicar SoLeitura duas vezes dá o mesmo que aplicar uma.",
+      "hint": "Para testar que dois tipos não são iguais, basta esperar que Igual devolva false: Esperar<Igual<Igual<X, Y>, false>>.",
+      "solution_code": "type Igual<A, B> =\n  (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;\ntype Esperar<T extends true> = T;\n\ntype SoLeitura<T> = { readonly [K in keyof T]: T[K] };\ninterface Config { porta: number; host: string }\n\ntype testes = [\n  Esperar<Igual<SoLeitura<Config>, { readonly porta: number; readonly host: string }>>,\n  Esperar<Igual<Igual<SoLeitura<Config>, Config>, false>>,\n  Esperar<Igual<SoLeitura<SoLeitura<Config>>, SoLeitura<Config>>>,\n];",
+      "solution_explanation": "O segundo teste só funciona com a versão robusta de Igual: a versão ingénua diria que SoLeitura<Config> e Config são iguais, porque readonly não afeta a atribuibilidade. O ficheiro compila sem erros, e é isso que significa os três testes passarem."
+    },
+    {
+      "title": "Testes negativos para agendar",
+      "difficulty": "Intermedio",
+      "statement": "Dado type DiaUtil = \"seg\" | \"ter\" | \"qua\" | \"qui\" | \"sex\" e function agendar(dia: DiaUtil, hora: number): string, que devolve dia + \" \" + hora + \"h\", escrever um teste positivo e três testes negativos com @ts-expect-error: um dia de fim de semana, a hora como string e um argumento em falta. Explicar o que acontece se alguém mudar o parâmetro dia para string.",
+      "hint": "Cada @ts-expect-error fica na linha imediatamente antes da chamada que tem de falhar. Pensar no que o TS2578 faz quando a chamada deixa de falhar.",
+      "solution_code": "type DiaUtil = \"seg\" | \"ter\" | \"qua\" | \"qui\" | \"sex\";\n\nfunction agendar(dia: DiaUtil, hora: number): string {\n  return dia + \" \" + hora + \"h\";\n}\n\n// Positivo: tem de compilar.\nconst ok: string = agendar(\"qua\", 10);\n\n// @ts-expect-error sábado não é dia útil\nagendar(\"sab\", 10);\n// @ts-expect-error a hora é um number\nagendar(\"seg\", \"10\");\n// @ts-expect-error falta a hora\nagendar(\"ter\");",
+      "solution_explanation": "Enquanto DiaUtil for uma união de literais, as três chamadas dão erro e as diretivas ficam satisfeitas. Se dia passar a string, agendar(\"sab\", 10) passa a compilar e o tsc reporta TS2578 na diretiva, o que torna a regressão visível no CI. Com @ts-ignore a mudança passaria em silêncio."
+    },
+    {
+      "title": "Testar SemNulos, incluindo never e any",
+      "difficulty": "Intermedio",
+      "statement": "Dado type SemNulos<T> = T extends null | undefined ? never : T, escrever testes de tipos que garantam: SemNulos<string | null | undefined> é string; SemNulos<null> é never; SemNulos<any> é any. Acrescentar um teste negativo que prove que SemNulos<string | null> não é string | null. Explicar porque o teste com never seria inútil com a versão ingénua de Igual.",
+      "hint": "Um teste negativo de tipos pode ser um Esperar que tem de falhar, com @ts-expect-error na linha anterior.",
+      "solution_code": "type Igual<A, B> =\n  (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;\ntype Esperar<T extends true> = T;\n\ntype SemNulos<T> = T extends null | undefined ? never : T;\n\ntype testes = [\n  Esperar<Igual<SemNulos<string | null | undefined>, string>>,\n  Esperar<Igual<SemNulos<null>, never>>,\n  Esperar<Igual<SemNulos<any>, any>>,\n];\n\n// @ts-expect-error SemNulos remove o null\ntype negativo = Esperar<Igual<SemNulos<string | null>, string | null>>;",
+      "solution_explanation": "Com a versão ingénua, IgualIngenuo<never, X> dá never para qualquer X, e Esperar<never> compila: o teste com never passaria mesmo que SemNulos<null> devolvesse string. A versão robusta dá false nesse caso. SemNulos<any> dá any porque any num conditional type distributivo produz a união dos dois ramos, never | any, que é any."
+    },
+    {
+      "title": "Testes de comportamento e de tipos para contarPalavras",
+      "difficulty": "Avancado",
+      "statement": "Escrever function contarPalavras(texto: string): Record<string, number>, que ignora maiúsculas e espaços repetidos. Testá-la com assertIgual e teste escritos à mão (três casos: frase simples, palavras repetidas com maiúsculas, texto só com espaços) e acrescentar um teste de tipos que garanta que o retorno é Record<string, number>. O programa deve imprimir uma linha por teste.",
+      "hint": "split(/\\s+/) sobre um texto com espaços nas pontas deixa strings vazias; filtrar antes de contar. Para o tipo do retorno, ReturnType<typeof contarPalavras>.",
+      "solution_code": "type Igual<A, B> =\n  (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;\ntype Esperar<T extends true> = T;\n\nfunction assertIgual<T>(real: T, esperado: T): void {\n  const r = JSON.stringify(real);\n  const e = JSON.stringify(esperado);\n  if (r !== e) throw new Error(\"esperado \" + e + \", obtido \" + r);\n}\n\nfunction teste(nome: string, corpo: () => void): void {\n  try {\n    corpo();\n    console.log(\"ok    \" + nome);\n  } catch (e) {\n    console.log(\"FALHA \" + nome + \": \" + (e as Error).message);\n  }\n}\n\nfunction contarPalavras(texto: string): Record<string, number> {\n  const contagem: Record<string, number> = {};\n  for (const p of texto.toLowerCase().split(/\\s+/)) {\n    if (p === \"\") continue;\n    contagem[p] = (contagem[p] ?? 0) + 1;\n  }\n  return contagem;\n}\n\ntype tipos = [Esperar<Igual<ReturnType<typeof contarPalavras>, Record<string, number>>>];\n\nteste(\"frase simples\", () => assertIgual(contarPalavras(\"olá mundo\"), { \"olá\": 1, mundo: 1 }));\nteste(\"repetidas\", () => assertIgual(contarPalavras(\"Sim  sim NÃO\"), { sim: 2, \"não\": 1 }));\nteste(\"só espaços\", () => assertIgual(contarPalavras(\"   \"), {}));\n// ok    frase simples\n// ok    repetidas\n// ok    só espaços",
+      "solution_explanation": "Os testes de comportamento apanham a lógica (maiúsculas e strings vazias do split), e o tuplo tipos garante que uma alteração à assinatura parte a compilação. Como assertIgual é genérico, um esperado como { sim: \"2\" } seria rejeitado pelo tsc antes de o teste correr."
+    }
+  ],
+  "summary": [
+    "Os tipos não provam que a lógica está certa: os testes de comportamento continuam necessários",
+    "Testes de tipos com Igual robusto (duas funções genéricas) e Esperar<T extends true>, verificados por tsc --noEmit",
+    "A versão ingénua de Igual engana-se com readonly, any, uniões e never",
+    "@ts-expect-error faz testes negativos que avisam com TS2578 quando deixam de falhar; @ts-ignore não",
+    "esbuild, SWC e o type stripping do Node apagam tipos sem os verificar; erasableSyntaxOnly (TS1294) prepara o código para isso",
+    "Pipeline: tsc --noEmit, ESLint, testes e Prettier, cada um apanha coisas diferentes"
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para o Módulo 12",
+  "next_label": "Módulo 12 → Projeto Final"
+}

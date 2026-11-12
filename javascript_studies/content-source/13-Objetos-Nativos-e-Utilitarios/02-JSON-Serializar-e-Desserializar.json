@@ -1,0 +1,380 @@
+{
+  "module_num": "13",
+  "module_title": "Objetos Nativos e Utilitários",
+  "module_dir": "13-Objetos-Nativos-e-Utilitarios",
+  "lesson_num": "02",
+  "lesson_slug": "JSON-Serializar-e-Desserializar",
+  "kind": "aula",
+  "title": "JSON: Serializar e Desserializar",
+  "filename_base": "02-JSON-Serializar-e-Desserializar",
+  "subtitle": "Converter dados em texto e texto em dados sem perder nada pelo caminho",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Distinguir um objeto JavaScript em memória de uma string JSON.",
+    "Dominar JSON.stringify com os argumentos replacer e space.",
+    "Reconhecer o que se perde ao serializar e evitar as surpresas mais comuns.",
+    "Controlar a serialização com toJSON e a leitura com o reviver de JSON.parse.",
+    "Ler JSON vindo de fora em segurança, com try/catch.",
+    "Escolher entre JSON.parse(JSON.stringify(x)) e structuredClone para copiar em profundidade."
+  ],
+  "sections": [
+    {
+      "heading": "O que é o JSON",
+      "body": [
+        "JSON quer dizer JavaScript Object Notation. É um formato de texto para representar dados, inspirado na sintaxe dos objetos literais do JavaScript, mas hoje totalmente independente da linguagem. Python, Java, Go ou PHP leem e escrevem JSON exatamente com as mesmas regras. Sempre que uma aplicação fala com um servidor, guarda definições num ficheiro ou usa o localStorage, há grande probabilidade de estar a mover JSON.",
+        "A distinção mais importante desta aula é esta: um objeto JavaScript vive na memória e tem métodos, protótipos e referências; uma string JSON é apenas uma sequência de caracteres. São coisas diferentes. Não se pode aceder a propriedades de uma string JSON nem chamar métodos nela. Para passar de um lado ao outro existem duas funções, JSON.stringify e JSON.parse.",
+        "O JSON só conhece seis tipos de valores: string, número, booleano, null, array e objeto. Tudo o resto que exista no JavaScript tem de ser convertido ou desaparece."
+      ],
+      "code": "const utilizador = { nome: \"Ana\", idade: 34, ativo: true };\nconst texto = JSON.stringify(utilizador);\n\nconsole.log(typeof utilizador); // object\nconsole.log(typeof texto);      // string\nconsole.log(texto);             // {\"nome\":\"Ana\",\"idade\":34,\"ativo\":true}\n\n// O objeto tem propriedades; a string não tem.\nconsole.log(utilizador.idade + 1); // 35\nconsole.log(texto.idade);          // undefined\n\n// Não é preciso um objeto: qualquer valor válido pode ser serializado.\nconsole.log(JSON.stringify(\"Ana\"));             // \"Ana\"\nconsole.log(JSON.stringify(42));                // 42\nconsole.log(JSON.stringify([1, \"dois\", true])); // [1,\"dois\",true]",
+      "callout_kind": "NOTA",
+      "callout_text": "JSON.stringify(\"Ana\") devolve uma string de cinco caracteres que inclui as aspas, e não a palavra Ana. As aspas fazem parte do texto JSON.",
+      "table_headers": [
+        "Aspeto",
+        "Objeto literal JavaScript",
+        "JSON"
+      ],
+      "table_rows": [
+        [
+          "Chaves",
+          "Podem ser identificadores sem aspas",
+          "Sempre entre aspas duplas"
+        ],
+        [
+          "Aspas nas strings",
+          "Simples, duplas ou crase",
+          "Apenas aspas duplas"
+        ],
+        [
+          "Vírgula final",
+          "Permitida",
+          "Proibida"
+        ],
+        [
+          "Comentários",
+          "Permitidos",
+          "Proibidos"
+        ],
+        [
+          "Valores possíveis",
+          "Qualquer valor, incluindo funções e undefined",
+          "String, número, booleano, null, array e objeto"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📄",
+          "text": "JSON é texto, não é um objeto"
+        },
+        {
+          "icon": "🌍",
+          "text": "Formato independente da linguagem"
+        },
+        {
+          "icon": "🔢",
+          "text": "Só seis tipos: string, número, booleano, null, array, objeto"
+        },
+        {
+          "icon": "🔁",
+          "text": "stringify vai, parse volta"
+        }
+      ]
+    },
+    {
+      "heading": "JSON.stringify: do valor para o texto",
+      "body": [
+        "JSON.stringify aceita três argumentos. O primeiro é o valor a converter. O segundo chama-se replacer e serve para filtrar ou transformar o que é escrito: pode ser um array com os nomes das chaves a manter, ou uma função chamada para cada par chave/valor. Se essa função devolver undefined, a propriedade é omitida.",
+        "O terceiro argumento chama-se space e controla a indentação. Com um número, cada nível é indentado com esse número de espaços; com uma string, essa string é usada como prefixo de cada nível. Serve para ficheiros lidos por pessoas, como um package.json ou um ficheiro de configuração. Para dados enviados pela rede omite-se, para não desperdiçar bytes.",
+        "Repare que a função replacer também é chamada uma primeira vez com a chave vazia e o valor completo, antes de descer para as propriedades."
+      ],
+      "code": "const encomenda = {\n  id: 1042,\n  cliente: \"Ana\",\n  total: 89.9,\n  segredoInterno: \"token-abc\"\n};\n\nconsole.log(JSON.stringify(encomenda));\n// {\"id\":1042,\"cliente\":\"Ana\",\"total\":89.9,\"segredoInterno\":\"token-abc\"}\n\n// Replacer como lista das chaves a manter.\nconsole.log(JSON.stringify(encomenda, [\"id\", \"cliente\"]));\n// {\"id\":1042,\"cliente\":\"Ana\"}\n\n// Replacer como função: devolver undefined remove a propriedade.\nconst semSegredos = JSON.stringify(encomenda, (chave, valor) =>\n  chave === \"segredoInterno\" ? undefined : valor\n);\nconsole.log(semSegredos);\n// {\"id\":1042,\"cliente\":\"Ana\",\"total\":89.9}\n\n// Terceiro argumento: indentação legível.\nconsole.log(JSON.stringify({ id: 1042, cliente: \"Ana\" }, null, 2));\n// {\n//   \"id\": 1042,\n//   \"cliente\": \"Ana\"\n// }",
+      "callout_kind": "DICA",
+      "callout_text": "Use o replacer como função para remover campos sensíveis, como tokens ou palavras-passe, antes de gravar ou registar dados num log.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧰",
+          "text": "stringify(valor, replacer, space)"
+        },
+        {
+          "icon": "🔍",
+          "text": "Replacer: array de chaves ou função"
+        },
+        {
+          "icon": "🫥",
+          "text": "Devolver undefined omite a propriedade"
+        },
+        {
+          "icon": "📐",
+          "text": "space indenta para leitura humana"
+        }
+      ]
+    },
+    {
+      "heading": "O que se perde ao serializar",
+      "body": [
+        "Esta é a parte que apanha toda a gente. Como o JSON só conhece seis tipos, tudo o que não encaixa é convertido ou desaparece em silêncio. Propriedades com valor undefined, funções e símbolos simplesmente somem do objeto. Dentro de um array não podem sumir, porque isso mudaria os índices, por isso viram null.",
+        "As datas não lançam erro: um objeto Date é convertido para a sua string ISO. O problema surge ao ler de volta, porque já não é uma data, é uma string. Map e Set são objetos sem propriedades próprias enumeráveis, por isso viram objetos vazios e os dados perdem-se por completo. NaN e Infinity, que não existem no JSON, viram null.",
+        "Há dois casos que lançam TypeError em vez de falharem em silêncio: valores BigInt e referências circulares, ou seja, um objeto que direta ou indiretamente aponta para si próprio."
+      ],
+      "code": "const estado = {\n  nome: \"Ana\",\n  apelido: undefined,\n  criadoEm: new Date(\"2026-03-15T10:00:00Z\"),\n  etiquetas: new Set([\"a\", \"b\"]),\n  indice: new Map([[\"a\", 1]]),\n  pontuacao: NaN,\n  limite: Infinity,\n  saudar() {\n    return \"olá\";\n  }\n};\n\nconsole.log(JSON.stringify(estado));\n// {\"nome\":\"Ana\",\"criadoEm\":\"2026-03-15T10:00:00.000Z\",\"etiquetas\":{},\"indice\":{},\"pontuacao\":null,\"limite\":null}\n\n// Dentro de um array, os buracos viram null para preservar os índices.\nconsole.log(JSON.stringify([1, undefined, function () {}, 4]));\n// [1,null,null,4]\n\n// Referência circular: TypeError.\nconst no = { nome: \"raiz\" };\nno.proprio = no;\n\ntry {\n  JSON.stringify(no);\n} catch (erro) {\n  console.log(erro instanceof TypeError); // true\n  console.log(erro.constructor.name);     // TypeError\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "As perdas acontecem em silêncio. Um Set com mil elementos vira um objeto vazio sem qualquer aviso. Verifique sempre o que sobreviveu antes de confiar numa serialização.",
+      "table_headers": [
+        "Valor no objeto",
+        "Resultado de JSON.stringify"
+      ],
+      "table_rows": [
+        [
+          "undefined, função ou símbolo numa propriedade",
+          "A propriedade desaparece"
+        ],
+        [
+          "undefined ou função dentro de um array",
+          "Vira null"
+        ],
+        [
+          "Date",
+          "String no formato ISO 8601"
+        ],
+        [
+          "Map ou Set",
+          "Objeto vazio"
+        ],
+        [
+          "NaN e Infinity",
+          "null"
+        ],
+        [
+          "BigInt",
+          "Lança TypeError"
+        ],
+        [
+          "Referência circular",
+          "Lança TypeError"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "👻",
+          "text": "undefined e funções desaparecem"
+        },
+        {
+          "icon": "📅",
+          "text": "Date vira string, e não volta sozinha"
+        },
+        {
+          "icon": "🕳️",
+          "text": "Map e Set viram objetos vazios"
+        },
+        {
+          "icon": "💥",
+          "text": "Circular e BigInt lançam TypeError"
+        }
+      ]
+    },
+    {
+      "heading": "toJSON: o objeto decide como se serializa",
+      "body": [
+        "Se um objeto tiver um método chamado toJSON, o JSON.stringify chama-o e serializa o valor devolvido em vez do objeto original. É este o mecanismo que faz as datas virarem strings ISO: Date.prototype.toJSON existe e devolve o resultado de toISOString.",
+        "Numa classe, o toJSON é o sítio certo para escolher a forma pública dos dados: esconder campos internos, expor campos privados que de outro modo nunca apareceriam, ou marcar o tipo para conseguir reconstruir a instância mais tarde. Note que os campos privados, os que começam por cardinal, nunca são serializados automaticamente, porque não são propriedades enumeráveis."
+      ],
+      "code": "class Conta {\n  #saldo;\n\n  constructor(titular, saldo) {\n    this.titular = titular;\n    this.#saldo = saldo;\n  }\n\n  get saldo() {\n    return this.#saldo;\n  }\n\n  toJSON() {\n    return { tipo: \"Conta\", titular: this.titular, saldo: this.#saldo };\n  }\n}\n\nconst conta = new Conta(\"Ana\", 1500);\nconsole.log(JSON.stringify(conta));\n// {\"tipo\":\"Conta\",\"titular\":\"Ana\",\"saldo\":1500}\n\n// Sem toJSON, só as propriedades próprias enumeráveis são escritas.\nconsole.log(JSON.stringify({ titular: \"Ana\", oculto: 1 }));\n// {\"titular\":\"Ana\",\"oculto\":1}\n\n// O Date já traz o seu próprio toJSON.\nconst data = new Date(\"2026-03-15T10:00:00Z\");\nconsole.log(data.toJSON());                   // 2026-03-15T10:00:00.000Z\nconsole.log(JSON.stringify({ quando: data }));\n// {\"quando\":\"2026-03-15T10:00:00.000Z\"}",
+      "callout_kind": "DICA",
+      "callout_text": "Inclua no toJSON um campo que identifique o tipo, por exemplo __tipo com o valor Conta. Vai precisar dele no reviver para reconstruir a instância.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎛️",
+          "text": "toJSON define a forma serializada do objeto"
+        },
+        {
+          "icon": "📅",
+          "text": "O Date usa toJSON internamente"
+        },
+        {
+          "icon": "🔒",
+          "text": "Permite expor campos privados de forma controlada"
+        },
+        {
+          "icon": "🏷️",
+          "text": "Marque o tipo para poder reconstruir depois"
+        }
+      ]
+    },
+    {
+      "heading": "JSON.parse e o reviver",
+      "body": [
+        "JSON.parse faz o caminho inverso: recebe texto e devolve valores JavaScript. O resultado são sempre objetos simples, arrays, strings, números, booleanos e null. Nunca instâncias de classes, nunca datas, nunca Map ou Set.",
+        "O segundo argumento é o reviver: uma função chamada para cada par chave/valor, de dentro para fora, cujo valor de retorno substitui o valor original. É o gancho certo para transformar strings ISO em objetos Date, para converter arrays em Set, ou para reconstruir instâncias marcadas com um campo de tipo.",
+        "Quando escrever um reviver, seja específico no que reconhece. Um teste demasiado generoso, como aceitar qualquer string parecida com uma data, acaba por converter valores que não queria."
+      ],
+      "code": "const texto = '{\"id\":7,\"criadoEm\":\"2026-03-15T10:00:00.000Z\",\"total\":49.5}';\n\nconst simples = JSON.parse(texto);\nconsole.log(typeof simples);          // object\nconsole.log(simples.id + 1);          // 8\nconsole.log(typeof simples.criadoEm); // string\n\n// Reviver: reconstruir as datas no momento da leitura.\nconst ISO = /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/;\n\nconst encomenda = JSON.parse(texto, (chave, valor) =>\n  typeof valor === \"string\" && ISO.test(valor) ? new Date(valor) : valor\n);\n\nconsole.log(encomenda.criadoEm instanceof Date);   // true\nconsole.log(encomenda.criadoEm.getUTCFullYear());  // 2026\nconsole.log(encomenda.criadoEm.getUTCMonth() + 1); // 3",
+      "callout_kind": "NOTA",
+      "callout_text": "O reviver percorre a estrutura de baixo para cima: os filhos já estão convertidos quando a função é chamada para o objeto que os contém.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📥",
+          "text": "parse devolve sempre objetos simples"
+        },
+        {
+          "icon": "🧪",
+          "text": "O reviver corre para cada chave e valor"
+        },
+        {
+          "icon": "📅",
+          "text": "Ideal para reconstruir datas e instâncias"
+        },
+        {
+          "icon": "🎯",
+          "text": "Seja específico no que o reviver reconhece"
+        }
+      ]
+    },
+    {
+      "heading": "Ler JSON externo em segurança",
+      "body": [
+        "JSON.parse lança SyntaxError sempre que o texto não for JSON válido. Uma string vazia, uma página de erro HTML devolvida por um servidor, um ficheiro truncado ou um valor gravado no localStorage por uma versão antiga da aplicação são todos casos reais que quebram a aplicação se ninguém os apanhar.",
+        "A regra é simples: JSON que vem de fora do seu código passa sempre por try/catch. De fora significa rede, ficheiros, localStorage, entrada do utilizador ou variáveis de ambiente. Uma função auxiliar que devolve um valor alternativo em caso de falha evita repetir o bloco em dezenas de sítios.",
+        "Apanhe apenas o SyntaxError e volte a lançar o resto. Engolir todos os erros esconde problemas que nada têm a ver com a leitura do JSON."
+      ],
+      "code": "function lerJSON(texto, alternativa = null) {\n  try {\n    return JSON.parse(texto);\n  } catch (erro) {\n    if (erro instanceof SyntaxError) {\n      return alternativa;\n    }\n    throw erro;\n  }\n}\n\nconsole.log(lerJSON('{\"tema\":\"escuro\"}'));                 // { tema: 'escuro' }\nconsole.log(lerJSON(\"{tema:'escuro'}\", { tema: \"claro\" })); // { tema: 'claro' }\nconsole.log(lerJSON(\"\", []));                              // []\nconsole.log(lerJSON(\"<html>\", null));                      // null\n\ntry {\n  JSON.parse(\"{ 'a': 1 }\"); // aspas simples não são JSON válido\n} catch (erro) {\n  console.log(erro instanceof SyntaxError); // true\n  console.log(erro.name);                   // SyntaxError\n}",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Procure no seu código todas as chamadas a JSON.parse que não estejam dentro de um try/catch e proteja-as. É a fonte mais comum de erros não tratados em produção.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⚠️",
+          "text": "JSON inválido lança SyntaxError"
+        },
+        {
+          "icon": "🛡️",
+          "text": "Dados externos exigem sempre try/catch"
+        },
+        {
+          "icon": "🧯",
+          "text": "Devolva um valor alternativo em vez de falhar"
+        },
+        {
+          "icon": "🚫",
+          "text": "Não engula erros que não sejam SyntaxError"
+        }
+      ]
+    },
+    {
+      "heading": "Cópia profunda: o truque clássico e a alternativa moderna",
+      "body": [
+        "Serializar e voltar a ler produz uma estrutura totalmente nova, sem qualquer referência partilhada com o original. Daqui nasceu o truque JSON.parse(JSON.stringify(obj)), durante anos a forma mais rápida de escrever uma cópia profunda numa linha.",
+        "As limitações são exatamente as da serialização: datas viram strings, Map e Set desaparecem, undefined e funções somem, NaN e Infinity viram null e referências circulares lançam TypeError. Se os dados forem apenas objetos, arrays, strings, números e booleanos, o truque continua perfeitamente válido e muito conveniente.",
+        "Para tudo o resto existe structuredClone, disponível no Node 17 e superior e em todos os navegadores modernos. Preserva datas, Map, Set, RegExp, ArrayBuffer e referências circulares. Não copia funções, que lançam DataCloneError, e não preserva o protótipo: uma instância de classe volta como objeto simples."
+      ],
+      "code": "const original = {\n  nome: \"Ana\",\n  criadoEm: new Date(\"2026-03-15T10:00:00Z\"),\n  etiquetas: new Set([\"pt\", \"js\"]),\n  morada: { cidade: \"Braga\" }\n};\n\nconst copiaJSON = JSON.parse(JSON.stringify(original));\ncopiaJSON.morada.cidade = \"Porto\";\n\nconsole.log(original.morada.cidade);              // Braga (a cópia é mesmo profunda)\nconsole.log(typeof copiaJSON.criadoEm);           // string (a data perdeu-se)\nconsole.log(JSON.stringify(copiaJSON.etiquetas)); // {} (o Set perdeu-se)\n\nconst copia = structuredClone(original);\ncopia.morada.cidade = \"Lisboa\";\n\nconsole.log(original.morada.cidade);                 // Braga\nconsole.log(copia.criadoEm instanceof Date);         // true\nconsole.log(copia.etiquetas.has(\"js\"));              // true\nconsole.log(copia.etiquetas === original.etiquetas); // false",
+      "callout_kind": "DICA",
+      "callout_text": "Regra prática: se os dados já vieram de JSON, o truque chega. Se tiver datas, Map, Set ou referências circulares, use structuredClone.",
+      "table_headers": [
+        "Critério",
+        "JSON.parse(JSON.stringify(x))",
+        "structuredClone(x)"
+      ],
+      "table_rows": [
+        [
+          "Date",
+          "Vira string",
+          "Continua a ser Date"
+        ],
+        [
+          "Map e Set",
+          "Perdem-se",
+          "Preservados"
+        ],
+        [
+          "undefined e funções",
+          "Desaparecem",
+          "undefined preservado, funções lançam erro"
+        ],
+        [
+          "Referências circulares",
+          "Lança TypeError",
+          "Suportadas"
+        ],
+        [
+          "Instâncias de classes",
+          "Viram objetos simples",
+          "Viram objetos simples"
+        ],
+        [
+          "Disponibilidade",
+          "Em qualquer ambiente",
+          "Node 17 ou superior e navegadores modernos"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📋",
+          "text": "stringify mais parse cria uma cópia profunda"
+        },
+        {
+          "icon": "✂️",
+          "text": "Mas corta tudo o que o JSON não conhece"
+        },
+        {
+          "icon": "🧬",
+          "text": "structuredClone preserva Date, Map, Set e ciclos"
+        },
+        {
+          "icon": "🚷",
+          "text": "Nenhum dos dois recupera o protótipo da classe"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Guardar e reler definições",
+      "difficulty": "Iniciante",
+      "statement": "Escreva a função paraTextoLegivel(objeto) que devolve a representação JSON do objeto indentada com 2 espaços. Depois crie um objeto livro com as propriedades titulo, paginas e disponivel, converta-o para texto, imprima o texto, volte a lê-lo com JSON.parse e demonstre com console.log que os dados sobreviveram à viagem mas que o objeto lido não é o mesmo objeto que o original.",
+      "hint": "O terceiro argumento de JSON.stringify controla a indentação, e o segundo pode ser null quando não quer filtrar nada.",
+      "solution_code": "function paraTextoLegivel(objeto) {\n  return JSON.stringify(objeto, null, 2);\n}\n\nconst livro = { titulo: \"Aprender JavaScript\", paginas: 210, disponivel: true };\n\nconst texto = paraTextoLegivel(livro);\nconsole.log(texto);\n// {\n//   \"titulo\": \"Aprender JavaScript\",\n//   \"paginas\": 210,\n//   \"disponivel\": true\n// }\n\nconst devolta = JSON.parse(texto);\nconsole.log(devolta.titulo === livro.titulo); // true\nconsole.log(devolta.paginas);                 // 210\nconsole.log(devolta === livro);               // false",
+      "solution_explanation": "Com space igual a 2 o resultado sai indentado, fácil de ler num ficheiro de configuração. Ao reler com JSON.parse obtém-se um objeto novo com os mesmos valores. A última comparação mostra que é mesmo um objeto diferente: o JSON copia dados, não identidades."
+    },
+    {
+      "title": "Serialização sem campos sensíveis",
+      "difficulty": "Intermedio",
+      "statement": "Escreva a função serializarPublico(objeto) que devolve o JSON do objeto omitindo qualquer propriedade cujo nome comece por underscore e substituindo o valor da propriedade palavraPasse por três asteriscos. A regra tem de valer a qualquer profundidade, incluindo objetos aninhados. Teste com um utilizador que tenha nome, palavraPasse, _token e um perfil com pais e _interno.",
+      "hint": "Use o replacer na forma de função. Devolver undefined remove a propriedade e devolver outro valor substitui-a. Lembre-se de que a função é chamada para cada chave, a qualquer profundidade.",
+      "solution_code": "function serializarPublico(objeto) {\n  return JSON.stringify(objeto, (chave, valor) => {\n    if (chave.startsWith(\"_\")) return undefined;\n    if (chave === \"palavraPasse\") return \"***\";\n    return valor;\n  });\n}\n\nconst utilizador = {\n  nome: \"Ana\",\n  palavraPasse: \"segredo123\",\n  _token: \"abc\",\n  perfil: { pais: \"Portugal\", _interno: 1 }\n};\n\nconsole.log(serializarPublico(utilizador));\n// {\"nome\":\"Ana\",\"palavraPasse\":\"***\",\"perfil\":{\"pais\":\"Portugal\"}}",
+      "solution_explanation": "O replacer como função é chamado recursivamente para todas as chaves, por isso a regra aplica-se também dentro do objeto perfil. Devolver undefined faz a propriedade desaparecer do resultado, enquanto devolver uma string a substitui. Na primeira chamada a chave é a string vazia, que não começa por underscore, e o objeto completo segue em frente."
+    },
+    {
+      "title": "Leitura tolerante a falhas",
+      "difficulty": "Intermedio",
+      "statement": "Escreva a função lerJSONSeguro(texto, alternativa) que devolve um objeto com a forma { ok, valor }. Se o texto for JSON válido, ok é true e valor é o resultado do parse. Se o texto for inválido, ok é false e valor é a alternativa recebida. Erros que não sejam SyntaxError devem ser relançados. Teste a função sobre um objeto que simula três entradas do localStorage: uma válida, uma escrita com aspas simples e uma string vazia.",
+      "hint": "Percorra as entradas com Object.entries e um ciclo for...of. No catch, verifique o tipo do erro antes de decidir o que fazer.",
+      "solution_code": "function lerJSONSeguro(texto, alternativa) {\n  try {\n    return { ok: true, valor: JSON.parse(texto) };\n  } catch (erro) {\n    if (!(erro instanceof SyntaxError)) throw erro;\n    return { ok: false, valor: alternativa };\n  }\n}\n\nconst armazenamento = {\n  definicoes: '{\"tema\":\"escuro\",\"tamanho\":14}',\n  rascunho: \"{tema:'escuro'}\",\n  vazio: \"\"\n};\n\nfor (const [chave, texto] of Object.entries(armazenamento)) {\n  const resultado = lerJSONSeguro(texto, {});\n  console.log(chave, resultado.ok, JSON.stringify(resultado.valor));\n}\n// definicoes true {\"tema\":\"escuro\",\"tamanho\":14}\n// rascunho false {}\n// vazio false {}",
+      "solution_explanation": "Devolver um objeto com uma marca ok evita confundir uma leitura falhada com um valor legitimamente nulo. O rascunho falha porque o JSON não aceita aspas simples nem chaves sem aspas, e a string vazia falha porque não contém nenhum valor. Relançar tudo o que não for SyntaxError impede que a função esconda problemas alheios."
+    },
+    {
+      "title": "Guardar e reconstruir instâncias de uma classe",
+      "difficulty": "Avancado",
+      "statement": "Crie a classe Tarefa com titulo, prazo (um objeto Date) e concluida, e o método estaAtrasada(agora) que devolve true quando a tarefa não está concluída e o prazo é anterior à data recebida. Adicione um método toJSON que marque o tipo com o campo __tipo e grave o prazo em formato ISO, e um método estático reviver que reconstrua instâncias de Tarefa a partir desse formato. Serialize um array com duas tarefas, releia-o com o reviver e prove que as instâncias e os métodos voltaram a funcionar.",
+      "hint": "No reviver, confirme que o valor é um objeto não nulo antes de ler o campo __tipo, e passe Tarefa.reviver diretamente como segundo argumento de JSON.parse.",
+      "solution_code": "class Tarefa {\n  constructor(titulo, prazo, concluida = false) {\n    this.titulo = titulo;\n    this.prazo = prazo;\n    this.concluida = concluida;\n  }\n\n  estaAtrasada(agora) {\n    return !this.concluida && this.prazo.getTime() < agora.getTime();\n  }\n\n  toJSON() {\n    return {\n      __tipo: \"Tarefa\",\n      titulo: this.titulo,\n      prazo: this.prazo.toISOString(),\n      concluida: this.concluida\n    };\n  }\n\n  static reviver(chave, valor) {\n    if (valor !== null && typeof valor === \"object\" && valor.__tipo === \"Tarefa\") {\n      return new Tarefa(valor.titulo, new Date(valor.prazo), valor.concluida);\n    }\n    return valor;\n  }\n}\n\nconst tarefas = [\n  new Tarefa(\"Escrever relatorio\", new Date(\"2026-03-15T10:00:00Z\")),\n  new Tarefa(\"Rever codigo\", new Date(\"2026-04-01T09:00:00Z\"), true)\n];\n\nconst texto = JSON.stringify(tarefas);\nconsole.log(texto.includes('\"__tipo\":\"Tarefa\"')); // true\n\nconst lidas = JSON.parse(texto, Tarefa.reviver);\nconsole.log(lidas[0] instanceof Tarefa);     // true\nconsole.log(lidas[0].prazo instanceof Date); // true\n\nconst agora = new Date(\"2026-03-20T00:00:00Z\");\nconsole.log(lidas[0].estaAtrasada(agora)); // true\nconsole.log(lidas[1].estaAtrasada(agora)); // false",
+      "solution_explanation": "O toJSON controla o que sai e acrescenta a marca __tipo, sem a qual seria impossível distinguir esta tarefa de qualquer outro objeto. O reviver corre de dentro para fora, por isso quando encontra o objeto marcado já tem todos os campos prontos e devolve uma instância real de Tarefa com um Date verdadeiro. É por isso que estaAtrasada volta a funcionar depois da leitura."
+    }
+  ],
+  "summary": [
+    "O JSON é texto; um objeto JavaScript vive na memória. JSON.stringify converte num sentido e JSON.parse no outro.",
+    "O replacer filtra ou transforma o que é escrito e o space torna o resultado legível para pessoas.",
+    "Serializar perde undefined, funções, Map e Set, transforma datas em strings e NaN e Infinity em null; BigInt e referências circulares lançam TypeError.",
+    "O método toJSON deixa um objeto ou uma classe decidir a sua forma serializada, e o reviver de JSON.parse reconstrói datas e instâncias na leitura.",
+    "JSON.parse lança SyntaxError: todo o JSON vindo de fora tem de passar por try/catch.",
+    "JSON.parse(JSON.stringify(x)) copia em profundidade apenas dados compatíveis com JSON; para datas, Map, Set e ciclos use structuredClone."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 03",
+  "next_label": "Aula 03 → Math e Number"
+}

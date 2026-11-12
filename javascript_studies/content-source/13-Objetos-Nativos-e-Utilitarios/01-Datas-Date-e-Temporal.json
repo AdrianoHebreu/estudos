@@ -1,0 +1,419 @@
+{
+  "module_num": "13",
+  "module_title": "Objetos Nativos e Utilitários",
+  "module_dir": "13-Objetos-Nativos-e-Utilitarios",
+  "lesson_num": "01",
+  "lesson_slug": "Datas-Date-e-Temporal",
+  "kind": "aula",
+  "title": "Datas: Date e Temporal",
+  "filename_base": "01-Datas-Date-e-Temporal",
+  "subtitle": "Como o JavaScript representa o tempo, as armadilhas do Date e o futuro com Temporal",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Criar objetos Date a partir de componentes, de strings e de timestamps, sabendo o que cada forma implica.",
+    "Evitar as armadilhas clássicas: meses de 0 a 11, getDay contra getDate e a mutabilidade do Date.",
+    "Fazer aritmética com datas: diferenças em dias e soma de dias com o overflow automático.",
+    "Perceber o que é o UTC, distingui-lo da hora local e formatar datas para Portugal com toLocaleDateString e toLocaleString.",
+    "Comparar e ordenar datas corretamente, sem cair na comparação de referências.",
+    "Conhecer a proposta Temporal e saber quando compensa recorrer a uma biblioteca."
+  ],
+  "sections": [
+    {
+      "heading": "As formas de criar uma data",
+      "body": [
+        "O construtor Date aceita quatro formas de invocação. Sem argumentos, new Date() devolve o instante em que foi chamado, com precisão de milissegundos. Com números, new Date(ano, mes, dia, horas, minutos, segundos) constrói a data a partir dos componentes, sempre interpretados na hora local da máquina; só o ano e o mês são obrigatórios. Com um único número, new Date(1773577800000) interpreta esse valor como um timestamp. Com um texto, o motor tenta analisá-lo.",
+        "É na análise de texto que estão os problemas. A especificação só garante o formato ISO 8601, e mesmo aí há uma regra que apanha quase toda a gente: uma string só com data, como 2026-03-15, é interpretada como meia-noite em UTC, enquanto a mesma string com a parte da hora e sem o sufixo Z, como 2026-03-15T00:00:00, é interpretada na hora local. Qualquer outro formato fica ao critério do motor. Uma string ambígua como 15/03/2026 não é ISO: o V8 tenta lê-la como mês barra dia barra ano, vê o mês 15 e devolve um Invalid Date. A regra prática é simples: ou passa componentes numéricos, ou passa uma string ISO completa.",
+        "Uma data inválida não lança erro. Continua a ser um objeto Date, mas o seu timestamp interno é NaN, e todos os getters devolvem NaN. Por isso vale a pena validar sempre o resultado de um parsing com Number.isNaN(data.getTime()) antes de confiar no valor."
+      ],
+      "code": "const agora = new Date(); // depende do momento em que corre\nconsole.log(agora instanceof Date); // true\n\n// Componentes: mês 2 é março, porque a contagem começa em 0\nconst porComponentes = new Date(2026, 2, 15);\nconsole.log(porComponentes.getFullYear()); // 2026\nconsole.log(porComponentes.getMonth()); // 2\nconsole.log(porComponentes.getDate()); // 15\n\n// String ISO só com data: interpretada como meia-noite UTC\nconst soData = new Date('2026-03-15');\nconsole.log(soData.toISOString()); // \"2026-03-15T00:00:00.000Z\"\n\n// String ISO com hora e sem Z: interpretada na hora local\nconst comHora = new Date('2026-03-15T00:00:00');\nconsole.log(comHora.getHours()); // 0\n\n// String ambígua: não é ISO, o V8 devolve Invalid Date\nconst ambigua = new Date('15/03/2026');\nconsole.log(Number.isNaN(ambigua.getTime())); // true\nconsole.log(String(ambigua)); // \"Invalid Date\"",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Escrever new Date('2026-03-15') e depois ler data.getDate() pode devolver 14 em qualquer máquina a oeste de Greenwich, porque a string foi lida como meia-noite UTC e o getter devolve a hora local. Se quer o dia local, use new Date(2026, 2, 15) ou acrescente a parte da hora à string.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🕐",
+          "text": "new Date() devolve o instante atual"
+        },
+        {
+          "icon": "🔢",
+          "text": "new Date(2026, 2, 15) usa a hora local"
+        },
+        {
+          "icon": "🌍",
+          "text": "String ISO só com data é lida como UTC"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Formatos não ISO dependem do motor"
+        }
+      ]
+    },
+    {
+      "heading": "O que é o UTC",
+      "body": [
+        "UTC quer dizer Tempo Universal Coordenado (em inglês, Coordinated Universal Time — a sigla é um compromisso entre a ordem das palavras em inglês e em francês). É a referência horária mundial: todos os fusos horários do planeta são definidos como um desvio em relação a ela. Portugal continental está em UTC+0 no inverno e em UTC+1 no verão, Madrid está uma hora à frente de Lisboa, e São Paulo está três horas atrás de UTC. O UTC substituiu o GMT como padrão técnico; no dia a dia, e para efeitos deste curso, pode considerar que coincidem.",
+        "Isto importa em programação por uma razão simples: um instante expresso em UTC não é ambíguo em lado nenhum do mundo, enquanto \"15 de março às 23:30\" não significa nada sem se saber de que fuso se está a falar. Um objeto Date guarda sempre, internamente, um instante absoluto em UTC — a hora local é apenas a forma como esse instante é apresentado a quem está a ver.",
+        "Daí a regra prática que evita a maior parte dos problemas com datas: guarde e transmita sempre em UTC (numa base de dados, numa API, num ficheiro) e converta para hora local só no momento de mostrar ao utilizador. No formato ISO 8601, o sufixo Z indica precisamente que o valor já está em UTC — lê-se \"Zulu\" e significa desvio zero. Uma string sem Z e sem desvio explícito é interpretada no fuso da máquina que corre o código, que é a origem clássica de datas que mudam de um computador para o outro."
+      ],
+      "code": "const instante = new Date(\"2026-03-15T23:30:00Z\"); // o Z diz: isto já é UTC\n\nconsole.log(instante.toISOString()); // \"2026-03-15T23:30:00.000Z\"\nconsole.log(instante.getTime());     // 1773617400000, o mesmo número em qualquer máquina do mundo\n\n// Um único instante, visto de fusos diferentes — repare que o DIA chega a mudar:\nconst ver = (fuso) =>\n  instante.toLocaleString(\"pt-PT\", { timeZone: fuso, dateStyle: \"medium\", timeStyle: \"short\" });\n\nconsole.log(\"UTC:      \", ver(\"UTC\"));                 // 15/03/2026, 23:30\nconsole.log(\"Lisboa:   \", ver(\"Europe/Lisbon\"));       // 15/03/2026, 23:30  (março ainda é inverno: UTC+0)\nconsole.log(\"Madrid:   \", ver(\"Europe/Madrid\"));       // 16/03/2026, 00:30  (UTC+1, já é o dia seguinte)\nconsole.log(\"São Paulo:\", ver(\"America/Sao_Paulo\"));   // 15/03/2026, 20:30  (UTC-3)\nconsole.log(\"Tóquio:   \", ver(\"Asia/Tokyo\"));          // 16/03/2026, 08:30  (UTC+9)\n\n// Date.UTC constrói a partir de componentes já interpretados como UTC (mês de 0 a 11)\nconst natal = new Date(Date.UTC(2026, 11, 25));\nconsole.log(natal.toISOString()); // \"2026-12-25T00:00:00.000Z\"",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Guardar hora local em vez de UTC é uma das causas mais frequentes de bugs com datas: a mesma gravação passa a significar instantes diferentes consoante o servidor, e as mudanças para o horário de verão criam horas que se repetem ou que não existem. Guarde em UTC e converta só para mostrar.",
+      "table_headers": [
+        "Notação",
+        "Significado"
+      ],
+      "table_rows": [
+        [
+          "UTC",
+          "Tempo Universal Coordenado: a referência a partir da qual todos os fusos são definidos"
+        ],
+        [
+          "Z (em 2026-03-15T23:30:00Z)",
+          "Lê-se \"Zulu\": desvio zero, ou seja, o valor já está em UTC"
+        ],
+        [
+          "GMT",
+          "Referência anterior ao UTC; para uso corrente pode considerar-se equivalente"
+        ],
+        [
+          "UTC+0 (WET)",
+          "Portugal continental e Madeira, no inverno"
+        ],
+        [
+          "UTC+1 (WEST)",
+          "Portugal continental e Madeira, no horário de verão"
+        ],
+        [
+          "UTC-1",
+          "Açores, no inverno"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🌍",
+          "text": "UTC é a referência de onde saem todos os fusos"
+        },
+        {
+          "icon": "🅉",
+          "text": "O sufixo Z significa \"já está em UTC\""
+        },
+        {
+          "icon": "💾",
+          "text": "Guarde em UTC, converta só para mostrar"
+        }
+      ]
+    },
+    {
+      "heading": "As três armadilhas clássicas",
+      "body": [
+        "A primeira armadilha é a numeração dos meses. Nos componentes do Date, o mês vai de 0 a 11, com janeiro em 0 e dezembro em 11, mas o dia do mês vai de 1 a 31 e o ano é escrito por extenso. Esta mistura é herdada da linguagem C e não tem justificação lógica, apenas histórica. Quem constrói ou lê meses tem de somar ou subtrair 1 conscientemente.",
+        "A segunda armadilha é a semelhança entre getDate e getDay. O getDate devolve o dia do mês, de 1 a 31, que é o que a maioria das pessoas espera do nome. O getDay devolve o dia da semana, de 0 a 6, com o domingo em 0. Trocar os dois produz código que funciona por acaso em alguns dias do mês e falha noutros.",
+        "A terceira armadilha, e a mais perigosa em código real, é a mutabilidade. Os métodos setDate, setMonth, setHours e companhia não devolvem uma data nova: alteram o próprio objeto e devolvem o novo timestamp. Se passou a mesma referência a outra função, ou a guardou numa lista, todas as cópias veem a alteração. A defesa é copiar antes de modificar, com new Date(original), e devolver sempre a cópia."
+      ],
+      "code": "const natal = new Date(2026, 11, 25); // 11 = dezembro\nconsole.log(natal.getMonth()); // 11\nconsole.log(natal.getDate()); // 25, o dia do mês\nconsole.log(natal.getDay()); // 5, sexta-feira (0 = domingo)\n\n// Date é mutável: setDate altera o próprio objeto\nconst marcada = new Date(2026, 0, 10);\nconst mesmaReferencia = marcada;\nmarcada.setDate(20);\nconsole.log(mesmaReferencia.getDate()); // 20\n\n// A defesa: copiar antes de modificar\nfunction comDia(data, dia) {\n  const copia = new Date(data);\n  copia.setDate(dia);\n  return copia;\n}\n\nconst original = new Date(2026, 0, 10);\nconst alterada = comDia(original, 20);\nconsole.log(original.getDate()); // 10\nconsole.log(alterada.getDate()); // 20",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Nunca altere uma data que recebeu como parâmetro. Uma função que faz data.setDate(...) sobre o argumento modifica o objeto de quem a chamou, e este tipo de erro só aparece muito depois, quando a mesma data é usada em dois sítios.",
+      "table_headers": [
+        "Método",
+        "Devolve",
+        "Intervalo"
+      ],
+      "table_rows": [
+        [
+          "getFullYear()",
+          "Ano com todos os dígitos",
+          "por exemplo 2026"
+        ],
+        [
+          "getMonth()",
+          "Mês",
+          "0 a 11, com 0 em janeiro"
+        ],
+        [
+          "getDate()",
+          "Dia do mês",
+          "1 a 31"
+        ],
+        [
+          "getDay()",
+          "Dia da semana",
+          "0 a 6, com 0 no domingo"
+        ],
+        [
+          "getHours()",
+          "Hora local",
+          "0 a 23"
+        ],
+        [
+          "getTime()",
+          "Milissegundos desde a época Unix",
+          "número inteiro"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "0️⃣",
+          "text": "Meses de 0 a 11, dias de 1 a 31"
+        },
+        {
+          "icon": "📅",
+          "text": "getDate é o dia do mês, getDay é a semana"
+        },
+        {
+          "icon": "✏️",
+          "text": "setDate altera o objeto original"
+        },
+        {
+          "icon": "🛡️",
+          "text": "Copie com new Date(original) antes de mudar"
+        }
+      ]
+    },
+    {
+      "heading": "Timestamps e a época Unix",
+      "body": [
+        "Por dentro, um Date é apenas um número: os milissegundos decorridos desde a meia-noite de 1 de janeiro de 1970 em UTC, o instante a que se chama época Unix. Tudo o resto, os getters, a formatação e a comparação, é interpretação desse número. Valores negativos representam datas anteriores a 1970.",
+        "Há duas formas de obter esse número. Date.now() devolve o timestamp do instante atual sem criar qualquer objeto, o que é mais eficiente quando só se quer medir tempo. O método getTime() devolve o timestamp de uma data já existente, tal como valueOf, que é o que a conversão automática para número usa.",
+        "Um erro muito frequente aparece quando se consome uma API que devolve o tempo em segundos, como é hábito em sistemas Unix e em tokens JWT. Passar esse valor diretamente ao construtor coloca a data algures em 1970. É preciso multiplicar por 1000."
+      ],
+      "code": "const agoraMs = Date.now(); // depende do momento em que corre\nconsole.log(typeof agoraMs); // \"number\"\n\nconst epoca = new Date(0);\nconsole.log(epoca.toISOString()); // \"1970-01-01T00:00:00.000Z\"\n\nconst lancamento = new Date(Date.UTC(2026, 2, 15, 12, 30));\nconsole.log(lancamento.getTime()); // 1773577800000\nconsole.log(Number(lancamento) === lancamento.getTime()); // true\n\n// Muitas APIs devolvem segundos, não milissegundos\nconst emSegundos = 1773577800;\nconsole.log(new Date(emSegundos).getFullYear()); // 1970\nconsole.log(new Date(emSegundos * 1000).toISOString()); // \"2026-03-15T12:30:00.000Z\"\n\n// Uma data inválida tem timestamp NaN\nconst invalida = new Date('ontem à tarde');\nconsole.log(Number.isNaN(invalida.getTime())); // true",
+      "callout_kind": "DICA",
+      "callout_text": "Para medir a duração de uma operação dentro do programa, prefira performance.now() a Date.now(). O relógio do sistema pode ser acertado pela rede a meio da medição e dar-lhe uma duração negativa; performance.now() é monotónico e nunca anda para trás.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⏱️",
+          "text": "Um Date é só milissegundos desde 1970 em UTC"
+        },
+        {
+          "icon": "⚡",
+          "text": "Date.now() não cria objeto nenhum"
+        },
+        {
+          "icon": "✖️",
+          "text": "Segundos de uma API: multiplique por 1000"
+        }
+      ]
+    },
+    {
+      "heading": "Aritmética com datas",
+      "body": [
+        "Subtrair duas datas funciona porque o operador menos converte cada objeto para número, ou seja, para o respetivo timestamp. O resultado é a diferença em milissegundos, que se converte em dias dividindo por 86400000, o produto de 24 por 60 por 60 por 1000. Vale a pena guardar essa constante numa variável com nome, em vez de a espalhar pelo código.",
+        "Somar dias é onde o Date se porta surpreendentemente bem. Os setters aceitam valores fora do intervalo normal e normalizam o resultado: pedir o dia 32 de janeiro dá 1 de fevereiro, e pedir o dia 0 dá o último dia do mês anterior. É por isso que o padrão copia.setDate(copia.getDate() + dias) funciona para qualquer número de dias, atravessando meses e anos sem contas extra. O mesmo se aplica a setMonth e a setHours.",
+        "A divisão por 86400000 tem um senão: nem todos os dias têm 86400000 milissegundos. Nos dias de mudança para a hora de verão existe um dia com 23 horas e outro com 25. Se estiver a contar dias de calendário, arredonde o resultado com Math.round, ou calcule a diferença a partir de Date.UTC dos componentes ano, mês e dia, que elimina a hora do problema."
+      ],
+      "code": "const MS_POR_DIA = 24 * 60 * 60 * 1000;\n\nconst inicio = new Date(2026, 0, 1);\nconst fim = new Date(2026, 2, 1);\nconsole.log(Math.round((fim - inicio) / MS_POR_DIA)); // 59\n\n// Overflow automático: o dia 32 de janeiro é 1 de fevereiro\nconst transbordo = new Date(2026, 0, 32);\nconsole.log(transbordo.getMonth()); // 1\nconsole.log(transbordo.getDate()); // 1\n\n// Dia 0 devolve o último dia do mês anterior: útil para saber quantos dias tem um mês\nconst ultimoDeFevereiro = new Date(2026, 2, 0);\nconsole.log(ultimoDeFevereiro.getDate()); // 28\n\nfunction somarDias(data, dias) {\n  const copia = new Date(data);\n  copia.setDate(copia.getDate() + dias);\n  return copia;\n}\n\nconst prazo = somarDias(new Date(2026, 0, 25), 10);\nconsole.log(prazo.getMonth()); // 1\nconsole.log(prazo.getDate()); // 4",
+      "callout_kind": "DICA",
+      "callout_text": "O truque new Date(ano, mes + 1, 0) devolve o último dia desse mês e resolve de uma vez o problema dos anos bissextos: para fevereiro de 2026 dá 28 e para fevereiro de 2028 dá 29, sem precisar de escrever a regra dos bissextos.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "➖",
+          "text": "fim menos inicio dá a diferença em milissegundos"
+        },
+        {
+          "icon": "📏",
+          "text": "Um dia tem 86400000 ms, exceto na mudança de hora"
+        },
+        {
+          "icon": "🔁",
+          "text": "setDate normaliza sozinho o dia 32 ou o dia 0"
+        }
+      ]
+    },
+    {
+      "heading": "Hora local, UTC e formatação",
+      "body": [
+        "Cada objeto Date guarda um instante absoluto em UTC, mas oferece dois conjuntos de leitores. Os métodos normais, como getHours, devolvem o valor na hora local da máquina onde o código corre. Os métodos com UTC no nome, como getUTCHours, devolvem o valor em tempo universal. O mesmo instante pode assim ser o dia 10 às 15 horas em Lisboa e o dia 10 às 14 horas em UTC.",
+        "O método getTimezoneOffset devolve, em minutos, quanto é preciso somar à hora local para obter UTC. O sinal é contraintuitivo: em Lisboa no verão, que está uma hora à frente de UTC, o resultado é menos 60. O valor depende da máquina e também da altura do ano, porque muda com o horário de verão.",
+        "Para formatar há duas famílias. O toISOString produz sempre texto em UTC terminado em Z, e é o formato certo para guardar em base de dados, para enviar numa API e para ordenar como texto. Os métodos toLocaleDateString e toLocaleString produzem texto para pessoas, com o idioma e o fuso que lhes indicar; com pt-PT obtém-se a ordem dia, mês e ano que se usa em Portugal. Nunca use toString para mostrar datas ao utilizador: devolve texto em inglês pensado para depuração."
+      ],
+      "code": "const momento = new Date(Date.UTC(2026, 5, 10, 14, 0));\n\nconsole.log(momento.toISOString()); // \"2026-06-10T14:00:00.000Z\"\nconsole.log(momento.getUTCHours()); // 14\n\nconsole.log(momento.toLocaleDateString('pt-PT', { timeZone: 'Europe/Lisbon' })); // \"10/06/2026\"\nconsole.log(momento.toLocaleString('pt-PT', { timeZone: 'Europe/Lisbon' })); // \"10/06/2026, 15:00:00\"\nconsole.log(momento.toLocaleTimeString('pt-PT', { timeZone: 'UTC' })); // \"14:00:00\"\nconsole.log(momento.toLocaleDateString('pt-PT', { dateStyle: 'long', timeZone: 'Europe/Lisbon' })); // \"10 de junho de 2026\"\n\n// O desvio depende da máquina e da altura do ano\nconst desvioMinutos = momento.getTimezoneOffset();\nconsole.log(typeof desvioMinutos); // \"number\"\n\n// Dia local em texto ISO, sem passar por UTC\nfunction diaLocalISO(data) {\n  const ano = data.getFullYear();\n  const mes = String(data.getMonth() + 1).padStart(2, '0');\n  const dia = String(data.getDate()).padStart(2, '0');\n  return `${ano}-${mes}-${dia}`;\n}\n\nconsole.log(diaLocalISO(new Date(2026, 5, 10))); // \"2026-06-10\"",
+      "callout_kind": "ATENCAO",
+      "callout_text": "O atalho data.toISOString().slice(0, 10) para obter o dia é uma fonte constante de erros com um dia de desvio, porque converte primeiro para UTC. Se a máquina estiver a oeste de Greenwich, uma data do fim da tarde passa a ser o dia seguinte. Construa o texto a partir de getFullYear, getMonth e getDate.",
+      "table_headers": [
+        "Método",
+        "Resultado para o instante do exemplo",
+        "Quando usar"
+      ],
+      "table_rows": [
+        [
+          "toISOString()",
+          "2026-06-10T14:00:00.000Z, sempre em UTC",
+          "Guardar, transmitir e ordenar"
+        ],
+        [
+          "toLocaleDateString('pt-PT')",
+          "10/06/2026",
+          "Mostrar apenas a data ao utilizador"
+        ],
+        [
+          "toLocaleString('pt-PT')",
+          "10/06/2026, 15:00:00",
+          "Mostrar data e hora ao utilizador"
+        ],
+        [
+          "toString()",
+          "Texto longo em inglês, no fuso da máquina",
+          "Depuração rápida, nunca interface"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🌐",
+          "text": "toISOString é sempre UTC e termina em Z"
+        },
+        {
+          "icon": "🇵🇹",
+          "text": "toLocaleString('pt-PT') formata para Portugal"
+        },
+        {
+          "icon": "↔️",
+          "text": "getTimezoneOffset devolve minutos, com sinal invertido"
+        }
+      ]
+    },
+    {
+      "heading": "Comparar e ordenar datas",
+      "body": [
+        "Dois objetos Date criados com os mesmos componentes representam o mesmo instante mas continuam a ser dois objetos distintos na memória. Tanto o operador de igualdade estrita como o operador de igualdade solta comparam referências quando os dois lados são objetos, por isso devolvem sempre falso. Para comparar o instante, compare os timestamps com getTime.",
+        "Já os operadores de ordem funcionam sem qualquer truque. Quando o JavaScript avalia data1 menor que data2, converte ambos os lados para número segundo a regra dos operadores relacionais, obtendo os dois timestamps. Pela mesma razão, ordenar um array de datas resume-se a array.sort((a, b) => a - b), sem necessidade de chamar getTime explicitamente.",
+        "Comparar apenas o dia, ignorando a hora, é um caso à parte: duas datas do mesmo dia mas com horas diferentes têm timestamps diferentes. Nesse caso compare os componentes ano, mês e dia, ou construa datas normalizadas à meia-noite."
+      ],
+      "code": "const a = new Date(2026, 2, 15);\nconst b = new Date(2026, 2, 15);\n\nconsole.log(a === b); // false, são dois objetos diferentes\nconsole.log(a == b); // false, pela mesma razão\nconsole.log(a.getTime() === b.getTime()); // true\n\nconst cedo = new Date(2026, 2, 1);\nconst tarde = new Date(2026, 2, 31);\nconsole.log(cedo < tarde); // true\nconsole.log(cedo >= tarde); // false\n\nconst datas = [new Date(2026, 5, 1), new Date(2026, 0, 1), new Date(2026, 2, 1)];\ndatas.sort((x, y) => x - y);\nconsole.log(datas.map((d) => d.getMonth())); // [ 0, 2, 5 ]\n\nfunction mesmoDia(d1, d2) {\n  return d1.getFullYear() === d2.getFullYear()\n    && d1.getMonth() === d2.getMonth()\n    && d1.getDate() === d2.getDate();\n}\n\nconsole.log(mesmoDia(new Date(2026, 2, 15, 9, 0), new Date(2026, 2, 15, 23, 30))); // true\nconsole.log(mesmoDia(new Date(2026, 2, 15), new Date(2026, 2, 16))); // false",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Experimente no Node: crie duas datas iguais, compare-as com igualdade estrita, com menor ou igual e maior ou igual ao mesmo tempo, e repare que as duas comparações de ordem dão verdadeiro enquanto a igualdade dá falso. É a prova de que só a igualdade compara referências.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🚫",
+          "text": "d1 === d2 compara referências, nunca instantes"
+        },
+        {
+          "icon": "✅",
+          "text": "getTime() para igualdade, < e > para ordem"
+        },
+        {
+          "icon": "🔀",
+          "text": "sort((a, b) => a - b) ordena datas"
+        }
+      ]
+    },
+    {
+      "heading": "Temporal e as bibliotecas de datas",
+      "body": [
+        "A API Date foi desenhada em poucos dias em 1995, a copiar uma classe de Java que a própria Java já substituiu há muito. Os defeitos são de origem e não podem ser corrigidos sem partir a web: objetos mutáveis, meses a contar de 0, análise de texto dependente do motor, ausência de um tipo para representar apenas uma data sem hora e suporte a fusos horários limitado ao fuso da máquina e a UTC.",
+        "Temporal é a substituição desenhada para resolver isto. Traz tipos distintos e imutáveis para cada necessidade: Temporal.PlainDate para uma data de calendário sem hora, Temporal.PlainTime para uma hora sem data, Temporal.PlainDateTime para as duas juntas sem fuso, Temporal.ZonedDateTime para um instante num fuso IANA concreto e Temporal.Duration para durações. Os meses vão de 1 a 12, a análise de texto só aceita formatos ISO e lança erro nos restantes, e as operações como add ou subtract devolvem sempre um objeto novo em vez de alterar o existente. O ponto de entrada para o momento atual é Temporal.Now.",
+        "O aviso honesto é que Temporal ainda está a chegar aos motores e não se pode assumir disponível em produção. Até lá usa-se o polyfill oficial, o pacote @js-temporal/polyfill, que acrescenta peso considerável ao pacote final. Entretanto há duas bibliotecas maduras: date-fns, um conjunto de funções puras que operam sobre objetos Date nativos e que só inclui no pacote o que for importado, e Luxon, com objetos imutáveis e suporte forte a fusos horários e a internacionalização. Compensam quando o projeto tem formatação complexa, cálculos entre fusos ou regras de recorrência. Para somar dias e mostrar uma data em português, o Date nativo com toLocaleDateString chega perfeitamente e não custa um único byte."
+      ],
+      "code": "// Temporal ainda não existe em todo o lado: verifique antes de usar\nif (typeof Temporal === 'undefined') {\n  console.log('Temporal indisponível neste motor: use @js-temporal/polyfill');\n} else {\n  const hoje = Temporal.Now.plainDateISO();\n  console.log(hoje.toString()); // depende do dia em que corre\n\n  const data = Temporal.PlainDate.from('2026-03-15');\n  console.log(data.month); // 3, porque os meses vão de 1 a 12\n  console.log(data.dayOfWeek); // 7, domingo (1 = segunda-feira)\n\n  const depois = data.add({ days: 10 });\n  console.log(depois.toString()); // \"2026-03-25\"\n  console.log(data.toString()); // \"2026-03-15\", o original não mudou\n\n  console.log(data.equals(Temporal.PlainDate.from('2026-03-15'))); // true\n}",
+      "callout_kind": "NOTA",
+      "callout_text": "Não troque o Date por uma biblioteca só por hábito. Antes de acrescentar uma dependência, escreva as poucas funções de que precisa, como somarDias e diasEntre, e teste-as. Muitos projetos carregam uma biblioteca inteira para formatar duas datas que o Intl já formata de graça.",
+      "table_headers": [
+        "Aspeto",
+        "Date",
+        "Temporal"
+      ],
+      "table_rows": [
+        [
+          "Mutabilidade",
+          "Mutável, setDate altera o objeto",
+          "Imutável, add devolve um objeto novo"
+        ],
+        [
+          "Numeração dos meses",
+          "0 a 11",
+          "1 a 12"
+        ],
+        [
+          "Data sem hora",
+          "Não existe, há sempre hora",
+          "Temporal.PlainDate"
+        ],
+        [
+          "Fusos horários",
+          "Apenas o da máquina e UTC",
+          "Qualquer fuso IANA com ZonedDateTime"
+        ],
+        [
+          "Análise de texto",
+          "Formatos não ISO dependem do motor",
+          "Só ISO, com erro nos restantes"
+        ],
+        [
+          "Disponibilidade",
+          "Em todos os motores desde 1995",
+          "A chegar, com polyfill entretanto"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧱",
+          "text": "Date tem defeitos de origem que não se corrigem"
+        },
+        {
+          "icon": "🆕",
+          "text": "Temporal é imutável e tem meses de 1 a 12"
+        },
+        {
+          "icon": "📦",
+          "text": "date-fns e Luxon para casos complexos"
+        },
+        {
+          "icon": "🧪",
+          "text": "Temporal ainda precisa de polyfill"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Formatar uma data à portuguesa",
+      "difficulty": "Iniciante",
+      "statement": "Escreva a função formatarData(data) que recebe um objeto Date e devolve uma string no formato dia/mês/ano, sempre com dois dígitos no dia e no mês. Por exemplo, para 15 de março de 2026 deve devolver 15/03/2026 e para 1 de dezembro de 2026 deve devolver 01/12/2026. Não use toLocaleDateString: construa o texto a partir dos getters. Teste com pelo menos duas datas, uma delas com dia e mês de um só dígito.",
+      "hint": "Lembre-se de que getMonth devolve 0 para janeiro. O método padStart de String acrescenta zeros à esquerda, mas só funciona sobre texto, por isso converta os números primeiro.",
+      "solution_code": "function formatarData(data) {\n  const dia = String(data.getDate()).padStart(2, '0');\n  const mes = String(data.getMonth() + 1).padStart(2, '0');\n  const ano = data.getFullYear();\n  return `${dia}/${mes}/${ano}`;\n}\n\nconsole.log(formatarData(new Date(2026, 2, 15))); // \"15/03/2026\"\nconsole.log(formatarData(new Date(2026, 11, 1))); // \"01/12/2026\"\nconsole.log(formatarData(new Date(2026, 0, 9))); // \"09/01/2026\"",
+      "solution_explanation": "O passo decisivo é somar 1 ao resultado de getMonth, porque a contagem interna começa em janeiro igual a 0. A conversão para String antes de padStart é obrigatória, já que padStart é um método de String e não de Number. O ano não precisa de tratamento porque getFullYear já devolve os quatro dígitos."
+    },
+    {
+      "title": "Contar dias entre duas datas",
+      "difficulty": "Intermedio",
+      "statement": "Escreva a função diasEntre(inicio, fim) que devolve o número de dias de calendário entre duas datas, ignorando completamente a hora. Se o fim for anterior ao início, o resultado deve ser negativo. A função não pode ser afetada pela hora a que as datas foram criadas, nem pela mudança para a hora de verão. Verifique que de 1 de janeiro a 31 de janeiro de 2026 dá 30 e que de 1 de março a 1 de abril de 2026 dá 31.",
+      "hint": "Se reduzir cada data aos seus componentes de ano, mês e dia e os passar a Date.UTC, obtém dois timestamps de meia-noite UTC. A diferença entre eles é sempre um múltiplo exato de um dia.",
+      "solution_code": "const MS_POR_DIA = 24 * 60 * 60 * 1000;\n\nfunction diasEntre(inicio, fim) {\n  const a = Date.UTC(inicio.getFullYear(), inicio.getMonth(), inicio.getDate());\n  const b = Date.UTC(fim.getFullYear(), fim.getMonth(), fim.getDate());\n  return Math.round((b - a) / MS_POR_DIA);\n}\n\nconsole.log(diasEntre(new Date(2026, 0, 1), new Date(2026, 0, 31))); // 30\nconsole.log(diasEntre(new Date(2026, 2, 1), new Date(2026, 3, 1))); // 31\nconsole.log(diasEntre(new Date(2026, 3, 1), new Date(2026, 2, 1))); // -31\nconsole.log(diasEntre(new Date(2026, 1, 10, 23, 59), new Date(2026, 1, 11, 0, 1))); // 1",
+      "solution_explanation": "Date.UTC não cria um objeto, devolve diretamente o timestamp da meia-noite UTC desses componentes, o que descarta a hora das datas originais e elimina o efeito da mudança de hora, porque em UTC não existe horário de verão. O Math.round é uma proteção barata contra qualquer resto e a subtração simples mantém o sinal negativo quando o fim é anterior ao início."
+    },
+    {
+      "title": "O próximo dia útil",
+      "difficulty": "Intermedio",
+      "statement": "Escreva a função proximoDiaUtil(data) que devolve uma nova data correspondente ao próximo dia útil a seguir à data recebida, saltando sábados e domingos. A data recebida nunca pode ser alterada. Confirme que, a partir de sexta-feira 13 de março de 2026, o resultado é segunda-feira 16 de março, e que a data original continua no dia 13.",
+      "hint": "Comece por copiar a data e avance um dia. Depois continue a avançar enquanto o dia da semana for sábado ou domingo. Reveja os valores que getDay devolve para esses dois dias.",
+      "solution_code": "function proximoDiaUtil(data) {\n  const resultado = new Date(data);\n  do {\n    resultado.setDate(resultado.getDate() + 1);\n  } while (resultado.getDay() === 0 || resultado.getDay() === 6);\n  return resultado;\n}\n\nconst sexta = new Date(2026, 2, 13);\nconsole.log(sexta.getDay()); // 5, sexta-feira\n\nconst seguinte = proximoDiaUtil(sexta);\nconsole.log(seguinte.getDate()); // 16\nconsole.log(seguinte.getMonth()); // 2\nconsole.log(seguinte.getDay()); // 1, segunda-feira\nconsole.log(sexta.getDate()); // 13, o original não foi alterado\n\nconst quarta = new Date(2026, 2, 11);\nconsole.log(proximoDiaUtil(quarta).getDate()); // 12",
+      "solution_explanation": "O ciclo do while garante que se avança sempre pelo menos um dia, mesmo que a data recebida já seja um dia útil, e só depois testa a condição. A cópia inicial com new Date(data) isola a função do objeto de quem a chamou, e o overflow automático de setDate trata sozinho da passagem de mês e de ano quando o fim de semana cai na viragem."
+    },
+    {
+      "title": "Listar os dias de um intervalo",
+      "difficulty": "Avancado",
+      "statement": "Escreva a função intervaloDeDatas(inicio, fim) que devolve um array com o texto de cada dia do intervalo, inclusive nas duas pontas, no formato ano-mês-dia com dois dígitos no mês e no dia. O texto tem de corresponder ao dia local, por isso não pode usar toISOString. Se as duas datas forem o mesmo dia, o array tem um único elemento; se o fim for anterior ao início, o array vem vazio. Teste com o intervalo de 26 de fevereiro a 2 de março de 2026 e confirme que a passagem de mês está correta num ano não bissexto.",
+      "hint": "Normalize as duas pontas à meia-noite local antes de começar, para que a hora original não interfira. Depois avance dia a dia com setDate enquanto o cursor não ultrapassar o limite, e lembre-se de que o operador menor ou igual funciona diretamente entre datas.",
+      "solution_code": "function diaLocalISO(data) {\n  const ano = data.getFullYear();\n  const mes = String(data.getMonth() + 1).padStart(2, '0');\n  const dia = String(data.getDate()).padStart(2, '0');\n  return `${ano}-${mes}-${dia}`;\n}\n\nfunction intervaloDeDatas(inicio, fim) {\n  const dias = [];\n  const cursor = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate());\n  const limite = new Date(fim.getFullYear(), fim.getMonth(), fim.getDate());\n\n  while (cursor <= limite) {\n    dias.push(diaLocalISO(cursor));\n    cursor.setDate(cursor.getDate() + 1);\n  }\n\n  return dias;\n}\n\nconsole.log(intervaloDeDatas(new Date(2026, 1, 26), new Date(2026, 2, 2)));\n// [ '2026-02-26', '2026-02-27', '2026-02-28', '2026-03-01', '2026-03-02' ]\n\nconsole.log(intervaloDeDatas(new Date(2026, 2, 5, 18, 0), new Date(2026, 2, 5, 3, 0)).length); // 1\nconsole.log(intervaloDeDatas(new Date(2026, 2, 6), new Date(2026, 2, 5))); // []",
+      "solution_explanation": "Reconstruir as duas pontas com new Date(ano, mes, dia) põe ambas à meia-noite local e torna o resultado independente da hora com que as datas foram criadas, o que é o que faz o segundo teste devolver um único dia apesar de o fim ter uma hora anterior à do início. A comparação cursor menor ou igual a limite converte os dois objetos em timestamps, por isso funciona sem getTime, e o texto é montado a partir dos getters locais para que 28 de fevereiro não escorregue para 1 de março numa máquina a leste de Greenwich."
+    }
+  ],
+  "summary": [
+    "Um Date é apenas um número de milissegundos desde 1 de janeiro de 1970 em UTC; tudo o resto é interpretação desse número.",
+    "O UTC é a referência horária mundial: guarde e transmita sempre em UTC e converta para hora local apenas ao mostrar",
+    "Os meses contam-se de 0 a 11, getDate é o dia do mês e getDay é o dia da semana, com o domingo em 0.",
+    "Date é mutável: copie sempre com new Date(original) antes de chamar um setter, e nunca altere um argumento recebido.",
+    "Uma string ISO só com data é lida como UTC e uma string ambígua como 15/03/2026 dá Invalid Date; prefira componentes numéricos ou ISO completo.",
+    "Subtrair datas dá milissegundos e setDate normaliza sozinho o overflow, mas arredonde as divisões por causa da mudança de hora.",
+    "Use getTime para igualdade e os operadores de ordem para ordenar; toISOString é para guardar, toLocaleString('pt-PT') é para mostrar e Temporal, com polyfill, resolve os defeitos de origem do Date."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 02",
+  "next_label": "Aula 02 → JSON: Serializar e Desserializar"
+}

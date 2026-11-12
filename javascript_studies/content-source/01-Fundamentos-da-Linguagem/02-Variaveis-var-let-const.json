@@ -1,0 +1,255 @@
+{
+  "module_num": "01",
+  "module_title": "Fundamentos da Linguagem",
+  "module_dir": "01-Fundamentos-da-Linguagem",
+  "lesson_num": "02",
+  "lesson_slug": "Variaveis-var-let-const",
+  "kind": "aula",
+  "title": "Variáveis: var, let e const",
+  "filename_base": "02-Variaveis-var-let-const",
+  "subtitle": "var, let e const: âmbito, reatribuição e as boas práticas para nomear variáveis",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Distinguir var, let e const quanto a reatribuição, redeclaração e tipo de âmbito.",
+    "Perceber a diferença entre âmbito de função e âmbito de bloco, como preparação para o módulo de funções.",
+    "Compreender que const fixa a referência da variável, não o conteúdo de objetos e arrays.",
+    "Aplicar corretamente a convenção camelCase e escolher nomes de variáveis descritivos.",
+    "Adotar a prática recomendada de preferir const, depois let, evitando var em código novo."
+  ],
+  "sections": [
+    {
+      "heading": "var, let e const: três formas de declarar variáveis",
+      "body": [
+        "JavaScript oferece três palavras-chave para declarar variáveis: var, let e const. var existe desde o início da linguagem e tem um comportamento hoje considerado problemático; let e const foram introduzidas no ES2015 precisamente para resolver esses problemas e são a forma recomendada de declarar variáveis atualmente. A diferença principal entre elas está em três aspetos: se a variável pode ser reatribuída, se pode ser redeclarada no mesmo âmbito e que tipo de âmbito respeita.",
+        "Com const, a variável tem de ser inicializada no momento da declaração e não pode voltar a ser reatribuída depois; com let, a variável pode ficar sem valor inicial e pode ser reatribuída livremente; com var, além de poder ser reatribuída, pode também ser redeclarada com o mesmo nome no mesmo âmbito sem gerar qualquer erro, o que facilmente esconde bugs."
+      ],
+      "code": "const nome = \"Ana\";\nlet idade = 25;\nvar cidade = \"Lisboa\";\n\nidade = 26; // permitido, let pode ser reatribuída\n// nome = \"Rita\"; // erro: TypeError, const não pode ser reatribuída\n\nvar cidade = \"Porto\"; // permitido (mas desaconselhado), var pode ser redeclarada",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [
+        "Característica",
+        "var",
+        "let",
+        "const"
+      ],
+      "table_rows": [
+        [
+          "Reatribuição",
+          "Sim",
+          "Sim",
+          "Não"
+        ],
+        [
+          "Redeclaração no mesmo âmbito",
+          "Sim",
+          "Não",
+          "Não"
+        ],
+        [
+          "Tipo de âmbito",
+          "De função",
+          "De bloco",
+          "De bloco"
+        ],
+        [
+          "Precisa de valor inicial",
+          "Não",
+          "Não",
+          "Sim"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔑",
+          "text": "Três formas de declarar variáveis"
+        },
+        {
+          "icon": "🔄",
+          "text": "let e const chegaram no ES2015"
+        },
+        {
+          "icon": "🚫",
+          "text": "var permite redeclarar por engano"
+        }
+      ]
+    },
+    {
+      "heading": "O problema do var: âmbito de função",
+      "body": [
+        "var não respeita o âmbito de bloco: uma variável declarada com var dentro de um bloco, como o corpo de um if ou de um for, fica visível em toda a função que contém esse bloco, e não apenas dentro do bloco onde foi criada. Isto significa que, ao usar var, é fácil deixar variáveis escaparem para fora do sítio onde intuitivamente deveriam existir, o que se torna fonte de bugs difíceis de detetar em funções mais longas.",
+        "Além disso, as declarações var são içadas para o topo do âmbito de função onde estão inseridas: o motor de JavaScript reconhece a existência da variável antes de executar a linha onde ela é declarada, atribuindo-lhe o valor undefined até essa linha ser alcançada. O estudo detalhado do âmbito de função, do âmbito de bloco e das closures será feito no módulo dedicado a funções; para já, basta reter que var não confina as variáveis ao bloco onde aparecem, razão suficiente para a evitar."
+      ],
+      "code": "function exemploComVar() {\n  if (true) {\n    var mensagem = \"Olá dentro do bloco\";\n  }\n  console.log(mensagem); // \"Olá dentro do bloco\" - var escapou do bloco if\n\n  console.log(contador); // undefined, não é um erro (hoisting)\n  var contador = 10;\n}\n\nexemploComVar();",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Nunca dependa do comportamento de hoisting do var. Mesmo que o código funcione, torna a leitura confusa e é uma prática desaconselhada.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⚠️",
+          "text": "var escapa do bloco onde foi criada"
+        },
+        {
+          "icon": "🕳️",
+          "text": "hoisting: var existe antes da sua linha"
+        },
+        {
+          "icon": "🐛",
+          "text": "fonte comum de bugs difíceis de encontrar"
+        }
+      ]
+    },
+    {
+      "heading": "let: âmbito de bloco e reatribuição controlada",
+      "body": [
+        "let foi introduzida para resolver o problema do âmbito de var: uma variável declarada com let só existe dentro do bloco delimitado por chavetas onde foi criada, seja esse bloco um if, um for, um while ou um bloco isolado. Fora desse bloco, a variável simplesmente não existe, o que torna o código mais previsível e mais fácil de acompanhar.",
+        "Ao contrário de var, let não permite redeclarar a mesma variável no mesmo âmbito; tentar fazê-lo gera um erro de sintaxe. No entanto, let continua a permitir reatribuição: o valor guardado pode ser alterado quantas vezes for necessário, o que faz de let a escolha adequada para variáveis cujo valor sabemos, à partida, que vai mudar, como um contador ou um acumulador."
+      ],
+      "code": "for (let i = 0; i < 3; i++) {\n  let dobro = i * 2;\n  console.log(`i=${i}, dobro=${dobro}`);\n}\n\n// console.log(i); // ReferenceError: i só existe dentro do for\n\nlet total = 0;\ntotal = total + 10;\ntotal += 5;\nconsole.log(total); // 15",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧱",
+          "text": "let respeita o âmbito de bloco"
+        },
+        {
+          "icon": "🔁",
+          "text": "ideal para valores que vão mudar"
+        },
+        {
+          "icon": "❌",
+          "text": "não permite redeclarar no mesmo âmbito"
+        }
+      ]
+    },
+    {
+      "heading": "const: a referência é constante, o conteúdo pode não ser",
+      "body": [
+        "const também respeita o âmbito de bloco, tal como let, mas acrescenta uma restrição: depois de inicializada, uma variável declarada com const não pode voltar a ser associada a um valor diferente. É essencial perceber exatamente o que isto significa: const impede a reatribuição da variável, não torna o valor guardado imutável. Para tipos primitivos, como números, strings ou booleanos, isso na prática significa que o valor nunca muda, porque a única forma de o alterar seria reatribuir a variável.",
+        "Para objetos e arrays a situação é diferente, porque const fixa apenas a referência ao objeto ou array, não o seu conteúdo. Isto quer dizer que é perfeitamente válido alterar propriedades de um objeto ou elementos de um array declarados com const, adicionar itens a um array ou remover propriedades de um objeto; o que não é permitido é atribuir à variável um objeto ou array completamente novo.",
+        "Quando é mesmo necessário impedir alterações ao conteúdo de um objeto, const não chega; é preciso recorrer a Object.freeze, que bloqueia a adição, remoção ou alteração de propriedades de primeiro nível. Este e outros mecanismos de imutabilidade mais avançados são explorados com detalhe no módulo sobre objetos e orientação a objetos."
+      ],
+      "code": "const pessoa = { nome: \"Marta\", idade: 30 };\npessoa.idade = 31; // permitido: altera-se o conteúdo, não a referência\npessoa.cidade = \"Braga\"; // permitido: adiciona-se uma propriedade nova\nconsole.log(pessoa); // { nome: \"Marta\", idade: 31, cidade: \"Braga\" }\n\n// pessoa = { nome: \"Outra\" }; // erro: TypeError, não se pode reatribuir a referência\n\nconst numeros = [1, 2, 3];\nnumeros.push(4); // permitido: continua a ser o mesmo array\nnumeros[0] = 100; // permitido\nconsole.log(numeros); // [100, 2, 3, 4]\n\n// numeros = [9, 9, 9]; // erro: TypeError",
+      "callout_kind": "DICA",
+      "callout_text": "Pense em const como um autocolante numa caixa: fixa qual é a caixa, mas não impede que se mude o que está lá dentro. Para bloquear mesmo o conteúdo, use Object.freeze.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "const fixa a referência, não o conteúdo"
+        },
+        {
+          "icon": "✏️",
+          "text": "objetos e arrays const continuam editáveis"
+        },
+        {
+          "icon": "🔒",
+          "text": "Object.freeze bloqueia mesmo o conteúdo"
+        }
+      ]
+    },
+    {
+      "heading": "Convenções de nomes: camelCase e nomes descritivos",
+      "body": [
+        "Em JavaScript, o nome de uma variável pode conter letras, dígitos, underscore e cifrão, mas não pode começar por um dígito, e é sensível a maiúsculas e minúsculas, sendo idade e Idade duas variáveis diferentes. A convenção universalmente adotada para nomes de variáveis, e também de funções, é o camelCase: a primeira palavra em minúsculas e cada palavra seguinte a começar por maiúscula, sem espaços nem traços, por exemplo precoTotal ou numeroDeTentativas.",
+        "Para valores verdadeiramente constantes ao longo de toda a aplicação e conhecidos antes da execução, como uma chave de configuração ou um limite fixo, é comum usar SNAKE_CASE em maiúsculas, por exemplo MAX_TENTATIVAS ou API_URL; esta convenção sinaliza visualmente que se trata de um valor fixo e partilhado, distinto de uma const usada apenas localmente para evitar reatribuição. Nomes de classes seguem outra convenção, o PascalCase, que será aprofundada no módulo sobre objetos e orientação a objetos.",
+        "Mais importante do que a convenção de maiúsculas é a escolha de nomes descritivos: um nome como d ou x2 não diz nada sobre o que a variável representa, enquanto diasRestantes ou precoComDesconto tornam o código legível sem necessidade de comentários adicionais. Evite abreviaturas obscuras e nomes de uma só letra, exceto em contextos muito curtos e óbvios, como o índice i num ciclo for."
+      ],
+      "code": "// camelCase para variáveis e funções\nlet numeroDeItens = 5;\nconst precoUnitario = 9.99;\nfunction calcularTotalComIva(preco) {\n  return preco * 1.23;\n}\n\n// SNAKE_CASE maiúsculo para constantes verdadeiramente fixas\nconst MAX_TENTATIVAS_LOGIN = 3;\nconst API_URL = \"https://api.exemplo.pt\";\n\n// nomes descritivos em vez de abreviaturas\nconst diasRestantesParaEntrega = 4; // claro\nconst dre = 4; // evitar: pouco descritivo",
+      "callout_kind": "NOTA",
+      "callout_text": "camelCase é usado para variáveis e funções; PascalCase, com a primeira letra também em maiúscula, é reservado para classes, como se verá no módulo sobre objetos e orientação a objetos.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🐫",
+          "text": "camelCase para variáveis e funções"
+        },
+        {
+          "icon": "🔠",
+          "text": "SNAKE_CASE maiúsculo para constantes fixas"
+        },
+        {
+          "icon": "📛",
+          "text": "nomes descritivos valem mais que curtos"
+        }
+      ]
+    },
+    {
+      "heading": "Boas práticas atuais: const primeiro, let se necessário, var nunca",
+      "body": [
+        "A prática recomendada e amplamente seguida no JavaScript moderno tem uma ordem clara de preferência: comece sempre por declarar a variável com const; só mude para let quando perceber que o valor vai mesmo precisar de ser reatribuído mais à frente; e evite var por completo em código novo. Esta ordem não é arbitrária: declarar tudo por omissão com const comunica de imediato, a quem lê o código, que aquele valor não vai mudar, o que reduz a quantidade de código que é preciso analisar mentalmente para perceber o comportamento de uma função.",
+        "Usar const como padrão também ajuda a apanhar erros mais cedo: se tentar reatribuir por engano uma variável que devia ser constante, o motor de JavaScript lança um erro imediatamente, em vez de deixar o valor mudar silenciosamente e provocar um bug difícil de localizar mais tarde. var já não tem lugar em código escrito de raiz atualmente; só costuma aparecer em código antigo que ainda não foi atualizado, ou em ficheiros muito específicos onde o comportamento de âmbito de função é propositadamente necessário, situações raras no dia a dia."
+      ],
+      "code": "// abordagem recomendada\nfunction processarEncomenda(itens) {\n  const quantidadeDeItens = itens.length; // nunca muda depois de calculado\n  let precoTotal = 0; // vai ser reatribuído no ciclo\n\n  for (const item of itens) {\n    precoTotal += item.preco;\n  }\n\n  return { quantidadeDeItens, precoTotal };\n}",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Ao rever código antigo com var, experimente substituir cada ocorrência por const e só usar let onde o próprio código acusar erro de reatribuição.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🥇",
+          "text": "const é a escolha por omissão"
+        },
+        {
+          "icon": "🥈",
+          "text": "let só quando há reatribuição real"
+        },
+        {
+          "icon": "🚫",
+          "text": "var evitado em código novo"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Identificar declarações válidas e inválidas",
+      "difficulty": "Iniciante",
+      "statement": "Sem executar código, analise as seguintes instruções e indique para cada uma se é válida ou se gera erro, explicando porquê: (a) const idade; idade = 20; (b) let nome = \"Rui\"; nome = \"Rui Silva\"; (c) const PI = 3.14; PI = 3.1416; (d) var x = 1; var x = 2;. De seguida, escreva um pequeno programa que declare uma variável idade com a palavra-chave adequada, inicializada a 0, a incremente três vezes dentro de um ciclo for e imprima o valor final na consola.",
+      "hint": "Lembre-se de que uma const tem de ser inicializada na mesma instrução em que é declarada e nunca pode ser reatribuída depois disso.",
+      "solution_code": "// (a) const idade; idade = 20;\n// Erro (SyntaxError): uma const tem de ser inicializada no momento da declaração.\n\n// (b) let nome = \"Rui\"; nome = \"Rui Silva\";\n// Válido: let permite reatribuição.\nlet nome = \"Rui\";\nnome = \"Rui Silva\";\n\n// (c) const PI = 3.14; PI = 3.1416;\n// Erro (TypeError): não é possível reatribuir uma const.\n\n// (d) var x = 1; var x = 2;\n// Válido (mas desaconselhado): var permite redeclarar a mesma variável no mesmo âmbito.\nvar x = 1;\nvar x = 2;\n\n// Programa pedido: idade incrementada 3 vezes\nlet idade = 0;\nfor (let i = 0; i < 3; i++) {\n  idade++;\n}\nconsole.log(idade); // 3",
+      "solution_explanation": "As alíneas (a) e (c) falham porque const exige um valor inicial na própria declaração e nunca pode ser reatribuída depois; (b) e (d) são válidas porque let e var permitem reatribuição, e var permite ainda redeclaração no mesmo âmbito. No programa final usa-se let porque idade precisa de ser reatribuída a cada iteração do ciclo."
+    },
+    {
+      "title": "Escolher bons nomes de variáveis",
+      "difficulty": "Intermedio",
+      "statement": "O excerto seguinte funciona mas usa más práticas de nomenclatura e de escolha entre var, let e const: var n = \"Sofia\"; var a = 32; var pdt = true; Reescreva estas três linhas seguindo as convenções aprendidas nesta unidade: escolha entre const e let de forma justificada para cada variável, dê-lhes nomes descritivos em camelCase que reflitam o que representam (um nome de pessoa, uma idade e um indicador de se a pessoa já pagou) e explique, num comentário em cada linha, a decisão tomada.",
+      "hint": "Para decidir entre const e let, pergunte-se se aquele valor específico costuma ser reatribuído mais tarde no programa.",
+      "solution_code": "const nomeCliente = \"Sofia\"; // não há indicação de que o nome vá mudar: const\nlet idadeCliente = 32; // a idade pode ser atualizada mais tarde (ex.: aniversário): let\nlet jaPagou = true; // um indicador de estado tende a mudar ao longo do programa: let",
+      "solution_explanation": "As três variáveis passam a ter nomes descritivos em camelCase em vez das abreviaturas originais. nomeCliente usa const porque não há motivo, no contexto dado, para o nome ser reatribuído; idadeCliente e jaPagou usam let porque representam valores de estado que tipicamente mudam ao longo da execução do programa."
+    },
+    {
+      "title": "Referência fixa, conteúdo mutável",
+      "difficulty": "Intermedio",
+      "statement": "Crie uma const chamada carrinho que seja um array com os itens \"pão\" e \"leite\". Sem nunca reatribuir a variável carrinho, escreva código que adicione o item \"ovos\" ao array, remova o item \"pão\" do array e imprima o array resultante na consola. De seguida, escreva uma linha comentada (sem a executar) que, se fosse descomentada, provocaria um erro por tentar reatribuir carrinho a um array novo, e explique num comentário porque essa linha falharia.",
+      "hint": "Métodos como push, splice ou indexOf alteram o conteúdo do array sem nunca substituir o array a que a variável aponta.",
+      "solution_code": "const carrinho = [\"pão\", \"leite\"];\n\ncarrinho.push(\"ovos\"); // adiciona sem reatribuir a variável\nconst indicePao = carrinho.indexOf(\"pão\");\ncarrinho.splice(indicePao, 1); // remove \"pão\" sem reatribuir a variável\n\nconsole.log(carrinho); // [\"leite\", \"ovos\"]\n\n// carrinho = [\"arroz\"];\n// TypeError: Assignment to constant variable.\n// Falharia porque const fixa a referência guardada em carrinho ao array original;\n// atribuir um array novo, mesmo com conteúdo diferente, tentaria mudar essa referência.",
+      "solution_explanation": "push e splice modificam o array existente sem nunca substituir o objeto a que carrinho aponta, por isso são compatíveis com const. Reatribuir carrinho a um novo array literal mudaria a referência guardada na variável, algo que const proíbe explicitamente."
+    },
+    {
+      "title": "Âmbito de bloco vs âmbito de função na prática",
+      "difficulty": "Avancado",
+      "statement": "Escreva uma função chamada testarAmbitos, sem parâmetros. Dentro dela, crie um ciclo for clássico de 0 a 4 que declare o contador com let; dentro do corpo do ciclo, declare uma variável com var chamada ultimoValor e atribua-lhe o valor do contador em cada iteração. Depois do ciclo terminar, ainda dentro da função, imprima ultimoValor e explique num comentário porque essa linha funciona sem erro. Depois, na mesma função, crie um bloco isolado com chavetas onde declara com let uma variável valorIsolado, imprima-a dentro do bloco e, numa linha comentada a seguir ao bloco, tente aceder-lhe fora dele, explicando o que aconteceria.",
+      "hint": "var ignora as chavetas do for e do bloco isolado; o seu âmbito é sempre a função inteira onde está inserida, nunca o bloco onde aparece.",
+      "solution_code": "function testarAmbitos() {\n  for (let contador = 0; contador < 5; contador++) {\n    var ultimoValor = contador;\n  }\n\n  console.log(ultimoValor); // 4\n  // Funciona porque var não respeita o âmbito do bloco do for;\n  // ultimoValor pertence ao âmbito da função testarAmbitos inteira.\n\n  {\n    let valorIsolado = 99;\n    console.log(valorIsolado); // 99, acessível dentro do bloco\n  }\n\n  // console.log(valorIsolado);\n  // ReferenceError: valorIsolado is not defined.\n  // let respeita o âmbito de bloco, por isso a variável deixa de existir\n  // fora das chavetas onde foi declarada, ao contrário do que acontece com var.\n}\n\ntestarAmbitos();",
+      "solution_explanation": "var ultimoValor é içada e vinculada ao âmbito da função inteira, por isso continua acessível depois do ciclo for terminar, mesmo tendo sido declarada dentro das chavetas do for. Já let valorIsolado fica confinada ao bloco isolado onde foi criada, deixando de existir assim que esse bloco termina, o que ilustra a diferença prática entre âmbito de função e âmbito de bloco."
+    }
+  ],
+  "summary": [
+    "var, let e const diferem na reatribuição permitida, na possibilidade de redeclaração e no tipo de âmbito que respeitam.",
+    "var tem âmbito de função e permite redeclaração; let e const têm âmbito de bloco, o que torna o código mais previsível.",
+    "const impede a reatribuição da variável, mas não torna o conteúdo de objetos e arrays imutável; apenas a referência fica fixa.",
+    "Para bloquear verdadeiramente o conteúdo de um objeto é preciso Object.freeze, não apenas const.",
+    "A convenção de nomes em JavaScript é camelCase para variáveis e funções, com nomes descritivos e SNAKE_CASE maiúsculo reservado para constantes verdadeiramente fixas.",
+    "A prática recomendada é declarar por omissão com const, usar let apenas quando há reatribuição real e evitar var em código novo."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 03",
+  "next_label": "Aula 03 → Tipos de Dados e Tipagem Dinâmica",
+  "_stage": "revisao"
+}

@@ -1,0 +1,362 @@
+{
+  "module_num": "01",
+  "module_title": "Fundamentos de Tipos",
+  "module_dir": "01-Fundamentos-de-Tipos",
+  "lesson_num": "03",
+  "lesson_slug": "Arrays-Tuplas-e-readonly",
+  "kind": "aula",
+  "title": "Arrays, Tuplas e readonly",
+  "filename_base": "03-Arrays-Tuplas-e-readonly",
+  "subtitle": "Coleções com tipo: de string[] às tuplas de posição fixa e ao as const",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Tipar arrays com as duas sintaxes e saber qual usar",
+    "Distinguir um array de uniões de uma união de arrays",
+    "Criar tuplas, incluindo nomeadas, opcionais e com rest",
+    "Usar readonly para impedir alterações acidentais",
+    "Aplicar as const para obter tuplas de tipos literais",
+    "Reconhecer o que o TypeScript não verifica nos índices"
+  ],
+  "sections": [
+    {
+      "heading": "As duas sintaxes para tipar arrays",
+      "body": [
+        "Um array em TypeScript é sempre um array de alguma coisa. Essa coisa escreve-se de duas maneiras equivalentes: a forma abreviada, com parênteses retos a seguir ao tipo do elemento, como em string[], e a forma genérica, Array<string>. Não há diferença nenhuma entre as duas: produzem exatamente o mesmo tipo, o compilador trata-as como idênticas e pode misturá-las no mesmo ficheiro sem qualquer consequência.",
+        "A convenção esmagadoramente dominante é a forma abreviada. É mais curta, lê-se da esquerda para a direita como se diria em voz alta, e não obriga a abrir parênteses angulares que depois se confundem com genéricos verdadeiros. A forma Array<string> costuma aparecer quando já se está a trabalhar com genéricos e a simetria com Map ou Promise ajuda a ler, ou quando o tipo do elemento é tão comprido que os parênteses retos no fim ficariam perdidos. Os genéricos são o tema do módulo 05.",
+        "Quando o array nasce com valores, a inferência faz o trabalho e não precisa de anotar nada. A anotação explícita ganha valor sobretudo em arrays que começam vazios e nas assinaturas de funções, onde serve de contrato."
+      ],
+      "code": "// As duas sintaxes são equivalentes\nconst nomes: string[] = [\"Ana\", \"Bruno\"];\nconst apelidos: Array<string> = [\"Silva\", \"Costa\"];\n\n// O tipo do elemento pode ser qualquer tipo\nconst medidas: number[] = [1.5, 2.25];\nconst ativos: boolean[] = [true, false];\n\n// Com valor inicial, a inferência dispensa a anotação\nconst cidades = [\"Porto\", \"Braga\"]; // string[]\n\n// Um array anotado continua a ser verificado a cada operação\nconst destinos: string[] = [];\ndestinos.push(\"Lisboa\");\n// @ts-expect-error um string[] não aceita números\ndestinos.push(42);\n\nconsole.log(nomes, apelidos, medidas, ativos, cidades, destinos);",
+      "callout_kind": "DICA",
+      "callout_text": "Escolha string[] por omissão e seja consistente em todo o projeto. A maioria dos linters tem uma regra, chamada array-type, que impõe uma das duas formas justamente para evitar ficheiros com as duas misturadas.",
+      "table_headers": [
+        "Sintaxe",
+        "Exemplo",
+        "Quando costuma aparecer"
+      ],
+      "table_rows": [
+        [
+          "Abreviada",
+          "string[]",
+          "Convenção por omissão, a esmagadora maioria do código"
+        ],
+        [
+          "Genérica",
+          "Array<string>",
+          "Por simetria com outros genéricos, ou com tipos de elemento longos"
+        ],
+        [
+          "Multidimensional",
+          "number[][]",
+          "Matrizes e grelhas: um array de arrays de números"
+        ],
+        [
+          "Só de leitura",
+          "readonly string[]",
+          "Quando o array não deve ser alterado"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "string[] e Array<string> são o mesmo tipo"
+        },
+        {
+          "icon": "✍️",
+          "text": "A forma abreviada é a convenção dominante"
+        },
+        {
+          "icon": "🔍",
+          "text": "Com valores iniciais, a inferência dispensa a anotação"
+        }
+      ]
+    },
+    {
+      "heading": "Array de uniões face a união de arrays",
+      "body": [
+        "Esta é a confusão mais comum de toda a aula, e vale a pena resolvê-la de uma vez por todas. O tipo (string | number)[] é um array cujos elementos podem ser strings ou números, livremente misturados na mesma coleção. Já string[] | number[] é outra coisa: diz que o valor é um array inteiramente de strings ou um array inteiramente de números, e nunca uma mistura dos dois.",
+        "A regra para ler estes tipos é mecânica: os parênteses retos aplicam-se ao que está imediatamente à sua esquerda. Por isso string | number[] não é nem uma coisa nem outra, mas sim uma string solta ou um array de números. Se quer que a união inteira seja o tipo do elemento, tem de a fechar entre parênteses.",
+        "Os arrays multidimensionais seguem a mesma leitura: number[][] é um array de number[]. A partir de um literal, a inferência produz sempre como tipo do elemento a união de tudo o que lá está dentro, e nunca uma tupla."
+      ],
+      "code": "// Um array cujos elementos podem ser string OU number, misturados à vontade\nconst registos: (string | number)[] = [\"manhã\", 18.5, \"tarde\", 21];\n\n// Uma união de dois tipos de array: ou é todo de strings, ou é todo de números\nlet coluna: string[] | number[] = [\"a\", \"b\"];\ncoluna = [1, 2];\n// @ts-expect-error não é string[] nem number[]: misturar não é permitido\ncoluna = [\"a\", 1];\n\n// Os parênteses não são decorativos\nconst semParenteses: string | number[] = \"sou uma string\";\n\n// Arrays multidimensionais\nconst grelha: number[][] = [\n  [1, 2, 3],\n  [4, 5, 6],\n];\nconst primeiraLinha = grelha[0]; // number[]\n\n// Inferência a partir de um literal misto\nconst inferido = [1, \"dois\", true]; // (string | number | boolean)[]\n\nconsole.log(registos, coluna, semParenteses, primeiraLinha, inferido);",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Uma união de arrays é desconfortável de manipular: sobre um valor do tipo string[] | number[], chamar push obriga o compilador a exigir um argumento aceitável pelos dois lados, o que normalmente não existe. Na prática, prefira quase sempre o array de uniões.",
+      "table_headers": [
+        "Tipo",
+        "Significado",
+        "Aceita o valor [\"a\", 1]?"
+      ],
+      "table_rows": [
+        [
+          "(string | number)[]",
+          "Array misto: cada elemento é string ou number",
+          "Sim"
+        ],
+        [
+          "string[] | number[]",
+          "Ou todo de strings, ou todo de números",
+          "Não"
+        ],
+        [
+          "string | number[]",
+          "Ou uma string solta, ou um array de números",
+          "Não"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔀",
+          "text": "(string | number)[] permite misturar elementos"
+        },
+        {
+          "icon": "🚧",
+          "text": "string[] | number[] obriga a escolher um dos lados"
+        },
+        {
+          "icon": "🧷",
+          "text": "Os parênteses mudam o significado por completo"
+        }
+      ]
+    },
+    {
+      "heading": "Tuplas: comprimento fixo, um tipo por posição",
+      "body": [
+        "Uma tupla é um array em que o comprimento é conhecido e cada posição tem o seu próprio tipo. Escreve-se com os tipos separados por vírgulas dentro de parênteses retos. Em tempo de execução continua a ser um array de JavaScript vulgar, com os mesmos métodos; a tupla existe apenas no sistema de tipos, para descrever a estrutura com muito mais precisão do que um array homogéneo conseguiria.",
+        "As tuplas servem quando a posição tem significado: pares de chave e valor, coordenadas de latitude e longitude, o par de estado e função que o altera devolvido por um hook ao estilo do useState, ou o par de erro e resultado de certas APIs. O compilador passa a saber que par[0] é string e par[1] é number, em vez de dizer que ambos são string | number.",
+        "O ponto fraco das tuplas é a legibilidade: o tipo [number, number] não diz se a latitude vem primeiro. As tuplas nomeadas resolvem isso, permitindo escrever um nome antes de cada tipo. Esses nomes não criam propriedades nenhumas e não alteram o tipo; aparecem no editor, nas sugestões e nas mensagens de erro, e é só para isso que existem."
+      ],
+      "code": "// Uma tupla: exatamente dois elementos, string na posição 0 e number na posição 1\nconst par: [string, number] = [\"idade\", 42];\nconst chave = par[0]; // string\nconst valor = par[1]; // number\n\n// @ts-expect-error o comprimento faz parte do tipo: falta o segundo elemento\nconst incompleto: [string, number] = [\"idade\"];\n\n// @ts-expect-error a ordem dos tipos não corresponde\nconst trocado: [string, number] = [42, \"idade\"];\n\n// Tuplas nomeadas: os nomes são documentação, o tipo continua a ser o mesmo\ntype Coordenada = [latitude: number, longitude: number];\nconst porto: Coordenada = [41.1579, -8.6291];\n\n// Um literal nunca é inferido como tupla: sem anotação dá um array\nconst parecido = [\"idade\", 42]; // (string | number)[]\n\nconsole.log(chave, valor, incompleto, trocado, porto, parecido);",
+      "callout_kind": "NOTA",
+      "callout_text": "Um literal de array nunca é inferido como tupla. Se escrever const par = [\"idade\", 42] sem anotação, obtém (string | number)[], de comprimento livre. Para ter uma tupla precisa de anotar o tipo ou de usar as const.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📐",
+          "text": "Comprimento fixo e um tipo para cada posição"
+        },
+        {
+          "icon": "🗝️",
+          "text": "Ideal para pares, coordenadas e retornos múltiplos"
+        },
+        {
+          "icon": "🏷️",
+          "text": "Tuplas nomeadas melhoram a leitura, não o tipo"
+        }
+      ]
+    },
+    {
+      "heading": "Tuplas com elementos opcionais e com rest",
+      "body": [
+        "Nem todas as tuplas têm comprimento rigorosamente fixo. Uma posição pode ser marcada como opcional com um ponto de interrogação a seguir ao nome ou ao tipo, e passa a poder faltar no fim da tupla. Ler essa posição devolve o tipo unido com undefined, o que obriga a verificar antes de usar, que é precisamente a proteção que se pretende.",
+        "Uma tupla também pode terminar com um elemento rest, escrito com três pontos seguidos de um tipo de array. Isso descreve um começo fixo seguido de um número indeterminado de elementos do mesmo tipo: o caso clássico é um registo de log em que a primeira posição é o nível e as restantes são as mensagens. Os elementos opcionais e o rest têm de ficar depois dos obrigatórios.",
+        "Este é o padrão que sustenta os retornos múltiplos ao estilo do useState do React: a função devolve uma tupla, quem chama faz destructuring e escolhe os nomes que quiser, e cada posição mantém o seu tipo próprio. Sem tupla, o retorno seria uma união inútil de todos os tipos envolvidos."
+      ],
+      "code": "// O padrão do useState: devolver um par de valor e função que o altera\nfunction criarContador(inicial: number): [number, (novo: number) => void] {\n  let atual = inicial;\n  const definir = (novo: number): void => {\n    atual = novo;\n  };\n  return [atual, definir];\n}\n\nconst [contador, definirContador] = criarContador(0);\ndefinirContador(contador + 1);\n\n// Elemento opcional: o terceiro pode faltar\ntype Rgb = [number, number, number?];\nconst vermelho: Rgb = [255, 0, 0];\nconst parcial: Rgb = [255, 0];\nconst canalAzul = vermelho[2]; // number | undefined\n\n// Elemento rest: as primeiras posições são fixas, o resto é livre\ntype Registo = [nivel: string, ...mensagens: string[]];\nconst aviso: Registo = [\"warn\", \"disco quase cheio\"];\nconst falha: Registo = [\"error\", \"falhou\", \"a repetir\", \"desisti\"];\n\nconsole.log(contador, parcial, canalAzul, aviso, falha);",
+      "callout_kind": "DICA",
+      "callout_text": "As tuplas são excelentes para dois ou três valores em que a ordem é óbvia. A partir daí, devolva antes um objeto com propriedades nomeadas: quem lê o código não tem de contar posições. Os objetos são o tema do módulo 02, e os rest parameters em funções são aprofundados no módulo 03.",
+      "table_headers": [
+        "Forma",
+        "Escrita",
+        "Comprimento aceite"
+      ],
+      "table_rows": [
+        [
+          "Fixa",
+          "[string, number]",
+          "Exatamente 2"
+        ],
+        [
+          "Com opcional",
+          "[number, number, number?]",
+          "2 ou 3"
+        ],
+        [
+          "Com rest",
+          "[string, ...string[]]",
+          "1 ou mais"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "❓",
+          "text": "Posição opcional passa a ler-se como tipo | undefined"
+        },
+        {
+          "icon": "➕",
+          "text": "O rest dá começo fixo e cauda de tamanho livre"
+        },
+        {
+          "icon": "⚛️",
+          "text": "É assim que se tipa um retorno ao estilo do useState"
+        }
+      ]
+    },
+    {
+      "heading": "readonly: arrays que não se alteram",
+      "body": [
+        "Prefixar o tipo com a palavra readonly, como em readonly string[], produz um array só de leitura. A forma genérica equivalente é ReadonlyArray<string>. O que muda é a superfície do tipo: os métodos que alteram o próprio array, como push, pop, shift, unshift, splice, sort e reverse, deixam simplesmente de existir, e a atribuição por índice passa a ser rejeitada.",
+        "O que continua a funcionar é tudo o que lê ou produz um valor novo: percorrer com for of, ler o length, indexar, e usar map, filter, slice ou concat, que devolvem arrays novos e mutáveis sem tocar no original. O espalhamento também funciona e é a forma habitual de obter uma cópia alterável.",
+        "A compatibilidade é assimétrica, e faz todo o sentido: um string[] pode ser passado onde se espera readonly string[], porque estamos apenas a prometer menos do que podemos; o contrário é recusado, porque transformaria uma garantia numa permissão. Por isso, anotar parâmetros de função como readonly é um hábito barato e útil: declara que a função não vai mexer no que recebeu, e continua a aceitar arrays normais."
+      ],
+      "code": "// As duas formas de escrever um array só de leitura\nconst dias: readonly string[] = [\"seg\", \"ter\", \"qua\"];\nconst meses: ReadonlyArray<string> = [\"jan\", \"fev\"];\n\n// @ts-expect-error um array readonly não tem push\ndias.push(\"qui\");\n// @ts-expect-error nem pop, shift, splice ou sort\nmeses.pop();\n// @ts-expect-error nem atribuição por índice\ndias[0] = \"dom\";\n\n// Continua a poder ler, percorrer e produzir arrays novos\nconst maiusculas = dias.map((d) => d.toUpperCase()); // string[] mutável\nconst alargado = [...dias, \"qui\"]; // string[] mutável\n\n// Um array mutável entra onde se espera readonly; o inverso não\nconst mutavel: string[] = [\"a\", \"b\"];\nconst protegido: readonly string[] = mutavel;\n// @ts-expect-error perder-se-ia a garantia de não alteração\nconst outra: string[] = protegido;\n\nconsole.log(meses, maiusculas, alargado, protegido, outra);",
+      "callout_kind": "ATENCAO",
+      "callout_text": "readonly é superficial e existe só no compilador. Não congela os objetos guardados dentro do array, cujas propriedades continuam alteráveis; não impede que outra referência mutável ao mesmo array o altere; e desaparece na compilação, pelo que em tempo de execução nada o protege. Para isso existe Object.freeze. As versões ReadonlyArray e Readonly como utility types são tratadas no módulo 07, e readonly em propriedades de objeto no módulo 02.",
+      "table_headers": [
+        "Operação",
+        "Em string[]",
+        "Em readonly string[]"
+      ],
+      "table_rows": [
+        [
+          "push, pop, splice, sort",
+          "Permitido",
+          "Erro de compilação"
+        ],
+        [
+          "Atribuir por índice",
+          "Permitido",
+          "Erro de compilação"
+        ],
+        [
+          "Ler, indexar, percorrer",
+          "Permitido",
+          "Permitido"
+        ],
+        [
+          "map, filter, slice, spread",
+          "Permitido",
+          "Permitido, e devolve array mutável"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔒",
+          "text": "readonly remove os métodos que alteram o array"
+        },
+        {
+          "icon": "↔️",
+          "text": "Mutável entra onde se espera readonly, nunca o inverso"
+        },
+        {
+          "icon": "🫧",
+          "text": "A proteção é superficial e só em tempo de compilação"
+        }
+      ]
+    },
+    {
+      "heading": "as const aplicado a arrays",
+      "body": [
+        "A asserção as const é uma instrução ao compilador para inferir o tipo mais estreito possível, em vez do tipo mais cómodo para futuras reatribuições. Aplicada a um literal de array faz duas coisas ao mesmo tempo: transforma-o numa tupla, com comprimento e posições fixos em vez de um array homogéneo, e substitui os tipos largos pelos tipos literais exatos, passando de string para o valor concreto. Por cima disso, a tupla resultante é readonly.",
+        "O resultado é que um simples array de strings passa a ser uma fonte de verdade tipada. O motivo pelo qual isto aparece por todo o lado no código real é a possibilidade de derivar uma união a partir dele: indexar o tipo da constante por number devolve a união de todos os seus elementos. Assim a lista de valores permitidos existe uma única vez, como dados, e o tipo acompanha-a automaticamente sempre que a lista mudar.",
+        "É o padrão preferido por muita gente em vez dos enums, porque serve em simultâneo para verificar em tempo de compilação e para validar em tempo de execução, já que o array continua lá para percorrer ou pesquisar. Os enums são o tema da aula 05 deste módulo; a sintaxe de typeof e a indexação de tipos são aprofundadas no módulo 06."
+      ],
+      "code": "// Sem as const: tipo largo e array mutável\nconst cores = [\"vermelho\", \"verde\"]; // string[]\ncores.push(\"azul\");\n\n// Com as const: tupla readonly de tipos literais\nconst estados = [\"ativo\", \"inativo\", \"suspenso\"] as const;\n// tipo: readonly [\"ativo\", \"inativo\", \"suspenso\"]\n\n// @ts-expect-error a tupla produzida por as const é readonly\nestados.push(\"apagado\");\n\nconst primeiro = estados[0]; // \"ativo\", e não string\n\n// O ganho prático: derivar a união dos valores a partir do array\ntype Estado = (typeof estados)[number]; // \"ativo\" | \"inativo\" | \"suspenso\"\nconst atual: Estado = \"suspenso\";\n// @ts-expect-error \"apagado\" não consta do array\nconst invalido: Estado = \"apagado\";\n\nconsole.log(cores, primeiro, atual, invalido);",
+      "callout_kind": "DICA",
+      "callout_text": "Guarde a combinação as const seguida de type X = (typeof LISTA)[number]. São duas linhas que dispensam manter a mesma lista de valores duplicada entre o código e os tipos, e é das coisas mais úteis que se leva deste módulo.",
+      "table_headers": [
+        "Declaração",
+        "Tipo inferido"
+      ],
+      "table_rows": [
+        [
+          "[\"ativo\", \"inativo\"]",
+          "string[]"
+        ],
+        [
+          "[\"ativo\", \"inativo\"] as const",
+          "readonly [\"ativo\", \"inativo\"]"
+        ],
+        [
+          "(typeof estados)[number]",
+          "\"ativo\" | \"inativo\""
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧊",
+          "text": "as const congela o array numa tupla readonly"
+        },
+        {
+          "icon": "🔤",
+          "text": "Os valores passam a tipos literais, já não a string"
+        },
+        {
+          "icon": "🎯",
+          "text": "Permite derivar a união com (typeof X)[number]"
+        }
+      ]
+    },
+    {
+      "heading": "O que o TypeScript não verifica nos índices",
+      "body": [
+        "Há um limite importante e pouco conhecido: o TypeScript não verifica índices. Ao escrever lista[99] num array de três elementos, o compilador diz que o resultado é do tipo do elemento, string por exemplo, e não levanta objeção nenhuma. Em tempo de execução o valor é undefined e a primeira chamada a um método rebenta. Isto é uma escolha deliberada de pragmatismo: verificar limites obrigaria a comprovações em quase todos os acessos por índice, e o compilador não sabe quantos elementos um array vai ter.",
+        "O mesmo não acontece com o find, que declara devolver o tipo do elemento unido com undefined, obrigando a verificar. A diferença é reveladora: quando a assinatura conta a verdade, o TypeScript protege-o; quando a assinatura mente por conveniência, não há nada a fazer.",
+        "Existe uma opção do compilador que fecha esta brecha, a noUncheckedIndexedAccess, que faz com que qualquer acesso por índice a um array passe a devolver o tipo unido com undefined. É rigorosa e apanha bugs reais, mas obriga a verificar antes de usar em muitos sítios e não está incluída no strict, pelo que tem de ser ligada à mão. Vale a pena considerá-la em projetos novos; as opções do tsconfig são o tema do módulo 09."
+      ],
+      "code": "const lista: string[] = [\"a\", \"b\", \"c\"];\n\n// Isto compila sem um único aviso\nconst fora = lista[99]; // tipo declarado: string. Valor real: undefined\nconsole.log(fora.toUpperCase()); // TypeError em tempo de execução\n\n// Já aqui o TypeScript avisa, porque find declara que pode falhar\nconst encontrado = lista.find((item) => item === \"z\"); // string | undefined\n// @ts-expect-error encontrado pode ser undefined\nconsole.log(encontrado.toUpperCase());\n\n// A defesa que não depende de nenhuma opção do compilador\nconst talvez: string | undefined = lista[1];\nif (talvez !== undefined) {\n  console.log(talvez.toUpperCase()); // \"B\"\n}",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Experimente ligar noUncheckedIndexedAccess no tsconfig de um projeto pequeno e compilar. Repare em quantos acessos por índice o compilador passa a assinalar e pergunte-se, em cada um deles, se o array podia mesmo estar mais curto do que assumiu.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⚠️",
+          "text": "lista[99] compila e dá undefined em execução"
+        },
+        {
+          "icon": "🔎",
+          "text": "find avisa, porque declara | undefined no tipo"
+        },
+        {
+          "icon": "⚙️",
+          "text": "noUncheckedIndexedAccess fecha a brecha, fora do strict"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Três formas de tipar uma coleção",
+      "difficulty": "Iniciante",
+      "statement": "Declare três constantes com anotação explícita: temperaturas, um array de números com pelo menos três valores, usando a sintaxe abreviada; periodos, um array de strings, usando a sintaxe genérica Array<string>; e leituras, um array que aceite strings e números misturados na mesma coleção. Depois escreva uma função media que receba um array de números e devolva a média aritmética, devolvendo zero se o array estiver vazio.",
+      "hint": "A média faz-se com reduce e com o length. Repare que, para aceitar elementos de dois tipos, a união tem de ficar dentro de parênteses antes dos parênteses retos.",
+      "solution_code": "const temperaturas: number[] = [18.5, 21, 19.75];\nconst periodos: Array<string> = [\"manhã\", \"tarde\", \"noite\"];\nconst leituras: (string | number)[] = [\"manhã\", 18.5, \"tarde\", 21];\n\nfunction media(valores: number[]): number {\n  if (valores.length === 0) {\n    return 0;\n  }\n  const total = valores.reduce((acc, valor) => acc + valor, 0);\n  return total / valores.length;\n}\n\nconsole.log(media(temperaturas)); // 19.75\nconsole.log(periodos.join(\", \")); // \"manhã, tarde, noite\"\nconsole.log(leituras.length); // 4",
+      "solution_explanation": "As duas primeiras constantes mostram que string[] e Array<string> são intermutáveis, sendo a primeira a convenção. A terceira usa (string | number)[], com os parênteses obrigatórios para que a união seja o tipo do elemento. Na função media, o acumulador do reduce é inferido como number a partir do valor inicial zero, pelo que não precisa de anotação."
+    },
+    {
+      "title": "Divisão inteira e pontos no plano",
+      "difficulty": "Intermedio",
+      "statement": "Defina um tipo Divisao como uma tupla nomeada de dois números, quociente e resto, e escreva uma função dividir que receba dividendo e divisor e devolva essa tupla. Extraia o resultado com destructuring. Depois defina um tipo Ponto como uma tupla nomeada com x e y obrigatórios e z opcional, e uma função descrever que produza a string com duas ou três coordenadas, conforme o z esteja presente ou não.",
+      "hint": "O quociente inteiro obtém-se com Math.floor e o resto com o operador de módulo. Ao fazer destructuring de uma tupla com elemento opcional, essa variável fica com o tipo number | undefined, o que o obriga a compará-la com undefined.",
+      "solution_code": "type Divisao = [quociente: number, resto: number];\n\nfunction dividir(dividendo: number, divisor: number): Divisao {\n  return [Math.floor(dividendo / divisor), dividendo % divisor];\n}\n\nconst [q, r] = dividir(17, 5);\nconsole.log(q, r); // 3 2\n\ntype Ponto = [x: number, y: number, z?: number];\n\nfunction descrever(ponto: Ponto): string {\n  const [x, y, z] = ponto;\n  return z === undefined ? `(${x}, ${y})` : `(${x}, ${y}, ${z})`;\n}\n\nconst plano: Ponto = [1, 2];\nconst espaco: Ponto = [1, 2, 3];\n\nconsole.log(descrever(plano)); // \"(1, 2)\"\nconsole.log(descrever(espaco)); // \"(1, 2, 3)\"",
+      "solution_explanation": "A tupla Divisao garante que quem chama recebe exatamente dois números com significados distintos, coisa que number[] nunca conseguiria exprimir. Em Ponto, o ponto de interrogação torna z opcional e o compilador obriga a verificar undefined antes de o usar. Os nomes quociente, x ou latitude não criam propriedades nenhumas: existem apenas para tornar legível o que cada posição representa."
+    },
+    {
+      "title": "Ordenar sem mutar",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função ordenar que receba um parâmetro do tipo readonly number[] e devolva um novo array de números por ordem crescente, sem alterar o original. Confirme, imprimindo os dois arrays, que o original se mantém na ordem inicial. Depois acrescente uma segunda função que tente ordenar diretamente o parâmetro recebido e marque com o comentário de erro esperado a linha que o compilador rejeita.",
+      "hint": "O método sort altera o array em que é chamado e, por isso, não existe num tipo readonly. Faça primeiro uma cópia com o operador de espalhamento e ordene essa cópia.",
+      "solution_code": "function ordenar(valores: readonly number[]): number[] {\n  return [...valores].sort((a, b) => a - b);\n}\n\nconst originais: readonly number[] = [3, 1, 2];\nconst resultado = ordenar(originais);\n\nconsole.log(originais); // [3, 1, 2], intacto\nconsole.log(resultado); // [1, 2, 3]\n\nfunction tentativaErrada(valores: readonly number[]): number[] {\n  // @ts-expect-error sort altera o array e não existe em readonly number[]\n  return valores.sort((a: number, b: number) => a - b);\n}\n\nconsole.log(tentativaErrada([2, 1]));",
+      "solution_explanation": "Anotar o parâmetro como readonly number[] transforma uma intenção num contrato verificado: a função deixa de poder alterar o que recebeu e continua a aceitar arrays mutáveis normais. A cópia feita com espalhamento é um number[] novo e mutável, pelo que o sort funciona sobre ela. A segunda função mostra o erro que o readonly apanha e que, sem ele, passaria despercebido até alguém reparar que o array de quem chamou tinha mudado de ordem."
+    },
+    {
+      "title": "Níveis de log a partir de uma única lista",
+      "difficulty": "Avancado",
+      "statement": "Declare uma constante NIVEIS com os valores debug, info, warn e error, aplicando as const. A partir dela derive um tipo Nivel com a união dos quatro valores literais, sem os repetir à mão. Escreva uma função eNivel que receba uma string e confirme se é um nível válido, usando um type predicate na assinatura, com a forma valor is Nivel, sintaxe que será estudada em detalhe no módulo 04. Escreva também uma função prioridade que devolva a posição do nível na lista. Demonstre, com o comentário de erro esperado, que a lista ficou readonly, e declare por fim um array readonly de pares de nível e descrição, percorrendo-o com destructuring.",
+      "hint": "A união deriva-se indexando o tipo da constante por number. Para chamar includes com uma string qualquer precisa de alargar o tipo da lista, por exemplo com uma asserção para readonly string[].",
+      "solution_code": "const NIVEIS = [\"debug\", \"info\", \"warn\", \"error\"] as const;\n\ntype Nivel = (typeof NIVEIS)[number]; // \"debug\" | \"info\" | \"warn\" | \"error\"\n\nfunction eNivel(valor: string): valor is Nivel {\n  return (NIVEIS as readonly string[]).includes(valor);\n}\n\nfunction prioridade(nivel: Nivel): number {\n  return NIVEIS.indexOf(nivel);\n}\n\nconst entrada: string = \"warn\";\nif (eNivel(entrada)) {\n  console.log(prioridade(entrada)); // 2\n}\n\n// @ts-expect-error o as const tornou o array readonly\nNIVEIS.push(\"fatal\");\n\nconst DESCRICOES: readonly (readonly [Nivel, string])[] = [\n  [\"debug\", \"Detalhe de diagnóstico\"],\n  [\"error\", \"Falha grave\"],\n];\n\nfor (const [nivel, texto] of DESCRICOES) {\n  console.log(`${prioridade(nivel)} ${nivel}: ${texto}`);\n}",
+      "solution_explanation": "O as const faz de NIVEIS uma tupla readonly de literais, o que permite derivar a união Nivel com (typeof NIVEIS)[number]: a lista existe uma única vez e o tipo acompanha-a se alguém acrescentar um nível. O type predicate liga o mundo da execução ao dos tipos, deixando o compilador tratar a string já validada como Nivel. Os pares são tuplas readonly [Nivel, string] dentro de um array readonly, o que impede alterações tanto à lista como a cada par."
+    }
+  ],
+  "summary": [
+    "string[] e Array<string> são o mesmo tipo, e a forma abreviada é a convenção a seguir.",
+    "(string | number)[] mistura elementos; string[] | number[] obriga a escolher um dos lados.",
+    "As tuplas fixam o comprimento e o tipo de cada posição, e admitem nomes, opcionais e rest.",
+    "readonly string[] remove push, pop, sort e a atribuição por índice, mas não congela nada em execução.",
+    "as const transforma um literal numa tupla readonly de tipos literais, base para derivar uniões.",
+    "O compilador não verifica limites de índice: lista[99] compila e dá undefined, salvo com noUncheckedIndexedAccess."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 04",
+  "next_label": "Aula 04 → União, Interseção e Tipos Literais"
+}

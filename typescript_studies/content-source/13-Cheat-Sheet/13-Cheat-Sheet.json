@@ -1,0 +1,1019 @@
+{
+  "module_num": "13",
+  "module_title": "Cheat Sheet — Referência Rápida",
+  "module_dir": "13-Cheat-Sheet",
+  "lesson_num": "",
+  "lesson_slug": "",
+  "kind": "cheatsheet",
+  "title": "Cheat Sheet — Referência Rápida",
+  "filename_base": "13-Cheat-Sheet",
+  "subtitle": "Toda a sintaxe de tipos do curso, em tabelas para consulta rápida",
+  "objectives_label": "Este cheat sheet cobre:",
+  "objectives": [
+    "Encontrar depressa a sintaxe de cada construção de tipos",
+    "Rever as armadilhas mais comuns de cada módulo",
+    "Relembrar os utility types e o que cada um faz",
+    "Rever as opções essenciais do tsconfig e do strict",
+    "Aplicar os padrões de fronteira: unknown, validação e Resultado"
+  ],
+  "sections": [
+    {
+      "heading": "Fundamentos, objetos e interfaces",
+      "body": [
+        "Módulos 01 e 02. Anota-se com dois pontos, mas na maior parte das variáveis o tipo infere-se sozinho: const guarda o tipo literal e let alarga-o. Uma asserção com as não converte nem valida nada, só muda o que o compilador pensa. Para valores de origem desconhecida usa-se unknown, que obriga a estreitar antes de usar; any desliga a verificação e contagia tudo o que toca.",
+        "Nos objetos, interface e type descrevem a mesma forma; só o type nomeia uniões, tuplas e tipos derivados, e só a interface faz declaration merging. A compatibilidade é estrutural (contam as formas, não os nomes), com uma exceção: um literal escrito diretamente com propriedades a mais é rejeitado. Quando é preciso distinguir dois tipos com a mesma forma, usa-se um branded type."
+      ],
+      "code": "let nome: string = \"Ana\";                 // anotação explícita\nlet idade = 30;                           // inferido: number\nconst papel = \"admin\";                    // inferido: \"admin\"\nconst cores = [\"verde\", \"azul\"] as const; // readonly [\"verde\", \"azul\"]\ntype Cor = (typeof cores)[number];        // \"verde\" | \"azul\"\ntype Id = string | number;\nconst par: [string, number] = [\"x\", 1];\n\nfunction descrever(x: unknown): string {\n  return typeof x === \"string\" ? x.toUpperCase() : \"outro\";\n}\n\ninterface Utilizador {\n  readonly id: Id;\n  nome: string;\n  email?: string;\n}\ninterface Cliente extends Utilizador { nif: string }\ntype Admin = Utilizador & { permissoes: string[] };\ntype Euros = number & { readonly __marca: \"euros\" };\n\nconst u: Utilizador = { id: 1, nome };\n// @ts-expect-error id é readonly\nu.id = 2;\n// @ts-expect-error excess property check: idade não existe no tipo\nconst v: Utilizador = { id: 2, nome: \"Rui\", idade };\nconst preco = 9.99 as Euros;\n// @ts-expect-error um number simples não é Euros\nconst total: Euros = 10;",
+      "callout_kind": "ATENCAO",
+      "callout_text": "readonly e as const só existem no compilador: no JavaScript emitido o array ou o objeto continua mutável. Além disso a proteção é rasa, porque os objetos aninhados continuam alteráveis. Para bloquear em execução é preciso Object.freeze.",
+      "table_headers": [
+        "Sintaxe",
+        "Para que serve",
+        "Exemplo"
+      ],
+      "table_rows": [
+        [
+          "let x: T",
+          "Anotar; sem anotação o tipo infere-se",
+          "let nome: string = \"Ana\";"
+        ],
+        [
+          "const e literais",
+          "const guarda o literal, let alarga-o",
+          "const p = \"admin\"; // \"admin\""
+        ],
+        [
+          "valor as T",
+          "Asserção: não converte nem valida",
+          "const u = dados as Utilizador;"
+        ],
+        [
+          "any / unknown",
+          "any desliga tudo; unknown exige narrowing",
+          "if (typeof u === \"string\") u.trim();"
+        ],
+        [
+          "never / void",
+          "Nunca acontece / sem valor útil",
+          "function falhar(): never { throw e; }"
+        ],
+        [
+          "T[] ou Array<T>",
+          "Array de elementos do tipo T",
+          "const ns: number[] = [1, 2];"
+        ],
+        [
+          "[A, B?, ...C[]]",
+          "Tupla: tipo por posição, opcional e rest",
+          "const p: [string, number] = [\"a\", 1];"
+        ],
+        [
+          "readonly T[] / as const",
+          "Array só de leitura / literais congelados",
+          "const cs = [\"a\", \"b\"] as const;"
+        ],
+        [
+          "A | B e A & B",
+          "União (um ou outro) e interseção (os dois)",
+          "type Id = string | number;"
+        ],
+        [
+          "\"a\" | \"b\"",
+          "União de literais, alternativa ao enum",
+          "type Dir = \"N\" | \"S\";"
+        ],
+        [
+          "interface / type",
+          "Nomear formas; só o type nomeia uniões",
+          "interface Ponto { x: number; y: number }"
+        ],
+        [
+          "p?: T e readonly p: T",
+          "Propriedade opcional / não reatribuível",
+          "readonly id: number; email?: string;"
+        ],
+        [
+          "[k: string]: T",
+          "Index signature: chaves desconhecidas",
+          "type Mapa = { [k: string]: number };"
+        ],
+        [
+          "extends e &",
+          "Herdar (acusa conflitos) / compor (cala-se)",
+          "interface Cliente extends Utilizador {}"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔍",
+          "text": "Deixar inferir; anotar parâmetros, retornos e fronteiras"
+        },
+        {
+          "icon": "🛡️",
+          "text": "unknown em vez de any: obriga a estreitar antes de usar"
+        },
+        {
+          "icon": "📐",
+          "text": "interface para formas, type para uniões e derivados"
+        },
+        {
+          "icon": "🧊",
+          "text": "readonly e as const: só no compilador e rasos"
+        },
+        {
+          "icon": "🏷️",
+          "text": "Branded types para distinguir formas iguais"
+        }
+      ]
+    },
+    {
+      "heading": "Funções tipadas",
+      "body": [
+        "Módulo 03. Os parâmetros anotam-se sempre; o retorno infere-se, mas vale a pena escrevê-lo nas funções exportadas. Um parâmetro opcional tem o tipo T | undefined, um valor por omissão tira o tipo do próprio valor, e os rest parameters são arrays ou tuplas. Nos callbacks passados a funções já tipadas, a inferência contextual dispensa anotações.",
+        "Quando o tipo do retorno depende do argumento e uma união não chega, usam-se sobrecargas: várias assinaturas visíveis e uma implementação que as serve a todas. Um callback com menos parâmetros do que o tipo pede é aceite; com mais, é erro. O parâmetro this é só de tipos e desaparece no JavaScript."
+      ],
+      "code": "function somar(a: number, b: number): number {\n  return a + b;\n}\nfunction saudar(nome: string, titulo?: string, sufixo = \"!\"): string {\n  return `Olá, ${titulo ?? \"\"}${nome}${sufixo}`;\n}\nfunction total(...ns: number[]): number {\n  return ns.reduce((acc, n) => acc + n, 0);\n}\ntype Operacao = (a: number, b: number) => number;\nconst multiplicar: Operacao = (a, b) => a * b;\n\nfunction formatar(x: number): string;\nfunction formatar(x: string[]): string;\nfunction formatar(x: number | string[]): string {\n  return typeof x === \"number\" ? x.toFixed(2) : x.join(\", \");\n}\ninterface Botao {\n  rotulo: string;\n  clicar(this: Botao): string;\n}\nconst botao: Botao = { rotulo: \"OK\", clicar() { return this.rotulo; } };\n\nconsole.log(somar(2, 3));             // 5\nconsole.log(saudar(\"Ana\"));           // Olá, Ana!\nconsole.log(total(1, 2, 3));          // 6\nconsole.log(multiplicar(4, 5));       // 20\nconsole.log(formatar(3.14159));       // 3.14\nconsole.log(formatar([\"a\", \"b\"]));    // a, b\nconsole.log(botao.clicar());          // OK",
+      "callout_kind": "ATENCAO",
+      "callout_text": "A assinatura de implementação das sobrecargas é invisível: quem chama só vê as sobrecargas escritas por cima. E a ordem conta, porque ganha a primeira que servir; as mais específicas vêm primeiro. Se uma união de parâmetros resolve o problema, dispensam-se as sobrecargas.",
+      "table_headers": [
+        "Sintaxe",
+        "Para que serve",
+        "Exemplo"
+      ],
+      "table_rows": [
+        [
+          "(a: T): R",
+          "Anotar parâmetros e retorno",
+          "function dobro(n: number): number"
+        ],
+        [
+          ": void",
+          "Corre pelo efeito, sem valor útil",
+          "function log(m: string): void {}"
+        ],
+        [
+          ": never",
+          "Nunca devolve: lança ou não termina",
+          "function falhar(m: string): never"
+        ],
+        [
+          "p?: T",
+          "Parâmetro opcional (T | undefined)",
+          "function f(nome?: string) {}"
+        ],
+        [
+          "p = valor",
+          "Valor por omissão; o tipo vem do valor",
+          "function f(n = 10) {}"
+        ],
+        [
+          "...ps: T[]",
+          "Rest parameters como array",
+          "function soma(...ns: number[]) {}"
+        ],
+        [
+          "...args: [A, B]",
+          "Rest tipado com uma tupla",
+          "function f(...a: [string, number]) {}"
+        ],
+        [
+          "({ a, b }: Opcoes)",
+          "Destructuring de um objeto de opções",
+          "function f({ x = 0 }: { x?: number }) {}"
+        ],
+        [
+          "(a: T) => R",
+          "Tipo de função escrito com seta",
+          "type Op = (a: number) => number;"
+        ],
+        [
+          "{ (a: T): R }",
+          "Call signature num tipo de objeto",
+          "type Fn = { (x: string): number };"
+        ],
+        [
+          "this: T",
+          "Tipar o this (apagado no JavaScript)",
+          "function f(this: Botao) {}"
+        ],
+        [
+          "Sobrecargas",
+          "Várias assinaturas, uma implementação",
+          "function f(x: string): string;"
+        ],
+        [
+          "Menos parâmetros",
+          "Um callback pode ignorar argumentos",
+          "[1, 2].forEach(() => {});"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "✍️",
+          "text": "Parâmetros anotam-se sempre; o retorno infere-se"
+        },
+        {
+          "icon": "❔",
+          "text": "Opcional é T | undefined; o default dá o tipo"
+        },
+        {
+          "icon": "📦",
+          "text": "Rest como array ou como tupla"
+        },
+        {
+          "icon": "➡️",
+          "text": "Tipo de função com seta ou call signature"
+        },
+        {
+          "icon": "🔀",
+          "text": "Sobrecargas só quando uma união não chega"
+        }
+      ]
+    },
+    {
+      "heading": "Narrowing e type guards",
+      "body": [
+        "Módulo 04. Dentro de cada ramo de um if ou de um switch, o compilador reduz o tipo declarado ao que ainda é possível. As guardas nativas são typeof, veracidade, igualdade (x == null apanha null e undefined), in e instanceof. O estreitamento perde-se quando a variável é reatribuída ou lida mais tarde dentro de um callback.",
+        "Para lógica própria há type predicates (v is T), que estreitam no ramo verdadeiro, e assertion functions (asserts v is T), que lançam ou estreitam o resto do bloco. Numa união discriminada, um never no default garante que nenhum caso fica esquecido quando se acrescenta uma variante."
+      ],
+      "code": "type Forma =\n  | { tipo: \"circulo\"; raio: number }\n  | { tipo: \"retangulo\"; largura: number; altura: number };\n\nfunction casoImpossivel(valor: never): never {\n  throw new Error(`Caso não tratado: ${JSON.stringify(valor)}`);\n}\nfunction area(f: Forma): number {\n  switch (f.tipo) {\n    case \"circulo\": return Math.PI * f.raio ** 2;\n    case \"retangulo\": return f.largura * f.altura;\n    default: return casoImpossivel(f);\n  }\n}\nfunction eTexto(v: unknown): v is string {\n  return typeof v === \"string\";\n}\nfunction garantirNumero(v: unknown): asserts v is number {\n  if (typeof v !== \"number\") throw new TypeError(\"não é número\");\n}\nconst mistura: unknown[] = [\"a\", 1, \"b\"];\nconst textos = mistura.filter(eTexto);  // string[]\nconst entrada: unknown = 42;\ngarantirNumero(entrada);\n\nconsole.log(area({ tipo: \"retangulo\", largura: 2, altura: 3 })); // 6\nconsole.log(textos);                                             // [ 'a', 'b' ]\nconsole.log(entrada.toFixed(1));                                 // 42.0",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Um predicado mentiroso compila: o compilador acredita no v is T e não verifica o corpo da função. Se o teste estiver incompleto, o erro só aparece em execução. E uma assertion function guardada numa const tem de ter o tipo anotado explicitamente, senão a chamada não estreita (TS2775).",
+      "table_headers": [
+        "Sintaxe",
+        "Para que serve",
+        "Exemplo"
+      ],
+      "table_rows": [
+        [
+          "typeof x === \"string\"",
+          "Estreitar primitivos",
+          "if (typeof x === \"number\") x.toFixed();"
+        ],
+        [
+          "if (x)",
+          "Veracidade: exclui também 0 e \"\"",
+          "if (nome) nome.trim();"
+        ],
+        [
+          "x == null",
+          "Apanha null e undefined de uma vez",
+          "if (v == null) return;"
+        ],
+        [
+          "\"prop\" in obj",
+          "Estreitar pela existência de uma chave",
+          "if (\"raio\" in f) f.raio;"
+        ],
+        [
+          "x instanceof C",
+          "Estreitar por classe (protótipo)",
+          "if (e instanceof Error) e.message;"
+        ],
+        [
+          "Discriminante literal",
+          "Campo comum com um literal por variante",
+          "{ tipo: \"circulo\"; raio: number }"
+        ],
+        [
+          "switch (x.tipo)",
+          "Estreitar uma união discriminada",
+          "case \"circulo\": return f.raio;"
+        ],
+        [
+          "v is T",
+          "Type predicate: função que estreita",
+          "function eTexto(v: unknown): v is string"
+        ],
+        [
+          "asserts v is T",
+          "Assertion function: lança ou estreita",
+          "function garantir(v: unknown): asserts v is number"
+        ],
+        [
+          "asserts cond",
+          "Asserção sobre uma condição",
+          "function assert(c: unknown): asserts c"
+        ],
+        [
+          "const n: never = x",
+          "Exaustividade no default",
+          "default: const n: never = f;"
+        ],
+        [
+          "casoImpossivel(x)",
+          "Exaustividade que também lança em execução",
+          "default: return casoImpossivel(f);"
+        ],
+        [
+          ".filter(predicado)",
+          "Limpar arrays mantendo o tipo",
+          "xs.filter(eTexto) // string[]"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🌿",
+          "text": "Cada ramo vê só o que ainda é possível"
+        },
+        {
+          "icon": "🧪",
+          "text": "typeof, in, instanceof, == null e veracidade"
+        },
+        {
+          "icon": "🏷️",
+          "text": "União discriminada: um literal por variante"
+        },
+        {
+          "icon": "🤝",
+          "text": "v is T e asserts v is T para lógica própria"
+        },
+        {
+          "icon": "🚨",
+          "text": "never no default: nenhum caso fica esquecido"
+        }
+      ]
+    },
+    {
+      "heading": "Genéricos",
+      "body": [
+        "Módulo 05. Um parâmetro de tipo liga a entrada à saída sem perder informação. Normalmente infere-se na chamada; indica-se à mão quando não há argumentos de onde inferir. As constraints com extends limitam o que T aceita, K extends keyof T relaciona dois parâmetros, e um tipo por omissão dispensa o argumento quando há um valor habitual.",
+        "O modificador const no parâmetro de tipo faz inferir literais sem pedir as const a quem chama. Nas classes genéricas, os membros estáticos não veem o T. O padrão Resultado<T, E> junta genéricos e uniões discriminadas para devolver sucesso ou erro como valor."
+      ],
+      "code": "function primeiro<T>(xs: readonly T[]): T | undefined {\n  return xs[0];\n}\nfunction obter<T, K extends keyof T>(obj: T, chave: K): T[K] {\n  return obj[chave];\n}\nfunction maisLongo<T extends { length: number }>(a: T, b: T): T {\n  return a.length >= b.length ? a : b;\n}\nfunction rotulos<const T extends readonly string[]>(xs: T): T {\n  return xs;\n}\nclass Pilha<T> {\n  #itens: T[] = [];\n  empilhar(x: T): this { this.#itens.push(x); return this; }\n  topo(): T | undefined { return this.#itens.at(-1); }\n}\ntype Resultado<T, E = string> = { ok: true; valor: T } | { ok: false; erro: E };\nfunction dividir(a: number, b: number): Resultado<number> {\n  return b === 0 ? { ok: false, erro: \"divisão por zero\" } : { ok: true, valor: a / b };\n}\n\nconst n = primeiro([10, 20]);                             // number | undefined\nconst idade = obter({ nome: \"Ana\", idade: 30 }, \"idade\"); // number\nconst cores = rotulos([\"verde\", \"azul\"]);                 // readonly [\"verde\", \"azul\"]\nconst pilha = new Pilha<string>().empilhar(\"a\").empilhar(\"b\");\nconst r = dividir(6, 3);\nconsole.log(n, idade, maisLongo(\"sol\", \"lua\"), cores);   // 10 30 sol [ 'verde', 'azul' ]\nconsole.log(pilha.topo());                               // b\nconsole.log(r.ok ? r.valor : r.erro);                    // 2",
+      "callout_kind": "DICA",
+      "callout_text": "Se o T aparece uma única vez na assinatura, o genérico não serve de nada e basta o tipo concreto. E a constraint limita a entrada sem converter o valor: um T extends string pode ser um literal, e o retorno continua a ser T, não string.",
+      "table_headers": [
+        "Sintaxe",
+        "Para que serve",
+        "Exemplo"
+      ],
+      "table_rows": [
+        [
+          "function f<T>(x: T): T",
+          "Parâmetro de tipo numa função",
+          "identidade(\"a\") // T = string"
+        ],
+        [
+          "Inferência na chamada",
+          "O T deduz-se dos argumentos",
+          "primeiro([1, 2]) // T = number"
+        ],
+        [
+          "f<Tipo>(...)",
+          "Indicar o argumento de tipo à mão",
+          "new Map<string, number>()"
+        ],
+        [
+          "<A, B>",
+          "Vários parâmetros de tipo",
+          "function par<A, B>(a: A, b: B): [A, B]"
+        ],
+        [
+          "<T extends Forma>",
+          "Constraint: limita o que T aceita",
+          "<T extends { length: number }>"
+        ],
+        [
+          "<K extends keyof T>",
+          "Relacionar dois parâmetros de tipo",
+          "function obter<T, K extends keyof T>"
+        ],
+        [
+          "<T = Padrao>",
+          "Tipo por omissão",
+          "interface Caixa<T = string> { valor: T }"
+        ],
+        [
+          "<const T>",
+          "Inferir literais sem as const",
+          "function rotulos<const T>(x: T): T"
+        ],
+        [
+          "interface I<T> / type A<T>",
+          "Interfaces e aliases genéricos",
+          "type Lista<T> = T[];"
+        ],
+        [
+          "class C<T>",
+          "Classe genérica (o static não vê o T)",
+          "class Pilha<T> { itens: T[] = [] }"
+        ],
+        [
+          "<T>(x: T) => T",
+          "Arrow function e tipo de função genéricos",
+          "const id = <T>(x: T): T => x;"
+        ],
+        [
+          "Resultado<T, E>",
+          "Sucesso ou erro numa união discriminada",
+          "{ ok: true; valor: T } | { ok: false; erro: E }"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔗",
+          "text": "O parâmetro de tipo liga a entrada à saída"
+        },
+        {
+          "icon": "🔍",
+          "text": "Infere-se na chamada; à mão só se não houver de onde"
+        },
+        {
+          "icon": "🚧",
+          "text": "extends limita, keyof relaciona, = dá o valor habitual"
+        },
+        {
+          "icon": "🔒",
+          "text": "<const T> infere literais sem as const"
+        },
+        {
+          "icon": "✂️",
+          "text": "T usado uma só vez: dispensar o genérico"
+        }
+      ]
+    },
+    {
+      "heading": "Tipos avançados",
+      "body": [
+        "Módulo 06. keyof, typeof e o acesso indexado derivam tipos de tipos e de valores já existentes, o que evita escrever a mesma informação duas vezes. Um conditional type é um if ao nível dos tipos e distribui-se sobre uniões quando o tipo testado é um parâmetro nu; envolver os dois lados em colchetes desliga a distribuição.",
+        "Os mapped types percorrem chaves e podem acrescentar ou retirar readonly e ?, e renomear ou filtrar chaves com as. Os template literal types constroem strings ao nível dos tipos, e infer captura uma parte de um padrão. Os tipos podem ser recursivos, com um limite de profundidade."
+      ],
+      "code": "const config = { tema: \"escuro\", tamanho: 12 } as const;\ntype Config = typeof config;        // { readonly tema: \"escuro\"; readonly tamanho: 12 }\ntype Chave = keyof Config;          // \"tema\" | \"tamanho\"\ntype Tema = Config[\"tema\"];         // \"escuro\"\n\ntype ETexto<T> = T extends string ? true : false;\ntype A1 = ETexto<\"a\" | 1>;          // boolean (distribui: true | false)\ntype SemDistribuir<T> = [T] extends [string] ? true : false;\ntype A2 = SemDistribuir<\"a\" | 1>;   // false\ntype SemNulos<T> = T extends null | undefined ? never : T;\ntype A3 = SemNulos<string | null>;  // string\n\ntype Mutavel<T> = { -readonly [K in keyof T]: T[K] };\ntype Getters<T> = {\n  [K in keyof T as `get${Capitalize<string & K>}`]: () => T[K];\n};\ntype G = Getters<{ nome: string }>; // { getNome: () => string }\ntype M = Mutavel<Config>;           // { tema: \"escuro\"; tamanho: 12 }\n\ntype Evento = `on${Capitalize<\"click\" | \"focus\">}`;  // \"onClick\" | \"onFocus\"\ntype ElementoDe<T> = T extends readonly (infer U)[] ? U : never;\ntype E1 = ElementoDe<string[]>;     // string\ntype Desembrulhar<T> = T extends Promise<infer U> ? Desembrulhar<U> : T;\ntype D1 = Desembrulhar<Promise<Promise<number>>>; // number\ntype Json = string | number | boolean | null | Json[] | { [k: string]: Json };",
+      "callout_kind": "ATENCAO",
+      "callout_text": "A distribuição tem uma armadilha com never: como never é a união vazia, T extends X ? A : B com T igual a never dá never e não A nem B. Para testar se algo é never escreve-se [T] extends [never].",
+      "table_headers": [
+        "Sintaxe",
+        "Para que serve",
+        "Exemplo"
+      ],
+      "table_rows": [
+        [
+          "keyof T",
+          "União das chaves de um tipo",
+          "keyof { a: 1; b: 2 } // \"a\" | \"b\""
+        ],
+        [
+          "typeof valor",
+          "O tipo de um valor, no nível dos tipos",
+          "type C = typeof config;"
+        ],
+        [
+          "keyof typeof obj",
+          "Chaves de uma constante como tipo",
+          "type K = keyof typeof rotas;"
+        ],
+        [
+          "T[\"prop\"]",
+          "Acesso indexado: tipo de uma propriedade",
+          "type N = Utilizador[\"nome\"];"
+        ],
+        [
+          "(typeof arr)[number]",
+          "União dos elementos de um array as const",
+          "type Cor = (typeof cores)[number];"
+        ],
+        [
+          "T extends U ? X : Y",
+          "Conditional type: um if de tipos",
+          "type EStr<T> = T extends string ? 1 : 0;"
+        ],
+        [
+          "[T] extends [U]",
+          "Desligar a distribuição sobre uniões",
+          "[T] extends [never] ? true : false"
+        ],
+        [
+          "never num ramo",
+          "Filtrar membros de uma união",
+          "T extends null ? never : T"
+        ],
+        [
+          "{ [K in keyof T]: X }",
+          "Mapped type: transformar cada chave",
+          "{ [K in keyof T]: string }"
+        ],
+        [
+          "-readonly e -?",
+          "Retirar (ou acrescentar com +) modificadores",
+          "{ -readonly [K in keyof T]-?: T[K] }"
+        ],
+        [
+          "[K in keyof T as N]",
+          "Key remapping: renomear ou filtrar chaves",
+          "as `get${Capitalize<string & K>}`"
+        ],
+        [
+          "`on${T}`",
+          "Template literal type",
+          "type Ev = `on${string}`;"
+        ],
+        [
+          "Capitalize, Uppercase",
+          "Manipular strings nos tipos",
+          "Uppercase<\"a\"> // \"A\""
+        ],
+        [
+          "infer X",
+          "Capturar um tipo dentro de um padrão",
+          "T extends Promise<infer U> ? U : T"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🗝️",
+          "text": "keyof, typeof e T[K] derivam em vez de repetir"
+        },
+        {
+          "icon": "❓",
+          "text": "Conditional types distribuem sobre uniões"
+        },
+        {
+          "icon": "🗺️",
+          "text": "Mapped types: modificadores e key remapping com as"
+        },
+        {
+          "icon": "🧵",
+          "text": "Template literals e Capitalize constroem strings"
+        },
+        {
+          "icon": "🎣",
+          "text": "infer captura partes; tipos recursivos descem"
+        }
+      ]
+    },
+    {
+      "heading": "Utility types",
+      "body": [
+        "Módulo 07. A biblioteca padrão traz transformações prontas, quase todas escritas com mapped e conditional types de uma linha. Partial, Required e Readonly mexem nos modificadores e são rasos. Pick verifica as chaves pedidas, mas Omit aceita chaves que não existem sem dar erro.",
+        "Do lado das funções, ReturnType, Parameters e Awaited derivam tipos de funções existentes; com sobrecargas, ReturnType usa a última assinatura. Quando a biblioteca não chega, compõem-se utilitários próprios, incluindo versões profundas recursivas."
+      ],
+      "code": "interface Produto {\n  id: number;\n  nome: string;\n  preco: number;\n  descricao?: string;\n}\ntype Rascunho = Partial<Produto>;\ntype Completo = Required<Produto>;\ntype Congelado = Readonly<Produto>;\ntype Resumo = Pick<Produto, \"id\" | \"nome\">;\ntype SemId = Omit<Produto, \"id\">;\ntype Engano = Omit<Produto, \"idd\">;          // compila: Omit não verifica a chave\ntype Stock = Record<\"lisboa\" | \"porto\", number>;\n\ntype Estado = \"ativo\" | \"pausado\" | \"apagado\";\ntype Visivel = Exclude<Estado, \"apagado\">;   // \"ativo\" | \"pausado\"\ntype SoAtivo = Extract<Estado, \"ativo\">;     // \"ativo\"\ntype Talvez = NonNullable<string | null>;    // string\n\nasync function carregar(id: number, detalhe: boolean): Promise<Produto> {\n  return { id, nome: detalhe ? \"Caneta\" : \"?\", preco: 1.5 };\n}\ntype Args = Parameters<typeof carregar>;          // [id: number, detalhe: boolean]\ntype Ret = Awaited<ReturnType<typeof carregar>>;  // Produto\n\ntype ProfundoLeitura<T> = T extends (...args: any[]) => any\n  ? T\n  : { readonly [K in keyof T]: ProfundoLeitura<T[K]> };",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Um mapped type ingénuo aplicado recursivamente parte as funções, que passam a um objeto sem assinatura de chamada, mas não parte os arrays, que os mapped types homomórficos preservam. Por isso o ProfundoLeitura testa primeiro se T é uma função e devolve-a intacta.",
+      "table_headers": [
+        "Sintaxe",
+        "Para que serve",
+        "Exemplo"
+      ],
+      "table_rows": [
+        [
+          "Partial<T>",
+          "Todas as propriedades opcionais (raso)",
+          "function atualizar(p: Partial<Produto>)"
+        ],
+        [
+          "Required<T>",
+          "Todas obrigatórias (usa -?)",
+          "const o: Required<Opcoes> = { ... };"
+        ],
+        [
+          "Readonly<T>",
+          "Todas readonly (raso, só no compilador)",
+          "const c: Readonly<Config> = cfg;"
+        ],
+        [
+          "Pick<T, K>",
+          "Escolher chaves (K tem de existir)",
+          "Pick<Produto, \"id\" | \"nome\">"
+        ],
+        [
+          "Omit<T, K>",
+          "Retirar chaves (K não é verificada)",
+          "Omit<Produto, \"id\">"
+        ],
+        [
+          "Record<K, V>",
+          "Objeto com as chaves K e valores V",
+          "Record<\"pt\" | \"en\", string>"
+        ],
+        [
+          "Exclude<U, X>",
+          "Tirar membros de uma união",
+          "Exclude<\"a\" | \"b\", \"a\"> // \"b\""
+        ],
+        [
+          "Extract<U, X>",
+          "Ficar com os membros compatíveis",
+          "Extract<\"a\" | 1, string> // \"a\""
+        ],
+        [
+          "NonNullable<T>",
+          "Retirar null e undefined",
+          "NonNullable<string | null> // string"
+        ],
+        [
+          "ReturnType<F>",
+          "Tipo de retorno de uma função",
+          "ReturnType<typeof criar>"
+        ],
+        [
+          "Parameters<F>",
+          "Parâmetros como tupla",
+          "Parameters<typeof criar>[0]"
+        ],
+        [
+          "Awaited<T>",
+          "Desembrulhar promessas até ao fim",
+          "Awaited<Promise<Promise<number>>> // number"
+        ],
+        [
+          "InstanceType, ConstructorParameters",
+          "Instância e argumentos de um construtor",
+          "InstanceType<typeof Pilha>"
+        ],
+        [
+          "ThisParameterType, OmitThisParameter",
+          "Ler ou retirar o parâmetro this",
+          "OmitThisParameter<typeof f>"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧰",
+          "text": "Partial, Required e Readonly: modificadores, rasos"
+        },
+        {
+          "icon": "✂️",
+          "text": "Pick verifica as chaves; Omit não verifica"
+        },
+        {
+          "icon": "📒",
+          "text": "Record, Exclude, Extract e NonNullable"
+        },
+        {
+          "icon": "🔁",
+          "text": "ReturnType, Parameters e Awaited derivam de funções"
+        },
+        {
+          "icon": "🧩",
+          "text": "Utilitários próprios: compor e recursão cuidadosa"
+        }
+      ]
+    },
+    {
+      "heading": "Classes e orientação a objetos",
+      "body": [
+        "Módulo 08. Os campos declaram-se e tipam-se na classe e, com strict, têm de nascer com valor. public, private e protected são verificados só pelo compilador; o campo #x é privado também em execução. As parameter properties declaram e atribuem um campo diretamente no construtor.",
+        "Uma classe abstract não se instancia e obriga as subclasses a implementar os membros abstract. implements só verifica que a forma bate certo, não tipa os parâmetros dos métodos. Há ainda acessores get e set, membros static, o bloco static { }, o retorno this para encadear chamadas e os decorators do padrão atual."
+      ],
+      "code": "interface Descritivel {\n  descrever(): string;\n}\nabstract class Conta implements Descritivel {\n  static criadas = 0;\n  #saldo = 0;\n  constructor(public readonly titular: string, protected taxa: number) {\n    Conta.criadas++;\n  }\n  get saldo(): number { return this.#saldo; }\n  depositar(valor: number): this {\n    this.#saldo += valor - this.taxa;\n    return this;\n  }\n  abstract tipo(): string;\n  descrever(): string {\n    return `${this.tipo()} de ${this.titular}: ${this.saldo}`;\n  }\n}\nclass ContaOrdem extends Conta {\n  constructor(titular: string) { super(titular, 1); }\n  override tipo(): string { return \"Conta à ordem\"; }\n}\n\nconst conta = new ContaOrdem(\"Ana\").depositar(11).depositar(6);\nconsole.log(conta.descrever());   // Conta à ordem de Ana: 15\nconsole.log(Conta.criadas);       // 1",
+      "callout_kind": "ATENCAO",
+      "callout_text": "private é só do compilador: desaparece no JavaScript emitido e o campo continua acessível em execução, por exemplo com obj[\"campo\"]. Quando a privacidade tem de valer com o programa a correr, usa-se um campo #x.",
+      "table_headers": [
+        "Sintaxe",
+        "Para que serve",
+        "Exemplo"
+      ],
+      "table_rows": [
+        [
+          "campo: T",
+          "Declarar e tipar um campo",
+          "nome: string;"
+        ],
+        [
+          "public, private, protected",
+          "Visibilidade verificada só pelo compilador",
+          "private cache = new Map<string, number>();"
+        ],
+        [
+          "campo #x",
+          "Privado real, também em execução",
+          "#saldo = 0;"
+        ],
+        [
+          "readonly campo",
+          "Atribui-se na declaração ou no construtor",
+          "readonly id: number;"
+        ],
+        [
+          "abstract class",
+          "Classe base que não se instancia",
+          "abstract class Forma {}"
+        ],
+        [
+          "abstract metodo(): T",
+          "Obriga a subclasse a implementar",
+          "abstract area(): number;"
+        ],
+        [
+          "implements I",
+          "Verifica a forma; não tipa parâmetros",
+          "class Conta implements Descritivel {}"
+        ],
+        [
+          "constructor(public x: T)",
+          "Parameter property: declara e atribui",
+          "constructor(private readonly id: number) {}"
+        ],
+        [
+          "get e set",
+          "Acessores; o set pode aceitar mais tipos",
+          "get saldo(): number { return this.#saldo; }"
+        ],
+        [
+          "static membro",
+          "Membro da classe, não da instância",
+          "static criadas = 0;"
+        ],
+        [
+          "static { }",
+          "Bloco de inicialização estática",
+          "static { Conta.criadas = 0; }"
+        ],
+        [
+          "metodo(): this",
+          "this polimórfico para encadear",
+          "depositar(v: number): this"
+        ],
+        [
+          "override metodo()",
+          "Marca a sobreposição (noImplicitOverride)",
+          "override tipo(): string"
+        ],
+        [
+          "@decorador",
+          "Envolver métodos, classes, campos e accessors",
+          "@registar metodo() {}"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔐",
+          "text": "private é do compilador; #x é privado em execução"
+        },
+        {
+          "icon": "🏗️",
+          "text": "abstract: não instancia e obriga a implementar"
+        },
+        {
+          "icon": "📜",
+          "text": "implements verifica a forma, não tipa por si"
+        },
+        {
+          "icon": "⚡",
+          "text": "Parameter properties declaram e atribuem"
+        },
+        {
+          "icon": "⛓️",
+          "text": "Retorno this para encadear chamadas"
+        }
+      ]
+    },
+    {
+      "heading": "Módulos, tsconfig e ferramentas",
+      "body": [
+        "Módulos 09 e 11. Tipos atravessam módulos como os valores; import type e export type desaparecem do JavaScript emitido. declare module descreve uma biblioteca sem tipos, declare global estende o âmbito global, e os pacotes @types trazem declarações da comunidade. O tsc verifica e compila; num projeto com bundler é comum correr só tsc --noEmit.",
+        "No tsconfig, target e lib dizem que sintaxe se emite e que APIs se assumem, module e moduleResolution como se resolvem os imports, e strict liga o conjunto de verificações (noImplicitAny, strictNullChecks, strictFunctionTypes, strictPropertyInitialization, useUnknownInCatchVariables e as restantes). Para migrar JavaScript usam-se allowJs, checkJs e o comentário @ts-check, ligando o strict por fases."
+      ],
+      "code": "// tsconfig.json\n{\n  \"compilerOptions\": {\n    \"target\": \"es2022\",\n    \"lib\": [\"es2022\", \"dom\"],\n    \"module\": \"esnext\",\n    \"moduleResolution\": \"bundler\",\n    \"strict\": true,\n    \"noUncheckedIndexedAccess\": true,\n    \"esModuleInterop\": true,\n    \"resolveJsonModule\": true,\n    \"isolatedModules\": true,\n    \"verbatimModuleSyntax\": true,\n    \"declaration\": true,\n    \"outDir\": \"dist\",\n    \"rootDir\": \"src\",\n    \"skipLibCheck\": true,\n    \"paths\": { \"@/*\": [\"./src/*\"] }\n  },\n  \"include\": [\"src\"]\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "paths só ensina o compilador a resolver os aliases: o JavaScript emitido mantém o import com @/ tal como está, e quem corre o código (bundler ou runtime) tem de conhecer o mesmo alias. Um alias que o tsc aceita pode falhar em execução.",
+      "table_headers": [
+        "Sintaxe ou opção",
+        "Para que serve",
+        "Exemplo"
+      ],
+      "table_rows": [
+        [
+          "import type { T }",
+          "Importar só tipos, apagado no JavaScript",
+          "import type { Utilizador } from \"./tipos\";"
+        ],
+        [
+          "export { x } from",
+          "Reexportar sem trazer para o âmbito",
+          "export * from \"./modelos\";"
+        ],
+        [
+          "declare module \"x\"",
+          "Tipar um módulo que não tem tipos",
+          "declare module \"lib-antiga\" { ... }"
+        ],
+        [
+          "declare global { }",
+          "Estender o âmbito global",
+          "declare global { var versao: string }"
+        ],
+        [
+          ".d.ts e @types",
+          "Só declarações; tipos da comunidade",
+          "npm i -D @types/lodash"
+        ],
+        [
+          "target e lib",
+          "Sintaxe emitida e APIs assumidas",
+          "\"target\": \"es2022\""
+        ],
+        [
+          "module e moduleResolution",
+          "Formato e resolução dos módulos",
+          "\"moduleResolution\": \"bundler\""
+        ],
+        [
+          "strict",
+          "Liga noImplicitAny, strictNullChecks e o resto",
+          "\"strict\": true"
+        ],
+        [
+          "noUncheckedIndexedAccess",
+          "Índices passam a T | undefined",
+          "xs[0] // number | undefined"
+        ],
+        [
+          "esModuleInterop, resolveJsonModule",
+          "Default import de CommonJS; importar .json",
+          "import cfg from \"./cfg.json\";"
+        ],
+        [
+          "paths",
+          "Aliases só para o compilador",
+          "\"@/*\": [\"./src/*\"]"
+        ],
+        [
+          "isolatedModules, verbatimModuleSyntax",
+          "Seguro para ferramentas ficheiro a ficheiro",
+          "obriga a import type para tipos"
+        ],
+        [
+          "allowJs, checkJs, @ts-check",
+          "Migrar JavaScript por fases",
+          "// @ts-check no topo do .js"
+        ],
+        [
+          "tsc --noEmit",
+          "Só verificar tipos (o bundler compila)",
+          "npx tsc --noEmit"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "import type e export type desaparecem no JS"
+        },
+        {
+          "icon": "🌐",
+          "text": "declare module, declare global e @types"
+        },
+        {
+          "icon": "⚙️",
+          "text": "target e lib, module e moduleResolution"
+        },
+        {
+          "icon": "🛡️",
+          "text": "strict liga todas as verificações de uma vez"
+        },
+        {
+          "icon": "🚚",
+          "text": "Migrar com allowJs, checkJs e strict por fases"
+        }
+      ]
+    },
+    {
+      "heading": "Mundo real e boas práticas",
+      "body": [
+        "Módulos 10 e 11. Promise<T> é um genérico, uma função async devolve sempre Promise<X> e await tira o T de dentro. Na fronteira com o exterior (JSON.parse, respostas de APIs) os dados chegam como any: devem ser recebidos como unknown e validados em runtime com predicados ou assertion functions antes de serem usados.",
+        "Com strict, a variável do catch é unknown e estreita-se com instanceof Error; como não há throws nas assinaturas, os erros esperados ficam melhor como valor, com Resultado<T, E>. satisfies verifica sem alargar o tipo inferido, o operador ! é só uma promessa, e os testes de tipos fazem-se com Igual, Esperar e @ts-expect-error."
+      ],
+      "code": "interface Utilizador { id: number; nome: string }\n\nfunction eUtilizador(v: unknown): v is Utilizador {\n  return typeof v === \"object\" && v !== null &&\n    \"id\" in v && typeof v.id === \"number\" &&\n    \"nome\" in v && typeof v.nome === \"string\";\n}\ntype Resultado<T, E> = { ok: true; valor: T } | { ok: false; erro: E };\n\nfunction lerUtilizador(texto: string): Resultado<Utilizador, string> {\n  try {\n    const dados: unknown = JSON.parse(texto);   // JSON.parse devolve any\n    return eUtilizador(dados) ? { ok: true, valor: dados } : { ok: false, erro: \"forma inválida\" };\n  } catch (e) {                                 // e: unknown\n    return { ok: false, erro: e instanceof Error ? e.message : String(e) };\n  }\n}\nasync function obterNome(texto: string): Promise<string> {\n  const r = lerUtilizador(texto);\n  return r.ok ? r.valor.nome : `erro: ${r.erro}`;\n}\nconst config = { porta: 8080, modo: \"dev\" } satisfies Record<string, string | number>;\n\nconst nomes = await Promise.all([obterNome('{\"id\":1,\"nome\":\"Ana\"}'), obterNome('{\"id\":1}')]);\nconsole.log(nomes);                                       // [ 'Ana', 'erro: forma inválida' ]\nconsole.log(config.porta + 1);                            // 8081\nconsole.log((await obterNome(\"{\")).startsWith(\"erro:\"));  // true",
+      "callout_kind": "ATENCAO",
+      "callout_text": "JSON.parse e o json() de uma resposta devolvem any, que contagia tudo o que toca: anota-se unknown logo à entrada. E há uma inconsistência a lembrar: o catch recebe unknown, mas o callback de .catch de uma Promise recebe any, mesmo em strict; anota-se (motivo: unknown) à mão.",
+      "table_headers": [
+        "Sintaxe",
+        "Para que serve",
+        "Exemplo"
+      ],
+      "table_rows": [
+        [
+          "Promise<T>",
+          "Promessa que resolve com um T",
+          "const p: Promise<number> = Promise.resolve(1);"
+        ],
+        [
+          "async function f(): Promise<T>",
+          "async devolve sempre Promise<X>",
+          "async function ler(): Promise<string>"
+        ],
+        [
+          "await p",
+          "Tira o T de dentro de Promise<T>",
+          "const n = await p; // number"
+        ],
+        [
+          "Promise.all([a, b])",
+          "Tupla com o valor de cada promessa",
+          "const [u, e] = await Promise.all([pu, pe]);"
+        ],
+        [
+          "Promise.allSettled",
+          "Resultados com status para estreitar",
+          "if (r.status === \"fulfilled\") r.value;"
+        ],
+        [
+          "JSON.parse, res.json()",
+          "Devolvem any: tratar como unknown",
+          "const dados: unknown = JSON.parse(txt);"
+        ],
+        [
+          "Validador (v is T)",
+          "Validar dados externos em runtime",
+          "function eUtilizador(v: unknown): v is Utilizador"
+        ],
+        [
+          "catch (e)",
+          "e é unknown (useUnknownInCatchVariables)",
+          "if (e instanceof Error) e.message;"
+        ],
+        [
+          ".catch((e) => ...)",
+          "Aqui e é any: anotar unknown",
+          "p.catch((e: unknown) => {});"
+        ],
+        [
+          "class ErroX extends Error",
+          "Erros próprios com dados extra",
+          "class ErroHttp extends Error {}"
+        ],
+        [
+          "Resultado<T, E>",
+          "Erro como valor, sem throw",
+          "return { ok: false, erro: \"404\" };"
+        ],
+        [
+          "valor satisfies T",
+          "Verificar sem alargar o tipo inferido",
+          "const cfg = { porta: 80 } satisfies Config;"
+        ],
+        [
+          "valor!",
+          "Non-null assertion: só uma promessa",
+          "mapa.get(\"a\")!"
+        ],
+        [
+          "Igual, Esperar, @ts-expect-error",
+          "Testes de tipos, positivos e negativos",
+          "type T1 = Esperar<Igual<R, number>>;"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "⏳",
+          "text": "async devolve sempre Promise<X>; await tira o T"
+        },
+        {
+          "icon": "🚪",
+          "text": "Na fronteira: unknown e validação em runtime"
+        },
+        {
+          "icon": "🧯",
+          "text": "catch recebe unknown; .catch recebe any"
+        },
+        {
+          "icon": "📬",
+          "text": "Erros esperados como valor: Resultado<T, E>"
+        },
+        {
+          "icon": "✅",
+          "text": "satisfies em vez de as; testar tipos com Esperar"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Catálogo tipado",
+      "difficulty": "Iniciante",
+      "statement": "Declarar uma interface Produto com id só de leitura (number), nome (string), preco (number) e stock opcional (number). Criar o tipo ResumoProduto com Pick, só com id e nome. Escrever valorEmStock, que recebe um array só de leitura de produtos e devolve a soma de preco vezes stock (um produto sem stock conta como zero), e resumir, que transforma um Produto num ResumoProduto. Testar com três produtos, um deles sem stock.",
+      "hint": "O operador ?? dá um valor quando o stock é undefined, e readonly Produto[] impede alterar o array dentro da função.",
+      "solution_code": "interface Produto {\n  readonly id: number;\n  nome: string;\n  preco: number;\n  stock?: number;\n}\ntype ResumoProduto = Pick<Produto, \"id\" | \"nome\">;\n\nfunction valorEmStock(produtos: readonly Produto[]): number {\n  return produtos.reduce((total, p) => total + p.preco * (p.stock ?? 0), 0);\n}\nfunction resumir(p: Produto): ResumoProduto {\n  return { id: p.id, nome: p.nome };\n}\n\nconst catalogo: readonly Produto[] = [\n  { id: 1, nome: \"Caneta\", preco: 1.5, stock: 10 },\n  { id: 2, nome: \"Caderno\", preco: 3, stock: 4 },\n  { id: 3, nome: \"Régua\", preco: 2 },\n];\nconsole.log(valorEmStock(catalogo));               // 27\nconsole.log(catalogo.map(resumir).map((r) => r.nome)); // [ 'Caneta', 'Caderno', 'Régua' ]",
+      "solution_explanation": "A propriedade opcional stock tem o tipo number | undefined, por isso é preciso o ?? 0 antes de multiplicar. Pick deriva o resumo do tipo original, e se Produto mudar o resumo acompanha. O readonly no parâmetro documenta que a função não altera o catálogo."
+    },
+    {
+      "title": "Pagamentos exaustivos",
+      "difficulty": "Intermedio",
+      "statement": "Modelar um Pagamento como união discriminada pelo campo metodo, com três variantes: \"mbway\" com telemovel (string), \"cartao\" com ultimos4 (string) e \"multibanco\" com entidade (number) e referencia (string). Escrever descrever(p), que devolve uma frase para cada variante com um switch exaustivo protegido por uma função casoImpossivel(valor: never). Escrever também o predicado eMbway, e usá-lo num filter para obter só os números de telemóvel.",
+      "hint": "Extract<Pagamento, { metodo: \"mbway\" }> dá a variante MB WAY para usar no tipo do predicado.",
+      "solution_code": "type Pagamento =\n  | { metodo: \"mbway\"; telemovel: string }\n  | { metodo: \"cartao\"; ultimos4: string }\n  | { metodo: \"multibanco\"; entidade: number; referencia: string };\n\nfunction casoImpossivel(valor: never): never {\n  throw new Error(`Método não tratado: ${JSON.stringify(valor)}`);\n}\nfunction descrever(p: Pagamento): string {\n  switch (p.metodo) {\n    case \"mbway\": return `MB WAY para ${p.telemovel}`;\n    case \"cartao\": return `Cartão terminado em ${p.ultimos4}`;\n    case \"multibanco\": return `Entidade ${p.entidade}, ref. ${p.referencia}`;\n    default: return casoImpossivel(p);\n  }\n}\nfunction eMbway(p: Pagamento): p is Extract<Pagamento, { metodo: \"mbway\" }> {\n  return p.metodo === \"mbway\";\n}\n\nconst lista: Pagamento[] = [\n  { metodo: \"mbway\", telemovel: \"912345678\" },\n  { metodo: \"cartao\", ultimos4: \"4321\" },\n  { metodo: \"multibanco\", entidade: 12345, referencia: \"123 456 789\" },\n];\nconsole.log(lista.map(descrever)[2]);                     // Entidade 12345, ref. 123 456 789\nconsole.log(lista.filter(eMbway).map((p) => p.telemovel)); // [ '912345678' ]",
+      "solution_explanation": "Em cada case o campo metodo estreita p para uma só variante, o que dá acesso às propriedades dela. No default p é never; se se acrescentar uma quarta variante, a chamada a casoImpossivel deixa de compilar. O predicado faz o filter devolver um array só com a variante MB WAY."
+    },
+    {
+      "title": "Leitura profunda e ouvintes derivados",
+      "difficulty": "Avancado",
+      "statement": "Escrever ProfundoLeitura<T>, que torna readonly todas as propriedades em profundidade mas deixa as funções intactas, e Ouvintes<T>, que para cada chave K de T cria uma propriedade on + K com inicial maiúscula + Mudou, com o tipo (novo: T[K]) => void. Aplicar os dois a uma interface Estado com nome, morada (objeto com cidade), tags (array de strings) e gravar (função). Provar o resultado com os utilitários Igual e Esperar e com um @ts-expect-error numa escrita aninhada.",
+      "hint": "Testar primeiro se T é uma função antes de mapear, e usar key remapping com as e Capitalize<string & K>.",
+      "solution_code": "type Igual<A, B> =\n  (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;\ntype Esperar<T extends true> = T;\n\ntype ProfundoLeitura<T> = T extends (...args: any[]) => any\n  ? T\n  : { readonly [K in keyof T]: ProfundoLeitura<T[K]> };\n\ntype Ouvintes<T> = {\n  [K in keyof T as `on${Capitalize<string & K>}Mudou`]: (novo: T[K]) => void;\n};\n\ninterface Estado {\n  nome: string;\n  morada: { cidade: string };\n  tags: string[];\n  gravar: () => void;\n}\ntype EstadoFixo = ProfundoLeitura<Estado>;\ntype OuvintesEstado = Ouvintes<Pick<Estado, \"nome\" | \"tags\">>;\n\ntype T1 = Esperar<Igual<EstadoFixo[\"morada\"], { readonly cidade: string }>>;\ntype T2 = Esperar<Igual<EstadoFixo[\"tags\"], readonly string[]>>;\ntype T3 = Esperar<Igual<EstadoFixo[\"gravar\"], () => void>>;\ntype T4 = Esperar<Igual<OuvintesEstado, {\n  onNomeMudou: (novo: string) => void;\n  onTagsMudou: (novo: string[]) => void;\n}>>;\n\ndeclare const estado: EstadoFixo;\n// @ts-expect-error a cidade é readonly em profundidade\nestado.morada.cidade = \"Porto\";\nestado.gravar(); // a função continua a poder ser chamada",
+      "solution_explanation": "Sem o teste de função, o mapped type transformaria gravar num objeto sem assinatura de chamada; os arrays são preservados pelo mapeamento homomórfico e ficam readonly string[]. Em Ouvintes, o as com um template literal renomeia cada chave, e string & K descarta chaves que não sejam strings. Os Esperar falham a compilação se algum tipo não for exatamente o esperado."
+    }
+  ],
+  "summary": [
+    "Deixar inferir e anotar só parâmetros, retornos e fronteiras",
+    "unknown, narrowing e validação em runtime em vez de any e as",
+    "Uniões discriminadas com exaustividade por never",
+    "Genéricos, mapped e conditional types para derivar em vez de repetir",
+    "readonly, private e paths só existem no compilador",
+    "strict ligado desde o início e testes de tipos com @ts-expect-error"
+  ],
+  "summary_label": "Resumo",
+  "closing_message": "Vamos continuar para o Módulo 14",
+  "next_label": "Módulo 14 → Gabarito dos Exercícios"
+}

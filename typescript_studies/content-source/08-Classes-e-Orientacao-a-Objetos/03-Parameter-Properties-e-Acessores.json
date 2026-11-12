@@ -1,0 +1,221 @@
+{
+  "module_num": "08",
+  "module_title": "Classes e Orientação a Objetos",
+  "module_dir": "08-Classes-e-Orientacao-a-Objetos",
+  "lesson_num": "03",
+  "lesson_slug": "Parameter-Properties-e-Acessores",
+  "kind": "aula",
+  "title": "Parameter Properties, Acessores e Membros Estáticos",
+  "filename_base": "03-Parameter-Properties-e-Acessores",
+  "subtitle": "Parameter properties, get/set tipados e membros estáticos: menos código, mais precisão.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Substituir campo mais atribuição manual no construtor por parameter properties",
+    "Combinar modificadores (private readonly, protected, etc.) numa parameter property",
+    "Dar tipos diferentes ao getter e ao setter da mesma propriedade",
+    "Tipar campos e métodos estáticos, incluindo o static initialization block do ES2022",
+    "Usar o tipo this para devolver o tipo real da subclasse em métodos encadeados"
+  ],
+  "sections": [
+    {
+      "heading": "Parameter properties: o construtor que se escreve a si próprio",
+      "body": [
+        "Para cada campo tipado no construtor de uma classe, é comum repetir o nome três vezes: na declaração do campo, no parâmetro do construtor e na atribuição this.campo = campo. O TypeScript tem um atalho para isto.",
+        "Ao prefixar um parâmetro do construtor com public, private, protected ou readonly (ou uma combinação, como private readonly), o compilador declara o campo e atribui-lhe o valor recebido, sem precisar de corpo no construtor.",
+        "É só açúcar sintático: o campo continua a existir, com o mesmo comportamento de acesso e de compilação que teria se fosse escrito à mão."
+      ],
+      "code": "class ContaAntes {\n  private saldo: number;\n  readonly titular: string;\n\n  constructor(titular: string, saldo: number) {\n    this.titular = titular;\n    this.saldo = saldo;\n  }\n\n  consultar(): number {\n    return this.saldo;\n  }\n}\n\n// mesma classe, com parameter properties: o modificador no parâmetro\n// declara o campo e atribui-o, sem corpo de construtor\nclass ContaDepois {\n  constructor(\n    readonly titular: string,\n    private saldo: number\n  ) {}\n\n  consultar(): number {\n    return this.saldo;\n  }\n}\n\nconst antes = new ContaAntes(\"Ana\", 100);\nconst depois = new ContaDepois(\"Bruno\", 200);\nconsole.log(antes.titular, antes.consultar()); // Ana 100\nconsole.log(depois.titular, depois.consultar()); // Bruno 200\n\n// @ts-expect-error - titular é readonly, mesmo sendo parameter property\ndepois.titular = \"Outro\";",
+      "callout_kind": "NOTA",
+      "callout_text": "Uma parameter property só se aplica a parâmetros do construtor. Um parâmetro sem nenhum modificador continua a ser só um parâmetro normal, sem campo associado.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏗️",
+          "text": "Modificador no parâmetro = campo declarado e atribuído"
+        },
+        {
+          "icon": "✂️",
+          "text": "Sem corpo de construtor para atribuições repetidas"
+        }
+      ]
+    },
+    {
+      "heading": "Modificadores e combinações",
+      "body": [
+        "Os quatro modificadores de uma parameter property comportam-se exatamente como no campo equivalente declarado à parte: public é o valor por omissão e redundante escrevê-lo, private só é acessível dentro da classe, protected estende esse acesso às subclasses, e readonly impede reatribuição fora do próprio parâmetro.",
+        "Podem combinar-se: private readonly é o padrão mais comum para dependências recebidas no construtor que nunca devem mudar depois de criada a instância."
+      ],
+      "code": "class ServicoEmail {\n  constructor(\n    private readonly chaveApi: string,\n    protected readonly remetente: string,\n    public readonly ativo: boolean\n  ) {}\n\n  enviar(destino: string): string {\n    return `de ${this.remetente} para ${destino} (chave ${this.chaveApi})`;\n  }\n}\n\nclass ServicoEmailTransacional extends ServicoEmail {\n  remetenteCompleto(): string {\n    // protected: acessível aqui porque é uma subclasse\n    return `${this.remetente} <transacional>`;\n  }\n}\n\nconst servico = new ServicoEmailTransacional(\"k-123\", \"faturas@empresa.pt\", true);\nconsole.log(servico.ativo); // true\nconsole.log(servico.remetenteCompleto()); // faturas@empresa.pt <transacional>\n\n// @ts-expect-error - chaveApi é private, não acessível fora da classe onde foi declarada\nconsole.log(servico.chaveApi);\n\n// @ts-expect-error - remetente é protected, não acessível fora da hierarquia\nconsole.log(servico.remetente);",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [
+        "Modificador",
+        "Efeito no campo"
+      ],
+      "table_rows": [
+        [
+          "public (omitido)",
+          "Acesso sem restrições; é o comportamento por omissão, escrevê-lo é redundante"
+        ],
+        [
+          "private",
+          "Só acessível dentro da própria classe; apagado na compilação, não em runtime"
+        ],
+        [
+          "protected",
+          "Acessível na própria classe e nas subclasses"
+        ],
+        [
+          "readonly",
+          "Só pode ser atribuído no próprio parâmetro; combina-se com os anteriores"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔐",
+          "text": "private readonly: o padrão mais comum para dependências"
+        },
+        {
+          "icon": "🧬",
+          "text": "protected chega às subclasses; private não"
+        }
+      ]
+    },
+    {
+      "heading": "Acessores tipados: get e set com tipos diferentes",
+      "body": [
+        "Um par get/set já é conhecido do JavaScript puro; o que o TypeScript acrescenta é a possibilidade de o parâmetro do setter e o tipo de retorno do getter serem tipos diferentes, desde a versão 4.3.",
+        "É útil quando quem escreve o valor tem mais formatos aceitáveis do que quem o lê: o setter pode aceitar string | number e converter, enquanto o getter garante sempre number a quem consome a propriedade.",
+        "Fora dessa possibilidade, um acessor tipado segue as mesmas regras de qualquer método: parâmetros e retorno são verificados como em qualquer outro sítio."
+      ],
+      "code": "class Temperatura {\n  #celsius: number;\n\n  constructor(celsius: number) {\n    this.#celsius = celsius;\n  }\n\n  get valor(): number {\n    return this.#celsius;\n  }\n\n  // o setter aceita mais formatos do que o getter devolve\n  set valor(novo: string | number) {\n    this.#celsius = typeof novo === \"string\" ? Number.parseFloat(novo) : novo;\n  }\n}\n\nconst t = new Temperatura(20);\nt.valor = \"25.5\";\nconsole.log(t.valor); // 25.5\nconsole.log(typeof t.valor); // number\n\nt.valor = 30;\nconsole.log(t.valor); // 30",
+      "callout_kind": "DICA",
+      "callout_text": "Quando o parâmetro do setter fica sem anotação, o compilador infere o seu tipo a partir do tipo de retorno do getter, em vez de o marcar como implicit any.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔄",
+          "text": "Setter aceita string | number, getter devolve number"
+        },
+        {
+          "icon": "🎯",
+          "text": "Desde o TypeScript 4.3: getter e setter podem divergir"
+        }
+      ]
+    },
+    {
+      "heading": "Membros estáticos tipados",
+      "body": [
+        "Um campo ou método static pertence à classe, não a cada instância, e é tipado exatamente como um membro de instância: com anotação de tipo no campo, e com parâmetros e retorno tipados no método.",
+        "Dentro da própria classe, um membro estático acede-se com o nome da classe (NomeDaClasse.campo). Um campo de instância e um campo estático com o mesmo nome não colidem: vivem em espaços diferentes, e o compilador não deixa aceder a um estático através de uma instância."
+      ],
+      "code": "class Registo {\n  // campo estático: um só valor partilhado por todas as instâncias,\n  // tipado como qualquer outro campo\n  static totalCriados: number = 0;\n\n  // método estático tipado: parâmetros e retorno seguem as regras habituais\n  static resumo(): string {\n    return `${Registo.totalCriados} registo(s) criado(s)`;\n  }\n\n  constructor(readonly nome: string) {\n    Registo.totalCriados += 1;\n  }\n}\n\nconst r1 = new Registo(\"primeiro\");\nconst r2 = new Registo(\"segundo\");\nconsole.log(Registo.resumo()); // 2 registo(s) criado(s)\nconsole.log(r1.nome, r2.nome); // primeiro segundo\n\n// @ts-expect-error - totalCriados só existe na classe, não nas instâncias\nconsole.log(r1.totalCriados);",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Aceder a um campo estático a partir de uma instância (r1.totalCriados) não compila: o TypeScript acusa a propriedade como inexistente no tipo da instância, mesmo existindo na classe.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "static: um valor partilhado pela classe, não por instância"
+        },
+        {
+          "icon": "🚫",
+          "text": "Instância não acede a estático: só a classe"
+        }
+      ]
+    },
+    {
+      "heading": "static { }: o bloco de inicialização estática",
+      "body": [
+        "Desde o ES2022, uma classe pode ter um ou mais blocos static { ... }, que correm uma única vez, na ordem em que aparecem, quando a classe é avaliada — antes de qualquer instância ser criada. Servem para calcular estado estático que depende de outros membros estáticos, ou que precisa de mais do que uma expressão para ser inicializado.",
+        "Medido no compilador instalado (5.9.3, com --target es2022): um static block só consegue atribuir a campos estáticos que não sejam readonly. Tentar atribuir a um static readonly dentro do bloco falha sempre com o erro TS2540, mesmo referenciando-o através de this. Um campo static readonly só recebe valor na própria declaração — ao contrário de um campo readonly de instância, que o construtor pode inicializar."
+      ],
+      "code": "class Configuracao {\n  static readonly versao: string = \"1.0\";\n  static descricao: string;\n\n  // static initialization block (ES2022): corre uma única vez, quando a\n  // classe é avaliada, antes de qualquer instância existir\n  static {\n    Configuracao.descricao = `Configuracao v${Configuracao.versao}`;\n  }\n}\n\nconsole.log(Configuracao.descricao); // Configuracao v1.0\n\nclass Falha {\n  static readonly limite: number;\n\n  static {\n    // @ts-expect-error - um campo static readonly só pode ser atribuído\n    // na própria declaração, nunca dentro do static block (TS2540)\n    Falha.limite = 100;\n  }\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Comportamento medido, não assumido: o static block não é o equivalente estático do construtor para campos readonly. Um static readonly só aceita valor onde é declarado.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧱",
+          "text": "static { } corre uma vez, antes de qualquer instância"
+        },
+        {
+          "icon": "⚠️",
+          "text": "static readonly só recebe valor na declaração, nunca no bloco"
+        }
+      ]
+    },
+    {
+      "heading": "this polimórfico: o tipo this em cadeias de chamadas",
+      "body": [
+        "Um método que devolve this (o tipo, não o valor) promete devolver o mesmo tipo da instância que o chamou — não o tipo da classe onde o método está escrito. É o que permite encadear chamadas (method chaining) de forma fluente: obj.metodoA().metodoB().metodoC().",
+        "Numa subclasse que herda um método assim, o tipo this acompanha o tipo real: chamar um método herdado a partir de uma instância da subclasse continua a devolver o tipo da subclasse, não o da classe base. É covariância do tipo de retorno: quanto mais específico o tipo de quem chama, mais específico o tipo devolvido.",
+        "Isto só funciona porque this é um tipo especial, avaliado a cada chamada; escrever o nome da classe explicitamente no retorno (por exemplo, ConstrutorConsulta em vez de this) perderia essa propriedade — a cadeia continuaria a compilar, mas o resultado ficaria fixo nesse tipo, e um método só existente na subclasse deixaria de ser reconhecido depois de uma chamada nesse retorno fixo."
+      ],
+      "code": "class ConstrutorConsulta {\n  protected partes: string[] = [];\n\n  selecionar(campo: string): this {\n    this.partes.push(`SELECT ${campo}`);\n    return this;\n  }\n\n  de(tabela: string): this {\n    this.partes.push(`FROM ${tabela}`);\n    return this;\n  }\n\n  construir(): string {\n    return this.partes.join(\" \");\n  }\n}\n\nclass ConstrutorConsultaComFiltro extends ConstrutorConsulta {\n  onde(condicao: string): this {\n    this.partes.push(`WHERE ${condicao}`);\n    return this;\n  }\n}\n\nconst q = new ConstrutorConsultaComFiltro()\n  .selecionar(\"*\")\n  .de(\"utilizadores\")\n  .onde(\"idade > 18\");\n\nconsole.log(q.construir()); // SELECT * FROM utilizadores WHERE idade > 18\n\n// o tipo anotado confirma que o resultado é a subclasse, não a base:\n// onde() só existe em ConstrutorConsultaComFiltro\nconst verificacaoDeTipo: ConstrutorConsultaComFiltro = new ConstrutorConsultaComFiltro()\n  .selecionar(\"nome\")\n  .onde(\"ativo = true\");\nconsole.log(verificacaoDeTipo.construir()); // SELECT nome WHERE ativo = true",
+      "callout_kind": "DICA",
+      "callout_text": "Sempre que um método só devolve a própria instância para permitir encadeamento, this é o tipo de retorno certo — nunca o nome da própria classe.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔗",
+          "text": "this como tipo de retorno permite encadeamento fluente"
+        },
+        {
+          "icon": "🧬",
+          "text": "Numa subclasse, this acompanha o tipo real, não a base"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "De campo manual a parameter property",
+      "difficulty": "Iniciante",
+      "statement": "Existe uma classe Retangulo com os campos largura e altura, ambos number, declarados e atribuídos manualmente no construtor. Reescreva a classe para que largura e altura sejam parameter properties, ambas readonly, e acrescente um método area() que devolve largura vezes altura.",
+      "hint": "O modificador entra diretamente na assinatura do construtor, antes do nome do parâmetro; o corpo do construtor deixa de precisar de atribuições.",
+      "solution_code": "class Retangulo {\n  constructor(\n    readonly largura: number,\n    readonly altura: number\n  ) {}\n\n  area(): number {\n    return this.largura * this.altura;\n  }\n}\n\nconst r = new Retangulo(4, 5);\nconsole.log(r.area()); // 20\n\n// @ts-expect-error - largura é readonly\nr.largura = 10;",
+      "solution_explanation": "readonly em cada parâmetro declara e inicializa o campo, impedindo reatribuição depois da construção. O método area() usa this.largura e this.altura normalmente, como faria com campos declarados à parte."
+    },
+    {
+      "title": "Acessor com conversão",
+      "difficulty": "Intermedio",
+      "statement": "Crie uma classe Dinheiro com um campo privado que guarda o valor em cêntimos. O setter valor deve aceitar string | number (interpretando a string como euros, por exemplo \"19.99\") e guardar o valor convertido em cêntimos. O getter valor deve devolver sempre um number com o valor em euros.",
+      "hint": "O getter e o setter da mesma propriedade podem ter tipos diferentes desde o TypeScript 4.3; o tipo do setter pode ser o mais permissivo, o do getter o mais previsível para quem lê o valor.",
+      "solution_code": "class Dinheiro {\n  #centimos: number = 0;\n\n  set valor(novo: string | number) {\n    const euros = typeof novo === \"string\" ? Number.parseFloat(novo) : novo;\n    this.#centimos = Math.round(euros * 100);\n  }\n\n  get valor(): number {\n    return this.#centimos / 100;\n  }\n}\n\nconst preco = new Dinheiro();\npreco.valor = \"19.99\";\nconsole.log(preco.valor); // 19.99\n\npreco.valor = 5;\nconsole.log(preco.valor); // 5",
+      "solution_explanation": "O setter aceita string | number e normaliza para cêntimos com Math.round, evitando erros de vírgula flutuante; o getter devolve sempre number, dividindo por 100."
+    },
+    {
+      "title": "Fábrica estática com construtor privado",
+      "difficulty": "Avancado",
+      "statement": "Crie uma classe Registo cujo construtor seja private, um campo estático totalInstancias inicializado a 0, e um método estático criar(nome: string) que incrementa totalInstancias e devolve uma nova instância. Acrescente um campo estático readonly versao inicializado na própria declaração, e um static block que preencha um campo estático descricao a partir de versao.",
+      "hint": "Um construtor private impede new Registo(...) fora da própria classe, mas um método estático, por estar definido dentro da classe, continua a poder chamá-lo.",
+      "solution_code": "class Registo {\n  static readonly versao: string = \"1.0\";\n  static totalInstancias: number = 0;\n  static descricao: string;\n\n  static {\n    Registo.descricao = `Registo v${Registo.versao}`;\n  }\n\n  private constructor(readonly nome: string) {}\n\n  static criar(nome: string): Registo {\n    Registo.totalInstancias += 1;\n    return new Registo(nome);\n  }\n}\n\nconst r1 = Registo.criar(\"primeiro\");\nconst r2 = Registo.criar(\"segundo\");\nconsole.log(r1.nome, r2.nome, Registo.totalInstancias, Registo.descricao);\n// primeiro segundo 2 Registo v1.0\n\n// @ts-expect-error - o construtor é private, só a fábrica estática pode criar instâncias\nnew Registo(\"direto\");",
+      "solution_explanation": "O construtor private força a passar pela fábrica estática criar, o único sítio fora da classe com acesso a new Registo(...). O static block corre uma vez, quando a classe é avaliada, e só pode escrever em campos estáticos que não sejam readonly."
+    },
+    {
+      "title": "Encadeamento fiel ao tipo real",
+      "difficulty": "Avancado",
+      "statement": "Crie uma classe Notificador com um método comAssunto(assunto: string) que devolve this, e uma subclasse NotificadorEmail que acrescenta um método comAnexo(nome: string), também a devolver this. A partir de new NotificadorEmail(), encadeie comAssunto, depois comAnexo, depois comAssunto outra vez, e atribua o resultado a uma variável tipada explicitamente como NotificadorEmail, confirmando que o compilador aceita.",
+      "hint": "O tipo this não é o nome da classe onde o método está escrito: é o tipo da instância que efetivamente chamou o método, por isso sobrevive a cadeias que atravessam subclasses.",
+      "solution_code": "class Notificador {\n  protected linhas: string[] = [];\n\n  comAssunto(assunto: string): this {\n    this.linhas.push(`Assunto: ${assunto}`);\n    return this;\n  }\n\n  construir(): string {\n    return this.linhas.join(\" | \");\n  }\n}\n\nclass NotificadorEmail extends Notificador {\n  comAnexo(nome: string): this {\n    this.linhas.push(`Anexo: ${nome}`);\n    return this;\n  }\n}\n\nconst mensagem: NotificadorEmail = new NotificadorEmail()\n  .comAssunto(\"Fatura\")\n  .comAnexo(\"fatura.pdf\")\n  .comAssunto(\"Fatura atualizada\");\n\nconsole.log(mensagem.construir());\n// Assunto: Fatura | Anexo: fatura.pdf | Assunto: Fatura atualizada",
+      "solution_explanation": "Como comAssunto devolve this e não Notificador, encadear a partir de um NotificadorEmail mantém o tipo NotificadorEmail ao longo de toda a cadeia, mesmo quando o método intermédio (comAssunto) foi herdado da classe base."
+    }
+  ],
+  "summary": [
+    "Uma parameter property (public/private/protected/readonly no parâmetro do construtor) declara e atribui o campo numa só linha, sem corpo de construtor",
+    "Os modificadores combinam-se (por exemplo, private readonly) e têm exatamente o mesmo efeito que teriam num campo declarado à parte",
+    "Desde o TypeScript 4.3, o getter e o setter da mesma propriedade podem ter tipos diferentes, tipicamente um setter mais permissivo e um getter mais estreito",
+    "Campos e métodos static são tipados como qualquer outro membro; um campo static readonly só pode ser atribuído na própria declaração, nunca dentro de um static block",
+    "O static initialization block (ES2022) corre uma vez, quando a classe é avaliada, e serve para inicializar estado estático que depende de outros membros estáticos",
+    "O tipo de retorno this acompanha o tipo real da instância, por isso um método herdado que devolve this mantém o tipo da subclasse ao longo de uma cadeia de chamadas"
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 04",
+  "next_label": "Aula 04 → Decorators"
+}

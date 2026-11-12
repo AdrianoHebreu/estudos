@@ -1,0 +1,265 @@
+{
+  "module_num": "12",
+  "module_title": "Padrões de Projeto e Boas Práticas",
+  "module_dir": "12-Padroes-de-Projeto-e-Boas-Praticas",
+  "lesson_num": "02",
+  "lesson_slug": "Clean-Code-e-Convencoes",
+  "kind": "aula",
+  "title": "Clean Code e Convenções",
+  "filename_base": "02-Clean-Code-e-Convencoes",
+  "subtitle": "Escrever JavaScript que se lê, se entende e se mantém sem esforço extra",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Escolher nomes de variáveis, funções e classes que revelam intenção sem precisar de comentários adicionais",
+    "Escrever funções pequenas, cada uma com uma única responsabilidade, e reconhecer quando dividir uma função grande",
+    "Evitar variáveis globais e números mágicos, substituindo-os por estado encapsulado e constantes nomeadas",
+    "Aplicar imutabilidade de forma pragmática em arrays e objetos, sem a transformar num dogma absoluto",
+    "Escrever comentários que expliquem o porquê de uma decisão, não o que o código já diz",
+    "Identificar e corrigir cheiros de código (code smells) comuns em JavaScript"
+  ],
+  "sections": [
+    {
+      "heading": "Nomes que Revelam Intenção",
+      "body": [
+        "O nome de uma variável, função ou classe é, na prática, a documentação mais lida de todo o código. Um nome bem escolhido responde de imediato a três perguntas, o que é que isto guarda ou faz, porque existe e como se deve usar. Nomes como d, tmp, obj ou data obrigam quem lê a saltar para a implementação só para perceber o que ali está guardado, um custo que se paga sempre que alguém volta a esse trecho de código, incluindo o próprio autor meses depois.",
+        "Em JavaScript há convenções que ajudam a comunicar intenção sem depender de comentários. Booleanos ganham clareza com prefixos como is, has, can ou should, por exemplo isValido ou temPermissao. Funções que produzem um efeito usam verbos no infinitivo, como calcularTotal ou enviarEmail, e coleções usam nomes no plural, como utilizadores ou itensDoCarrinho, para se distinguirem claramente de um único elemento. Abreviaturas obscuras, como calc, usr ou cfg, e palavras vazias, como data, info ou temp, não dizem nada sobre o conteúdo e devem ser evitadas.",
+        "O tamanho do nome deve ser proporcional ao âmbito em que a variável vive, um índice usado só nas duas linhas de um ciclo pode continuar a chamar-se i, mas uma variável partilhada por um módulo inteiro merece um nome descritivo. O critério final é sempre o mesmo, o nome deve eliminar a necessidade de o leitor manter contexto extra na cabeça."
+      ],
+      "code": "// Nomes que escondem intenção\nfunction calc(a, b, t) {\n  return a * b * (1 + t);\n}\n\nconst arr = [\n  { q: 5, preco: 10 },\n  { q: 0, preco: 20 },\n];\nconst r = arr.filter((x) => x.q > 0);\n\n// Nomes que revelam intenção\nfunction calcularPrecoComImposto(precoBase, quantidade, taxaImposto) {\n  return precoBase * quantidade * (1 + taxaImposto);\n}\n\nconst produtos = [\n  { quantidadeEmStock: 5, preco: 10 },\n  { quantidadeEmStock: 0, preco: 20 },\n];\nconst produtosDisponiveis = produtos.filter(\n  (produto) => produto.quantidadeEmStock > 0\n);",
+      "callout_kind": "DICA",
+      "callout_text": "Se precisar de escrever um comentário só para explicar o que uma variável guarda, é provável que o nome ainda não esteja bom.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏷️",
+          "text": "Nomes específicos eliminam a necessidade de comentários"
+        },
+        {
+          "icon": "✅",
+          "text": "Booleanos com is/has/can tornam a intenção óbvia"
+        },
+        {
+          "icon": "🚫",
+          "text": "Evite abreviaturas obscuras e palavras vazias (data, tmp)"
+        }
+      ]
+    },
+    {
+      "heading": "Funções Pequenas com uma Única Responsabilidade",
+      "body": [
+        "Uma função bem desenhada faz uma coisa e tem um nome que descreve exatamente essa coisa. Quando uma função valida dados, calcula um valor, acede à rede e ainda escreve na consola, está a assumir várias responsabilidades que deviam viver em funções separadas. O sinal mais fiável de que uma função precisa de ser dividida não é o número de linhas, é misturar níveis de abstração diferentes na mesma função, por exemplo detalhes de baixo nível de um ciclo lado a lado com uma decisão de negócio de alto nível.",
+        "Dividir uma função grande em funções mais pequenas com nomes descritivos traz três vantagens concretas, cada peça pode ser testada isoladamente, o corpo da função original passa a ler-se quase como uma lista de passos em português, e alterações futuras tendem a afetar só uma das partes. O número de parâmetros também é um indicador útil, uma função que precisa de quatro ou cinco parâmetros para funcionar é normalmente candidata a receber um único objeto de opções ou a ser dividida."
+      ],
+      "code": "// Antes: uma função a validar, calcular e reportar ao mesmo tempo\nfunction processarPedidoAntes(pedido) {\n  if (!pedido.itens || pedido.itens.length === 0) {\n    throw new Error(\"Pedido sem itens\");\n  }\n  let total = 0;\n  for (const item of pedido.itens) {\n    total += item.preco * item.quantidade;\n  }\n  total = total * 1.23;\n  if (total > 100) {\n    total = total - 10;\n  }\n  console.log(`A guardar pedido no valor de ${total}`);\n  return total;\n}\n\n// Depois: cada função tem uma única responsabilidade\nfunction validarPedido(pedido) {\n  if (!pedido.itens || pedido.itens.length === 0) {\n    throw new Error(\"Pedido sem itens\");\n  }\n}\n\nfunction calcularSubtotal(itens) {\n  return itens.reduce((soma, item) => soma + item.preco * item.quantidade, 0);\n}\n\nconst TAXA_IVA = 0.23;\nconst DESCONTO_ACIMA_DE_100 = 10;\n\nfunction aplicarImpostoEDesconto(subtotal) {\n  const comImposto = subtotal * (1 + TAXA_IVA);\n  return comImposto > 100 ? comImposto - DESCONTO_ACIMA_DE_100 : comImposto;\n}\n\nfunction processarPedido(pedido) {\n  validarPedido(pedido);\n  const subtotal = calcularSubtotal(pedido.itens);\n  return aplicarImpostoEDesconto(subtotal);\n}",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔧",
+          "text": "Uma função, uma responsabilidade"
+        },
+        {
+          "icon": "📏",
+          "text": "Misturar níveis de abstração é sinal para dividir"
+        },
+        {
+          "icon": "🧩",
+          "text": "Extraia sub-funções com nomes que descrevem o passo"
+        }
+      ]
+    },
+    {
+      "heading": "Variáveis Globais e Números Mágicos",
+      "body": [
+        "Uma variável global é qualquer estado acessível e modificável a partir de qualquer parte do código, sem que seja preciso passá-lo explicitamente como argumento. O problema não é a conveniência inicial, é que qualquer função pode alterar esse estado em qualquer altura, o que torna o comportamento do programa dependente da ordem de execução e extremamente difícil de testar em isolamento. Em JavaScript isto acontece com frequência de forma acidental, basta esquecer let, const ou var numa atribuição em modo não estrito, ou expor propriedades diretamente em window.",
+        "Números mágicos são valores literais, como 0.23, 86400000 ou 100, espalhados pelo código sem qualquer indicação do que representam. Quem lê tem de adivinhar ou de ir procurar no negócio o significado de cada valor, e se o mesmo número aparecer em três sítios diferentes, uma alteração de regra de negócio obriga a encontrar e mudar todas as ocorrências sem esquecer nenhuma. Substituir esses valores por constantes nomeadas, escritas em maiúsculas por convenção, resolve os dois problemas ao mesmo tempo, dá significado ao valor e centraliza-o num único sítio."
+      ],
+      "code": "// Evitar: estado global e números mágicos\nlet contadorDeAcessos = 0;\n\nfunction registarAcesso() {\n  contadorDeAcessos++;\n  if (contadorDeAcessos > 100) {\n    console.log(\"limite atingido\");\n  }\n}\n\n// Preferir: estado encapsulado numa closure e constante nomeada\nconst LIMITE_DE_ACESSOS_GRATUITOS = 100;\n\nfunction criarContadorDeAcessos() {\n  let total = 0;\n  return function () {\n    total++;\n    if (total > LIMITE_DE_ACESSOS_GRATUITOS) {\n      console.log(\"limite atingido\");\n    }\n    return total;\n  };\n}\n\nconst registarAcessoEncapsulado = criarContadorDeAcessos();\nregistarAcessoEncapsulado();",
+      "callout_kind": "NOTA",
+      "callout_text": "Módulos ES (import e export), estudados no Módulo 08, e closures, estudadas no Módulo 03, são as formas idiomáticas de encapsular estado em JavaScript sem recorrer a variáveis globais.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🌍",
+          "text": "Globais criam estado partilhado difícil de rastrear"
+        },
+        {
+          "icon": "🔢",
+          "text": "Números mágicos escondem o significado de um valor"
+        },
+        {
+          "icon": "📦",
+          "text": "Encapsule estado em closures ou módulos"
+        }
+      ]
+    },
+    {
+      "heading": "Preferir Imutabilidade quando Razoável",
+      "body": [
+        "Uma função que recebe um array ou um objeto e o altera diretamente, por exemplo com push, splice ou atribuição direta a uma propriedade, produz um efeito secundário que quem chama a função pode não esperar. Isto é particularmente traiçoeiro em JavaScript porque arrays e objetos são passados por referência, alterar o parâmetro dentro da função altera também a estrutura original fora dela. Preferir devolver sempre uma nova estrutura, em vez de alterar a que foi recebida, torna o fluxo de dados previsível e mais fácil de seguir.",
+        "Na prática, isto significa usar o spread (...) e métodos como map, filter e reduce, que devolvem sempre uma nova array em vez de alterar a original, e usar Object.freeze quando se quer impedir mesmo em runtime que um objeto seja alterado. Imutabilidade não é, no entanto, um dogma absoluto, em ciclos com um volume elevado de dados, mutar uma estrutura local que nunca sai da função pode ser preferível por razões de desempenho. A regra prática é evitar mutar qualquer coisa que a função tenha recebido de fora ou que partilhe com outras partes do código, e permitir mutação apenas de estruturas totalmente locais e temporárias."
+      ],
+      "code": "// Mutação direta - efeito colateral difícil de seguir\nfunction adicionarItem(carrinho, item) {\n  carrinho.push(item);\n  return carrinho;\n}\n\nconst original = [{ nome: \"Livro\" }];\nconst novo = adicionarItem(original, { nome: \"Caderno\" });\n// 'original' também foi alterado, o que pode surpreender quem chamou a função\n\n// Imutabilidade - devolve sempre uma nova estrutura\nfunction adicionarItemImutavel(carrinho, item) {\n  return [...carrinho, item];\n}\n\nconst carrinhoOriginal = Object.freeze([{ nome: \"Livro\" }]);\nconst carrinhoAtualizado = adicionarItemImutavel(carrinhoOriginal, {\n  nome: \"Caderno\",\n});\n// carrinhoOriginal mantém-se inalterado; carrinhoAtualizado é uma nova array",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Object.freeze só congela o objeto ao nível superficial, uma propriedade que seja, ela própria, um objeto ou uma array continua totalmente mutável a menos que seja congelada recursivamente.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧊",
+          "text": "Prefira devolver novas estruturas em vez de mutar"
+        },
+        {
+          "icon": "🔁",
+          "text": "map, filter e reduce criam novas arrays por defeito"
+        },
+        {
+          "icon": "⚖️",
+          "text": "Imutabilidade é regra geral, não dogma absoluto"
+        }
+      ]
+    },
+    {
+      "heading": "Comentários que Explicam o Porquê",
+      "body": [
+        "Um comentário que descreve o que uma linha de código já diz por si só, como incrementa i em 1 antes de i++, não acrescenta informação nenhuma e tem um custo real, pode ficar desatualizado assim que o código muda, sem que ninguém o corrija. O código deve ser suficientemente claro, com bons nomes e funções pequenas, para explicar o que faz sem ajuda. O papel de um comentário é preencher a lacuna que o código nunca vai conseguir preencher sozinho, o raciocínio, o contexto histórico ou a regra de negócio por trás de uma decisão.",
+        "Bons candidatos a comentário incluem explicar porque é que um ciclo percorre uma array de trás para a frente, documentar uma regra de negócio pouco óbvia, como uma percentagem de desconto que só se aplica em certas condições, ou justificar um contorno para uma limitação de uma biblioteca ou de um motor de JavaScript. Código comentado e deixado morto no ficheiro deve ser removido, o histórico do sistema de controlo de versões já guarda essa informação, se for preciso recuperá-la mais tarde."
+      ],
+      "code": "let contador = 0;\n// incrementa contador em 1 (comentário redundante, não acrescenta nada)\ncontador++;\n\nfunction removerExpirados(lista) {\n  // Percorremos de trás para a frente porque splice() dentro do ciclo\n  // desloca os índices seguintes; começar do fim evita saltar elementos.\n  for (let i = lista.length - 1; i >= 0; i--) {\n    if (lista[i].expirado) {\n      lista.splice(i, 1);\n    }\n  }\n  return lista;\n}\n\n// Desconto de 5% aplicado apenas a clientes fidelizados há mais de 2 anos,\n// conforme definido na campanha de retenção de 2025 (ver ticket JIRA-482).\nfunction calcularDesconto(clienteAntigo) {\n  return clienteAntigo ? 0.05 : 0;\n}",
+      "callout_kind": "DICA",
+      "callout_text": "Antes de escrever um comentário, pergunte-se se um nome melhor ou uma função mais pequena resolveriam o mesmo problema sem precisar de nenhum comentário.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "💬",
+          "text": "Comentário bom explica o porquê, não o quê"
+        },
+        {
+          "icon": "🗑️",
+          "text": "Código comentado deve ir para o histórico do git"
+        }
+      ]
+    },
+    {
+      "heading": "Cheiros de Código (Code Smells) Comuns em JavaScript",
+      "body": [
+        "Um cheiro de código não é um erro que impede o programa de funcionar, é um sinal de que a estrutura do código vai dificultar alterações futuras. Em JavaScript há um conjunto de cheiros particularmente comuns, funções demasiado longas que misturam várias responsabilidades, aninhamento profundo de condicionais que obriga a seguir vários níveis de indentação para perceber uma regra simples, funções que mutam os parâmetros que recebem, uso de == e != em vez de === e !==, que introduz coerções de tipo inesperadas, e parâmetros booleanos que alteram o comportamento de uma função de forma pouco óbvia na chamada.",
+        "A maior parte destes cheiros tem uma correção direta e conhecida, guard clauses, ou seja, devolver cedo quando uma condição não se verifica, reduzem o aninhamento, extrair sub-funções resolve funções demasiado longas, e substituir um parâmetro booleano por duas funções com nomes distintos ou por um objeto de opções nomeadas resolve chamadas ambíguas como criar(nome, true, false, true). Reconhecer estes padrões rapidamente, durante a escrita ou numa revisão de código, evita que se acumulem e tornem o projeto cada vez mais difícil de manter."
+      ],
+      "code": "// Cheiro: aninhamento profundo e comparação com ==\nfunction podeComprar(utilizador) {\n  if (utilizador != null) {\n    if (utilizador.idade >= 18) {\n      if (utilizador.saldo > 0) {\n        return true;\n      } else {\n        return false;\n      }\n    } else {\n      return false;\n    }\n  } else {\n    return false;\n  }\n}\n\n// Corrigido: guard clauses e comparação estrita\nfunction podeComprar(utilizador) {\n  if (utilizador === null || utilizador === undefined) return false;\n  if (utilizador.idade < 18) return false;\n  if (utilizador.saldo <= 0) return false;\n  return true;\n}",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Escolha um ficheiro seu com mais de cinquenta linhas e tente encontrar pelo menos três dos cheiros de código descritos na tabela; depois corrija-os aplicando as técnicas indicadas.",
+      "table_headers": [
+        "Cheiro de código",
+        "Sintoma habitual",
+        "Como corrigir"
+      ],
+      "table_rows": [
+        [
+          "Função longa (\"God Function\")",
+          "Dezenas de linhas com vários níveis de abstração misturados",
+          "Extrair sub-funções, cada uma com uma responsabilidade"
+        ],
+        [
+          "Números mágicos",
+          "Valores como 0.23 ou 86400000 espalhados sem explicação",
+          "Substituir por constantes nomeadas em maiúsculas"
+        ],
+        [
+          "Aninhamento profundo",
+          "Vários if encadeados a 4 ou 5 níveis",
+          "Guard clauses / early return para reduzir o aninhamento"
+        ],
+        [
+          "Mutação de parâmetros",
+          "A função altera o array ou objeto recebido como argumento",
+          "Criar uma cópia (spread, structuredClone) e devolver o resultado"
+        ],
+        [
+          "Comparação com == e !=",
+          "Depende de coerção implícita de tipos",
+          "Usar sempre === e !=="
+        ],
+        [
+          "Excesso de parâmetros booleanos",
+          "função(nome, ativo, admin, temp) esconde o significado na chamada",
+          "Substituir por um objeto de opções nomeadas ou por funções distintas"
+        ],
+        [
+          "Variáveis globais",
+          "Estado partilhado acessível e modificável de qualquer parte do código",
+          "Encapsular em módulos (import/export) ou em closures"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "👃",
+          "text": "Aninhamento profundo? Use guard clauses"
+        },
+        {
+          "icon": "🎭",
+          "text": "Parâmetro booleano a mudar comportamento é smell"
+        },
+        {
+          "icon": "🔍",
+          "text": "=== em vez de == evita coerções surpresa"
+        },
+        {
+          "icon": "♻️",
+          "text": "Duplicação repetida pede uma função partilhada"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Nomes que Revelam Intenção",
+      "difficulty": "Iniciante",
+      "statement": "O código seguinte funciona corretamente, mas usa nomes que não revelam a intenção de cada variável, parâmetro ou função:\n\nfunction f(a, b) {\n  const r = [];\n  for (const x of a) {\n    if (x.p >= b) {\n      r.push(x);\n    }\n  }\n  return r;\n}\n\nEsta função recebe uma lista de produtos (cada um com uma propriedade preco) e um valor mínimo, devolvendo apenas os produtos cujo preço é maior ou igual a esse valor mínimo. Reescreva o código mantendo exatamente o mesmo comportamento, mas substituindo todos os identificadores (nome da função, parâmetros e variáveis internas) por nomes que expliquem, por si próprios, o que representam.",
+      "hint": "Pense no que cada identificador guarda ou faz e escolha um nome que responda a essa pergunta sem precisar de comentários; para coleções, o plural costuma ajudar.",
+      "solution_code": "function filtrarProdutosAcimaDoPreco(produtos, precoMinimo) {\n  const produtosFiltrados = [];\n  for (const produto of produtos) {\n    if (produto.preco >= precoMinimo) {\n      produtosFiltrados.push(produto);\n    }\n  }\n  return produtosFiltrados;\n}",
+      "solution_explanation": "O nome da função descreve exatamente o que ela devolve, os parâmetros produtos e precoMinimo tornam óbvio o que cada argumento representa, e produtosFiltrados usa o plural para indicar uma coleção. Nenhum destes nomes precisa de comentário adicional para ser compreendido."
+    },
+    {
+      "title": "Dividir uma Função com Várias Responsabilidades",
+      "difficulty": "Intermedio",
+      "statement": "A função abaixo recebe um array de encomendas (cada uma com itens, cada item com preco e quantidade) e faz três coisas ao mesmo tempo, valida os dados, calcula o total com imposto e portes, e regista o resultado na consola. Usa também dois números mágicos (1.23 para o imposto e 50 para o limite de envio grátis):\n\nfunction processar(encomendas) {\n  let totalGeral = 0;\n  for (const enc of encomendas) {\n    if (!enc.itens || enc.itens.length === 0) {\n      throw new Error('Encomenda vazia');\n    }\n    let subtotal = 0;\n    for (const it of enc.itens) {\n      subtotal += it.preco * it.quantidade;\n    }\n    subtotal = subtotal * 1.23;\n    if (subtotal < 50) {\n      subtotal += 5;\n    }\n    console.log('Encomenda processada: ' + subtotal);\n    totalGeral += subtotal;\n  }\n  return totalGeral;\n}\n\nRefatore este código em várias funções mais pequenas, cada uma com uma única responsabilidade (validar uma encomenda, calcular o subtotal, aplicar imposto e portes, e orquestrar o processo), e substitua os números mágicos por constantes nomeadas. A função final deve continuar a devolver o total geral de todas as encomendas e a fazer o mesmo console.log por encomenda.",
+      "hint": "Separe a validação, o cálculo do subtotal e a aplicação de imposto/portes em três funções distintas, e dê nomes descritivos às constantes 1.23, 50 e 5.",
+      "solution_code": "const TAXA_IVA = 0.23;\nconst VALOR_MINIMO_PARA_ENVIO_GRATIS = 50;\nconst CUSTO_DE_ENVIO = 5;\n\nfunction validarEncomenda(encomenda) {\n  if (!encomenda.itens || encomenda.itens.length === 0) {\n    throw new Error(\"Encomenda vazia\");\n  }\n}\n\nfunction calcularSubtotal(itens) {\n  return itens.reduce((soma, item) => soma + item.preco * item.quantidade, 0);\n}\n\nfunction aplicarImpostoEPortes(subtotal) {\n  const comImposto = subtotal * (1 + TAXA_IVA);\n  return comImposto < VALOR_MINIMO_PARA_ENVIO_GRATIS\n    ? comImposto + CUSTO_DE_ENVIO\n    : comImposto;\n}\n\nfunction processarEncomendas(encomendas) {\n  let totalGeral = 0;\n  for (const encomenda of encomendas) {\n    validarEncomenda(encomenda);\n    const subtotal = calcularSubtotal(encomenda.itens);\n    const totalComEncargos = aplicarImpostoEPortes(subtotal);\n    console.log(`Encomenda processada: ${totalComEncargos}`);\n    totalGeral += totalComEncargos;\n  }\n  return totalGeral;\n}",
+      "solution_explanation": "Cada função passa a ter uma única responsabilidade, validarEncomenda valida, calcularSubtotal soma preço vezes quantidade com reduce, e aplicarImpostoEPortes trata do imposto e dos portes, tornando cada peça testável isoladamente. As constantes TAXA_IVA, VALOR_MINIMO_PARA_ENVIO_GRATIS e CUSTO_DE_ENVIO substituem os números mágicos 1.23, 50 e 5, deixando claro o significado de cada valor."
+    },
+    {
+      "title": "Corrigir Cheiros de Código: Mutação, Aninhamento e Parâmetro Booleano",
+      "difficulty": "Avancado",
+      "statement": "O código abaixo tem vários cheiros de código, aninhamento profundo de condicionais, mutação do array recebido como argumento, um parâmetro booleano que altera o comportamento da função de forma pouco clara, comparação com == em vez de ===, e um comentário que apenas repete o que o código já diz:\n\n// aplica desconto aos itens, opcionalmente também remove os esgotados\nfunction processarItens(itens, remover) {\n  if (remover) {\n    // percorre o array e remove itens esgotados\n    for (let i = itens.length - 1; i >= 0; i--) {\n      if (itens[i].stock == 0) {\n        itens.splice(i, 1);\n      }\n    }\n  }\n  for (const item of itens) {\n    if (item.categoria === 'promocao') {\n      if (item.stock > 0) {\n        item.preco = item.preco * 0.9;\n      }\n    }\n  }\n  return itens;\n}\n\nRefatore esta função para: (1) nunca mutar o array nem os objetos recebidos como argumento, devolvendo sempre uma nova estrutura, (2) substituir o parâmetro booleano remover por duas funções distintas e bem nomeadas em vez de uma única função com comportamento condicional, (3) reduzir o aninhamento de condicionais usando guard clauses, (4) usar === em vez de ==, e (5) remover o comentário redundante, mantendo comentários apenas se explicarem algo que o código não torna óbvio.",
+      "hint": "Separe 'remover esgotados' e 'aplicar desconto às promoções' em duas funções puras que usam filter e map e devolvem sempre uma nova array, com um guard clause dentro do map para evitar aninhar ifs.",
+      "solution_code": "const DESCONTO_PROMOCAO = 0.9;\n\nfunction removerItensEsgotados(itens) {\n  return itens.filter((item) => item.stock > 0);\n}\n\nfunction aplicarDescontoPromocional(itens) {\n  return itens.map((item) => {\n    if (item.categoria !== \"promocao\" || item.stock <= 0) {\n      return item;\n    }\n    return { ...item, preco: item.preco * DESCONTO_PROMOCAO };\n  });\n}",
+      "solution_explanation": "removerItensEsgotados e aplicarDescontoPromocional substituem o parâmetro booleano remover por duas funções com nomes que descrevem exatamente o que fazem, podendo ser chamadas isoladamente ou em conjunto. filter e map devolvem sempre novas arrays, e o spread ...item cria um novo objeto, pelo que os dados originais nunca são alterados; a condição usa === e um guard clause em vez de ifs aninhados, e o comentário original foi eliminado por não acrescentar informação que o código já não tornasse óbvia."
+    },
+    {
+      "title": "Refactoring Completo de um Módulo de Carrinho de Compras",
+      "difficulty": "Avancado",
+      "statement": "O módulo seguinte implementa um carrinho de compras muito simples, mas acumula vários problemas típicos: uma variável global carrinho que qualquer código pode alterar diretamente, nomes que não revelam intenção, números mágicos sem explicação, e uma função add que faz duas coisas ao mesmo tempo (adicionar o item e calcular o total):\n\nlet carrinho = [];\nconst IMPOSTO = 0.23;\n\nfunction add(p, q) {\n  carrinho.push({ p: p, q: q });\n  let t = 0;\n  for (let i = 0; i < carrinho.length; i++) {\n    t = t + carrinho[i].p * carrinho[i].q;\n  }\n  if (t > 100) {\n    t = t - t * 0.1;\n  }\n  t = t * IMPOSTO + t;\n  return t;\n}\n\nReescreva este módulo aplicando as práticas desta unidade: elimine a variável global encapsulando o estado do carrinho (por exemplo com uma closure que devolve funções para adicionar itens e obter o total), escolha nomes que revelem intenção em todos os identificadores, substitua os números mágicos por constantes nomeadas (limiar de desconto, percentagem de desconto e taxa de imposto), e separe claramente a responsabilidade de adicionar um item da responsabilidade de calcular o total. Só deve existir um comentário se explicar uma regra de negócio, nunca para repetir o que o código já diz.",
+      "hint": "Uma função que cria e devolve um objeto com métodos (um closure factory) resolve o estado global sem precisar de classes; trate o cálculo do total como uma função pura separada que recebe a lista de itens.",
+      "solution_code": "const LIMIAR_DESCONTO = 100;\nconst PERCENTAGEM_DESCONTO = 0.1;\nconst TAXA_IVA = 0.23;\n\nfunction calcularTotalComEncargos(itens) {\n  const subtotal = itens.reduce((soma, item) => soma + item.preco * item.quantidade, 0);\n  // Regra de negócio: compras acima do limiar têm 10% de desconto antes do IVA\n  const subtotalComDesconto =\n    subtotal > LIMIAR_DESCONTO ? subtotal - subtotal * PERCENTAGEM_DESCONTO : subtotal;\n  return subtotalComDesconto * (1 + TAXA_IVA);\n}\n\nfunction criarCarrinho() {\n  let itens = [];\n\n  function adicionarItem(preco, quantidade) {\n    itens = [...itens, { preco, quantidade }];\n    return calcularTotalComEncargos(itens);\n  }\n\n  function obterItens() {\n    return [...itens];\n  }\n\n  return { adicionarItem, obterItens };\n}\n\nconst carrinho = criarCarrinho();\ncarrinho.adicionarItem(30, 2);\ncarrinho.adicionarItem(50, 1);",
+      "solution_explanation": "criarCarrinho encapsula o estado itens numa closure em vez de o expor como variável global, devolvendo apenas adicionarItem e obterItens para controlar como esse estado pode ser alterado, e obterItens devolve sempre uma cópia. calcularTotalComEncargos é uma função separada e pura que recebe os itens e devolve o total, com os números mágicos substituídos por LIMIAR_DESCONTO, PERCENTAGEM_DESCONTO e TAXA_IVA, e o único comentário mantido explica a regra de negócio do desconto, não o código em si."
+    }
+  ],
+  "summary": [
+    "Nomes que revelam intenção poupam tempo de leitura e eliminam a necessidade de muitos comentários explicativos.",
+    "Uma função deve fazer uma coisa só; quando começa a validar, calcular e persistir ao mesmo tempo, está na hora de a dividir.",
+    "Variáveis globais e números mágicos escondem intenção e criam acoplamento invisível entre partes do código; substitua-os por constantes nomeadas e por estado encapsulado em closures ou módulos.",
+    "Preferir imutabilidade (spread, map, filter, reduce, Object.freeze) evita efeitos secundários inesperados, mas não é um dogma, use mutação local quando for claramente mais eficiente e não sair do âmbito da função.",
+    "Um bom comentário explica o porquê de uma decisão que o código não consegue expressar sozinho; um comentário que repete o código é ruído e tende a ficar desatualizado.",
+    "Reconhecer cheiros de código comuns (aninhamento profundo, mutação de argumentos, comparação com ==, parâmetros booleanos, funções longas) é o primeiro passo para os corrigir antes que se espalhem pelo projeto."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 03",
+  "next_label": "Aula 03 → Performance e Otimização",
+  "_stage": "autoria"
+}

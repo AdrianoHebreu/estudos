@@ -1,0 +1,282 @@
+{
+  "module_num": "04",
+  "module_title": "Arrays e Coleções",
+  "module_dir": "04-Arrays-e-Colecoes",
+  "lesson_num": "02",
+  "lesson_slug": "Metodos-de-Iteracao",
+  "kind": "aula",
+  "title": "Métodos de Iteração: map, filter, reduce e mais",
+  "filename_base": "02-Metodos-de-Iteracao",
+  "subtitle": "Domine map, filter, reduce e os métodos que transformam arrays em JavaScript",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Distinguir forEach de map quanto ao propósito (efeito secundário vs. novo array) e ao valor devolvido.",
+    "Filtrar arrays com filter usando predicados claros e combiná-lo com map.",
+    "Dominar reduce para somas, contagens, agrupamentos e transformações mais complexas.",
+    "Localizar elementos e posições com find, findIndex e findLast.",
+    "Verificar condições sobre todo o array com some e every.",
+    "Achatar arrays aninhados com flat e flatMap, e encadear métodos de forma legível."
+  ],
+  "sections": [
+    {
+      "heading": "forEach vs map: efeito secundário ou novo array",
+      "body": [
+        "forEach percorre o array e executa a função indicada para cada elemento, mas devolve sempre undefined. Serve para produzir efeitos secundários, como imprimir na consola, atualizar uma variável externa ou escrever num ficheiro; o array em que é chamado nunca é alterado pelo próprio forEach, e não existe forma de sair mais cedo do ciclo com break, ao contrário de um for tradicional.",
+        "map, pelo contrário, devolve sempre um novo array com o mesmo número de elementos do original, resultado de aplicar uma função de transformação a cada item. É a ferramenta certa sempre que se pretende gerar dados novos a partir de dados existentes, mantendo o array de origem intacto — um princípio central da programação funcional que evita mutações inesperadas noutras partes do código.",
+        "Um erro frequente é inverter os dois: usar map só para produzir efeitos secundários, descartando o array devolvido, ou usar forEach quando na verdade se precisa do resultado transformado. A escolha entre os dois deve depender de uma pergunta simples: o objetivo é obter um novo array, ou apenas executar algo para cada elemento?"
+      ],
+      "code": "const precos = [10, 25, 40];\n\n// forEach: efeito secundário, sem retorno útil\nprecos.forEach(preco => console.log(`Preço: ${preco}€`));\n\n// map: novo array com os preços com IVA incluído\nconst precosComIva = precos.map(preco => Math.round(preco * 1.23 * 100) / 100);\n\nconsole.log(precosComIva); // [12.3, 30.75, 49.2]\nconsole.log(precos); // [10, 25, 40] — original inalterado",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Se não precisar do array devolvido, use forEach em vez de map — é mais claro e evita criar, na memória, um array que nunca chega a ser usado.",
+      "table_headers": [
+        "Método",
+        "Devolve",
+        "Uso típico"
+      ],
+      "table_rows": [
+        [
+          "forEach",
+          "undefined",
+          "Efeitos secundários (logs, atualizações externas)"
+        ],
+        [
+          "map",
+          "Novo array",
+          "Transformar cada elemento num valor novo"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔁",
+          "text": "forEach: percorre, não devolve nada"
+        },
+        {
+          "icon": "🆕",
+          "text": "map: devolve um novo array transformado"
+        },
+        {
+          "icon": "🔒",
+          "text": "map nunca altera o array original"
+        }
+      ]
+    },
+    {
+      "heading": "filter: selecionar elementos com um predicado",
+      "body": [
+        "filter percorre o array e devolve um novo array apenas com os elementos para os quais a função passada, o predicado, devolve um valor truthy. O array original não é alterado, e o array resultante pode ter qualquer tamanho entre zero e o tamanho original, dependendo de quantos elementos passam no teste.",
+        "Tal como map, o predicado recebe o elemento atual, o seu índice e o array completo, o que permite filtrar com base na posição ou comparando com outros elementos. filter combina-se muito naturalmente com map: filtrar primeiro reduz o volume de dados antes de aplicar uma transformação mais custosa apenas ao que realmente interessa."
+      ],
+      "code": "const produtos = [\n  { nome: 'Teclado', preco: 45, stock: 12 },\n  { nome: 'Rato', preco: 15, stock: 0 },\n  { nome: 'Monitor', preco: 220, stock: 3 },\n];\n\nconst disponiveis = produtos.filter(produto => produto.stock > 0);\nconsole.log(disponiveis.map(p => p.nome)); // ['Teclado', 'Monitor']\n\n// o predicado recebe também o índice\nconst primeirosDoisCaros = produtos.filter((produto, indice) => produto.preco > 40 && indice < 2);\nconsole.log(primeirosDoisCaros.map(p => p.nome)); // ['Teclado']",
+      "callout_kind": "DICA",
+      "callout_text": "Encadear filter antes de map costuma ser mais eficiente do que o inverso: reduz primeiro o número de elementos e só depois gasta trabalho a transformá-los.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔍",
+          "text": "filter devolve só o que passa no teste"
+        },
+        {
+          "icon": "📦",
+          "text": "O array resultante pode ficar vazio"
+        },
+        {
+          "icon": "🧩",
+          "text": "Combina-se muito bem com map"
+        }
+      ]
+    },
+    {
+      "heading": "reduce: acumular um array num único valor",
+      "body": [
+        "reduce é o mais versátil dos métodos de array: percorre os elementos aplicando uma função reducer que recebe um acumulador e o elemento atual, devolvendo o novo valor do acumulador para a iteração seguinte. O segundo argumento de reduce é o valor inicial do acumulador; quando é omitido, o primeiro elemento do array passa a servir de valor inicial e a iteração começa no segundo, o que é arriscado num array vazio, onde reduce sem valor inicial lança um erro.",
+        "O uso mais simples é somar ou contar valores, mas reduce serve para muito mais: construir objetos de agrupamento, contar ocorrências, transformar um array de arrays numa única estrutura, ou mesmo reimplementar map e filter à custa de reduce. Sempre que surgir a tentação de usar push dentro de um forEach para construir um resultado, é normalmente sinal de que o código se reescreve de forma mais direta com reduce.",
+        "No exemplo abaixo, o primeiro reduce soma valores simples; o segundo constrói um objeto de totais agrupados por categoria, usando o operador de coalescência nula para inicializar cada categoria a zero na primeira ocorrência."
+      ],
+      "code": "const vendas = [\n  { categoria: 'Livros', valor: 20 },\n  { categoria: 'Livros', valor: 15 },\n  { categoria: 'Música', valor: 30 },\n];\n\n// soma simples, com valor inicial explícito\nconst totalVendas = vendas.reduce((acumulador, venda) => acumulador + venda.valor, 0);\nconsole.log(totalVendas); // 65\n\n// agrupamento por categoria\nconst totalPorCategoria = vendas.reduce((acumulador, venda) => {\n  acumulador[venda.categoria] = (acumulador[venda.categoria] ?? 0) + venda.valor;\n  return acumulador;\n}, {});\nconsole.log(totalPorCategoria); // { Livros: 35, Música: 30 }",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Omitir o valor inicial em reduce é uma fonte comum de bugs: num array vazio, reduce sem valor inicial lança TypeError. Passe sempre um valor inicial explícito — 0 para somas, [] ou {} para acumular estruturas — mesmo quando parece redundante.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "➕",
+          "text": "reduce acumula um array num só valor"
+        },
+        {
+          "icon": "🏁",
+          "text": "Valor inicial evita erros em array vazio"
+        },
+        {
+          "icon": "🗂️",
+          "text": "Ótimo para agrupar e transformar dados"
+        }
+      ]
+    },
+    {
+      "heading": "find, findIndex e findLast: localizar um elemento",
+      "body": [
+        "find devolve o primeiro elemento do array que satisfaz o predicado, ou undefined se nenhum satisfizer, parando assim que encontra a primeira correspondência. Isto torna-o mais eficiente do que filter seguido de acesso ao índice zero, sempre que só interessa um resultado. findIndex faz o mesmo, mas devolve o índice do elemento encontrado, ou -1 quando não encontra nenhum, o que é útil quando é preciso depois usar splice ou simplesmente saber a posição.",
+        "findLast e findLastIndex, adicionados mais recentemente à linguagem, procuram a partir do fim do array em vez do início, devolvendo respetivamente o último elemento ou o último índice que corresponde ao predicado. Evitam ter de inverter o array manualmente com reverse sempre que se procura a ocorrência mais recente de algo."
+      ],
+      "code": "const utilizadores = [\n  { id: 1, nome: 'Ana', ativo: true },\n  { id: 2, nome: 'Bruno', ativo: false },\n  { id: 3, nome: 'Carla', ativo: true },\n];\n\nconst primeiroAtivo = utilizadores.find(u => u.ativo);\nconsole.log(primeiroAtivo?.nome); // 'Ana'\n\nconst indiceInativo = utilizadores.findIndex(u => !u.ativo);\nconsole.log(indiceInativo); // 1\n\nconst ultimoAtivo = utilizadores.findLast(u => u.ativo);\nconsole.log(ultimoAtivo?.nome); // 'Carla'",
+      "callout_kind": "NOTA",
+      "callout_text": "findLast e findLastIndex fazem parte do ECMAScript 2023 e estão disponíveis em todos os motores modernos (Node.js 18+, browsers atuais). Em ambientes muito antigos pode ser necessário um polyfill.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎯",
+          "text": "find devolve o 1º elemento correspondente"
+        },
+        {
+          "icon": "🔢",
+          "text": "findIndex devolve a posição, ou -1"
+        },
+        {
+          "icon": "⏮️",
+          "text": "findLast procura a partir do fim"
+        }
+      ]
+    },
+    {
+      "heading": "some e every: testar condições no array",
+      "body": [
+        "some devolve true assim que pelo menos um elemento satisfaz o predicado, parando a iteração nesse momento; num array vazio devolve sempre false, porque não há nenhum elemento que possa satisfazer nada. every devolve true apenas se todos os elementos satisfizerem o predicado, parando assim que encontra o primeiro que falha; num array vazio devolve sempre true, por a condição ser vacuamente verdadeira quando não há elementos para a contradizer.",
+        "some e every são preferíveis a alternativas mais verbosas como filter(...).length > 0 ou um forEach com uma variável booleana auxiliar: além de mais legíveis, ambos param assim que o resultado fica decidido, sem percorrer o array inteiro desnecessariamente."
+      ],
+      "code": "const notas = [14, 16, 9, 18];\n\nconst temNegativa = notas.some(nota => nota < 10);\nconsole.log(temNegativa); // true\n\nconst todasPositivas = notas.every(nota => nota >= 0);\nconsole.log(todasPositivas); // true\n\nconst todasAprovadas = notas.every(nota => nota >= 10);\nconsole.log(todasAprovadas); // false",
+      "callout_kind": "DICA",
+      "callout_text": "Prefira some/every a filter(...).length > 0: além de mais claros, param assim que o resultado é certo, em vez de percorrerem sempre o array inteiro.",
+      "table_headers": [
+        "Método",
+        "Array vazio",
+        "Pára ao encontrar"
+      ],
+      "table_rows": [
+        [
+          "some",
+          "false",
+          "Um elemento verdadeiro"
+        ],
+        [
+          "every",
+          "true",
+          "Um elemento falso"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "✅",
+          "text": "some: pelo menos um satisfaz"
+        },
+        {
+          "icon": "💯",
+          "text": "every: todos têm de satisfazer"
+        },
+        {
+          "icon": "⚡",
+          "text": "Ambos param assim que decidem o resultado"
+        }
+      ]
+    },
+    {
+      "heading": "flat e flatMap: achatar arrays aninhados",
+      "body": [
+        "flat cria um novo array com os subarrays achatados até à profundidade indicada como argumento, que por omissão é 1; passar Infinity achata qualquer nível de aninhamento, seja qual for a profundidade real da estrutura. É a forma idiomática de simplificar arrays de arrays, uma estrutura que surge com frequência como resultado de um map cuja função devolve um array por cada elemento.",
+        "flatMap combina map e flat com profundidade 1 numa única passagem: aplica a função de transformação a cada elemento e depois achata um nível o resultado. É mais eficiente do que encadear .map().flat(), e é especialmente útil quando cada elemento de entrada pode gerar zero, um ou vários elementos no array final, incluindo o padrão de devolver um array vazio para descartar um elemento."
+      ],
+      "code": "const turmas = [[1, 2], [3, 4], [5]];\nconsole.log(turmas.flat()); // [1, 2, 3, 4, 5]\n\nconst matriz = [[1, [2, 3]], [4, [5, 6]]];\nconsole.log(matriz.flat(2)); // [1, 2, 3, 4, 5, 6]\n\nconst frases = ['bom dia', 'boa tarde'];\nconst palavras = frases.flatMap(frase => frase.split(' '));\nconsole.log(palavras); // ['bom', 'dia', 'boa', 'tarde']\n\n// flatMap também serve para \"filtrar\" devolvendo array vazio\nconst pares = [1, 2, 3, 4].flatMap(n => (n % 2 === 0 ? [n] : []));\nconsole.log(pares); // [2, 4]",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🥞",
+          "text": "flat achata níveis de arrays aninhados"
+        },
+        {
+          "icon": "🔀",
+          "text": "flatMap = map seguido de flat(1)"
+        },
+        {
+          "icon": "♾️",
+          "text": "flat(Infinity) achata tudo"
+        }
+      ]
+    },
+    {
+      "heading": "Encadeamento de métodos: construir pipelines de dados",
+      "body": [
+        "Como filter, map e a generalidade destes métodos devolvem sempre um novo array, é possível encadeá-los diretamente uns a seguir aos outros, formando um pipeline legível que descreve, passo a passo, a transformação dos dados: filtrar, depois transformar, depois eventualmente reduzir a um único valor. Cada método no encadeamento deve ter uma responsabilidade única, o que torna a intenção do código óbvia só de o ler de cima para baixo.",
+        "Há um custo a ter em conta: cada método do encadeamento percorre o array e cria um array intermédio novo. Para arrays muito grandes ou código executado em ciclos apertados, substituir a cadeia por um único reduce pode ser mais eficiente; para o código de aplicação normal, a clareza do encadeamento costuma compensar largamente esse custo extra."
+      ],
+      "code": "const encomendas = [\n  { cliente: 'Ana', total: 120, paga: true },\n  { cliente: 'Bruno', total: 45, paga: false },\n  { cliente: 'Carla', total: 300, paga: true },\n  { cliente: 'Duarte', total: 80, paga: true },\n];\n\nconst totalRecebidoFormatado = encomendas\n  .filter(encomenda => encomenda.paga)\n  .map(encomenda => encomenda.total)\n  .reduce((soma, total) => soma + total, 0)\n  .toLocaleString('pt-PT', { style: 'currency', currency: 'EUR' });\n\nconsole.log(totalRecebidoFormatado); // \"500,00 €\"",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Pegue num array de objetos que já tenha usado nesta aula e escreva um pipeline com pelo menos três métodos encadeados (por exemplo, filter, map e reduce) para chegar a um único valor final.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔗",
+          "text": "Métodos encadeiam-se: filter → map → reduce"
+        },
+        {
+          "icon": "📖",
+          "text": "Cada passo tem uma só responsabilidade"
+        },
+        {
+          "icon": "⚖️",
+          "text": "Legibilidade vs. arrays intermédios"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Preços com desconto",
+      "difficulty": "Iniciante",
+      "statement": "Tem o seguinte array de preços, em euros, de produtos de uma loja: const precos = [50, 120, 15, 200, 8]; Escreva uma função aplicarDesconto(precos) que devolva um novo array com cada preço reduzido em 10%, arredondado a duas casas decimais, sem alterar o array original.",
+      "hint": "Use map para criar um novo array; para arredondar a duas casas decimais, multiplique por 100, arredonde com Math.round e depois divida por 100.",
+      "solution_code": "function aplicarDesconto(precos) {\n  return precos.map(preco => Math.round(preco * 0.9 * 100) / 100);\n}\n\nconst precos = [50, 120, 15, 200, 8];\nconsole.log(aplicarDesconto(precos)); // [45, 108, 13.5, 180, 7.2]\nconsole.log(precos); // [50, 120, 15, 200, 8] — inalterado",
+      "solution_explanation": "map cria sempre um novo array com o mesmo número de elementos, aplicando a fórmula do desconto a cada preço. O array original precos nunca é modificado, porque map não muta o array em que é chamado, apenas devolve um array novo."
+    },
+    {
+      "title": "Validação de inscrições num curso",
+      "difficulty": "Intermedio",
+      "statement": "Tem o seguinte array de participantes de um curso: const participantes = [ { nome: 'Ana', idade: 17, pagou: true }, { nome: 'Bruno', idade: 22, pagou: true }, { nome: 'Carla', idade: 19, pagou: false } ]; Escreva uma função relatorioInscricoes(participantes) que devolva um objeto com três propriedades: menoresDeIdade (array com os nomes dos participantes com menos de 18 anos), todosPagaram (booleano que indica se todos os participantes já pagaram a inscrição) e primeiroPendente (o nome do primeiro participante que ainda não pagou, ou null se não houver nenhum).",
+      "hint": "Combine filter (para isolar os menores de idade), every (para verificar se todos pagaram) e find (para localizar o primeiro pendente); trate à parte o caso em que find não encontra ninguém.",
+      "solution_code": "function relatorioInscricoes(participantes) {\n  const menoresDeIdade = participantes\n    .filter(participante => participante.idade < 18)\n    .map(participante => participante.nome);\n\n  const todosPagaram = participantes.every(participante => participante.pagou);\n\n  const pendente = participantes.find(participante => !participante.pagou);\n\n  return {\n    menoresDeIdade,\n    todosPagaram,\n    primeiroPendente: pendente ? pendente.nome : null,\n  };\n}\n\nconst participantes = [\n  { nome: 'Ana', idade: 17, pagou: true },\n  { nome: 'Bruno', idade: 22, pagou: true },\n  { nome: 'Carla', idade: 19, pagou: false },\n];\n\nconsole.log(relatorioInscricoes(participantes));\n// { menoresDeIdade: ['Ana'], todosPagaram: false, primeiroPendente: 'Carla' }",
+      "solution_explanation": "filter seguido de map isola e extrai só os nomes dos participantes menores de idade; every verifica a condição de pagamento para todos de uma só vez; find devolve o objeto do primeiro participante pendente, ou undefined, que é convertido em null quando não existe nenhum."
+    },
+    {
+      "title": "Média das encomendas pagas",
+      "difficulty": "Intermedio",
+      "statement": "Tem o seguinte array de encomendas: const encomendas = [ { cliente: 'Ana', total: 120, paga: true }, { cliente: 'Bruno', total: 45, paga: false }, { cliente: 'Carla', total: 300, paga: true }, { cliente: 'Duarte', total: 80, paga: true } ]; Escreva uma função mediaEncomendasPagas(encomendas) que, usando um encadeamento de métodos (filter, map e reduce), calcule e devolva a média do total das encomendas já pagas, arredondada a duas casas decimais. Se não houver nenhuma encomenda paga, a função deve devolver 0.",
+      "hint": "Encadeie filter para manter só as encomendas pagas, map para extrair os totais e reduce para os somar; divida a soma pelo número de encomendas pagas, tratando à parte o caso de zero encomendas para evitar uma divisão por zero.",
+      "solution_code": "function mediaEncomendasPagas(encomendas) {\n  const totaisPagos = encomendas\n    .filter(encomenda => encomenda.paga)\n    .map(encomenda => encomenda.total);\n\n  if (totaisPagos.length === 0) return 0;\n\n  const soma = totaisPagos.reduce((acumulador, total) => acumulador + total, 0);\n  return Math.round((soma / totaisPagos.length) * 100) / 100;\n}\n\nconst encomendas = [\n  { cliente: 'Ana', total: 120, paga: true },\n  { cliente: 'Bruno', total: 45, paga: false },\n  { cliente: 'Carla', total: 300, paga: true },\n  { cliente: 'Duarte', total: 80, paga: true },\n];\n\nconsole.log(mediaEncomendasPagas(encomendas)); // 166.67",
+      "solution_explanation": "O encadeamento filter.map isola primeiro os totais das encomendas pagas; reduce soma-os num único valor, e essa soma é dividida pelo número de encomendas pagas (verificado antes para evitar 0/0) para obter a média, arredondada a duas casas decimais."
+    },
+    {
+      "title": "Totais de vendas por vendedor",
+      "difficulty": "Avancado",
+      "statement": "Tem o seguinte array de vendas, em que cada venda pode incluir vários itens: const vendas = [ { vendedor: 'Ana', itens: [{ produto: 'Livro', quantidade: 2, precoUnitario: 10 }, { produto: 'Caneta', quantidade: 5, precoUnitario: 1 }] }, { vendedor: 'Bruno', itens: [{ produto: 'Livro', quantidade: 1, precoUnitario: 10 }] }, { vendedor: 'Ana', itens: [{ produto: 'Caderno', quantidade: 3, precoUnitario: 4 }] } ]; Escreva uma função totalPorVendedor(vendas) que devolva um objeto em que cada chave é o nome de um vendedor e o valor é o total (quantidade vezes precoUnitario, somado a todos os itens de todas as vendas desse vendedor). Use flatMap para obter uma lista plana de itens já associados ao respetivo vendedor, e reduce para agregar os totais.",
+      "hint": "Primeiro use flatMap para transformar cada venda num array de itens que inclua também o nome do vendedor de cada um; depois use reduce sobre essa lista plana para somar quantidade vezes precoUnitario por vendedor.",
+      "solution_code": "function totalPorVendedor(vendas) {\n  const itensComVendedor = vendas.flatMap(venda =>\n    venda.itens.map(item => ({ vendedor: venda.vendedor, ...item }))\n  );\n\n  return itensComVendedor.reduce((totais, item) => {\n    const valorItem = item.quantidade * item.precoUnitario;\n    totais[item.vendedor] = (totais[item.vendedor] ?? 0) + valorItem;\n    return totais;\n  }, {});\n}\n\nconst vendas = [\n  {\n    vendedor: 'Ana',\n    itens: [\n      { produto: 'Livro', quantidade: 2, precoUnitario: 10 },\n      { produto: 'Caneta', quantidade: 5, precoUnitario: 1 },\n    ],\n  },\n  { vendedor: 'Bruno', itens: [{ produto: 'Livro', quantidade: 1, precoUnitario: 10 }] },\n  { vendedor: 'Ana', itens: [{ produto: 'Caderno', quantidade: 3, precoUnitario: 4 }] },\n];\n\nconsole.log(totalPorVendedor(vendas));\n// { Ana: 37, Bruno: 10 }",
+      "solution_explanation": "flatMap transforma o array de vendas, cada uma com vários itens, numa lista plana de itens já anotados com o respetivo vendedor, evitando ciclos aninhados manuais; reduce percorre essa lista uma vez e acumula, num objeto, o total gasto por vendedor, usando o operador de coalescência nula para inicializar cada vendedor a zero na primeira ocorrência."
+    }
+  ],
+  "summary": [
+    "forEach executa uma função por elemento e devolve undefined; map devolve sempre um novo array transformado, sem alterar o original.",
+    "filter devolve um novo array só com os elementos que satisfazem o predicado, e combina-se naturalmente com map.",
+    "reduce acumula um array num único valor; use sempre um valor inicial explícito para evitar erros em arrays vazios, e use-o também para agrupar e transformar dados.",
+    "find e findIndex localizam o primeiro elemento (ou índice) que satisfaz um predicado; findLast e findLastIndex fazem a mesma procura a partir do fim.",
+    "some verifica se pelo menos um elemento satisfaz uma condição, every verifica se todos satisfazem, e ambos param assim que o resultado fica decidido.",
+    "flat achata arrays aninhados até uma profundidade indicada, flatMap combina map com flat(1) numa só passagem, e encadear estes métodos cria pipelines de dados legíveis, ao custo de arrays intermédios."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 03",
+  "next_label": "Aula 03 → Destructuring, Spread e Rest",
+  "_stage": "revisao"
+}

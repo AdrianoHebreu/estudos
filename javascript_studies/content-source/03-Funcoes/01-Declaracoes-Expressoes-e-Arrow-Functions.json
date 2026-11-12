@@ -1,0 +1,264 @@
+{
+  "module_num": "03",
+  "module_title": "Funções",
+  "module_dir": "03-Funcoes",
+  "lesson_num": "01",
+  "lesson_slug": "Declaracoes-Expressoes-e-Arrow-Functions",
+  "kind": "aula",
+  "title": "Declarações, Expressões e Arrow Functions",
+  "filename_base": "01-Declaracoes-Expressoes-e-Arrow-Functions",
+  "subtitle": "As três formas de escrever uma função em JavaScript — e quando usar cada uma.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Distinguir function declarations, function expressions e arrow functions e saber quais são hoisted.",
+    "Escrever arrow functions nas suas várias formas: parâmetro único, corpo de expressão, corpo de bloco e retorno de objeto literal.",
+    "Compreender a diferença essencial entre o this dinâmico das funções normais e o this léxico das arrow functions.",
+    "Reconhecer outras diferenças práticas, como a ausência de arguments próprio e a impossibilidade de usar arrow functions com new.",
+    "Escolher o estilo de função mais adequado consoante o contexto de utilização."
+  ],
+  "sections": [
+    {
+      "heading": "Function Declaration e Hoisting",
+      "body": [
+        "Uma function declaration começa pela palavra-chave function, seguida obrigatoriamente de um nome, e é a única das três formas que beneficia de hoisting completo: durante a fase de criação do scope, antes de qualquer linha ser executada, o motor de JavaScript já regista o nome e todo o corpo da função. Por isso é possível chamar uma função deste tipo em linhas de código anteriores à sua definição textual, algo que não acontece com expressões de função nem com arrow functions.",
+        "Este comportamento é diferente do hoisting de variáveis declaradas com var, let ou const, que apenas reservam o nome no scope sem lhe atribuir valor definitivo logo de início (esse assunto já foi tratado no módulo 01). Numa function declaration não há esse problema: o valor associado ao nome é, desde o início, a função completa e funcional. Esta característica torna as function declarations especialmente úteis para funções utilitárias de topo, chamadas em qualquer ponto do ficheiro, e para funções recursivas, porque o nome fica sempre disponível dentro do próprio corpo."
+      ],
+      "code": "console.log(saudacao(\"Ana\")); // funciona mesmo antes da definição, graças ao hoisting\n\nfunction saudacao(nome) {\n  return `Olá, ${nome}!`;\n}\n\n// a função tem nome próprio, útil em recursão e em stack traces\nfunction fatorial(n) {\n  if (n <= 1) return 1;\n  return n * fatorial(n - 1);\n}\n\nconsole.log(fatorial(5)); // 120",
+      "callout_kind": "NOTA",
+      "callout_text": "O hoisting de function declarations é diferente do hoisting de var, let ou const: aqui é a função completa (nome e corpo) que fica disponível desde o início do scope, não apenas o nome.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🚀",
+          "text": "Function declaration é hoisted por completo"
+        },
+        {
+          "icon": "📛",
+          "text": "Tem nome próprio, útil em recursão"
+        },
+        {
+          "icon": "🧵",
+          "text": "Disponível mesmo antes de aparecer no código"
+        }
+      ]
+    },
+    {
+      "heading": "Function Expression",
+      "body": [
+        "Uma function expression cria uma função e atribui-a de imediato a uma variável, constante, propriedade ou qualquer outro local onde caiba um valor. A função pode ser anónima, ou pode ter um nome que só é visível dentro do seu próprio corpo, o que é útil para chamadas recursivas sem depender de um nome externo que poderia vir a ser reatribuído.",
+        "Ao contrário da function declaration, aquilo que é hoisted aqui é apenas o binding da variável, segundo as regras de var, let ou const, nunca o corpo da função. Isso significa que a função só fica disponível a partir do momento em que essa linha de atribuição é executada; chamá-la antes disso resulta em erro, seja um TypeError, com var, onde o binding existe mas ainda vale undefined, seja um ReferenceError por a variável estar em temporal dead zone, com let ou const."
+      ],
+      "code": "const somar = function (a, b) {\n  return a + b;\n};\n\nconsole.log(somar(2, 3)); // 5\n\n// função nomeada dentro de uma expressão: o nome só existe dentro do próprio corpo\nconst fibonacci = function fib(n) {\n  return n <= 1 ? n : fib(n - 1) + fib(n - 2);\n};\n\nconsole.log(fibonacci(10)); // 55\n// console.log(fib(10)); // ReferenceError: fib is not defined",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "Function expression só existe após a atribuição"
+        },
+        {
+          "icon": "⏳",
+          "text": "Não é hoisted como as declarations"
+        },
+        {
+          "icon": "🔒",
+          "text": "Nome interno só é visível dentro dela própria"
+        }
+      ]
+    },
+    {
+      "heading": "Arrow Functions: sintaxe e variações",
+      "body": [
+        "As arrow functions, introduzidas no ES2015, usam uma sintaxe mais compacta baseada no operador =>. Quando a função recebe exatamente um parâmetro, os parênteses à volta desse parâmetro são opcionais; com zero parâmetros, ou com dois ou mais, os parênteses são obrigatórios. O corpo pode assumir duas formas distintas.",
+        "Num corpo de expressão escreve-se apenas a expressão a devolver, sem chavetas nem a palavra-chave return: o valor dessa expressão é devolvido automaticamente. Num corpo de bloco, delimitado por chavetas, a arrow function comporta-se como qualquer outra função e precisa de um return explícito para devolver um valor, o que é indispensável sempre que é preciso executar mais do que uma instrução, declarar variáveis intermédias ou aplicar condições antes do resultado final.",
+        "Um caso particular a ter em atenção é devolver um objeto literal a partir de um corpo de expressão: como as chavetas de um objeto literal seriam confundidas com o início de um corpo de bloco, é necessário envolver o objeto em parênteses."
+      ],
+      "code": "// parâmetro único: parênteses são opcionais\nconst dobro = x => x * 2;\nconst dobroExplicito = (x) => x * 2;\n\n// zero ou vários parâmetros: parênteses obrigatórios\nconst saudar = () => \"Olá!\";\nconst somar = (a, b) => a + b;\n\n// corpo de expressão: retorno implícito, sem chavetas\nconst quadrado = n => n ** 2;\n\n// corpo de bloco: chavetas + return explícito\nconst calcularComImposto = valor => {\n  const taxa = 0.23;\n  return valor * (1 + taxa);\n};\n\n// devolver um objeto literal a partir de um corpo de expressão exige parênteses,\n// para o motor não interpretar as chavetas como início de um bloco\nconst criarPonto = (x, y) => ({ x, y });\n\nconsole.log(criarPonto(1, 2)); // { x: 1, y: 2 }",
+      "callout_kind": "DICA",
+      "callout_text": "Sempre que uma arrow function de corpo de expressão precisar de devolver um objeto literal, envolve-o em parênteses: () => ({ chave: valor }). Sem os parênteses, o motor interpreta as chavetas como início de um bloco de código.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "✏️",
+          "text": "1 parâmetro: parênteses opcionais"
+        },
+        {
+          "icon": "➡️",
+          "text": "Corpo de expressão: retorno implícito"
+        },
+        {
+          "icon": "🧱",
+          "text": "Corpo de bloco: chavetas + return explícito"
+        },
+        {
+          "icon": "🌀",
+          "text": "Objeto devolvido precisa de parênteses"
+        }
+      ]
+    },
+    {
+      "heading": "This: Funções Normais vs Arrow Functions",
+      "body": [
+        "Funções normais, sejam declarations ou expressions, têm o seu próprio this, cujo valor não é fixado no momento em que a função é escrita, mas sim determinado dinamicamente pela forma como a função é chamada: como método de um objeto, isoladamente, através de call, apply ou bind, ou como construtor com new. Este comportamento é explorado em detalhe na aula 04 deste módulo.",
+        "As arrow functions rompem com essa regra: não têm this próprio. Em vez disso, comportam-se como qualquer outra variável dentro de uma closure e vão buscar o this ao scope onde foram definidas textualmente, mantendo esse valor independentemente de como a arrow function é depois invocada. Na prática, isto torna as arrow functions muito convenientes para callbacks definidos dentro de métodos, porque preservam automaticamente o this do método envolvente, sem ser necessário recorrer a variáveis auxiliares como const self = this ou a bind."
+      ],
+      "code": "const contador = {\n  valor: 0,\n  metodoNormal() {\n    // \"this\" aqui é o objeto contador, porque foi chamado como contador.metodoNormal()\n    setTimeout(function () {\n      // função normal: \"this\" aqui NÃO é o contador\n      console.log(this?.valor); // undefined\n    }, 0);\n  },\n  metodoComArrow() {\n    setTimeout(() => {\n      // arrow function: \"this\" é herdado do contexto onde foi definida, metodoComArrow\n      console.log(this.valor); // 0\n    }, 0);\n  },\n};\n\ncontador.metodoNormal();\ncontador.metodoComArrow();",
+      "callout_kind": "NOTA",
+      "callout_text": "Esta secção fica-se pela diferença essencial entre this dinâmico e this léxico; o comportamento completo do this em todos os contextos de chamada é aprofundado na aula 04 deste módulo.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧭",
+          "text": "Função normal: this depende de quem chama"
+        },
+        {
+          "icon": "🪢",
+          "text": "Arrow: this herdado do contexto onde nasce"
+        },
+        {
+          "icon": "⏱️",
+          "text": "Ideal para callbacks dentro de métodos"
+        }
+      ]
+    },
+    {
+      "heading": "Outras Diferenças Importantes",
+      "body": [
+        "Para além do this, há outras diferenças práticas entre os dois tipos de função. Funções normais têm acesso ao objeto arguments, uma coleção com todos os argumentos recebidos na chamada; as arrow functions não têm o seu próprio arguments e, se o usarem dentro do corpo, vão buscar o arguments de uma função normal envolvente, se existir, ou obtêm um erro caso contrário.",
+        "Funções normais, declarations e expressions, podem ser invocadas com new e funcionar como construtoras, porque possuem uma propriedade prototype e ganham um this próprio ligado ao novo objeto criado. As arrow functions não têm prototype e, por não terem this próprio, o motor de JavaScript nem sequer permite invocá-las com new, lançando sempre um TypeError."
+      ],
+      "code": "function normal() {\n  console.log(arguments.length);\n}\nnormal(1, 2, 3); // 3\n\nfunction Pessoa(nome) {\n  this.nome = nome;\n}\nconst p = new Pessoa(\"Rui\"); // funciona: function declaration serve como construtor\nconsole.log(p.nome); // Rui\n\nconst PessoaArrow = (nome) => {\n  this.nome = nome;\n};\n// new PessoaArrow(\"Rui\"); // TypeError: PessoaArrow is not a constructor",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Tentar invocar uma arrow function com new lança sempre TypeError: x is not a constructor. Se uma função precisa de servir de construtor, tem de ser uma function declaration ou uma function expression.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎒",
+          "text": "Arrow não tem arguments próprio"
+        },
+        {
+          "icon": "🚫",
+          "text": "Arrow não pode ser usada com new"
+        },
+        {
+          "icon": "🏗️",
+          "text": "Function declaration serve como construtor"
+        }
+      ]
+    },
+    {
+      "heading": "Quando Escolher Cada Estilo",
+      "body": [
+        "A escolha entre os três estilos deve depender do que a função precisa de fazer, não apenas de preferência estética. Function declarations são a opção natural para funções de topo, nomeadas, que podem ser necessárias em qualquer ponto do ficheiro independentemente da ordem, e para tudo o que exija um this dinâmico ou o papel de construtor.",
+        "Function expressions fazem sentido quando é preciso controlar exatamente o momento a partir do qual a função existe, por exemplo ao atribuí-la condicionalmente ou ao passá-la como argumento logo após a sua criação. Arrow functions são a escolha natural para callbacks curtos e para qualquer situação em que a função deva partilhar o this do código que a rodeia, como acontece tipicamente dentro de métodos de objetos ou de classes; por essa mesma razão, devem ser evitadas como métodos diretos de um objeto quando esse método precisa que this aponte para o próprio objeto, e nunca devem ser usadas como construtoras."
+      ],
+      "code": "const usarMaiusculas = true;\n\n// declaration: função utilitária de topo, disponível em qualquer ponto do ficheiro\nfunction paraMaiusculas(texto) {\n  return texto.toUpperCase();\n}\n\n// expression: atribuída condicionalmente, só existe a partir daqui\nconst formatar = usarMaiusculas\n  ? function (texto) { return paraMaiusculas(texto); }\n  : function (texto) { return texto; };\n\n// arrow: callback conciso que preserva o \"this\" do método envolvente\nconst relatorio = {\n  titulo: \"Vendas\",\n  linhas: [\"produto a\", \"produto b\"],\n  imprimir() {\n    this.linhas.forEach(linha => console.log(`${this.titulo}: ${linha}`));\n  },\n};\n\nrelatorio.imprimir();\nconsole.log(formatar(\"total mensal\"));",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [
+        "Característica",
+        "Function Declaration",
+        "Function Expression",
+        "Arrow Function"
+      ],
+      "table_rows": [
+        [
+          "Hoisting (chamar antes da definição)",
+          "Sim",
+          "Não",
+          "Não"
+        ],
+        [
+          "This próprio",
+          "Sim (dinâmico)",
+          "Sim (dinâmico)",
+          "Não (léxico)"
+        ],
+        [
+          "Tem arguments próprio",
+          "Sim",
+          "Sim",
+          "Não"
+        ],
+        [
+          "Pode ser usada com new",
+          "Sim",
+          "Sim",
+          "Não"
+        ],
+        [
+          "Sintaxe concisa para callbacks",
+          "Não",
+          "Razoável",
+          "Sim"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🏛️",
+          "text": "Declaration: funções de topo, hoisted"
+        },
+        {
+          "icon": "🎯",
+          "text": "Expression: atribuição controlada"
+        },
+        {
+          "icon": "⚡",
+          "text": "Arrow: callbacks concisos e this léxico"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Hoisting: declaração vs expressão",
+      "difficulty": "Iniciante",
+      "statement": "Analisa o código abaixo e responde, por escrito, se cada chamada a seguir funciona ou lança erro, e explica porquê:\n\nconsole.log(dobrar(4));\nconsole.log(triplicar(4));\n\nfunction dobrar(n) {\n  return n * 2;\n}\n\nconst triplicar = function (n) {\n  return n * 3;\n};\n\nDepois, corrige o código (sem alterares o tipo de nenhuma das duas funções) para que ambas as chamadas funcionem.",
+      "hint": "Pensa em qual das duas construções fica disponível assim que o motor lê o ficheiro (na fase de criação do scope) e qual só fica disponível quando a linha correspondente é executada.",
+      "solution_code": "// dobrar(4) funciona: function declaration é hoisted por completo (nome + corpo),\n// por isso já está disponível antes da sua definição textual no código.\n// triplicar(4) lança \"ReferenceError: Cannot access 'triplicar' before initialization\",\n// porque o hoisting de \"const triplicar\" cria apenas o binding, deixando-o em\n// temporal dead zone; a função só fica associada a esse nome quando a linha\n// \"const triplicar = ...\" é efetivamente executada.\n\n// Correção: garantir que as chamadas ocorrem depois de ambas as definições.\n\nfunction dobrar(n) {\n  return n * 2;\n}\n\nconst triplicar = function (n) {\n  return n * 3;\n};\n\nconsole.log(dobrar(4));    // 8\nconsole.log(triplicar(4)); // 12",
+      "solution_explanation": "Function declarations são processadas na íntegra durante a fase de criação do scope, por isso dobrar pode ser chamada antes da sua definição textual. A constante triplicar só recebe a função quando a linha \"const triplicar = ...\" é executada, por isso chamá-la antes disso lança erro; a correção garante que a chamada ocorre depois da atribuição."
+    },
+    {
+      "title": "Calculadora com arrow functions",
+      "difficulty": "Intermedio",
+      "statement": "Cria um objeto chamado operacoes com quatro propriedades: somar, subtrair, multiplicar e criarResultado, todas definidas como arrow functions.\n\nsomar e subtrair recebem dois números e devolvem o resultado usando corpo de expressão (sem chavetas nem return).\n\nmultiplicar recebe dois números, calcula o produto guardando-o numa variável interna e devolve esse valor, usando corpo de bloco.\n\ncriarResultado recebe uma operação (string) e um valor (número) e devolve um objeto literal com as propriedades operacao e valor, usando corpo de expressão.\n\nTesta com operacoes.criarResultado(\"soma\", operacoes.somar(2, 3)) e confirma o resultado na consola.",
+      "hint": "Para devolver um objeto literal a partir de um corpo de expressão, o objeto tem de ficar entre parênteses, para não ser confundido com o início de um bloco de código.",
+      "solution_code": "const operacoes = {\n  somar: (a, b) => a + b,\n  subtrair: (a, b) => a - b,\n  multiplicar: (a, b) => {\n    const produto = a * b;\n    return produto;\n  },\n  criarResultado: (operacao, valor) => ({ operacao, valor }),\n};\n\nconsole.log(operacoes.criarResultado(\"soma\", operacoes.somar(2, 3)));\n// { operacao: 'soma', valor: 5 }",
+      "solution_explanation": "somar e subtrair usam corpo de expressão, que devolve automaticamente o valor calculado sem precisar de return. multiplicar usa corpo de bloco porque declara uma variável intermédia, exigindo return explícito. criarResultado devolve um objeto literal, por isso as suas chavetas são envolvidas em parênteses para o motor as interpretar como expressão e não como bloco de código."
+    },
+    {
+      "title": "Corrigir a perda de this",
+      "difficulty": "Avancado",
+      "statement": "O objeto abaixo devia imprimir, com um segundo de intervalo entre cada linha, mensagens do tipo \"Tarefa 1: comprar leite (pendente)\", usando o prefixo guardado em this.prefixo. Ao correr o código atual, todas as mensagens aparecem com o prefixo undefined. Identifica a causa exata do problema e corrige o código, alterando apenas o tipo das funções necessárias (não alteres a lógica nem uses bind).\n\nconst gestor = {\n  prefixo: \"Tarefa\",\n  tarefas: [\"comprar leite\", \"pagar renda\", \"estudar JS\"],\n  listar() {\n    this.tarefas.forEach(function (tarefa, indice) {\n      setTimeout(function () {\n        console.log(`${this.prefixo} ${indice + 1}: ${tarefa} (pendente)`);\n      }, (indice + 1) * 1000);\n    });\n  },\n};\n\ngestor.listar();",
+      "hint": "Há duas funções normais aninhadas dentro de listar; cada uma delas ganha o seu próprio this quando é invocada por forEach e por setTimeout, em vez de herdar o this de gestor.",
+      "solution_code": "const gestor = {\n  prefixo: \"Tarefa\",\n  tarefas: [\"comprar leite\", \"pagar renda\", \"estudar JS\"],\n  listar() {\n    this.tarefas.forEach((tarefa, indice) => {\n      setTimeout(() => {\n        console.log(`${this.prefixo} ${indice + 1}: ${tarefa} (pendente)`);\n      }, (indice + 1) * 1000);\n    });\n  },\n};\n\ngestor.listar();\n// Tarefa 1: comprar leite (pendente)\n// Tarefa 2: pagar renda (pendente)\n// Tarefa 3: estudar JS (pendente)",
+      "solution_explanation": "A função passada a forEach e a função passada a setTimeout eram funções normais, cada uma com o seu próprio this determinado pela forma como forEach e setTimeout as invocam, sem qualquer objeto antes do ponto na chamada; por isso this.prefixo era undefined. Ao transformar ambas em arrow functions, deixam de ter this próprio e passam a herdar o this de listar, que é o objeto gestor."
+    },
+    {
+      "title": "Construtor que não constrói",
+      "difficulty": "Avancado",
+      "statement": "O código abaixo tenta criar objetos Produto, mas lança \"TypeError: Produto is not a constructor\" na linha do new. Explica exatamente por que razão uma arrow function não pode desempenhar este papel e reescreve Produto (mantendo os mesmos parâmetros e o mesmo corpo) como function declaration, de forma a que new Produto(\"Teclado\", 45) funcione e devolva um objeto com as propriedades nome e preco.\n\nconst Produto = (nome, preco) => {\n  this.nome = nome;\n  this.preco = preco;\n};\n\nconst item = new Produto(\"Teclado\", 45);\nconsole.log(item.nome, item.preco);",
+      "hint": "Uma arrow function não tem this próprio nem propriedade prototype, duas coisas de que o operador new depende para construir um novo objeto.",
+      "solution_code": "function Produto(nome, preco) {\n  this.nome = nome;\n  this.preco = preco;\n}\n\nconst item = new Produto(\"Teclado\", 45);\nconsole.log(item.nome, item.preco); // Teclado 45",
+      "solution_explanation": "O operador new precisa de criar um novo objeto, ligá-lo à propriedade prototype da função e invocar a função com this a apontar para esse novo objeto; como as arrow functions não têm this próprio nem prototype, o motor de JavaScript recusa-se a tratá-las como construtoras. Uma function declaration tem ambos, por isso funciona normalmente com new."
+    }
+  ],
+  "summary": [
+    "Function declarations são hoisted por completo (nome e corpo) e podem ser chamadas antes da sua definição textual.",
+    "Function expressions só existem a partir do momento em que a atribuição é executada; chamá-las antes disso dá erro.",
+    "Arrow functions com um único parâmetro dispensam parênteses; com corpo de expressão o retorno é implícito, e devolver um objeto literal exige envolvê-lo em parênteses.",
+    "Funções normais têm this dinâmico, definido por como são chamadas; arrow functions têm this léxico, herdado do scope onde foram definidas.",
+    "Arrow functions não têm arguments próprio nem podem ser usadas com new como construtoras.",
+    "A escolha do estilo depende da necessidade: hoisting e this dinâmico pedem function declaration ou expression; callbacks concisos que preservam o this envolvente pedem arrow function."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 02",
+  "next_label": "Aula 02 → Parâmetros Default, Rest e o objeto arguments",
+  "_stage": "revisao"
+}

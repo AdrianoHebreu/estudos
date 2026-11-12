@@ -1,0 +1,289 @@
+{
+  "module_num": "04",
+  "module_title": "Narrowing e Type Guards",
+  "module_dir": "04-Narrowing-e-Type-Guards",
+  "lesson_num": "04",
+  "lesson_slug": "Exaustividade-com-never",
+  "kind": "aula",
+  "title": "Verificação de Exaustividade com never",
+  "filename_base": "04-Exaustividade-com-never",
+  "subtitle": "Obrigar o compilador a acusar o caso que ficou por tratar numa união",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Reconhecer a falha silenciosa de acrescentar um membro a uma união já consumida",
+    "Perceber porque o tipo estreitado passa a never depois de tratados todos os membros",
+    "Aplicar o padrão da constante de tipo never no default de um switch",
+    "Escrever uma função auxiliar de exaustividade que também protege em tempo de execução",
+    "Impor exaustividade em if/else encadeados e em objetos de mapeamento",
+    "Decidir quando a exaustividade ajuda e quando atrapalha numa fronteira"
+  ],
+  "sections": [
+    {
+      "heading": "A falha que compila e passa despercebida",
+      "body": [
+        "Uma união raramente fica quieta. Meses depois de escrita, alguém acrescenta-lhe um membro para suportar uma funcionalidade nova. O problema é que os sítios que consomem essa união não se queixam: o switch que só trata os casos antigos continua válido, porque tratar menos casos nunca foi erro de sintaxe nem de tipos.",
+        "O resultado é uma falha que só aparece em execução, e normalmente de forma discreta: uma etiqueta genérica, um zero, um undefined que atravessa meio sistema até dar erro noutro sítio qualquer. O compilador tinha toda a informação para avisar e não avisou, porque ninguém lhe pediu."
+      ],
+      "code": "// Versão 1 da união: dois membros, e um consumidor que os trata a todos\ntype EventoV1 =\n  | { tipo: \"clique\"; x: number; y: number }\n  | { tipo: \"tecla\"; codigo: string };\n\nfunction descreverV1(evento: EventoV1): string {\n  switch (evento.tipo) {\n    case \"clique\":\n      return `clique em ${evento.x},${evento.y}`;\n    case \"tecla\":\n      return `tecla ${evento.codigo}`;\n    default:\n      return \"evento desconhecido\";\n  }\n}\n\nconsole.log(descreverV1({ tipo: \"tecla\", codigo: \"Enter\" })); // \"tecla Enter\"\n\n// Versão 2: alguém acrescentou \"scroll\" à união\ntype EventoV2 = EventoV1 | { tipo: \"scroll\"; delta: number };\n\n// O consumidor ficou exatamente igual, e continua a compilar sem um único aviso\nfunction descreverV2(evento: EventoV2): string {\n  switch (evento.tipo) {\n    case \"clique\":\n      return `clique em ${evento.x},${evento.y}`;\n    case \"tecla\":\n      return `tecla ${evento.codigo}`;\n    default:\n      return \"evento desconhecido\";\n  }\n}\n\n// O erro só aparece aqui, em execução, disfarçado de texto inofensivo\nconsole.log(descreverV2({ tipo: \"scroll\", delta: 120 })); // \"evento desconhecido\"",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Um default que devolve um valor de recurso é confortável e perigoso: transforma um caso esquecido num resultado plausível em vez de num erro visível.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🌱",
+          "text": "As uniões crescem, os consumidores ficam para trás"
+        },
+        {
+          "icon": "🤫",
+          "text": "Tratar menos casos não é erro para o compilador"
+        },
+        {
+          "icon": "💣",
+          "text": "A falha só aparece em execução, longe da causa"
+        }
+      ]
+    },
+    {
+      "heading": "Onde o never aparece sozinho",
+      "body": [
+        "O never já apareceu no primeiro módulo como o tipo sem valores nenhuns. O narrowing dá-lhe agora um segundo papel, muito mais prático: sempre que o código elimina um membro de uma união, o que sobra é uma união mais pequena, e quando não sobra nada o tipo do valor é never.",
+        "Ou seja, o compilador já calcula a resposta à pergunta que interessa. Depois do último caso tratado, se ainda restar algum membro é porque falta trabalho; se não restar nenhum, o tipo é exatamente never. Falta só transformar essa informação num erro de compilação."
+      ],
+      "code": "type Pagamento =\n  | { metodo: \"cartao\"; ultimos4: string }\n  | { metodo: \"mbway\"; telemovel: string }\n  | { metodo: \"transferencia\"; iban: string };\n\nfunction referencia(pagamento: Pagamento): string {\n  if (pagamento.metodo === \"cartao\") {\n    // pagamento: { metodo: \"cartao\"; ultimos4: string }\n    return `cartao ****${pagamento.ultimos4}`;\n  }\n  if (pagamento.metodo === \"mbway\") {\n    // pagamento: { metodo: \"mbway\"; telemovel: string }\n    return `mbway ${pagamento.telemovel}`;\n  }\n  if (pagamento.metodo === \"transferencia\") {\n    // pagamento: { metodo: \"transferencia\"; iban: string }\n    return `iban ${pagamento.iban}`;\n  }\n  // pagamento: never, porque já não sobra nenhum membro da união\n  const sobra: never = pagamento;\n  return String(sobra);\n}\n\nconsole.log(referencia({ metodo: \"mbway\", telemovel: \"912345678\" })); // \"mbway 912345678\"",
+      "callout_kind": "NOTA",
+      "callout_text": "Passe o rato por cima da variável em cada ramo no editor: o tipo mostrado vai encolhendo até never. É o mesmo cálculo que a verificação de exaustividade aproveita.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📉",
+          "text": "Cada verificação retira um membro da união"
+        },
+        {
+          "icon": "0️⃣",
+          "text": "Sem membros a sobrar, o tipo estreitado é never"
+        },
+        {
+          "icon": "🧮",
+          "text": "O compilador já sabe: falta só reagir a isso"
+        }
+      ]
+    },
+    {
+      "heading": "O padrão canónico: uma constante de tipo never",
+      "body": [
+        "A ferramenta é uma única linha no default do switch: declarar uma constante de tipo never e atribuir-lhe a variável da união. Se todos os casos estiverem tratados, a variável é never e a atribuição passa sem ruído. Se faltar um caso, a variável ainda tem o tipo desse membro, e nada além de never é atribuível a never, logo o compilador recusa.",
+        "A mensagem de erro é diretamente útil, porque nomeia o tipo que sobrou. Quem acrescentar um membro novo à união fica com um erro em cada sítio que ainda não o trata, com o nome do caso em falta à vista."
+      ],
+      "code": "type Estado = \"pendente\" | \"pago\" | \"anulado\";\n\nfunction etiqueta(estado: Estado): string {\n  switch (estado) {\n    case \"pendente\":\n      return \"Pendente\";\n    case \"pago\":\n      return \"Pago\";\n    case \"anulado\":\n      return \"Anulado\";\n    default: {\n      // todos os membros tratados: aqui estado é never e a atribuição passa\n      const naoTratado: never = estado;\n      return naoTratado;\n    }\n  }\n}\n\nconsole.log(etiqueta(\"pago\")); // \"Pago\"\n\n// A mesma função sem o caso \"anulado\"\nfunction etiquetaIncompleta(estado: Estado): string {\n  switch (estado) {\n    case \"pendente\":\n      return \"Pendente\";\n    case \"pago\":\n      return \"Pago\";\n    default: {\n      // @ts-expect-error falta tratar \"anulado\", por isso estado ainda é \"anulado\" e não never\n      const naoTratado: never = estado;\n      return naoTratado;\n    }\n  }\n}\n\nconsole.log(etiquetaIncompleta(\"pendente\")); // \"Pendente\"",
+      "callout_kind": "DICA",
+      "callout_text": "Use chavetas à volta do corpo do default. Sem elas, declarar uma constante dentro de uma cláusula colide com as restantes, que partilham o mesmo bloco.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧷",
+          "text": "Uma constante de tipo never dentro do default"
+        },
+        {
+          "icon": "✅",
+          "text": "Tudo tratado: a atribuição compila em silêncio"
+        },
+        {
+          "icon": "🚫",
+          "text": "Caso em falta: erro com o nome do membro esquecido"
+        }
+      ]
+    },
+    {
+      "heading": "Uma função auxiliar que também protege em execução",
+      "body": [
+        "Repetir a constante em cada switch funciona, mas é mais limpo escrever uma vez uma função que recebe never e devolve never. Quem a chama com um valor por tratar recebe o mesmo erro de compilação, agora com um nome que explica a intenção.",
+        "O corpo dessa função lança um erro, e isso não é decoração. A garantia do compilador só vale para o código que ele viu: respostas de API, JSON de ficheiros, valores de bases de dados e formulários entram no programa com o tipo que se lhes declarou, não com o tipo que realmente têm. Lançar transforma um dado impossível num erro imediato e localizado, em vez de deixar a função devolver undefined às escondidas."
+      ],
+      "code": "type Prioridade = \"baixa\" | \"media\" | \"alta\";\n\nfunction casoImpossivel(valor: never): never {\n  throw new Error(`Caso não tratado: ${String(valor)}`);\n}\n\nfunction minutosDeResposta(prioridade: Prioridade): number {\n  switch (prioridade) {\n    case \"baixa\":\n      return 480;\n    case \"media\":\n      return 120;\n    case \"alta\":\n      return 15;\n    default:\n      return casoImpossivel(prioridade);\n  }\n}\n\nconsole.log(minutosDeResposta(\"alta\")); // 15\n\n// Os dados que chegam de fora nunca passaram pelo compilador\nconst vindoDoServidor = JSON.parse('\"urgente\"') as Prioridade;\n\ntry {\n  minutosDeResposta(vindoDoServidor);\n} catch (erro) {\n  console.log((erro as Error).message); // \"Caso não tratado: urgente\"\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Declarar o retorno como never não é um detalhe: é isso que permite usar a chamada como valor de retorno e diz ao compilador que o fluxo termina ali.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🛠️",
+          "text": "Uma função de exaustividade reutilizável no projeto todo"
+        },
+        {
+          "icon": "⛓️",
+          "text": "Recebe never, devolve never, lança sempre"
+        },
+        {
+          "icon": "🌍",
+          "text": "Dados externos não respeitam os tipos declarados"
+        }
+      ]
+    },
+    {
+      "heading": "Exaustividade fora do switch",
+      "body": [
+        "O padrão não depende do switch: depende do narrowing. Num if/else encadeado, o else final recebe o que sobrou da união e aceita a mesma constante de tipo never.",
+        "Há ainda uma variante sem never nenhum, útil quando a decisão é apenas uma tradução de valores. Se um objeto literal tiver uma chave por cada membro da união, indexá-lo com um valor dessa união compila. No dia em que a união ganhar um membro sem chave correspondente, a indexação passa a ser rejeitada, e o erro aparece exatamente onde falta o dado."
+      ],
+      "code": "type Canal = \"email\" | \"sms\" | \"push\";\n\n// Exaustividade num if/else encadeado: o else final recebe never\nfunction portaDe(canal: Canal): number {\n  if (canal === \"email\") {\n    return 587;\n  } else if (canal === \"sms\") {\n    return 8080;\n  } else if (canal === \"push\") {\n    return 443;\n  } else {\n    const naoTratado: never = canal;\n    return naoTratado;\n  }\n}\n\nconsole.log(portaDe(\"push\")); // 443\n\n// Exaustividade por objeto de mapeamento\nconst etiquetas = {\n  email: \"Correio eletrónico\",\n  sms: \"Mensagem\",\n  push: \"Notificação\",\n};\n\nfunction etiquetaDe(canal: Canal): string {\n  return etiquetas[canal]; // ok: há uma chave para cada membro da união\n}\n\nconsole.log(etiquetaDe(\"sms\")); // \"Mensagem\"\n\n// A união cresceu, o objeto não: a indexação passa a ser rejeitada\ntype CanalAlargado = Canal | \"webhook\";\n\nfunction etiquetaAlargada(canal: CanalAlargado): string {\n  // @ts-expect-error o objeto não tem chave para \"webhook\"\n  return etiquetas[canal];\n}\n\nconsole.log(etiquetaAlargada(\"email\")); // \"Correio eletrónico\"",
+      "callout_kind": "DICA",
+      "callout_text": "Para mapeamentos simples, o objeto é mais curto e mais legível do que um switch inteiro, e dá o mesmo aviso quando a união cresce.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🪜",
+          "text": "O else final de um if encadeado também recebe never"
+        },
+        {
+          "icon": "🗺️",
+          "text": "Objeto de mapeamento: uma chave por membro da união"
+        },
+        {
+          "icon": "🔑",
+          "text": "Chave em falta, indexação rejeitada"
+        }
+      ]
+    },
+    {
+      "heading": "Quando não impor exaustividade",
+      "body": [
+        "Nem toda a união quer ser fechada. Se o tipo existe precisamente para crescer, com cada equipa a acrescentar-lhe o seu membro, forçar exaustividade em todos os consumidores transforma cada adição numa cascata de erros em código que não tinha nada a ver com a mudança. Nesses casos, um default com comportamento genérico é a decisão certa e deve ser escrito de propósito, não por esquecimento.",
+        "A outra situação é a fronteira. Quando o valor vem de fora e ainda não foi validado, o seu tipo é string ou unknown, não a união: não há membros para esgotar e o default trata o desconhecido em vez de rebentar. A regra prática é simples: validar e converter na fronteira, e guardar a exaustividade para o interior, onde o tipo já é de confiança."
+      ],
+      "code": "type NivelConhecido = \"info\" | \"aviso\" | \"erro\";\n\n// Fronteira: o que chega é uma string qualquer, não um membro da união\nfunction normalizarNivel(nivel: string): NivelConhecido | \"outro\" {\n  switch (nivel) {\n    case \"info\":\n    case \"aviso\":\n    case \"erro\":\n      return nivel;\n    default:\n      // aqui nivel é string, não never: o desconhecido trata-se, não rebenta\n      return \"outro\";\n  }\n}\n\nconsole.log(normalizarNivel(\"aviso\")); // \"aviso\"\nconsole.log(normalizarNivel(\"debug\")); // \"outro\"",
+      "callout_kind": "NOTA",
+      "callout_text": "Exaustividade é uma afirmação sobre o domínio: esta lista está completa e fechada. Onde isso for falso, o padrão só cria atrito.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🌿",
+          "text": "Uniões abertas de propósito pedem um default genérico"
+        },
+        {
+          "icon": "🚪",
+          "text": "Na fronteira o tipo ainda é string ou unknown"
+        },
+        {
+          "icon": "🎯",
+          "text": "Validar fora, exigir exaustividade dentro"
+        }
+      ]
+    },
+    {
+      "heading": "Fecho do módulo: as quatro ferramentas",
+      "body": [
+        "Este módulo montou um conjunto pequeno e completo. O narrowing por operadores resolve o caso imediato com typeof, instanceof e in. As uniões discriminadas dão estrutura a tipos parecidos, trocando adivinhação por um campo comum. Os type predicates e as assertion functions estendem o narrowing a funções próprias, para validar o que chega de fora. E a exaustividade com never fecha o ciclo, garantindo que o conjunto continua tratado quando alguém lhe mexer.",
+        "A escolha entre elas raramente é uma questão de gosto: depende do que se tem em mãos. A tabela resume as situações típicas."
+      ],
+      "code": "",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Abra um projeto seu, procure um switch sobre uma união de literais e acrescente-lhe o default com a constante de tipo never. Se compilar à primeira, está coberto; se não, encontrou um caso esquecido.",
+      "table_headers": [
+        "O que tem em mãos",
+        "Ferramenta",
+        "Forma típica"
+      ],
+      "table_rows": [
+        [
+          "Primitivos numa união",
+          "Operador typeof",
+          "typeof valor === \"string\""
+        ],
+        [
+          "Instâncias de classes ou erros",
+          "Operador instanceof",
+          "erro instanceof Error"
+        ],
+        [
+          "Objetos distinguidos por uma propriedade",
+          "Operador in",
+          "\"raio\" in figura"
+        ],
+        [
+          "Objetos com um campo comum de literais",
+          "União discriminada com switch",
+          "figura.forma === \"circulo\""
+        ],
+        [
+          "Valor unknown vindo de fora",
+          "Type predicate",
+          "function eFigura(v: unknown): v is Figura"
+        ],
+        [
+          "Pré-condição que deve parar o fluxo",
+          "Assertion function",
+          "function garantirTexto(v: unknown): asserts v is string"
+        ],
+        [
+          "União que tem de ser tratada por inteiro",
+          "Exaustividade com never",
+          "const naoTratado: never = valor"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧰",
+          "text": "Quatro ferramentas para o mesmo objetivo: estreitar tipos"
+        },
+        {
+          "icon": "🧭",
+          "text": "A escolha depende do que se tem em mãos"
+        },
+        {
+          "icon": "🔒",
+          "text": "A exaustividade é o fecho que impede regressões"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Semáforo sem casos esquecidos",
+      "difficulty": "Iniciante",
+      "statement": "Declare um tipo Semaforo com os literais verde, amarelo e vermelho. Escreva uma função segundosDeLuz que receba um Semaforo e devolva 30 para verde, 4 para amarelo e 25 para vermelho, usando um switch. No default, garanta com uma constante de tipo never que nenhum caso fica por tratar, e devolva essa constante. Confirme que o ficheiro compila e mostre no ecrã o resultado para amarelo e para vermelho.",
+      "hint": "O default precisa de chavetas à volta do corpo para poder declarar uma constante própria. O tipo da constante é never e o valor atribuído é a variável do switch.",
+      "solution_code": "type Semaforo = \"verde\" | \"amarelo\" | \"vermelho\";\n\nfunction segundosDeLuz(luz: Semaforo): number {\n  switch (luz) {\n    case \"verde\":\n      return 30;\n    case \"amarelo\":\n      return 4;\n    case \"vermelho\":\n      return 25;\n    default: {\n      const naoTratado: never = luz;\n      return naoTratado;\n    }\n  }\n}\n\nconsole.log(segundosDeLuz(\"amarelo\")); // 4\nconsole.log(segundosDeLuz(\"vermelho\")); // 25",
+      "solution_explanation": "Depois dos três casos tratados, não sobra nenhum membro e o tipo de luz no default é never, por isso a atribuição é válida. Se acrescentar um quarto literal ao tipo Semaforo sem tratar o caso, essa mesma linha passa a dar erro. Devolver a constante satisfaz o retorno number sem inventar um valor de recurso, porque never é atribuível a qualquer tipo."
+    },
+    {
+      "title": "Área de figuras com função auxiliar",
+      "difficulty": "Intermedio",
+      "statement": "Declare uma união discriminada Figura pelo campo forma, com circulo e raio, quadrado e lado, retangulo com base e altura. Escreva uma função casoImpossivel que receba um parâmetro de tipo never, devolva never e lance um erro com a descrição do valor recebido em JSON. Escreva depois a função area, que trate os três casos num switch e chame casoImpossivel no default. No fim, simule dados externos com JSON.parse de uma figura triangulo convertida para Figura, chame area dentro de um try e mostre a mensagem do erro apanhado.",
+      "hint": "JSON.stringify aceita o parâmetro de tipo never sem queixas, porque never é atribuível a tudo. Para ler a mensagem, lembre-se de que o valor do catch é unknown e precisa de ser convertido para Error.",
+      "solution_code": "type Figura =\n  | { forma: \"circulo\"; raio: number }\n  | { forma: \"quadrado\"; lado: number }\n  | { forma: \"retangulo\"; base: number; altura: number };\n\nfunction casoImpossivel(valor: never): never {\n  throw new Error(`Figura não tratada: ${JSON.stringify(valor)}`);\n}\n\nfunction area(figura: Figura): number {\n  switch (figura.forma) {\n    case \"circulo\":\n      return Math.PI * figura.raio ** 2;\n    case \"quadrado\":\n      return figura.lado ** 2;\n    case \"retangulo\":\n      return figura.base * figura.altura;\n    default:\n      return casoImpossivel(figura);\n  }\n}\n\nconsole.log(area({ forma: \"quadrado\", lado: 3 })); // 9\nconsole.log(area({ forma: \"retangulo\", base: 2, altura: 5 })); // 10\n\n// Um objeto que veio de fora e não respeita a união\nconst doJson = JSON.parse('{\"forma\":\"triangulo\",\"base\":4,\"altura\":6}') as Figura;\n\ntry {\n  area(doJson);\n} catch (erro) {\n  // 'Figura não tratada: {\"forma\":\"triangulo\",\"base\":4,\"altura\":6}'\n  console.log((erro as Error).message);\n}",
+      "solution_explanation": "A função casoImpossivel junta as duas garantias numa só: o parâmetro never falha a compilação quando falta um caso, e o throw protege quando o valor chega de fora sem respeitar o tipo. A conversão com as no resultado de JSON.parse é exatamente a mentira que acontece todos os dias com respostas de API. Sem o try, o erro terminava o programa e o resto do bloco nunca corria."
+    },
+    {
+      "title": "A união cresceu",
+      "difficulty": "Intermedio",
+      "statement": "Declare o tipo EstadoEncomenda com os literais criada, enviada, entregue e devolvida. Escreva primeiro a função mensagemAntiga, que representa o código escrito quando a união ainda só tinha os três primeiros literais: trate apenas esses três e mantenha no default a constante de tipo never, marcando com um comentário de expectativa de erro a linha que o compilador rejeita. Escreva a seguir a função mensagem, já corrigida, que trata os quatro casos e devolve Devolvida ao remetente para o caso novo. Mostre no ecrã o resultado de mensagemAntiga para enviada e de mensagem para devolvida.",
+      "hint": "O erro é reportado na linha da declaração da constante, e não na linha do default nem na do return. O comentário de expectativa de erro tem de ficar imediatamente antes dessa linha.",
+      "solution_code": "type EstadoEncomenda = \"criada\" | \"enviada\" | \"entregue\" | \"devolvida\";\n\n// Versão escrita quando a união ainda não tinha \"devolvida\"\nfunction mensagemAntiga(estado: EstadoEncomenda): string {\n  switch (estado) {\n    case \"criada\":\n      return \"A preparar\";\n    case \"enviada\":\n      return \"A caminho\";\n    case \"entregue\":\n      return \"Entregue\";\n    default: {\n      // @ts-expect-error falta tratar \"devolvida\", logo estado não é never\n      const naoTratado: never = estado;\n      return naoTratado;\n    }\n  }\n}\n\n// Versão corrigida, com o caso novo tratado\nfunction mensagem(estado: EstadoEncomenda): string {\n  switch (estado) {\n    case \"criada\":\n      return \"A preparar\";\n    case \"enviada\":\n      return \"A caminho\";\n    case \"entregue\":\n      return \"Entregue\";\n    case \"devolvida\":\n      return \"Devolvida ao remetente\";\n    default: {\n      const naoTratado: never = estado;\n      return naoTratado;\n    }\n  }\n}\n\nconsole.log(mensagemAntiga(\"enviada\")); // \"A caminho\"\nconsole.log(mensagem(\"devolvida\")); // \"Devolvida ao remetente\"",
+      "solution_explanation": "Em mensagemAntiga sobra o literal devolvida, por isso o tipo de estado no default não é never e a atribuição é recusada, que é precisamente o aviso que se queria. A versão corrigida trata os quatro casos e volta a compilar sem marcas. Este é o ciclo real do padrão: acrescentar um membro à união acende todos os sítios que ainda não o tratam."
+    },
+    {
+      "title": "Fronteira validada, interior exaustivo",
+      "difficulty": "Avancado",
+      "statement": "Declare uma união discriminada Comando pelo campo acao, com criar e nome, apagar e id, renomear com id e nome. Escreva um type predicate eComando que receba unknown e valide, para cada ação conhecida, os campos que ela exige. Escreva a função casoImpossivel com parâmetro never e a função executar, que trate as três ações num switch, chame casoImpossivel no default e devolva em cada caso uma frase curta. Por fim escreva tratarMensagem, que recebe uma string JSON, faz o parse para unknown, devolve mensagem ignorada quando o predicado falha e caso contrário chama executar. Mostre no ecrã o resultado para um comando criar válido, um renomear válido e um JSON com uma ação desconhecida.",
+      "hint": "Guarde o resultado de JSON.parse numa variável anotada como unknown, para obrigar à validação. Dentro do predicado, converta o valor para um tipo de objeto com propriedades opcionais de tipo unknown antes de lhe ler os campos.",
+      "solution_code": "type Comando =\n  | { acao: \"criar\"; nome: string }\n  | { acao: \"apagar\"; id: number }\n  | { acao: \"renomear\"; id: number; nome: string };\n\nfunction eComando(valor: unknown): valor is Comando {\n  if (typeof valor !== \"object\" || valor === null) {\n    return false;\n  }\n  const candidato = valor as { acao?: unknown; id?: unknown; nome?: unknown };\n  if (candidato.acao === \"criar\") {\n    return typeof candidato.nome === \"string\";\n  }\n  if (candidato.acao === \"apagar\") {\n    return typeof candidato.id === \"number\";\n  }\n  if (candidato.acao === \"renomear\") {\n    return typeof candidato.id === \"number\" && typeof candidato.nome === \"string\";\n  }\n  return false;\n}\n\nfunction casoImpossivel(valor: never): never {\n  throw new Error(`Ação não tratada: ${JSON.stringify(valor)}`);\n}\n\nfunction executar(comando: Comando): string {\n  switch (comando.acao) {\n    case \"criar\":\n      return `criado ${comando.nome}`;\n    case \"apagar\":\n      return `apagado ${comando.id}`;\n    case \"renomear\":\n      return `${comando.id} passou a ${comando.nome}`;\n    default:\n      return casoImpossivel(comando);\n  }\n}\n\nfunction tratarMensagem(bruto: string): string {\n  const dados: unknown = JSON.parse(bruto);\n  if (!eComando(dados)) {\n    return \"mensagem ignorada\"; // fronteira: o desconhecido é tolerado\n  }\n  return executar(dados); // daqui para dentro, exaustividade a sério\n}\n\nconsole.log(tratarMensagem('{\"acao\":\"criar\",\"nome\":\"notas\"}')); // \"criado notas\"\nconsole.log(tratarMensagem('{\"acao\":\"renomear\",\"id\":7,\"nome\":\"lista\"}')); // \"7 passou a lista\"\nconsole.log(tratarMensagem('{\"acao\":\"reiniciar\"}')); // \"mensagem ignorada\"",
+      "solution_explanation": "A fronteira e o interior têm regras diferentes e o código mostra as duas. Em tratarMensagem o desconhecido é tolerado, porque ali o valor ainda é unknown e não há união para esgotar. Depois do predicado o tipo é Comando de confiança, e aí a exaustividade com never obriga a tratar qualquer ação que venha a ser acrescentada."
+    }
+  ],
+  "summary": [
+    "Acrescentar um membro a uma união não parte o código que a consome, e é isso que torna a falha silenciosa",
+    "Depois de tratados todos os membros de uma união, o tipo estreitado que sobra é never",
+    "Atribuir a variável a uma constante de tipo never no default transforma um caso esquecido em erro de compilação",
+    "Uma função de exaustividade com parâmetro never centraliza o padrão e lança em execução, por causa dos dados que vêm de fora",
+    "O mesmo se consegue no else final de um if encadeado e ao indexar um objeto de mapeamento com a união",
+    "Em uniões abertas e em fronteiras com dados por validar, um default que trata o desconhecido é a escolha certa"
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para o Módulo 05",
+  "next_label": "Aula 01 → Funções Genéricas"
+}

@@ -1,0 +1,316 @@
+{
+  "module_num": "02",
+  "module_title": "Objetos, Interfaces e Type Aliases",
+  "module_dir": "02-Objetos-Interfaces-e-Type-Aliases",
+  "lesson_num": "01",
+  "lesson_slug": "Tipar-Objetos",
+  "kind": "aula",
+  "title": "Tipar Objetos",
+  "filename_base": "01-Tipar-Objetos",
+  "subtitle": "Descrever a forma de um objeto e apanhar as gralhas antes de elas correrem",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Anotar a forma de um objeto inline, entre chavetas, no lugar do tipo",
+    "Perceber o que o compilador infere a partir de um literal de objeto",
+    "Tipar objetos aninhados e arrays de objetos",
+    "Receber e devolver objetos em funções, incluindo destructuring com tipos",
+    "Decidir quando vale a pena extrair a forma para um nome",
+    "Evitar a armadilha das chavetas vazias e escolher entre object e Record"
+  ],
+  "sections": [
+    {
+      "heading": "A Forma do Objeto Escrita Inline",
+      "body": [
+        "Em TypeScript o tipo de um objeto é a sua forma: a lista de propriedades que ele tem e o tipo de cada uma. Escreve-se entre chavetas, no mesmo sítio onde poria string ou number, com cada propriedade na forma nome, dois pontos, tipo.",
+        "O separador habitual entre propriedades é o ponto e vírgula, mas a vírgula também é aceite e, quando o tipo está escrito em várias linhas, a mudança de linha chega. A convenção mais comum, e a que o Prettier aplica, é ponto e vírgula nos tipos e vírgula nos valores.",
+        "Repare que a forma não é um objeto: é a descrição de um. Vive do lado do tipo, à esquerda do igual, e as chavetas ali não constroem nada."
+      ],
+      "code": "// A forma do objeto ocupa o lugar do tipo, entre chavetas\nconst ponto: { x: number; y: number } = { x: 10, y: 4 };\n\n// Em várias linhas, o ponto e vírgula é o separador habitual\nconst livro: {\n  titulo: string;\n  paginas: number;\n  disponivel: boolean;\n} = {\n  titulo: \"Os Maias\",\n  paginas: 712,\n  disponivel: true,\n};\n\n// A vírgula também é aceite como separador\nconst cor: { r: number, g: number, b: number } = { r: 255, g: 0, b: 0 };\n\nconsole.log(ponto.x + ponto.y); // 14\nconsole.log(livro.titulo); // \"Os Maias\"\nconsole.log(cor.r); // 255",
+      "callout_kind": "DICA",
+      "callout_text": "Chavetas do lado do tipo descrevem uma forma; chavetas do lado do valor constroem um objeto. É a mesma pontuação com dois significados diferentes, e distingui-las de imediato é meio caminho andado nesta aula.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧱",
+          "text": "O tipo de um objeto é a sua forma"
+        },
+        {
+          "icon": "✍️",
+          "text": "Cada propriedade: nome, dois pontos, tipo"
+        },
+        {
+          "icon": "🔁",
+          "text": "Ponto e vírgula ou vírgula separam as propriedades"
+        }
+      ]
+    },
+    {
+      "heading": "O que o Compilador Infere de um Literal",
+      "body": [
+        "Na maioria dos casos não é preciso anotar nada. A partir de um literal de objeto o compilador constrói a forma sozinho, propriedade a propriedade, com o tipo do valor de cada uma.",
+        "A inferência alarga cada valor ao seu tipo geral e não ao literal exato: o texto Ana dá string, o 34 dá number, o array de dois textos dá string[]. A razão é que as propriedades de um objeto são mutáveis; se a propriedade tivesse o tipo Ana, nunca mais lá poderia pôr outro nome. É o mesmo alargamento que já conhece entre const e let, aplicado a cada propriedade.",
+        "O que a inferência não faz é deixar a forma aberta. O tipo inferido tem exatamente as propriedades do literal, por isso acrescentar uma propriedade nova mais à frente é erro, tal como atribuir um valor do tipo errado."
+      ],
+      "code": "const perfil = {\n  nome: \"Ana\",\n  idade: 34,\n  ativo: true,\n  etiquetas: [\"admin\", \"leitor\"],\n};\n// inferido: { nome: string; idade: number; ativo: boolean; etiquetas: string[] }\n\n// as propriedades de um objeto são mutáveis, por isso \"Ana\" alarga-se a string\nperfil.nome = \"Beatriz\";\n\n// @ts-expect-error idade foi inferida como number e não aceita texto\nperfil.idade = \"34\";\n\n// @ts-expect-error a forma inferida é fechada: não se acrescentam propriedades\nperfil.telefone = \"912345678\";\n\n// Fora de um objeto, um const guarda o tipo literal; um let alarga-se\nconst estadoFixo = \"ativo\"; // tipo \"ativo\"\nlet estadoLivre = \"ativo\"; // tipo string\nestadoLivre = \"inativo\";\n\nconsole.log(perfil.nome, estadoFixo, estadoLivre);",
+      "callout_kind": "NOTA",
+      "callout_text": "Se quiser mesmo os tipos literais, e propriedades que não mudam, existe o as const que viu no módulo anterior. Aplica-se ao objeto todo de uma vez e fixa cada valor no seu literal.",
+      "table_headers": [
+        "Valor no literal",
+        "Tipo inferido",
+        "Porquê"
+      ],
+      "table_rows": [
+        [
+          "\"Ana\"",
+          "string",
+          "as propriedades são mutáveis, o literal alarga-se"
+        ],
+        [
+          "34",
+          "number",
+          "o mesmo alargamento, para qualquer número"
+        ],
+        [
+          "true",
+          "boolean",
+          "alarga-se aos dois valores possíveis"
+        ],
+        [
+          "[\"admin\", \"leitor\"]",
+          "string[]",
+          "array mutável de elementos do mesmo tipo"
+        ],
+        [
+          "{ cidade: \"Braga\" }",
+          "{ cidade: string }",
+          "a inferência desce ao objeto aninhado"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔍",
+          "text": "A inferência constrói a forma a partir do literal"
+        },
+        {
+          "icon": "📐",
+          "text": "Cada valor alarga-se ao tipo geral, não ao literal"
+        },
+        {
+          "icon": "🚪",
+          "text": "A forma inferida é fechada a propriedades novas"
+        }
+      ]
+    },
+    {
+      "heading": "Objetos Aninhados e Arrays de Objetos",
+      "body": [
+        "A sintaxe encaixa dentro de si própria. Uma propriedade cujo valor é um objeto leva outra forma entre chavetas no lugar do tipo, e não há limite de profundidade.",
+        "Para um array de objetos, a forma vai entre chavetas e os parênteses retos vêm logo a seguir, exatamente como em string[]. A alternativa Array com a forma entre sinais de menor e maior significa o mesmo; escolha uma das duas e seja consistente.",
+        "O ganho aparece no acesso. O compilador acompanha a cadeia toda e sabe o tipo em cada passo, por isso num map ou num reduce sobre o array o parâmetro já vem tipado e as propriedades aparecem no autocomplete sem ter escrito uma única anotação."
+      ],
+      "code": "const encomenda: {\n  numero: string;\n  cliente: { nome: string; email: string };\n  linhas: { artigo: string; quantidade: number; preco: number }[];\n} = {\n  numero: \"ENC-2024-001\",\n  cliente: { nome: \"Ana Lima\", email: \"ana@exemplo.pt\" },\n  linhas: [\n    { artigo: \"Teclado\", quantidade: 1, preco: 49.9 },\n    { artigo: \"Rato\", quantidade: 2, preco: 19.5 },\n  ],\n};\n\n// A forma aninhada acompanha o acesso até ao fim da cadeia\nconsole.log(encomenda.cliente.nome); // \"Ana Lima\"\n\nconst total = encomenda.linhas.reduce(\n  (soma, linha) => soma + linha.quantidade * linha.preco,\n  0,\n);\nconsole.log(total.toFixed(2)); // \"88.90\"\n\n// Array<...> é a forma alternativa de escrever o mesmo array de objetos\nconst vazio: Array<{ artigo: string; quantidade: number }> = [];\nconsole.log(vazio.length); // 0",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Quando as chavetas passam a ter três ou quatro níveis, a anotação inline fica mais difícil de ler do que o objeto que descreve. É o sinal de que está na altura de dar nomes às partes.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🪆",
+          "text": "A forma encaixa dentro de si própria, sem limite"
+        },
+        {
+          "icon": "📚",
+          "text": "Array de objetos: a forma e parênteses retos"
+        },
+        {
+          "icon": "🎯",
+          "text": "O compilador segue a cadeia e tipa o map e o reduce"
+        }
+      ]
+    },
+    {
+      "heading": "Objetos em Parâmetros e em Retornos",
+      "body": [
+        "Um parâmetro que recebe um objeto anota-se como qualquer outro: o nome, dois pontos, e a forma entre chavetas. O tipo de retorno segue a mesma regra, depois dos parênteses da assinatura.",
+        "Com destructuring há um pormenor que apanha toda a gente. A anotação vem depois do padrão de destructuring e descreve o objeto inteiro, não cada nome extraído. Escrever os dois pontos dentro das chavetas não anota nada: em JavaScript isso é a sintaxe de renomear, por isso nome dois pontos string extrai a propriedade nome para uma variável chamada string.",
+        "Como o tipo do parâmetro não depende do destructuring, pode passar de uma forma para a outra sem tocar na anotação. É a mesma assinatura escrita de duas maneiras."
+      ],
+      "code": "function descreverPonto(p: { x: number; y: number }): string {\n  return `(${p.x}, ${p.y})`;\n}\n\n// Com destructuring a anotação vem depois das chavetas e descreve o objeto todo\nfunction distancia({ x, y }: { x: number; y: number }): number {\n  return Math.sqrt(x * x + y * y);\n}\n\n// O objeto devolvido também tem forma, anotada depois dos parênteses\nfunction criarSessao(nome: string): { nome: string; inicio: number } {\n  return { nome, inicio: 0 };\n}\n\nconsole.log(descreverPonto({ x: 3, y: 4 })); // \"(3, 4)\"\nconsole.log(distancia({ x: 3, y: 4 })); // 5\nconsole.log(criarSessao(\"Ana\").inicio); // 0",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Dentro das chavetas do destructuring, os dois pontos renomeiam. A anotação de tipo fica sempre fora, depois da chaveta de fecho.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📥",
+          "text": "Parâmetro objeto: nome, dois pontos, forma"
+        },
+        {
+          "icon": "🧩",
+          "text": "Com destructuring a anotação descreve o objeto todo"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Dois pontos dentro das chavetas renomeiam, não tipam"
+        }
+      ]
+    },
+    {
+      "heading": "Propriedades que Não Existem no Tipo",
+      "body": [
+        "Aceder a uma propriedade que a forma não declara é um erro de compilação, com a mensagem de que a propriedade não existe naquele tipo. Em código real é o erro que mais tempo poupa: gralhas em nomes, campos renomeados a meio de uma refatoração e dados que mudaram de estrutura aparecem todos aqui, no editor, em vez de darem undefined a meio de uma execução.",
+        "O compilador também recusa o contrário, com uma regra própria para literais. Quando passa um literal de objeto diretamente onde é esperada uma forma, as propriedades a mais são rejeitadas, porque quase sempre significam uma gralha ou uma ideia errada sobre o que a função recebe.",
+        "Essa verificação extra só se aplica a literais acabados de escrever. Se o mesmo objeto estiver primeiro numa variável, a chamada passa: o compilador exige apenas que ele tenha tudo o que é pedido e não se importa que traga mais. É a tipagem estrutural em ação, o tema da última aula deste módulo."
+      ],
+      "code": "const config = { porta: 8080, host: \"localhost\" };\n\nconsole.log(config.porta); // 8080\n\n// @ts-expect-error a propriedade chama-se porta: a gralha portra é apanhada aqui\nconsole.log(config.portra);\n\nfunction ligar(alvo: { host: string; porta: number }): string {\n  return `${alvo.host}:${alvo.porta}`;\n}\n\n// @ts-expect-error o literal traz timeout, que o tipo do parâmetro não declara\nconsole.log(ligar({ host: \"localhost\", porta: 8080, timeout: 30 }));\n\n// Já uma variável com propriedades a mais é aceite: tem tudo o que é exigido\nconst guardado = { host: \"localhost\", porta: 8080, timeout: 30 };\nconsole.log(ligar(guardado)); // \"localhost:8080\"",
+      "callout_kind": "DICA",
+      "callout_text": "Se um erro de propriedade a mais lhe parecer injusto, leia-o ao contrário: o compilador está a perguntar se não escreveu mal o nome ou se não estará a passar o objeto errado. Na esmagadora maioria das vezes, está.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🛑",
+          "text": "Aceder a propriedade não declarada é erro"
+        },
+        {
+          "icon": "🔤",
+          "text": "Apanha gralhas e campos renomeados no editor"
+        },
+        {
+          "icon": "📦",
+          "text": "Literal com propriedades a mais também é recusado"
+        }
+      ]
+    },
+    {
+      "heading": "Quando Vale a Pena Dar um Nome à Forma",
+      "body": [
+        "A anotação inline é ótima para uma forma pequena usada num único sítio. A partir da segunda repetição deixa de compensar: a forma passa a estar escrita em dois lados e, quando um campo mudar, vai atualizar um e esquecer o outro. O compilador não o avisa, porque duas formas iguais escritas à mão continuam a ser duas formas válidas.",
+        "Dar um nome resolve isso e traz mais três coisas: as mensagens de erro passam a falar de Retangulo em vez de despejarem a forma inteira, o editor mostra o nome ao passar o rato, e a forma fica disponível também para o tipo de retorno. A regra prática é simples: forma usada uma vez, inline; usada duas ou mais vezes, ou partilhada entre ficheiros, com nome.",
+        "Há duas maneiras de dar esse nome, type e interface, e a diferença entre elas é exatamente o assunto da próxima aula. Por agora fique com a ideia de que vale a pena nomear cedo."
+      ],
+      "code": "// A mesma forma repetida em cada assinatura: muda-se num sítio, esquece-se noutro\nfunction area(r: { largura: number; altura: number }): number {\n  return r.largura * r.altura;\n}\nfunction perimetro(r: { largura: number; altura: number }): number {\n  return 2 * (r.largura + r.altura);\n}\n\n// Com nome: escreve-se uma vez e usa-se em todo o lado, inclusive no retorno\ntype Retangulo = { largura: number; altura: number };\n\nfunction escalar(r: Retangulo, fator: number): Retangulo {\n  return { largura: r.largura * fator, altura: r.altura * fator };\n}\n\nconst caixa: Retangulo = { largura: 3, altura: 4 };\n\nconsole.log(area(caixa), perimetro(caixa)); // 12 14\nconsole.log(escalar(caixa, 2)); // { largura: 6, altura: 8 }",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Abra um ficheiro seu e procure a mesma forma de objeto escrita em mais do que um sítio. Extraia-a para um nome, troque as anotações e conte as linhas que desapareceram.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "♻️",
+          "text": "Forma repetida acaba sempre dessincronizada"
+        },
+        {
+          "icon": "🏷️",
+          "text": "O nome melhora erros, autocomplete e reutilização"
+        },
+        {
+          "icon": "➡️",
+          "text": "type ou interface: é o tema da próxima aula"
+        }
+      ]
+    },
+    {
+      "heading": "A Armadilha das Chavetas Vazias",
+      "body": [
+        "Parece natural escrever chavetas vazias para dizer um objeto qualquer, mas não é isso que elas significam. O tipo de chavetas vazias quer dizer qualquer valor que tenha propriedades e, em TypeScript, todos os valores têm, exceto null e undefined. Um número, um texto, um booleano, um array e uma função são todos aceites.",
+        "Ao mesmo tempo não deixa fazer nada: como não declara propriedade nenhuma, qualquer acesso é recusado. Fica assim com o pior dos dois mundos, um tipo que aceita quase tudo e não permite quase nada.",
+        "As alternativas honestas são duas. O tipo object exclui os primitivos, mas continua sem propriedades conhecidas, por isso só serve para dizer isto não é um primitivo. Para o que normalmente se quer dizer, um objeto de chaves de texto cujo conteúdo ainda não conhecemos, o correto é Record<string, unknown>: aceita qualquer chave, devolve unknown e obriga a verificar o valor antes de o usar. O Record é um utility type e é aprofundado no Módulo 07."
+      ],
+      "code": "// Chavetas vazias aceitam quase tudo: números, textos, arrays, funções\nconst numeroComoVazio: {} = 42;\nconst textoComoVazio: {} = \"texto\";\nconst arrayComoVazio: {} = [1, 2, 3];\n\n// @ts-expect-error null e undefined são os dois únicos valores que {} recusa\nconst nuloComoVazio: {} = null;\n\nconst objetoComoVazio: {} = { nome: \"Ana\" };\n// @ts-expect-error o tipo {} não declara propriedade nenhuma\nconsole.log(objetoComoVazio.nome);\n\n// object exclui os primitivos, mas continua sem propriedades conhecidas\nconst soObjeto: object = { nome: \"Ana\" };\n// @ts-expect-error 42 é primitivo e não é atribuível a object\nconst naoObjeto: object = 42;\n\n// Record<string, unknown> é o que normalmente se quer dizer com \"objeto qualquer\"\nconst dados: Record<string, unknown> = { nome: \"Ana\", idade: 34 };\nconst valor = dados[\"nome\"]; // unknown: obriga a verificar antes de usar\nif (typeof valor === \"string\") {\n  console.log(valor.toUpperCase()); // \"ANA\"\n}\n\nconsole.log(numeroComoVazio, textoComoVazio, arrayComoVazio, nuloComoVazio, soObjeto, naoObjeto);",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Chavetas vazias não querem dizer objeto vazio nem objeto qualquer: querem dizer tudo menos null e undefined. Se as escreveu à espera da primeira coisa, escreva a forma real; se estava à espera da segunda, escreva Record<string, unknown>.",
+      "table_headers": [
+        "Anotação",
+        "Que valores aceita",
+        "O que deixa fazer",
+        "Quando usar"
+      ],
+      "table_rows": [
+        [
+          "chavetas vazias",
+          "quase tudo, menos null e undefined",
+          "nada: não declara propriedade nenhuma",
+          "praticamente nunca"
+        ],
+        [
+          "object",
+          "objetos, arrays e funções, mas não primitivos",
+          "nada de específico, continua sem propriedades",
+          "raro, só para excluir primitivos"
+        ],
+        [
+          "Record<string, unknown>",
+          "objetos com chaves de texto",
+          "indexar por qualquer chave, obtendo unknown",
+          "dados de forma ainda desconhecida"
+        ],
+        [
+          "a forma escrita",
+          "objetos com essa forma",
+          "aceder a cada propriedade já tipada",
+          "quase sempre: descreva a forma real"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🕳️",
+          "text": "Chavetas vazias aceitam tudo menos null e undefined"
+        },
+        {
+          "icon": "🚧",
+          "text": "object exclui primitivos mas não tem propriedades"
+        },
+        {
+          "icon": "🗂️",
+          "text": "Record<string, unknown> para forma desconhecida"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Etiqueta de artigo",
+      "difficulty": "Iniciante",
+      "statement": "Declare uma constante artigo anotada inline com três propriedades: nome de texto, preco de número e emStock de booleano. Escreva depois a função etiqueta, que recebe um objeto com essa mesma forma e devolve uma frase com o nome, o preço com duas casas decimais e a palavra disponível ou esgotado conforme o valor de emStock. No fim, tente atribuir um texto à propriedade preco e confirme que o compilador recusa; marque essa linha com o comentário de erro esperado para o ficheiro continuar a compilar.",
+      "hint": "A forma vai entre chavetas, no lugar onde normalmente escreveria string. Para as casas decimais use toFixed, que devolve texto, e para escolher entre as duas palavras chega um operador ternário.",
+      "solution_code": "const artigo: { nome: string; preco: number; emStock: boolean } = {\n  nome: \"Caneca\",\n  preco: 7.5,\n  emStock: true,\n};\n\nfunction etiqueta(a: { nome: string; preco: number; emStock: boolean }): string {\n  const estado = a.emStock ? \"disponível\" : \"esgotado\";\n  return `${a.nome}: ${a.preco.toFixed(2)} euros (${estado})`;\n}\n\nconsole.log(etiqueta(artigo)); // \"Caneca: 7.50 euros (disponível)\"\n\n// @ts-expect-error preco foi anotado como number e não aceita texto\nartigo.preco = \"7.5\";",
+      "solution_explanation": "A anotação inline fixa o tipo de cada propriedade, por isso a atribuição de um texto a preco é recusada mesmo estando o objeto declarado com const. O que o const protege é a ligação ao objeto, não o conteúdo das propriedades; quem protege o conteúdo é o tipo."
+    },
+    {
+      "title": "Ficha de evento",
+      "difficulty": "Iniciante",
+      "statement": "Crie a constante evento, anotada inline, com três propriedades: titulo de texto, local que é ele próprio um objeto com cidade e sala, e participantes que é um array de objetos com nome e email. Preencha-a com dois participantes. Escreva a seguir a função resumo, que recebe um objeto dessa forma e devolve uma frase com o título, a cidade, a sala e o número de participantes. Por fim, mostre a lista de emails extraída com map.",
+      "hint": "Para o objeto aninhado abra outras chavetas no lugar do tipo. Para o array de objetos escreva a forma entre chavetas e ponha parênteses retos logo a seguir. O parâmetro do map já vem tipado, não precisa de o anotar.",
+      "solution_code": "const evento: {\n  titulo: string;\n  local: { cidade: string; sala: string };\n  participantes: { nome: string; email: string }[];\n} = {\n  titulo: \"Workshop de TypeScript\",\n  local: { cidade: \"Braga\", sala: \"A2\" },\n  participantes: [\n    { nome: \"Ana\", email: \"ana@exemplo.pt\" },\n    { nome: \"Rui\", email: \"rui@exemplo.pt\" },\n  ],\n};\n\nfunction resumo(e: {\n  titulo: string;\n  local: { cidade: string; sala: string };\n  participantes: { nome: string; email: string }[];\n}): string {\n  return `${e.titulo} em ${e.local.cidade}, sala ${e.local.sala}, com ${e.participantes.length} inscritos`;\n}\n\nconsole.log(resumo(evento));\n// \"Workshop de TypeScript em Braga, sala A2, com 2 inscritos\"\n\nconsole.log(evento.participantes.map((p) => p.email));\n// [ 'ana@exemplo.pt', 'rui@exemplo.pt' ]",
+      "solution_explanation": "A forma aninha-se sem limite: local leva outra forma entre chavetas e participantes leva uma forma seguida de parênteses retos. Como o compilador conhece a cadeia toda, o acesso a local.cidade e o parâmetro do map ficam tipados sem qualquer anotação adicional."
+    },
+    {
+      "title": "Descontos no carrinho",
+      "difficulty": "Intermedio",
+      "statement": "Comece por dar o nome Artigo à forma com nome e preco. Escreva a função aplicarDesconto, que recebe um Artigo com destructuring no parâmetro, recebe também uma percentagem e devolve um novo Artigo com o preço reduzido e arredondado a duas casas. Aplique-a com map a um carrinho de dois artigos. No fim, chame a função com um literal que traga uma propriedade cor a mais e confirme que é recusado, marcando a linha com o comentário de erro esperado.",
+      "hint": "O destructuring no parâmetro são chavetas com os nomes e a anotação logo a seguir à chaveta de fecho. Para arredondar sem ficar com texto, envolva o resultado de toFixed numa conversão para número.",
+      "solution_code": "type Artigo = { nome: string; preco: number };\n\nfunction aplicarDesconto({ nome, preco }: Artigo, percentagem: number): Artigo {\n  return { nome, preco: Number((preco * (1 - percentagem / 100)).toFixed(2)) };\n}\n\nconst carrinho: Artigo[] = [\n  { nome: \"Teclado\", preco: 50 },\n  { nome: \"Rato\", preco: 20 },\n];\n\nconst comDesconto = carrinho.map((a) => aplicarDesconto(a, 10));\n\nconsole.log(comDesconto);\n// [ { nome: 'Teclado', preco: 45 }, { nome: 'Rato', preco: 18 } ]\n\n// @ts-expect-error o literal traz cor, que o tipo Artigo não declara\nconsole.log(aplicarDesconto({ nome: \"Cabo\", preco: 5, cor: \"preto\" }, 10));",
+      "solution_explanation": "O nome Artigo aparece três vezes na mesma função, no parâmetro e no retorno, e é esse o momento em que nomear a forma compensa. A propriedade cor é recusada porque vem num literal passado diretamente na chamada, que é onde o compilador aplica a verificação extra."
+    },
+    {
+      "title": "Ler dados de forma desconhecida",
+      "difficulty": "Avancado",
+      "statement": "Imagine uma resposta cuja forma não conhece de antemão. Anote-a com Record de chaves de texto para unknown e escreva duas funções de leitura segura: lerTexto, que devolve o valor se ele for mesmo texto e uma cadeia vazia caso contrário, e lerNumero, que devolve o valor se for número e zero caso contrário. Experimente-as com uma chave de texto, uma de número e uma que não existe. Por fim, atribua a mesma resposta a uma constante anotada com chavetas vazias e mostre que aí nem sequer consegue indexar por chave, marcando a linha com o comentário de erro esperado.",
+      "hint": "O valor lido de um Record de unknown é unknown, por isso tem de o estreitar com typeof antes de o devolver. Um operador ternário resolve cada função numa linha.",
+      "solution_code": "function lerTexto(dados: Record<string, unknown>, chave: string): string {\n  const valor = dados[chave];\n  return typeof valor === \"string\" ? valor : \"\";\n}\n\nfunction lerNumero(dados: Record<string, unknown>, chave: string): number {\n  const valor = dados[chave];\n  return typeof valor === \"number\" ? valor : 0;\n}\n\nconst resposta: Record<string, unknown> = {\n  nome: \"Ana\",\n  idade: 34,\n  ativo: true,\n};\n\nconsole.log(lerTexto(resposta, \"nome\")); // \"Ana\"\nconsole.log(lerTexto(resposta, \"idade\")); // \"\"\nconsole.log(lerNumero(resposta, \"idade\")); // 34\nconsole.log(lerNumero(resposta, \"ausente\")); // 0\n\nconst comoVazio: {} = resposta;\n// @ts-expect-error com {} nem sequer se consegue indexar por chave\nconsole.log(comoVazio[\"nome\"]);",
+      "solution_explanation": "Record<string, unknown> descreve honestamente o que se sabe: as chaves são textos e os valores ainda estão por verificar. O unknown obriga a testar com typeof antes de usar o valor, e a última linha mostra a diferença em relação às chavetas vazias, que nem indexação permitem."
+    }
+  ],
+  "summary": [
+    "A forma de um objeto escreve-se entre chavetas no lugar do tipo, com as propriedades separadas por ponto e vírgula, por vírgula ou por mudança de linha.",
+    "A partir de um literal o compilador infere a forma sozinho, alargando cada valor ao seu tipo geral e deixando a forma fechada a propriedades novas.",
+    "A sintaxe encaixa: objetos aninhados levam outras chavetas e arrays de objetos levam parênteses retos a seguir à forma.",
+    "Em funções o objeto anota-se no parâmetro e no retorno; com destructuring a anotação descreve o objeto todo e vem depois da chaveta de fecho.",
+    "Aceder a uma propriedade não declarada é erro, e um literal com propriedades a mais também é recusado: é assim que gralhas e refatorações mal feitas aparecem no editor.",
+    "Repetir a mesma forma é o sinal para lhe dar um nome, e chavetas vazias nunca querem dizer objeto qualquer: para isso existe Record<string, unknown>."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 02",
+  "next_label": "Aula 02 → interface vs type: quando usar cada um"
+}

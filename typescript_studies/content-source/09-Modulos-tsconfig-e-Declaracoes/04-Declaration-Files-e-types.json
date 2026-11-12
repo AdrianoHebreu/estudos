@@ -1,0 +1,285 @@
+{
+  "module_num": "09",
+  "module_title": "Módulos, tsconfig e Declarações",
+  "module_dir": "09-Modulos-tsconfig-e-Declaracoes",
+  "lesson_num": "04",
+  "lesson_slug": "Declaration-Files-e-types",
+  "kind": "aula",
+  "title": "Declaration Files (.d.ts) e @types",
+  "filename_base": "04-Declaration-Files-e-types",
+  "subtitle": "Escrever .d.ts à mão: bibliotecas sem tipos, declare global, @types e o campo types",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Perceber o que é um ficheiro .d.ts: só assinaturas de tipos, zero implementação",
+    "Escrever uma declaração ambiente (declare module) para tipar uma biblioteca JavaScript sem tipos",
+    "Estender o âmbito global com declare global, por exemplo acrescentando uma propriedade a Window",
+    "Perceber como funciona na prática o ecossistema @types (DefinitelyTyped)",
+    "Reconhecer o campo types (ou typings) de um package.json e o que ele substitui",
+    "Tipar e consumir com segurança de tipos completa uma função de uma biblioteca fictícia sem tipos"
+  ],
+  "sections": [
+    {
+      "heading": "O que é um ficheiro .d.ts",
+      "body": [
+        "Um ficheiro .d.ts contém só declarações de tipos: assinaturas de funções, formas de objetos, tipos de variáveis. Nunca tem corpo de função com lógica, nunca atribui um valor real, nunca produz código em tempo de execução — o compilador apaga por completo essas declarações do JavaScript gerado.",
+        "Isto tem uma consequência direta: um .d.ts descreve a forma de algo que já existe, ou vai existir, noutro sítio — normalmente um ficheiro .js real, uma biblioteca já compilada, ou um valor global carregado de outra forma. Se essa outra origem não existir, o código continua a compilar sem nenhum erro, porque o compilador só verifica tipos; mas falha em runtime, por não haver nenhuma implementação por trás da declaração.",
+        "O exemplo a seguir mede exatamente essa diferença: declare function descreve uma função sem lhe dar corpo, o compilador aceita a chamada porque o tipo bate certo, mas chamá-la sem nenhum ficheiro real a definir somarPreco falha com um erro de execução, apanhado aqui com try/catch."
+      ],
+      "code": "// Um .d.ts so tem assinaturas: zero implementacao, zero valores atribuidos.\ndeclare function somarPreco(a: number, b: number): number;\n\n// O compilador aceita a chamada porque o TIPO bate certo...\nfunction calcularTotal(): number {\n  return somarPreco(10, 5);\n}\n\n// ...mas sem nenhum .js real por perto com o corpo de somarPreco, chamar isto\n// em runtime falha: \"declare\" nao gera nenhum codigo executavel.\ntry {\n  console.log(calcularTotal());\n} catch (erro) {\n  console.log(\"falhou em runtime: \" + (erro as Error).message);\n}\n// falhou em runtime: somarPreco is not defined",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Compilar sem erros não significa que o código funciona em runtime: declare promete uma forma ao compilador, nunca fornece a implementação por trás dela.",
+      "table_headers": [
+        "Um .d.ts tem",
+        "Um .d.ts não tem"
+      ],
+      "table_rows": [
+        [
+          "Assinaturas de funções, tipos, interfaces",
+          "Corpos de função com lógica"
+        ],
+        [
+          "Tipos de variáveis e constantes",
+          "Valores atribuídos de facto"
+        ],
+        [
+          "Declarações ambiente (declare)",
+          "Código que produza efeitos em runtime"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📄",
+          "text": "Só assinaturas: zero implementação, zero runtime"
+        },
+        {
+          "icon": "✅",
+          "text": "O compilador aceita se o tipo bater certo"
+        },
+        {
+          "icon": "💥",
+          "text": "Sem implementação real, a chamada falha em runtime"
+        },
+        {
+          "icon": "🧪",
+          "text": "declare descreve uma forma, nunca a fornece"
+        }
+      ]
+    },
+    {
+      "heading": "Tipar uma biblioteca sem tipos: declare module e import",
+      "body": [
+        "Quando um pacote JavaScript não publica tipos próprios nem tem um pacote @types disponível, a solução é escrever a própria declaração ambiente: declare module \"nome-do-pacote\" { ... }, com a forma exata do que esse pacote exporta. A partir daí, um import desse nome de pacote passa a ser verificado pelo compilador como se os tipos viessem da própria biblioteca.",
+        "Medido diretamente: esta sintaxe só funciona como uma declaração ambiente nova, a criar um módulo do zero, num ficheiro que ainda não seja, ele próprio, um módulo — ou seja, sem nenhum import ou export de topo nesse mesmo ficheiro. Num ficheiro que já tem import ou export de topo, o compilador trata declare module \"nome\" como uma aumentação de um módulo já existente, e rejeita com o erro TS2664 porque \"nome-do-pacote\" não existe em lado nenhum para aumentar. Isto acontece mesmo com moduleResolution bundler, e é independente da ordem entre o declare module e o import.",
+        "Na prática, isto significa que o shim de tipos vive sempre no seu próprio ficheiro .d.ts, sem nenhum import próprio, e é consumido a partir de outros ficheiros .ts do projeto — nunca os dois juntos no mesmo ficheiro. O exemplo a seguir mostra essa divisão: um ficheiro só com a declaração ambiente, e um segundo ficheiro que a consome com um import normal, já com segurança de tipos completa."
+      ],
+      "code": "// biblioteca-datas.d.ts\ndeclare module \"biblioteca-datas-sem-tipos\" {\n  export function formatarData(data: Date, padrao: string): string;\n}\n\n// noutro ficheiro main.ts\nimport { formatarData } from \"biblioteca-datas-sem-tipos\";\n\nconst resultado = formatarData(new Date(2024, 0, 1), \"yyyy-MM-dd\");\nconsole.log(typeof resultado);\n\n// @ts-expect-error formatarData espera um Date como primeiro argumento, nao uma string\nformatarData(\"2024-01-01\", \"yyyy-MM-dd\");",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Medido: declare module \"pacote\" só cria um módulo novo num ficheiro sem import nem export próprios. Num ficheiro que já é um módulo, é tratado como aumentação e falha com TS2664 se \"pacote\" não existir em lado nenhum — por isso o shim vive sempre no seu próprio .d.ts.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧩",
+          "text": "declare module \"pacote\" tipa uma biblioteca sem tipos"
+        },
+        {
+          "icon": "🚫",
+          "text": "Não funciona no mesmo ficheiro que o import"
+        },
+        {
+          "icon": "📁",
+          "text": "O shim vive no seu próprio .d.ts, sem imports"
+        },
+        {
+          "icon": "🔒",
+          "text": "Depois disso, o import fica com o tipo respeitado"
+        }
+      ]
+    },
+    {
+      "heading": "declare global: estender o âmbito global",
+      "body": [
+        "declare global permite acrescentar membros ao âmbito global a partir de dentro de um módulo — por exemplo, uma propriedade nova em Window, ou uma variável global exposta por um script carregado sem nenhum import. Ao contrário de declare module com um nome de pacote, declare global não cria nada novo do zero: funde-se com as declarações globais já existentes, como a própria interface Window da biblioteca padrão.",
+        "Medido: declare global só é aceite dentro de um ficheiro que o compilador já trate como módulo, ou seja, com pelo menos um import ou export de topo. Sem isso, o erro é TS2669, Augmentations for the global scope can only be directly nested in external modules or ambient module declarations. Como muitas vezes não há nada para importar, a forma mais simples de marcar o ficheiro como módulo é a linha export {}; sozinha, sem mais nenhum efeito em runtime.",
+        "O exemplo acrescenta uma propriedade a Window e uma variável a globalThis, e confirma com typeof que as duas declarações compilam e ficam disponíveis para o resto do ficheiro, sem precisar de nenhum browser real a correr."
+      ],
+      "code": "export {};\n\ndeclare global {\n  interface Window {\n    versaoDaApp: string;\n  }\n\n  var contadorDeCliques: number;\n}\n\nfunction lerVersao(w: Window): string {\n  return w.versaoDaApp;\n}\n\nglobalThis.contadorDeCliques = 0;\nglobalThis.contadorDeCliques += 1;\n\nconsole.log(typeof lerVersao);\nconsole.log(globalThis.contadorDeCliques);\n// function\n// 1",
+      "callout_kind": "NOTA",
+      "callout_text": "export {}; sozinha não faz nada em runtime: serve só para o ficheiro contar como módulo aos olhos do compilador, que é o que declare global exige.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🌐",
+          "text": "declare global funde-se com o âmbito global existente"
+        },
+        {
+          "icon": "🪟",
+          "text": "Serve para acrescentar propriedades a Window ou a var globais"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Só é aceite num ficheiro já tratado como módulo"
+        },
+        {
+          "icon": "🔖",
+          "text": "export {}; sozinha basta para isso, sem outro efeito"
+        }
+      ]
+    },
+    {
+      "heading": "O ecossistema @types (DefinitelyTyped)",
+      "body": [
+        "Muitas bibliotecas JavaScript populares não publicam tipos próprios, mas têm tipos escritos e mantidos pela comunidade num repositório central chamado DefinitelyTyped. Esses tipos são publicados no registo npm como pacotes separados, com o nome do pacote original prefixado por @types/ — por exemplo, @types/lodash para a biblioteca lodash.",
+        "Na prática, instalar os tipos é um segundo comando: primeiro o pacote em si, depois os tipos como dependência de desenvolvimento, porque os tipos só interessam durante a compilação, nunca em runtime. A partir do momento em que o pacote existe dentro de node_modules/@types, o compilador encontra-o automaticamente — não é preciso nenhum import nem nenhuma referência explícita para o ligar ao pacote original.",
+        "Nem toda a biblioteca tem um pacote @types correspondente, e quando um pacote já publica os seus próprios tipos, ver a secção seguinte, instalar o @types equivalente é redundante e por vezes entra mesmo em conflito com eles."
+      ],
+      "code": "npm install biblioteca-sem-tipos\nnpm install --save-dev @types/biblioteca-sem-tipos",
+      "callout_kind": "NOTA",
+      "callout_text": "Uma sintaxe mais antiga e hoje rara, /// <reference types=\"nome-pacote\" /> no topo de um ficheiro, inclui os tipos globais de um pacote @types sem precisar de um import explícito. Ainda aparece em projetos herdados ou em .d.ts que só declaram globais; em código novo, um import, mesmo só de tipos, é preferível.",
+      "table_headers": [
+        "Situação da biblioteca",
+        "Mecanismo de tipos"
+      ],
+      "table_rows": [
+        [
+          "Já publica os próprios tipos",
+          "Campo types no package.json (secção seguinte)"
+        ],
+        [
+          "Não publica tipos, mas a comunidade escreveu-os",
+          "Instalar @types/nome-do-pacote"
+        ],
+        [
+          "Não publica tipos e não há @types",
+          "Escrever a própria declare module"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🌍",
+          "text": "DefinitelyTyped: tipos mantidos pela comunidade"
+        },
+        {
+          "icon": "📦",
+          "text": "Pacote separado, com o prefixo @types/"
+        },
+        {
+          "icon": "🛠️",
+          "text": "Instala-se como devDependency, só para compilar"
+        },
+        {
+          "icon": "🔍",
+          "text": "O compilador encontra @types sozinho, sem referência"
+        }
+      ]
+    },
+    {
+      "heading": "O campo types (ou typings) no package.json",
+      "body": [
+        "Uma biblioteca já escrita em TypeScript, ou que compila os seus próprios .ts para .js, pode publicar os tipos dela mesma, sem depender de @types. Isso faz-se com o campo types no package.json, apontando para o ficheiro .d.ts principal — normalmente gerado automaticamente pelo compilador com a opção declaration, vista na aula sobre o tsconfig.",
+        "Quando o compilador resolve um import de um pacote, procura primeiro esse campo types, ou o seu nome mais antigo, typings, ainda aceite por compatibilidade, dentro do package.json do pacote. Só quando nenhum dos dois existe é que passa a procurar um pacote @types correspondente.",
+        "Isto torna os dois casos indistinguíveis do lado de quem consome a biblioteca: o import fica tipado da mesma forma, quer os tipos venham do próprio pacote quer venham de um pacote @types à parte. A diferença só importa a quem publica a biblioteca."
+      ],
+      "code": "{\n  \"name\": \"biblioteca-de-graficos\",\n  \"version\": \"3.0.0\",\n  \"main\": \"./dist/index.js\",\n  \"types\": \"./dist/index.d.ts\"\n}",
+      "callout_kind": "DICA",
+      "callout_text": "Ao publicar uma biblioteca própria em TypeScript, gerar o .d.ts com declaration: true e apontá-lo no campo types poupa quem a for usar de precisar de instalar um pacote @types à parte.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏷️",
+          "text": "types aponta para o .d.ts principal da biblioteca"
+        },
+        {
+          "icon": "🕰️",
+          "text": "typings é o nome antigo do mesmo campo"
+        },
+        {
+          "icon": "🥇",
+          "text": "O compilador prefere sempre types a um @types"
+        },
+        {
+          "icon": "🤝",
+          "text": "Do lado de quem consome, o import fica igual"
+        }
+      ]
+    },
+    {
+      "heading": "Exemplo completo: tipar e consumir uma função sem tipos",
+      "body": [
+        "Para fechar, um caso completo: uma biblioteca de formatação de preços sem tipos, carregada globalmente, por exemplo por um script num browser, sem nenhum import, tipada com declare global e depois usada com segurança total de tipos.",
+        "A função etiquetaDoProduto usa formatarPreco internamente, já tipada; chamá-la com o tipo errado, como em chamadaComTipoErrado, é rejeitado pelo compilador antes mesmo de o código correr — exatamente o que se ganha ao escrever a declaração em vez de deixar a biblioteca sem nenhum tipo.",
+        "Entre as técnicas desta aula, declare module para pacotes importados, declare global para bibliotecas carregadas globalmente, @types para tipos mantidos pela comunidade, e o campo types para tipos publicados pela própria biblioteca, a escolha depende só de como a biblioteca chega ao projeto."
+      ],
+      "code": "export {};\n\n// Simula uma biblioteca de formatacao sem tipos, carregada globalmente (por\n// exemplo via <script src=\"formatador.js\">), sem nenhum pacote de @types disponivel.\ndeclare global {\n  function formatarPreco(valorCentimos: number, moeda: string): string;\n}\n\nfunction etiquetaDoProduto(precoCentimos: number): string {\n  return formatarPreco(precoCentimos, \"EUR\");\n}\n\nfunction chamadaComTipoErrado(): string {\n  // @ts-expect-error formatarPreco espera o preco em centimos (number), nao uma string\n  return formatarPreco(\"19.99\", \"EUR\");\n}\n\nconsole.log(typeof etiquetaDoProduto, typeof chamadaComTipoErrado);\n// function function",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Acrescente uma segunda função global, arredondarPreco(valorCentimos: number): number, com declare global, e escreva uma chamada correta e outra marcada com @ts-expect-error, para confirmar que o compilador continua a validar os tipos.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏁",
+          "text": "Biblioteca global sem tipos, tipada com declare global"
+        },
+        {
+          "icon": "🛡️",
+          "text": "Uso normal fica com segurança de tipos completa"
+        },
+        {
+          "icon": "🧯",
+          "text": "O tipo errado é rejeitado antes de o código correr"
+        },
+        {
+          "icon": "🗺️",
+          "text": "A técnica certa depende de como a biblioteca chega"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Declarar e consumir uma biblioteca de slugs sem tipos",
+      "difficulty": "Iniciante",
+      "statement": "Escreva a declaração ambiente de uma biblioteca sem tipos chamada biblioteca-slugs, que exporta uma função slugify(texto: string): string. De seguida, escreva o código que a consome com um import normal, chamando slugify com um texto e imprimindo o tipo (typeof) do valor devolvido. Separe claramente as duas partes, como dois ficheiros diferentes: um só com a declaração ambiente, outro com o import e o uso.",
+      "hint": "Uma declaração ambiente nova, um declare module com um nome de pacote que não existe em lado nenhum, só é aceite num ficheiro que ainda não seja, ele próprio, um módulo — por isso não pode viver no mesmo ficheiro que o import que a consome.",
+      "solution_code": "// biblioteca-slugs.d.ts\ndeclare module \"biblioteca-slugs\" {\n  export function slugify(texto: string): string;\n}\n\n// noutro ficheiro main.ts\nimport { slugify } from \"biblioteca-slugs\";\n\nconst resultado = slugify(\"Titulo Do Artigo\");\nconsole.log(typeof resultado);\n// string",
+      "solution_explanation": "A declaração ambiente fica no seu próprio ficheiro .d.ts, sem nenhum import próprio, o que permite ao compilador tratá-la como um módulo novo. O ficheiro main.ts importa biblioteca-slugs normalmente; como o compilador já conhece a forma desse módulo pela declaração ambiente, o import fica tipado e slugify passa a exigir uma string e a devolver outra."
+    },
+    {
+      "title": "Um tema global em Window",
+      "difficulty": "Intermedio",
+      "statement": "Use declare global para acrescentar uma propriedade temaEscuro: boolean à interface Window. Escreva uma função tituloDoTema que recebe um Window e devolve a string \"Tema escuro ativo\" ou \"Tema claro ativo\", consoante o valor de temaEscuro. Teste-a com um objeto simulado, convertido para Window.",
+      "hint": "declare global só é aceite num ficheiro que o compilador já trate como módulo; a forma mais simples de garantir isso, quando não há mais nenhum import, é escrever export {}; sozinha no topo do ficheiro.",
+      "solution_code": "export {};\n\ndeclare global {\n  interface Window {\n    temaEscuro: boolean;\n  }\n}\n\nfunction tituloDoTema(w: Window): string {\n  return w.temaEscuro ? \"Tema escuro ativo\" : \"Tema claro ativo\";\n}\n\nconst janelaSimulada = { temaEscuro: true } as unknown as Window;\nconsole.log(tituloDoTema(janelaSimulada));\n// Tema escuro ativo",
+      "solution_explanation": "declare global dentro de um ficheiro já marcado como módulo por export {}; funde a nova propriedade temaEscuro com a interface Window existente. Como um objeto literal não tem todas as propriedades reais de Window, a conversão passa primeiro por unknown antes de chegar a Window, só para simular um valor de teste sem precisar de um browser real."
+    },
+    {
+      "title": "O campo types de uma biblioteca própria",
+      "difficulty": "Intermedio",
+      "statement": "Escreva o package.json de uma biblioteca fictícia chamada formatador-de-datas, na versão 1.4.0, cujo ponto de entrada em JavaScript é ./dist/index.js e cujos tipos próprios estão em ./dist/index.d.ts. Use o campo correto do package.json para publicar esses tipos, sem depender de @types.",
+      "hint": "O campo chama-se types; o nome mais antigo, typings, ainda funciona mas já não é o recomendado. Aponta para o ficheiro .d.ts principal, não para a pasta inteira.",
+      "solution_code": "{\n  \"name\": \"formatador-de-datas\",\n  \"version\": \"1.4.0\",\n  \"main\": \"./dist/index.js\",\n  \"types\": \"./dist/index.d.ts\"\n}",
+      "solution_explanation": "O campo types diz ao compilador onde está o ficheiro .d.ts que descreve o pacote inteiro; ao resolver um import de formatador-de-datas, o compilador lê esse campo antes de sequer procurar um pacote @types/formador-de-datas. Sem este campo, os tipos ficariam dependentes de um pacote @types separado, que pode nem existir."
+    },
+    {
+      "title": "Validar emails com uma biblioteca global sem tipos",
+      "difficulty": "Avancado",
+      "statement": "Uma biblioteca de validação sem tipos, carregada globalmente e sem nenhum pacote @types disponível, expõe uma função validarEmail(email: string): boolean. Use declare global para a tipar. Escreva uma função contarValidos(emails: string[]): number que use validarEmail para contar quantos emails de uma lista são válidos. Depois, escreva uma segunda função que tente chamar validarEmail com um number em vez de uma string, e marque essa chamada como um erro esperado do compilador.",
+      "hint": "validarEmail nunca é importada, porque a biblioteca não é um módulo: é só uma função que a página já expõe globalmente. A chamada com o tipo errado precisa do comentário @ts-expect-error imediatamente antes da linha que falha.",
+      "solution_code": "export {};\n\ndeclare global {\n  function validarEmail(email: string): boolean;\n}\n\nfunction contarValidos(emails: string[]): number {\n  return emails.filter((email) => validarEmail(email)).length;\n}\n\nfunction chamadaInvalida(): boolean {\n  // @ts-expect-error validarEmail espera uma string, nao um number\n  return validarEmail(123);\n}\n\nconsole.log(typeof contarValidos, typeof chamadaInvalida);\n// function function",
+      "solution_explanation": "declare global acrescenta validarEmail ao âmbito global sem precisar de nenhum import, tal como a biblioteca real a exporia num script carregado diretamente na página. contarValidos usa-a dentro de um filter, respeitando o tipo boolean devolvido; chamadaInvalida mostra que passar um number onde é esperada uma string é apanhado em tempo de compilação, antes de o código sequer correr."
+    }
+  ],
+  "summary": [
+    "Um ficheiro .d.ts só tem assinaturas de tipos: zero implementação, zero código de runtime",
+    "declare module \"nome-pacote\" cria uma declaração ambiente nova só num ficheiro que ainda não é módulo; por isso o shim vive no seu próprio .d.ts, importado a partir de outro ficheiro",
+    "declare global funde novas declarações com o âmbito global, como Window, mas só dentro de um ficheiro já tratado como módulo, nem que seja só por um export {}; solto",
+    "@types/nome-pacote são tipos mantidos pela comunidade (DefinitelyTyped), instalados como dependência de desenvolvimento separada do pacote real",
+    "O campo types, ou o mais antigo typings, do package.json deixa uma biblioteca publicar os próprios tipos, tornando o @types correspondente desnecessário",
+    "/// <reference types=\"...\" /> é a forma antiga de incluir tipos globais de um pacote @types sem import explícito; hoje é rara"
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 05",
+  "next_label": "Aula 05 → Compilar, Empacotar e Integrar no Ecossistema"
+}

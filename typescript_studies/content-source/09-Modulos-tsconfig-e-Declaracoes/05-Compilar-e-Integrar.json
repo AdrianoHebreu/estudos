@@ -1,0 +1,420 @@
+{
+  "module_num": "09",
+  "module_title": "Módulos, tsconfig e Declarações",
+  "module_dir": "09-Modulos-tsconfig-e-Declaracoes",
+  "lesson_num": "05",
+  "lesson_slug": "Compilar-e-Integrar",
+  "kind": "aula",
+  "title": "Compilar, Empacotar e Integrar no Ecossistema",
+  "filename_base": "05-Compilar-e-Integrar",
+  "subtitle": "tsc como verificador e compilador, ts-node/tsx, isolatedModules e publicar no npm",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Distinguir o papel de verificador do papel de compilador do tsc, e onde ferramentas como esbuild ou SWC só transpilam",
+    "Perceber para que servem ts-node e tsx no dia a dia de desenvolvimento",
+    "Medir o que isolatedModules proíbe e escrever reexportações de tipos que sobrevivem a ferramentas ficheiro a ficheiro",
+    "Situar o tsc num pipeline com um bundler, como um passo de verificação separado do bundle final",
+    "Reconhecer para que servem composite e references num tsconfig.json com vários subprojetos",
+    "Preparar um pacote TypeScript para publicação, com o campo types do package.json a apontar para o .d.ts gerado"
+  ],
+  "sections": [
+    {
+      "heading": "O tsc tem dois papéis: verificar e compilar",
+      "body": [
+        "O tsc faz duas coisas ao mesmo tempo, e é fácil esquecer que são coisas distintas: verifica os tipos, comparando cada expressão do código com as suas declarações, e compila, emitindo JavaScript equivalente com as anotações de tipo removidas. Este curso usa o tsc só no primeiro papel, com a flag noEmit, que corre a verificação inteira e não escreve um único ficheiro .js.",
+        "Grande parte do ecossistema moderno separa estes dois papéis de propósito. Ferramentas como esbuild, SWC ou o transform do Babel para TypeScript fazem só a segunda metade: apagam a sintaxe de tipos de um ficheiro, um de cada vez, sem nunca comparar um tipo com outro. São rapidíssimas precisamente por isso — não constroem a árvore de tipos do projeto inteiro, só reescrevem sintaxe.",
+        "A consequência é que essas ferramentas nunca detetam um erro de tipo: aceitam código que o tsc rejeitaria, porque nunca chegam a olhar para os tipos, só para onde eles começam e acabam na sintaxe. Quem as usa continua a precisar de um tsc a correr à parte, normalmente com noEmit, exatamente como este curso já faz desde a primeira aula."
+      ],
+      "code": "",
+      "callout_kind": "DICA",
+      "callout_text": "O tsc --noEmit que este curso usa desde o início não é um truque do curso: é o mesmo padrão que qualquer pipeline com um transpilador rápido segue, para separar a verificação de tipos da geração do JavaScript.",
+      "table_headers": [
+        "Ferramenta",
+        "Verifica tipos",
+        "Emite JavaScript"
+      ],
+      "table_rows": [
+        [
+          "tsc",
+          "sim, o ficheiro inteiro do projeto",
+          "sim, por omissão (aqui desligado com noEmit)"
+        ],
+        [
+          "esbuild",
+          "não, só remove a sintaxe de tipos",
+          "sim, e muito depressa"
+        ],
+        [
+          "SWC",
+          "não, só remove a sintaxe de tipos",
+          "sim, e muito depressa"
+        ],
+        [
+          "Babel (preset TypeScript)",
+          "não, só remove a sintaxe de tipos",
+          "sim"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔍",
+          "text": "tsc verifica tipos e compila, são papéis distintos"
+        },
+        {
+          "icon": "⚡",
+          "text": "esbuild, SWC e Babel só apagam a sintaxe de tipos"
+        },
+        {
+          "icon": "🚫",
+          "text": "Nenhuma delas deteta um erro de tipo"
+        },
+        {
+          "icon": "✅",
+          "text": "A verificação continua a precisar de tsc --noEmit"
+        }
+      ]
+    },
+    {
+      "heading": "ts-node e tsx: correr .ts sem um build à parte",
+      "body": [
+        "ts-node e tsx são ferramentas de terceiros, não fazem parte do TypeScript oficial, que permitem correr um ficheiro .ts diretamente com node ficheiro.ts ou tsx ficheiro.ts, sem um passo de build visível antes. Nos bastidores continuam a transformar o TypeScript em JavaScript — só que fazem-no na memória, a cada execução, sem deixar um .js no disco.",
+        "O problema que resolvem é de conforto durante o desenvolvimento: sem elas, cada alteração a um ficheiro exigiria correr o tsc para gerar o JavaScript e só depois correr node sobre esse resultado. Com tsx ou ts-node, esse ciclo fica reduzido a um único comando, o que é especialmente útil em scripts pequenos, testes rápidos ou APIs que reiniciam a cada alteração.",
+        "Nenhuma delas substitui a verificação de tipos completa deste curso: tal como esbuild e SWC, tendem a privilegiar velocidade, transformando o ficheiro sem construir a árvore de tipos do projeto inteiro. Um erro de tipo num ficheiro que nunca é importado por outro pode passar despercebido até alguém correr o tsc --noEmit a sério."
+      ],
+      "code": "",
+      "callout_kind": "NOTA",
+      "callout_text": "Nem ts-node nem tsx fazem parte do compilador oficial: são projetos de terceiros. O próprio tsc nunca corre um programa, só verifica e, por omissão, emite JavaScript para outra ferramenta correr.",
+      "table_headers": [
+        "Fluxo de trabalho",
+        "Passos"
+      ],
+      "table_rows": [
+        [
+          "Só com tsc",
+          "editar o .ts, correr tsc para gerar o .js, correr node sobre o .js"
+        ],
+        [
+          "Com ts-node ou tsx",
+          "editar o .ts, correr tsx ficheiro.ts (compila e corre num só comando)"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🛠️",
+          "text": "ts-node e tsx são ferramentas de terceiros"
+        },
+        {
+          "icon": "▶️",
+          "text": "Correm um .ts diretamente, sem gerar um .js visível"
+        },
+        {
+          "icon": "⏩",
+          "text": "Poupam o ciclo manual de compilar e depois correr"
+        },
+        {
+          "icon": "🩺",
+          "text": "Não substituem uma verificação de tipos completa"
+        }
+      ]
+    },
+    {
+      "heading": "isolatedModules: o que uma ferramenta ficheiro a ficheiro não sabe",
+      "body": [
+        "Ferramentas como esbuild, SWC ou os bundlers que as usam por baixo processam um ficheiro de cada vez, sem olhar para os outros ficheiros do projeto. Isso torna-as rápidas, mas cria um problema concreto: para saber se um nome exportado é um tipo, que desaparece por completo do JavaScript emitido, ou um valor, que tem de continuar presente, normalmente é preciso ir ver como esse nome foi declarado — e uma ferramenta ficheiro a ficheiro não tem essa informação.",
+        "A flag isolatedModules liga essa verificação extra no próprio tsc: obriga a sintaxe a ser explícita sempre que essa ambiguidade existiria para uma ferramenta ficheiro a ficheiro. Medido diretamente: reexportar uma interface local com export { NomeDoTipo } compila normalmente com as flags deste curso, mas passa a dar o erro TS1205 assim que se acrescenta --isolatedModules — a correção é escrever export type { NomeDoTipo } nessa linha, como faz o código abaixo desde o início.",
+        "Um candidato óbvio a este problema, um const enum, acabou por não o ser: medido na versão 5.9.3 instalada neste curso, declarar ou mesmo exportar um const enum comum compila da mesma forma com e sem isolatedModules. A restrição real é mais estreita, e só aparece com um const enum ambiente, declare const enum, cujo corpo vem de fora do ficheiro: aí sim, aceder a um dos seus membros dá o erro TS2748 com isolatedModules ligado, porque o valor não está disponível neste ficheiro para o tsc o poder embutir diretamente."
+      ],
+      "code": "interface ConfiguracaoApp {\n  nomeServico: string;\n  portas: number[];\n}\n\nfunction criarConfiguracaoPadrao(): ConfiguracaoApp {\n  return { nomeServico: \"api\", portas: [3000, 3001] };\n}\n\n// Reexportar um tipo exige \"export type\" com isolatedModules ligado: uma\n// ferramenta que só vê este ficheiro não sabe que ConfiguracaoApp desaparece\n// em tempo de execução, a não ser que a sintaxe o diga de forma explícita.\nexport type { ConfiguracaoApp };\nexport { criarConfiguracaoPadrao };",
+      "callout_kind": "ATENCAO",
+      "callout_text": "isolatedModules não é uma opção do modo strict deste curso e não é ligada pelas flags fixas do verificador — este comportamento só se mede acrescentando --isolatedModules manualmente ao comando do tsc, como foi feito para escrever esta secção.",
+      "table_headers": [
+        "Situação",
+        "Sem isolatedModules",
+        "Com isolatedModules"
+      ],
+      "table_rows": [
+        [
+          "Reexportar uma interface local sem export type",
+          "compila",
+          "erro TS1205, pede export type"
+        ],
+        [
+          "const enum declarado e usado no próprio ficheiro",
+          "compila",
+          "compila na mesma"
+        ],
+        [
+          "declare const enum (ambiente, sem corpo aqui)",
+          "compila",
+          "erro TS2748 ao aceder a um membro"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📄",
+          "text": "Ferramentas ficheiro a ficheiro veem só um .ts de cada vez"
+        },
+        {
+          "icon": "🏷️",
+          "text": "export type torna a reexportação de um tipo inequívoca"
+        },
+        {
+          "icon": "🧪",
+          "text": "Medido: TS1205 sem export type, com isolatedModules"
+        },
+        {
+          "icon": "🧭",
+          "text": "const enum comum sobrevive; só o ambiente falha (TS2748)"
+        }
+      ]
+    },
+    {
+      "heading": "O tsc dentro de um pipeline com um bundler",
+      "body": [
+        "Um projeto real com webpack, Vite ou esbuild normalmente não usa o tsc para gerar o bundle final: usa uma dessas ferramentas, muitas vezes com esbuild ou SWC por baixo, exatamente porque são mais rápidas a apagar tipos e a agrupar ficheiros do que o tsc seria a fazer o mesmo trabalho.",
+        "O tsc continua a ter um papel, mas separado: correr como um passo de verificação, tipicamente com noEmit, à parte do bundle. Pode correr no editor em tempo real, através do mesmo motor que dá sugestões e sublinha erros, e pode correr outra vez de forma explícita antes de aceitar uma alteração, num pipeline de integração contínua — o mesmo padrão que este curso usa desde a primeira aula para validar cada exemplo.",
+        "Esta separação explica porque um bundle pode, por vezes, incluir por engano um erro de tipo que só aparece mais tarde: se o passo de verificação for saltado ou corrido em paralelo sem bloquear o build, o bundle final é gerado na mesma, porque quem o gera nunca chegou a olhar para os tipos."
+      ],
+      "code": "",
+      "callout_kind": "NOTA",
+      "callout_text": "Ver os tipos como certos só porque o build terminou sem erros é um engano comum: o build de um bundler moderno normalmente não verifica tipo nenhum, só o tsc --noEmit o faz.",
+      "table_headers": [
+        "Etapa do pipeline",
+        "Ferramenta típica",
+        "Verifica tipos"
+      ],
+      "table_rows": [
+        [
+          "Escrever código no editor",
+          "tsserver, o motor do tsc",
+          "sim, em tempo real"
+        ],
+        [
+          "Gerar o bundle de produção",
+          "esbuild, SWC ou Babel dentro do Vite/Webpack",
+          "não"
+        ],
+        [
+          "Porta de qualidade, em CI ou antes de commit",
+          "tsc --noEmit",
+          "sim, é o único passo que garante isto"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "O bundle final costuma ser gerado sem verificar tipos"
+        },
+        {
+          "icon": "🧾",
+          "text": "tsc --noEmit corre à parte, como porta de qualidade"
+        },
+        {
+          "icon": "🖥️",
+          "text": "O editor já usa o mesmo motor do tsc em tempo real"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Um build sem erros não garante tipos corretos"
+        }
+      ]
+    },
+    {
+      "heading": "Project references: vários subprojetos, uma compilação",
+      "body": [
+        "Um repositório grande divide-se muitas vezes em vários pacotes TypeScript que dependem uns dos outros — por exemplo um pacote de tipos partilhados, um de lógica de negócio que o usa, e uma aplicação que usa os dois. Project references são o mecanismo do tsconfig.json pensado para esta organização: cada subprojeto ganha composite: true no seu próprio tsconfig.json, e o projeto que depende de outros lista-os no campo references.",
+        "Com essa informação, tsc --build, também escrito tsc -b, compila os subprojetos pela ordem certa das dependências, e guarda em disco informação suficiente para, numa compilação seguinte, recompilar só o que mudou. Numa base de código grande, isto substitui uma única compilação lenta do tudo por várias compilações pequenas e incrementais.",
+        "Nada disto é visível a compilar um único ficheiro isolado, como faz o verificador automático deste curso: project references são, por definição, sobre como vários tsconfig.json e vários ficheiros se relacionam entre si, não sobre o conteúdo de um ficheiro individual."
+      ],
+      "code": "",
+      "callout_kind": "NOTA",
+      "callout_text": "composite e references só fazem sentido com vários tsconfig.json a colaborar; não há forma de os demonstrar dentro de um único bloco de código autónomo, o que é esperado neste ponto do curso.",
+      "table_headers": [
+        "Campo",
+        "Onde vive",
+        "Para que serve"
+      ],
+      "table_rows": [
+        [
+          "composite: true",
+          "tsconfig.json de cada subprojeto",
+          "permite que outros projetos dependam dele, com dados incrementais guardados em disco"
+        ],
+        [
+          "references",
+          "tsconfig.json do projeto que depende de outros",
+          "lista os subprojetos dos quais depende, para o tsc os compilar pela ordem certa"
+        ],
+        [
+          "tsc --build (tsc -b)",
+          "linha de comandos",
+          "compila só os subprojetos que mudaram, na ordem das dependências"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧩",
+          "text": "Vários pacotes TypeScript, um repositório"
+        },
+        {
+          "icon": "🏗️",
+          "text": "composite: true marca um subprojeto como referenciável"
+        },
+        {
+          "icon": "🔗",
+          "text": "references lista as dependências entre subprojetos"
+        },
+        {
+          "icon": "♻️",
+          "text": "tsc --build recompila só o que mudou"
+        }
+      ]
+    },
+    {
+      "heading": "Publicar um pacote TypeScript no npm",
+      "body": [
+        "Publicar uma biblioteca escrita em TypeScript passa por compilar o código fonte para JavaScript, tal como qualquer outro projeto, mas com uma diferença: quem instala o pacote espera continuar a ver os tipos originais, não só o JavaScript já sem eles. Isso consegue-se ligando declaration: true na compilação, que faz o tsc gerar, ao lado de cada .js, um .d.ts correspondente — a mesma extensão que a Aula 04 ensinou a escrever à mão, só que aqui gerada automaticamente a partir do próprio código fonte.",
+        "O package.json do pacote publicado precisa de dois campos a apontar para essa saída: main, que aponta para o JavaScript gerado (por exemplo dist/index.js), e types (por vezes escrito typings), que aponta para o .d.ts principal gerado (por exemplo dist/index.d.ts). É esse campo types que dá a quem instala o pacote autocompletar e verificação de tipos, sem essa pessoa ter de escrever ou instalar nada à parte.",
+        "O código abaixo é o género de ficheiro fonte que ficaria em src/ antes de publicar: compila para um .js pequeno e, com declaration ligado, para um .d.ts que descreve exatamente OpcoesFormatacao e formatarPreco a quem vier a instalar o pacote."
+      ],
+      "code": "export interface OpcoesFormatacao {\n  casasDecimais?: number;\n  simboloMoeda?: string;\n}\n\nexport function formatarPreco(valor: number, opcoes: OpcoesFormatacao = {}): string {\n  const casas = opcoes.casasDecimais ?? 2;\n  const simbolo = opcoes.simboloMoeda ?? \"EUR\";\n  return valor.toFixed(casas) + \" \" + simbolo;\n}\n\nconsole.log(formatarPreco(19.9));\nconsole.log(formatarPreco(19.9, { casasDecimais: 0, simboloMoeda: \"USD\" }));\n// 19.90 EUR\n// 20 USD",
+      "callout_kind": "DICA",
+      "callout_text": "Sem o campo types no package.json a apontar para o .d.ts certo, quem instala o pacote continua a poder usá-lo, mas perde o autocompletar e a verificação de tipos — o JavaScript corre na mesma, só a experiência de tipos é que desaparece.",
+      "table_headers": [
+        "Campo do package.json",
+        "Aponta para",
+        "O que dá a quem instala"
+      ],
+      "table_rows": [
+        [
+          "main",
+          "dist/index.js",
+          "o JavaScript que corre quando o pacote é importado"
+        ],
+        [
+          "types (ou typings)",
+          "dist/index.d.ts",
+          "os tipos gerados, com autocompletar e verificação"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🏗️",
+          "text": "declaration: true gera o .d.ts ao lado do .js"
+        },
+        {
+          "icon": "📦",
+          "text": "main aponta para o JavaScript compilado"
+        },
+        {
+          "icon": "🏷️",
+          "text": "types aponta para o .d.ts principal gerado"
+        },
+        {
+          "icon": "🔁",
+          "text": "Mesma extensão da Aula 04, agora do lado de quem publica"
+        }
+      ]
+    },
+    {
+      "heading": "Como tudo isto se encaixa num projeto real",
+      "body": [
+        "Este módulo juntou as peças de um projeto TypeScript real, de fora para dentro: módulos com import e export tipados, um tsconfig.json a decidir como o código é lido e emitido, o modo strict a decidir quão rigorosa é a verificação, ficheiros .d.ts a descrever bibliotecas sem tipos próprios, e agora as ferramentas que rodeiam tudo isto — desde correr um único ficheiro em desenvolvimento até publicar um pacote inteiro.",
+        "O fio condutor é sempre o mesmo: o tsc verifica tipos, e nem sempre é quem emite o JavaScript que corre de facto. Um projeto pequeno pode deixar o tsc fazer as duas coisas; um projeto maior tende a separá-las, com ts-node ou tsx no desenvolvimento, um bundler rápido para o build final, e o tsc --noEmit como porta de qualidade em CI — exatamente a arquitetura que este curso usa para se verificar a si próprio.",
+        "Os módulos seguintes deixam de olhar para configuração e ferramentas e voltam ao código: o Módulo 10 aplica tudo isto a situações do dia a dia de um projeto real, como assincronismo tipado e validação de dados que chegam de fora."
+      ],
+      "code": "",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Antes de seguir para o próximo módulo, reveja os exercícios das cinco aulas deste módulo: são a base do gabarito final do curso, no Módulo 14.",
+      "table_headers": [
+        "Aula",
+        "O que ficou resolvido"
+      ],
+      "table_rows": [
+        [
+          "01",
+          "import/export tipados, import type/export type, módulos ambiente"
+        ],
+        [
+          "02",
+          "as opções gerais do tsconfig.json além do strict"
+        ],
+        [
+          "03",
+          "o modo strict, opção a opção"
+        ],
+        [
+          "04",
+          "ficheiros .d.ts e o ecossistema @types"
+        ],
+        [
+          "05",
+          "as ferramentas à volta do tsc: ts-node/tsx, isolatedModules, bundlers, publicar um pacote"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧵",
+          "text": "Módulos, tsconfig, strict, .d.ts e ferramentas, juntos"
+        },
+        {
+          "icon": "🎯",
+          "text": "tsc verifica; quem emite o JS que corre pode ser outro"
+        },
+        {
+          "icon": "🏭",
+          "text": "Dev com tsx/ts-node, build com um bundler, CI com tsc"
+        },
+        {
+          "icon": "➡️",
+          "text": "A seguir: TypeScript no Mundo Real, Módulo 10"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Qual ferramenta resolve cada etapa",
+      "difficulty": "Iniciante",
+      "statement": "Uma equipa tem três situações no seu fluxo de trabalho com TypeScript: (1) querem correr um ficheiro .ts durante o desenvolvimento sem compilar manualmente antes de cada execução; (2) querem gerar o bundle final para produção o mais depressa possível, sem gastar tempo a verificar tipos nesse passo; (3) querem um passo isolado, tipicamente em integração contínua, que garanta que os tipos estão corretos. Escreva uma função ferramentaRecomendada que recebe um identificador de uma destas três situações e devolve, como texto, a ferramenta ou comando indicado para cada uma, usando um tipo de união de literais e um switch exaustivo.",
+      "hint": "Os três identificadores podem ser um tipo de união de strings literais, como no Módulo 04. Um switch com um caso default que atribui o parâmetro a uma variável do tipo never garante, em tempo de compilação, que nenhum caso ficou por tratar.",
+      "solution_code": "type EtapaPipeline = \"desenvolvimento\" | \"verificacaoDeTipos\" | \"bundleFinal\";\n\nfunction ferramentaRecomendada(etapa: EtapaPipeline): string {\n  switch (etapa) {\n    case \"desenvolvimento\":\n      return \"tsx ou ts-node (correr .ts diretamente, sem build manual)\";\n    case \"verificacaoDeTipos\":\n      return \"tsc --noEmit (so verifica tipos, nao gera JavaScript)\";\n    case \"bundleFinal\":\n      return \"um bundler como esbuild ou vite (rapido, sem verificar tipos)\";\n    default: {\n      const _exaustivo: never = etapa;\n      return _exaustivo;\n    }\n  }\n}\n\nconsole.log(ferramentaRecomendada(\"desenvolvimento\"));\nconsole.log(ferramentaRecomendada(\"verificacaoDeTipos\"));\nconsole.log(ferramentaRecomendada(\"bundleFinal\"));\n// tsx ou ts-node (correr .ts diretamente, sem build manual)\n// tsc --noEmit (so verifica tipos, nao gera JavaScript)\n// um bundler como esbuild ou vite (rapido, sem verificar tipos)",
+      "solution_explanation": "EtapaPipeline é uma união de três literais, e o switch trata cada um deles explicitamente; o caso default nunca deveria ser alcançado, e atribuir etapa a uma variável never obriga o compilador a confirmar que os três casos já esgotaram todas as possibilidades do tipo. Cada situação do enunciado corresponde à ferramenta certa: tsx/ts-node para desenvolvimento sem build manual, um bundler rápido para o build final, e tsc --noEmit como o único passo que de facto verifica tipos."
+    },
+    {
+      "title": "Corrigir uma reexportação para isolatedModules",
+      "difficulty": "Intermedio",
+      "statement": "Um ficheiro anterior a esta correção declarava a interface RespostaApi e a função interpretar, e reexportava as duas juntas no fim com export { RespostaApi, interpretar }. Isso compila normalmente com as flags deste curso, mas passa a falhar com o erro TS1205 assim que se acrescenta a flag isolatedModules, porque uma ferramenta que só vê este ficheiro não consegue saber, sem essa reexportação ser explícita, que RespostaApi desaparece em tempo de execução. Reescreva o ficheiro completo, com a reexportação corrigida, para compilar também com isolatedModules, mantendo os mesmos dois nomes exportados.",
+      "hint": "Um tipo (aqui, a interface) e um valor (aqui, a função) usados na mesma exportação final precisam de sintaxes diferentes: export type para o primeiro, export normal para o segundo. Não é preciso separá-los em ficheiros diferentes, só a sintaxe da exportação muda.",
+      "solution_code": "interface RespostaApi {\n  estado: number;\n  corpo: string;\n}\n\nfunction interpretar(resposta: RespostaApi): string {\n  return resposta.estado + \": \" + resposta.corpo;\n}\n\nconsole.log(interpretar({ estado: 200, corpo: \"ok\" }));\n// 200: ok\n\nexport type { RespostaApi };\nexport { interpretar };",
+      "solution_explanation": "export type { RespostaApi } declara explicitamente que RespostaApi é só um tipo, que desaparece do JavaScript emitido; export { interpretar } continua a exportar a função normalmente, como um valor. Com esta separação explícita, o ficheiro compila tanto com as flags normais como com isolatedModules ligado, porque deixa de haver ambiguidade para uma ferramenta que só veja este ficheiro."
+    },
+    {
+      "title": "Preparar um módulo para publicação",
+      "difficulty": "Intermedio",
+      "statement": "Escreva o ficheiro fonte de uma pequena biblioteca de formatação de datas, pronta para vir a ser publicada num pacote npm: uma interface OpcoesData com um campo opcional comHora, e uma função formatarData que recebe uma Date e essas opções e devolve a data em ISO recortada aos dez primeiros carateres e, quando comHora for verdadeiro, também a hora. Depois, sem escrever código, responda em prosa: depois de compilar este ficheiro com declaration ligado, que dois campos do package.json têm de apontar para os ficheiros gerados, e para que serve cada um?",
+      "hint": "A parte de código usa Date e o método toISOString, como qualquer código JavaScript já conhecido; a resposta sobre o package.json não precisa de código, só de nomear os dois campos e o que cada um dá a quem instala o pacote.",
+      "solution_code": "export interface OpcoesData {\n  comHora?: boolean;\n}\n\nexport function formatarData(data: Date, opcoes: OpcoesData = {}): string {\n  const base = data.toISOString().slice(0, 10);\n  return opcoes.comHora ? base + \" \" + data.toISOString().slice(11, 16) : base;\n}\n\nconst dataFixa = new Date(Date.UTC(2026, 0, 15, 9, 30));\nconsole.log(formatarData(dataFixa));\nconsole.log(formatarData(dataFixa, { comHora: true }));\n// 2026-01-15\n// 2026-01-15 09:30",
+      "solution_explanation": "formatarData usa toISOString para obter sempre o mesmo formato independentemente do fuso horário local, e o parâmetro opcoes tem um valor por omissão para poder ser chamada sem o segundo argumento. Sobre o package.json: main tem de apontar para o JavaScript compilado (por exemplo dist/index.js), o que permite a quem instala o pacote correr o código; types tem de apontar para o .d.ts principal gerado pelo declaration (por exemplo dist/index.d.ts), o que dá autocompletar e verificação de tipos a quem instala, sem essa pessoa escrever tipos à mão."
+    },
+    {
+      "title": "Um tipo Resultado seguro para isolatedModules",
+      "difficulty": "Avancado",
+      "statement": "Escreva um type alias genérico Resultado<T>, uma união discriminada pelo campo sucesso entre um caso de sucesso com um valor do tipo T e um caso de falha com uma mensagem de erro em texto. Escreva também três funções genéricas: envolver, que recebe um valor e devolve o caso de sucesso correspondente; falhar, que recebe uma mensagem e devolve um Resultado<never> no caso de falha; e descrever, que recebe um Resultado<T> e devolve uma frase de texto diferente consoante o caso, sem aceder a um campo que não exista nesse caso. Exporte tudo de forma segura para isolatedModules.",
+      "hint": "Resultado é um tipo, não um valor: a sua exportação precisa de export type. envolver, falhar e descrever são funções, valores normais, que se exportam da forma habitual. Dentro de descrever, testar o campo sucesso estreita a união para um dos dois casos, tal como no Módulo 04.",
+      "solution_code": "interface Sucesso<T> {\n  sucesso: true;\n  valor: T;\n}\n\ninterface Falha {\n  sucesso: false;\n  erro: string;\n}\n\ntype Resultado<T> = Sucesso<T> | Falha;\n\nfunction envolver<T>(valor: T): Resultado<T> {\n  return { sucesso: true, valor };\n}\n\nfunction falhar(erro: string): Resultado<never> {\n  return { sucesso: false, erro };\n}\n\nfunction descrever<T>(resultado: Resultado<T>): string {\n  if (resultado.sucesso) {\n    return \"sucesso: \" + JSON.stringify(resultado.valor);\n  }\n  return \"falha: \" + resultado.erro;\n}\n\nconsole.log(descrever(envolver(42)));\nconsole.log(descrever(falhar(\"tempo esgotado\")));\n// sucesso: 42\n// falha: tempo esgotado\n\nexport type { Resultado };\nexport { envolver, falhar, descrever };",
+      "solution_explanation": "Resultado<T> une Sucesso<T>, com sucesso: true e um valor, e Falha, com sucesso: false e um erro; falhar devolve Resultado<never> porque, num caso de falha, nunca existe valor nenhum de sucesso. Testar resultado.sucesso dentro de descrever estreita a união para um dos dois casos, tal como as uniões discriminadas do Módulo 04, permitindo aceder a valor ou a erro sem erro de compilação. Por fim, export type { Resultado } separa a exportação do tipo da exportação das três funções, tornando o ficheiro seguro também com isolatedModules ligado."
+    }
+  ],
+  "summary": [
+    "O tsc verifica tipos e compila; ferramentas como esbuild, SWC e Babel só apagam a sintaxe de tipos, sem os verificar",
+    "ts-node e tsx são ferramentas de terceiros que correm um .ts diretamente, poupando o ciclo manual de compilar e depois correr",
+    "isolatedModules obriga a sintaxe explícita (export type) sempre que uma ferramenta ficheiro a ficheiro não conseguiria distinguir um tipo de um valor sozinha",
+    "Num pipeline com um bundler, o tsc costuma correr só como verificação, separado do bundle final gerado por uma ferramenta mais rápida",
+    "composite e references organizam vários subprojetos TypeScript que dependem uns dos outros, com compilação incremental via tsc --build",
+    "Publicar um pacote TypeScript passa por gerar o JavaScript e o .d.ts principal, e apontar main e types do package.json para eles"
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para o Módulo 10",
+  "next_label": "Aula 01 → Assincronismo Tipado: Promise e async/await"
+}

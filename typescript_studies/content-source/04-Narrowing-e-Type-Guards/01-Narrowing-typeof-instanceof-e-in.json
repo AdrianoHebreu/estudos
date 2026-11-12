@@ -1,0 +1,324 @@
+{
+  "module_num": "04",
+  "module_title": "Narrowing e Type Guards",
+  "module_dir": "04-Narrowing-e-Type-Guards",
+  "lesson_num": "01",
+  "lesson_slug": "Narrowing-typeof-instanceof-e-in",
+  "kind": "aula",
+  "title": "Narrowing: typeof, instanceof e in",
+  "filename_base": "01-Narrowing-typeof-instanceof-e-in",
+  "subtitle": "Como o compilador estreita o tipo a partir de verificações que já existem em JavaScript",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Distinguir o tipo declarado de uma variável do tipo que o compilador conhece em cada ramo",
+    "Estreitar uniões com typeof e reconhecer a armadilha de typeof null",
+    "Escolher entre uma verificação de veracidade e uma comparação explícita",
+    "Usar o operador in para separar objetos pela presença de uma propriedade",
+    "Aplicar instanceof a classes e erros, e conhecer os seus limites",
+    "Perceber porque o estreitamento se perde dentro de funções e como o preservar"
+  ],
+  "sections": [
+    {
+      "heading": "O tipo declarado e o tipo de cada ramo",
+      "body": [
+        "Uma variável tem um tipo declarado, que nunca muda, e um tipo que o compilador lhe atribui em cada ponto do código, esse sim variável. A esse cálculo chama-se análise de fluxo de controlo, e ao resultado chama-se estreitamento, ou narrowing: dentro de um ramo protegido por uma verificação, o valor deixa de ser a união inteira e passa a ser apenas a parte que sobrevive a essa verificação.",
+        "O ponto importante é que não há sintaxe nova. As verificações são as de sempre em JavaScript: um if com typeof, uma comparação, um in, um instanceof. O que o TypeScript acrescenta é ler essas verificações e ajustar o tipo estático dentro e fora de cada ramo. É por isso que o mesmo acesso é um erro antes da verificação e deixa de o ser depois dela."
+      ],
+      "code": "function descrever(valor: string | number): string {\n  // aqui valor ainda é string | number\n  if (typeof valor === \"string\") {\n    // neste ramo o compilador só conhece string\n    return valor.padStart(5, \".\");\n  }\n  // e no ramo restante só conhece number\n  return valor.toFixed(2);\n}\n\nconsole.log(descrever(\"ok\")); // \"...ok\"\nconsole.log(descrever(3.5));  // \"3.50\"\n\nfunction inicial(valor: string | number): string {\n  // @ts-expect-error fora de qualquer verificação valor continua a ser a união inteira, e number não tem toUpperCase\n  return valor.toUpperCase();\n}",
+      "callout_kind": "NOTA",
+      "callout_text": "O tipo declarado é o teto. O estreitamento só retira possibilidades dentro da união declarada, nunca acrescenta tipos novos.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧭",
+          "text": "Tipo declarado é fixo, tipo conhecido varia por ramo"
+        },
+        {
+          "icon": "🔁",
+          "text": "Análise de fluxo de controlo em cada if e return"
+        },
+        {
+          "icon": "✅",
+          "text": "Sem sintaxe nova: verificações normais de JavaScript"
+        }
+      ]
+    },
+    {
+      "heading": "Guardas com typeof",
+      "body": [
+        "O TypeScript reconhece a comparação de typeof com um destes textos: string, number, bigint, boolean, symbol, undefined, object e function. Comparar com qualquer outro literal é erro de compilação, porque nenhum valor poderia satisfazer essa condição.",
+        "A armadilha clássica é object. Como typeof null também devolve a cadeia object, um ramo protegido por essa comparação ainda pode conter null, e o compilador sabe disso: em modo strict continua a acusar o acesso a propriedades. A saída é tratar o null à parte, normalmente com uma comparação de igualdade. Pela mesma razão, typeof não distingue um array de um objeto qualquer, e para isso continua a usar-se Array.isArray."
+      ],
+      "code": "function inspecionar(valor: string | number | boolean | undefined | (() => number)): string {\n  if (typeof valor === \"string\") return \"texto de \" + valor.length + \" caracteres\";\n  if (typeof valor === \"number\") return \"numero \" + valor.toFixed(1);\n  if (typeof valor === \"boolean\") return valor ? \"sim\" : \"nao\";\n  if (typeof valor === \"function\") return \"funcao devolveu \" + valor();\n  // só sobra undefined\n  return \"sem valor\";\n}\n\nconsole.log(inspecionar(\"ola\"));     // \"texto de 3 caracteres\"\nconsole.log(inspecionar(7));         // \"numero 7.0\"\nconsole.log(inspecionar(false));     // \"nao\"\nconsole.log(inspecionar(() => 42));  // \"funcao devolveu 42\"\nconsole.log(inspecionar(undefined)); // \"sem valor\"\n\nfunction contar(valor: string[] | null): number {\n  if (typeof valor === \"object\") {\n    // typeof null também devolve \"object\": aqui valor ainda é string[] | null\n    // @ts-expect-error valor pode ser null neste ramo\n    return valor.length;\n  }\n  return 0;\n}\n\nconsole.log(contar([\"a\", \"b\"])); // 2\nconsole.log(contar(null));       // 0",
+      "callout_kind": "ATENCAO",
+      "callout_text": "typeof null devolve object. Quem escreve typeof x igual a object para apanhar objetos apanha também o null, e o tipo que o TypeScript infere reflete isso.",
+      "table_headers": [
+        "Resultado de typeof",
+        "O que o compilador passa a conhecer",
+        "Observação"
+      ],
+      "table_rows": [
+        [
+          "string",
+          "string",
+          "Inclui os tipos literais de texto da união"
+        ],
+        [
+          "number",
+          "number",
+          "NaN e Infinity também entram aqui"
+        ],
+        [
+          "bigint",
+          "bigint",
+          "Distinto de number, sem conversão implícita"
+        ],
+        [
+          "boolean",
+          "boolean",
+          "Estreita a true ou a false quando a união os separa"
+        ],
+        [
+          "symbol",
+          "symbol",
+          "Raro em código de aplicação"
+        ],
+        [
+          "undefined",
+          "undefined",
+          "Não apanha null"
+        ],
+        [
+          "object",
+          "Objetos, arrays e também null",
+          "Não separa null nem distingue array de objeto"
+        ],
+        [
+          "function",
+          "Tipos de função e classes",
+          "Uma classe também é uma função em tempo de execução"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔎",
+          "text": "Oito resultados de typeof funcionam como guardas"
+        },
+        {
+          "icon": "⚠️",
+          "text": "O ramo de object continua a poder conter null"
+        },
+        {
+          "icon": "🧱",
+          "text": "Arrays só se separam com Array.isArray"
+        }
+      ]
+    },
+    {
+      "heading": "Veracidade ou comparação explícita",
+      "body": [
+        "Escrever if com o próprio valor também estreita: no ramo verdadeiro saem os tipos que só contêm valores falsos, como undefined, null e as literais vazias. É cómodo, mas em JavaScript a cadeia vazia e o zero são falsos, e uma verificação de veracidade trata-os como ausência.",
+        "Numa união de string e undefined, a comparação com undefined mantém a cadeia vazia no ramo dos valores presentes, enquanto a verificação de veracidade a manda para o ramo do que falta. Numa união de number e undefined o problema repete-se com o zero. A regra prática é simples: se a cadeia vazia ou o zero forem dados legítimos, compare explicitamente."
+      ],
+      "code": "function saudacaoTruthy(nome: string | undefined): string {\n  // o ramo verdadeiro exclui undefined, mas também exclui a cadeia vazia\n  if (nome) {\n    return \"Ola, \" + nome;\n  }\n  return \"Ola, visitante\";\n}\n\nfunction saudacaoExplicita(nome: string | undefined): string {\n  // aqui só undefined é excluído\n  if (nome !== undefined) {\n    return \"Ola, \" + nome;\n  }\n  return \"Ola, visitante\";\n}\n\nconsole.log(saudacaoTruthy(\"\"));    // \"Ola, visitante\"\nconsole.log(saudacaoExplicita(\"\")); // \"Ola, \"\n\nfunction desconto(percentagem: number | undefined): string {\n  if (percentagem) {\n    return percentagem + \"%\";\n  }\n  return \"sem desconto\";\n}\n\nconsole.log(desconto(20)); // \"20%\"\nconsole.log(desconto(0));  // \"sem desconto\", embora zero seja um desconto válido",
+      "callout_kind": "DICA",
+      "callout_text": "Este é um erro que o compilador não assinala, porque os dois ramos estão bem tipados. A decisão é sua: pergunte sempre se o zero e a cadeia vazia são valores válidos no domínio.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔆",
+          "text": "if (x) remove undefined, null e as literais vazias"
+        },
+        {
+          "icon": "🚫",
+          "text": "Cadeia vazia e zero caem no ramo da ausência"
+        },
+        {
+          "icon": "🎯",
+          "text": "Dados válidos pedem comparação explícita"
+        }
+      ]
+    },
+    {
+      "heading": "Igualdade, null e undefined",
+      "body": [
+        "Os operadores de igualdade estreitam os dois lados ao mesmo tempo. No ramo em que a igualdade estrita é verdadeira, ambos os operandos ficam com os tipos comuns às duas uniões; no ramo de desigualdade, o tipo comparado é removido do outro lado. Com literais, é isto que permite separar membros de uma união de textos.",
+        "A igualdade solta tem aqui um uso legítimo e reconhecido pelo compilador: comparar com null usando os operadores de dois sinais apanha null e undefined de uma só vez, porque em JavaScript esses dois valores são iguais entre si e diferentes de todos os outros. Uma condição chega para limpar os dois casos."
+      ],
+      "code": "interface Registo {\n  autor?: string | null;\n}\n\nfunction autorDe(registo: Registo): string {\n  const autor = registo.autor; // string | null | undefined\n  // != null apanha null e undefined de uma só vez: aqui autor é string\n  if (autor != null) {\n    return autor.trim();\n  }\n  return \"anonimo\";\n}\n\nconsole.log(autorDe({ autor: \"  Ana  \" })); // \"Ana\"\nconsole.log(autorDe({ autor: null }));      // \"anonimo\"\nconsole.log(autorDe({}));                   // \"anonimo\"\n\nfunction coincidem(a: string | number, b: string | boolean): string {\n  if (a === b) {\n    // string é o único tipo comum aos dois lados: a e b passam ambos a string\n    return a.toUpperCase() + b.length;\n  }\n  return \"diferentes\";\n}\n\nconsole.log(coincidem(\"ola\", \"ola\")); // \"OLA3\"\nconsole.log(coincidem(1, true));      // \"diferentes\"",
+      "callout_kind": "DICA",
+      "callout_text": "valor diferente de null com dois sinais equivale a valor diferente de null e diferente de undefined, e o TypeScript estreita exatamente da mesma maneira.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⚖️",
+          "text": "A igualdade estreita os dois operandos de uma vez"
+        },
+        {
+          "icon": "🧹",
+          "text": "Comparar com null apanha null e undefined juntos"
+        },
+        {
+          "icon": "🔤",
+          "text": "Comparar com literais separa membros de uniões"
+        }
+      ]
+    },
+    {
+      "heading": "O operador in",
+      "body": [
+        "Quando a união é de objetos sem nenhuma propriedade partilhada que sirva de marca, o operador in resolve o caso: verifica se a chave existe no objeto e o compilador usa isso para escolher os membros da união que a declaram. O ramo verdadeiro fica com os que têm a propriedade, o ramo falso com os restantes.",
+        "Há duas limitações a reter. O in verifica a presença da chave e não o valor, por isso numa propriedade opcional o ramo verdadeiro ainda pode conter undefined. E o nome da propriedade tem de estar escrito literalmente na condição; guardado numa variável de tipo string, deixa de servir de guarda."
+      ],
+      "code": "interface RespostaErro {\n  erro: string;\n  codigo: number;\n}\n\ninterface RespostaOk {\n  dados: string[];\n}\n\nfunction resumir(resposta: RespostaErro | RespostaOk): string {\n  // só RespostaErro declara a propriedade erro\n  if (\"erro\" in resposta) {\n    return \"falhou com \" + resposta.codigo + \": \" + resposta.erro;\n  }\n  return resposta.dados.length + \" resultados\";\n}\n\nconsole.log(resumir({ erro: \"sem rede\", codigo: 503 })); // \"falhou com 503: sem rede\"\nconsole.log(resumir({ dados: [\"a\", \"b\", \"c\"] }));        // \"3 resultados\"\n\ninterface Perfil {\n  nome: string;\n  telefone?: string;\n}\n\nfunction contacto(perfil: Perfil): string {\n  if (\"telefone\" in perfil) {\n    // in garante que a chave existe, não que o valor esteja preenchido\n    // @ts-expect-error telefone continua a poder ser undefined\n    return perfil.telefone.trim();\n  }\n  return \"sem contacto\";\n}\n\nconsole.log(contacto({ nome: \"Ana\", telefone: \" 912 \" })); // \"912\"\nconsole.log(contacto({ nome: \"Rui\" }));                    // \"sem contacto\"",
+      "callout_kind": "NOTA",
+      "callout_text": "Separar objetos por uma propriedade comum com valores literais diferentes é mais robusto do que por presença de chave. É a união discriminada, tema da próxima aula.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🗝",
+          "text": "in separa membros pela propriedade que só um declara"
+        },
+        {
+          "icon": "📝",
+          "text": "O nome da chave tem de ser literal na condição"
+        },
+        {
+          "icon": "❓",
+          "text": "Chave presente não garante valor definido"
+        }
+      ]
+    },
+    {
+      "heading": "instanceof e os seus limites",
+      "body": [
+        "O instanceof estreita para a classe testada e é a ferramenta natural quando há classes envolvidas, em especial no tratamento de erros: num catch o valor apanhado tem tipo unknown em modo strict, e é o instanceof que o torna utilizável. Como uma subclasse passa também no teste da classe base, os ramos escrevem-se do mais específico para o mais geral.",
+        "O limite é de natureza, não de configuração. O lado direito de instanceof tem de ser um valor existente em tempo de execução, com protótipo. Interfaces, type aliases e uniões são apagados na compilação e não podem estar ali. Para essas construções o estreitamento faz-se com typeof, com in, ou com as funções de verificação que a Aula 03 vai mostrar."
+      ],
+      "code": "class ErroDeRede extends Error {\n  constructor(public readonly estado: number, mensagem: string) {\n    super(mensagem);\n    this.name = \"ErroDeRede\";\n  }\n}\n\nfunction explicar(erro: unknown): string {\n  // a subclasse vem primeiro: um ErroDeRede também passa no teste de Error\n  if (erro instanceof ErroDeRede) {\n    return \"rede \" + erro.estado + \": \" + erro.message;\n  }\n  if (erro instanceof Error) {\n    return \"erro: \" + erro.message;\n  }\n  return \"falha desconhecida\";\n}\n\nconsole.log(explicar(new ErroDeRede(503, \"indisponivel\"))); // \"rede 503: indisponivel\"\nconsole.log(explicar(new Error(\"rebentou\")));               // \"erro: rebentou\"\nconsole.log(explicar(\"texto solto\"));                       // \"falha desconhecida\"\n\ninterface Ponto {\n  x: number;\n  y: number;\n}\n\nfunction mostrar(valor: Ponto | string): string {\n  // @ts-expect-error Ponto é uma interface: não existe em tempo de execução e não pode estar à direita de instanceof\n  if (valor instanceof Ponto) {\n    return \"ponto\";\n  }\n  return \"outro\";\n}\n\nconsole.log(mostrar(\"abc\")); // \"outro\"",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Teste sempre a subclasse antes da classe base. Pela ordem contrária, o ramo de Error apanha tudo e o ramo específico fica inacessível.",
+      "table_headers": [
+        "Verificação",
+        "Serve para",
+        "Não serve para"
+      ],
+      "table_rows": [
+        [
+          "typeof",
+          "Primitivos e funções",
+          "Distinguir formas de objeto ou apanhar null"
+        ],
+        [
+          "Igualdade",
+          "Literais, null e undefined",
+          "Objetos com a mesma forma"
+        ],
+        [
+          "in",
+          "Objetos separados pela chave presente",
+          "Chaves guardadas em variáveis de tipo string"
+        ],
+        [
+          "instanceof",
+          "Classes e as suas subclasses",
+          "Interfaces, type aliases e objetos literais"
+        ],
+        [
+          "Array.isArray",
+          "Separar arrays de outros objetos",
+          "Saber o tipo dos elementos"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🏛",
+          "text": "instanceof estreita para classes e subclasses"
+        },
+        {
+          "icon": "🚨",
+          "text": "Em catch o valor é unknown: testar Error primeiro"
+        },
+        {
+          "icon": "👻",
+          "text": "Interfaces não existem em tempo de execução"
+        }
+      ]
+    },
+    {
+      "heading": "Atribuição, funções e estreitamento perdido",
+      "body": [
+        "Atribuir também estreita: depois de uma atribuição, o compilador passa a conhecer o tipo do valor atribuído, sempre dentro dos limites do tipo declarado. Por isso uma variável declarada com uma união pode ser tratada como number logo a seguir a receber um número, e continua a recusar um valor fora da união.",
+        "O estreitamento vale para um percurso de execução, e uma função criada lá dentro pode correr noutro momento qualquer. Quando a variável é mutável e ainda é reatribuída mais abaixo, o compilador deixa cair o estreitamento dentro dessa função e volta ao tipo declarado. A solução é copiar o valor já estreitado para uma constante e usar essa constante no corpo da função."
+      ],
+      "code": "let dado: string | number = \"inicio\";\nconsole.log(dado.toUpperCase()); // \"INICIO\", aqui dado é string\n\ndado = 42;\nconsole.log(dado.toFixed(1)); // \"42.0\", a atribuição passou dado a number\n\n// @ts-expect-error o tipo declarado continua a ser string | number e não aceita boolean\ndado = true;\n\nfunction agendar(mensagem: string | undefined): void {\n  let atual = mensagem;\n  if (atual !== undefined) {\n    const imprimir = (): void => {\n      // @ts-expect-error atual é reatribuída mais abaixo, por isso dentro da função volta a string | undefined\n      console.log(atual.toUpperCase());\n    };\n    imprimir();\n  }\n  atual = \"fim\";\n  console.log(atual);\n}\n\nfunction agendarBem(mensagem: string | undefined): void {\n  if (mensagem !== undefined) {\n    const texto = mensagem; // const: o estreitamento fica gravado no tipo de texto\n    const imprimir = (): void => {\n      console.log(texto.toUpperCase());\n    };\n    imprimir();\n  }\n}\n\nagendar(\"ola\");    // \"OLA\" e depois \"fim\"\nagendarBem(\"ola\"); // \"OLA\"",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Pegue numa função sua com um parâmetro opcional usado dentro de um callback e substitua o acesso direto por uma constante local criada depois da verificação.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📥",
+          "text": "A atribuição estreita, dentro do tipo declarado"
+        },
+        {
+          "icon": "🕳",
+          "text": "Variável reatribuída perde o estreitamento no callback"
+        },
+        {
+          "icon": "🔒",
+          "text": "Uma const local guarda o tipo já estreitado"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Etiquetar um valor primitivo",
+      "difficulty": "Iniciante",
+      "statement": "Escreva a função etiquetar, que recebe um parâmetro do tipo string ou number ou boolean e devolve sempre uma string. Para texto devolva a palavra texto seguida do comprimento entre parêntesis; para número devolva a palavra numero seguida do valor com duas casas decimais entre parêntesis; para booleano devolva a palavra booleano seguida de sim ou nao entre parêntesis. Use typeof e não use conversões de tipo. Mostre as três chamadas com console.log.",
+      "hint": "Depois de tratar string e number com dois ifs, o compilador já sabe que só resta boolean no fim da função: não precisa de um terceiro teste.",
+      "solution_code": "function etiquetar(valor: string | number | boolean): string {\n  if (typeof valor === \"string\") {\n    return \"texto(\" + valor.length + \")\";\n  }\n  if (typeof valor === \"number\") {\n    return \"numero(\" + valor.toFixed(2) + \")\";\n  }\n  // já só resta boolean\n  return \"booleano(\" + (valor ? \"sim\" : \"nao\") + \")\";\n}\n\nconsole.log(etiquetar(\"curso\")); // \"texto(5)\"\nconsole.log(etiquetar(3));       // \"numero(3.00)\"\nconsole.log(etiquetar(true));    // \"booleano(sim)\"",
+      "solution_explanation": "Cada if com typeof estreita a união a um só primitivo, e por isso length, toFixed e a leitura booleana são aceites sem qualquer conversão. O ramo final dispensa verificação porque a análise de fluxo já retirou string e number, deixando apenas boolean."
+    },
+    {
+      "title": "Zero e cadeia vazia são dados válidos",
+      "difficulty": "Intermedio",
+      "statement": "Escreva a função mostrarPontuacao, que recebe pontos do tipo number ou undefined e nota do tipo string ou undefined, e devolve as duas partes separadas por um espaço, uma barra vertical e outro espaço. Uma pontuação de zero e uma nota vazia são valores válidos e têm de aparecer no resultado; só undefined produz os textos de ausência. Escreva ainda a função primeiroCaractere, que recebe string ou null ou undefined e devolve o primeiro caractere, ou um ponto de interrogação quando não há texto. Mostre pelo menos três chamadas de cada uma.",
+      "hint": "Uma verificação de veracidade trataria o zero e a cadeia vazia como ausência. Na segunda função, uma única comparação com dois sinais apanha null e undefined.",
+      "solution_code": "function mostrarPontuacao(pontos: number | undefined, nota: string | undefined): string {\n  const parte1 = pontos !== undefined ? pontos + \" pontos\" : \"sem pontuacao\";\n  const parte2 = nota !== undefined ? \"nota: \" + nota : \"sem nota\";\n  return parte1 + \" | \" + parte2;\n}\n\nconsole.log(mostrarPontuacao(10, \"bom\"));           // \"10 pontos | nota: bom\"\nconsole.log(mostrarPontuacao(0, \"\"));               // \"0 pontos | nota: \"\nconsole.log(mostrarPontuacao(undefined, undefined)); // \"sem pontuacao | sem nota\"\n\nfunction primeiroCaractere(texto: string | null | undefined): string {\n  // != null trata null e undefined; o comprimento já é regra de negócio\n  if (texto != null && texto.length > 0) {\n    return texto[0];\n  }\n  return \"?\";\n}\n\nconsole.log(primeiroCaractere(\"ola\"));  // \"o\"\nconsole.log(primeiroCaractere(null));   // \"?\"\nconsole.log(primeiroCaractere(\"\"));     // \"?\"",
+      "solution_explanation": "As comparações com undefined estreitam sem confundir ausência com valor falso, e por isso o zero e a cadeia vazia chegam ao ramo dos valores presentes. Em primeiroCaractere, a comparação solta com null limpa null e undefined de uma vez, e o teste de comprimento é já regra de negócio sobre uma string garantida."
+    },
+    {
+      "title": "Separar movimentos por propriedade",
+      "difficulty": "Intermedio",
+      "statement": "Declare duas interfaces: Pagamento com metodo do tipo string e valor do tipo number; e Transferencia com iban do tipo string, valor do tipo number e referencia opcional do tipo string ou null. Escreva a função descreverMovimento, que recebe a união das duas e devolve uma frase. Para a transferência indique o valor com duas casas decimais, o iban e, havendo referência, o texto ref seguido dela; não havendo, o texto sem referencia. Para o pagamento indique o valor com duas casas e o método. Não acrescente nenhuma propriedade nova para marcar os tipos e não use conversões de tipo.",
+      "hint": "O operador in separa as duas interfaces, e a referência pode ser null ou undefined ao mesmo tempo: uma só comparação trata os dois casos.",
+      "solution_code": "interface Pagamento {\n  metodo: string;\n  valor: number;\n}\n\ninterface Transferencia {\n  iban: string;\n  valor: number;\n  referencia?: string | null;\n}\n\nfunction descreverMovimento(movimento: Pagamento | Transferencia): string {\n  if (\"iban\" in movimento) {\n    const referencia = movimento.referencia; // string | null | undefined\n    const sufixo = referencia != null ? \" ref \" + referencia : \" sem referencia\";\n    return \"transferencia de \" + movimento.valor.toFixed(2) + \" para \" + movimento.iban + sufixo;\n  }\n  return \"pagamento de \" + movimento.valor.toFixed(2) + \" por \" + movimento.metodo;\n}\n\nconsole.log(descreverMovimento({ metodo: \"cartao\", valor: 12.5 }));\n// \"pagamento de 12.50 por cartao\"\nconsole.log(descreverMovimento({ iban: \"PT50\", valor: 100, referencia: \"A1\" }));\n// \"transferencia de 100.00 para PT50 ref A1\"\nconsole.log(descreverMovimento({ iban: \"PT50\", valor: 100, referencia: null }));\n// \"transferencia de 100.00 para PT50 sem referencia\"",
+      "solution_explanation": "O teste de presença do iban estreita a união a Transferencia no ramo verdadeiro e a Pagamento no ramo falso, o que permite ler metodo sem verificação adicional. Dentro do ramo da transferência, a comparação solta com null retira ao mesmo tempo o valor nulo e a ausência da propriedade opcional."
+    },
+    {
+      "title": "Relatório de erros com subclasse e closure",
+      "difficulty": "Avancado",
+      "statement": "Declare a classe ErroDeValidacao, que estende Error e recebe no construtor um campo do tipo string, guardado como propriedade só de leitura, e uma mensagem passada ao construtor da classe base. Escreva a função relatar, que recebe um parâmetro do tipo unknown e devolve um array de strings com uma linha. Essa linha é acrescentada ao array por uma função interna que recebe o texto. Para ErroDeValidacao a linha indica o campo e a mensagem; para qualquer outro Error indica o nome e a mensagem; para valores que não são Error indica que o valor lançado não é um Error, seguido do valor convertido em texto. Demonstre os três casos lançando e apanhando os valores em blocos try e catch.",
+      "hint": "A ordem dos testes conta, porque ErroDeValidacao também passa em instanceof Error. Dentro de funções internas, prefira uma constante local ao valor já estreitado.",
+      "solution_code": "class ErroDeValidacao extends Error {\n  constructor(public readonly campo: string, mensagem: string) {\n    super(mensagem);\n    this.name = \"ErroDeValidacao\";\n  }\n}\n\nfunction relatar(erro: unknown): string[] {\n  const linhas: string[] = [];\n  const registar = (linha: string): void => {\n    linhas.push(linha);\n  };\n\n  if (erro instanceof ErroDeValidacao) {\n    const detalhe = erro; // const local: o estreitamento sobrevive dentro da função\n    const escrever = (): void => {\n      registar(\"campo \" + detalhe.campo + \": \" + detalhe.message);\n    };\n    escrever();\n    return linhas;\n  }\n\n  if (erro instanceof Error) {\n    registar(\"erro \" + erro.name + \": \" + erro.message);\n    return linhas;\n  }\n\n  registar(\"valor lancado que nao e um Error: \" + String(erro));\n  return linhas;\n}\n\ntry {\n  throw new ErroDeValidacao(\"email\", \"formato invalido\");\n} catch (capturado) {\n  console.log(relatar(capturado)); // [\"campo email: formato invalido\"]\n}\n\ntry {\n  throw new RangeError(\"fora dos limites\");\n} catch (capturado) {\n  console.log(relatar(capturado)); // [\"erro RangeError: fora dos limites\"]\n}\n\ntry {\n  throw \"texto solto\";\n} catch (capturado) {\n  console.log(relatar(capturado)); // [\"valor lancado que nao e um Error: texto solto\"]\n}",
+      "solution_explanation": "O teste da subclasse vem antes do da classe base, sem o que a linha com o campo nunca seria escrita. O valor apanhado no catch chega como unknown e só o instanceof o torna utilizável, enquanto a constante local garante que a função interna trabalha sobre o tipo já estreitado em vez de voltar ao tipo declarado."
+    }
+  ],
+  "summary": [
+    "Narrowing é o compilador a calcular, em cada ramo, um tipo mais preciso do que o declarado",
+    "typeof cobre primitivos e funções, mas o resultado object inclui null e não separa arrays",
+    "Um if solto trata a cadeia vazia e o zero como ausência: se forem válidos, compare explicitamente",
+    "A igualdade estreita os dois lados, e comparar com null apanha null e undefined de uma só vez",
+    "O in separa objetos pela chave presente e o instanceof por classe, mas nunca por interface",
+    "Dentro de funções internas o estreitamento perde-se em variáveis reatribuídas: copie para uma constante"
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 02",
+  "next_label": "Aula 02 → Uniões Discriminadas"
+}

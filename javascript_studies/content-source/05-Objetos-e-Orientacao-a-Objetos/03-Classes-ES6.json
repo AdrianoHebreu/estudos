@@ -1,0 +1,222 @@
+{
+  "module_num": "05",
+  "module_title": "Objetos e Orientação a Objetos",
+  "module_dir": "05-Objetos-e-Orientacao-a-Objetos",
+  "lesson_num": "03",
+  "lesson_slug": "Classes-ES6",
+  "kind": "aula",
+  "title": "Classes (ES6)",
+  "filename_base": "03-Classes-ES6",
+  "subtitle": "Class, extends, super e static — a POO moderna do JavaScript, e o que esconde por dentro.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Criar classes com class, constructor e métodos de instância.",
+    "Implementar herança entre classes com extends e super.",
+    "Sobrescrever métodos herdados da classe-mãe, reaproveitando ou substituindo o comportamento original.",
+    "Definir e usar métodos e propriedades estáticas com static.",
+    "Perceber que as classes são açúcar sintático sobre o modelo de protótipos do JavaScript."
+  ],
+  "sections": [
+    {
+      "heading": "Sintaxe class, constructor e métodos de instância",
+      "body": [
+        "A palavra-chave class, introduzida no ES2015 (ES6), oferece uma sintaxe dedicada para definir o molde de um objeto: as suas propriedades e o comportamento associado. Dentro do corpo da classe, o método especial constructor executa automaticamente sempre que se cria uma nova instância com o operador new, e é aí que normalmente se inicializam as propriedades da instância através de this.",
+        "Os restantes métodos definidos no corpo da classe, sem a palavra function, tornam-se métodos de instância: não existe uma cópia por objeto, mas sim uma única definição partilhada por todas as instâncias, à qual cada objeto acede quando chama o método. Isto reduz a repetição de código e o consumo de memória, comparado com definir uma função diferente dentro do constructor para cada instância."
+      ],
+      "code": "class Retangulo {\n  constructor(largura, altura) {\n    this.largura = largura;\n    this.altura = altura;\n  }\n\n  area() {\n    return this.largura * this.altura;\n  }\n\n  perimetro() {\n    return 2 * (this.largura + this.altura);\n  }\n}\n\nconst r1 = new Retangulo(4, 5);\nconsole.log(r1.area()); // 20\nconsole.log(r1.perimetro()); // 18",
+      "callout_kind": "NOTA",
+      "callout_text": "Uma classe tem de ser sempre instanciada com new. Chamar Retangulo(4, 5) sem o new lança um TypeError: Class constructor Retangulo cannot be invoked without 'new'. Além disso, todo o código dentro do corpo de uma classe corre automaticamente em modo estrito, mesmo sem a diretiva \"use strict\".",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏗️",
+          "text": "constructor inicializa as propriedades da instância"
+        },
+        {
+          "icon": "⚙️",
+          "text": "Métodos da classe ficam no prototype, partilhados"
+        },
+        {
+          "icon": "🚫",
+          "text": "Sem new, a chamada lança TypeError"
+        }
+      ]
+    },
+    {
+      "heading": "Herança com extends e super",
+      "body": [
+        "extends permite declarar que uma classe, a subclasse, herda de outra, a classe-mãe ou superclasse, passando a ter acesso a todas as propriedades e métodos definidos nesta última. Quando a subclasse define o seu próprio constructor, tem de chamar super(...), que invoca o constructor da classe-mãe, antes de poder usar this, porque é essa chamada que efetivamente cria e prepara o objeto.",
+        "Se a subclasse não definir constructor próprio, o JavaScript usa um implícito que se limita a chamar super(...args) com todos os argumentos recebidos, encaminhando-os diretamente para o constructor da classe-mãe. Isto permite construir hierarquias de classes em que cada nível acrescenta apenas as propriedades e o comportamento que lhe são específicos."
+      ],
+      "code": "class Animal {\n  constructor(nome) {\n    this.nome = nome;\n  }\n\n  apresentar() {\n    return `Sou ${this.nome}.`;\n  }\n}\n\nclass Cao extends Animal {\n  constructor(nome, raca) {\n    super(nome); // obrigatório antes de usar \"this\"\n    this.raca = raca;\n  }\n\n  ladrar() {\n    return `${this.nome} diz: Woof!`;\n  }\n}\n\nconst rex = new Cao(\"Rex\", \"Labrador\");\nconsole.log(rex.apresentar()); // Sou Rex.\nconsole.log(rex.ladrar()); // Rex diz: Woof!\nconsole.log(rex instanceof Animal); // true",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Numa subclasse com constructor próprio, é obrigatório chamar super(...) antes de usar this. Tentar aceder a this antes disso lança um ReferenceError: Must call super constructor before accessing 'this'.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧬",
+          "text": "extends cria uma subclasse"
+        },
+        {
+          "icon": "🔗",
+          "text": "super(...) chama o constructor da classe-mãe"
+        },
+        {
+          "icon": "⚠️",
+          "text": "super() tem de vir antes de usar this"
+        }
+      ]
+    },
+    {
+      "heading": "Sobrescrita de métodos herdados (override)",
+      "body": [
+        "Uma subclasse pode redefinir um método herdado com o mesmo nome, substituindo o comportamento que a instância vai realmente usar; a isto chama-se sobrescrita, ou override. Quando um método é chamado numa instância, o motor de JavaScript procura-o primeiro no próprio objeto, depois no protótipo da subclasse e só depois no protótipo da classe-mãe, parando na primeira definição que encontrar.",
+        "Dentro de um método sobrescrito, super.metodo() permite chamar explicitamente a versão definida na classe-mãe, o que é útil quando se pretende estender o comportamento original em vez de o substituir por completo. Sem essa chamada, a versão da classe-mãe fica simplesmente inacessível a partir das instâncias da subclasse."
+      ],
+      "code": "class Funcionario {\n  constructor(nome, salarioBase) {\n    this.nome = nome;\n    this.salarioBase = salarioBase;\n  }\n\n  calcularSalario() {\n    return this.salarioBase;\n  }\n}\n\nclass Gestor extends Funcionario {\n  constructor(nome, salarioBase, bonus) {\n    super(nome, salarioBase);\n    this.bonus = bonus;\n  }\n\n  // sobrescreve o método herdado, reaproveitando o comportamento original\n  calcularSalario() {\n    return super.calcularSalario() + this.bonus;\n  }\n}\n\nconst ana = new Funcionario(\"Ana\", 1500);\nconst bruno = new Gestor(\"Bruno\", 1500, 400);\n\nconsole.log(ana.calcularSalario()); // 1500\nconsole.log(bruno.calcularSalario()); // 1900",
+      "callout_kind": "DICA",
+      "callout_text": "Dentro de um método sobrescrito, super.metodo() chama a versão da classe-mãe. Isto permite estender o comportamento original em vez de o substituir por completo.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔄",
+          "text": "Subclasse redefine um método com o mesmo nome"
+        },
+        {
+          "icon": "➕",
+          "text": "super.metodo() reaproveita a versão original"
+        },
+        {
+          "icon": "🔍",
+          "text": "Procura sobe a cadeia de protótipos até encontrar"
+        }
+      ]
+    },
+    {
+      "heading": "Membros estáticos com static",
+      "body": [
+        "A palavra-chave static define propriedades e métodos que pertencem à própria classe, e não a cada instância criada a partir dela. São úteis para dados ou comportamentos que fazem sentido ao nível da classe como um todo, por exemplo contadores globais, constantes de configuração ou métodos de fábrica que constroem instâncias com configurações específicas.",
+        "Um método ou propriedade estática acede-se sempre através do nome da classe, como NomeDaClasse.membro, nunca através de uma instância. Dentro de um método estático, this refere-se à própria classe, o que permite, por exemplo, que um método estático chame outro método estático ou leia uma propriedade estática sem precisar de repetir o nome da classe."
+      ],
+      "code": "class Utilizador {\n  static contagem = 0; // propriedade estática\n\n  constructor(nome) {\n    this.nome = nome;\n    Utilizador.contagem++;\n  }\n\n  static criarConvidado() {\n    // método de fábrica: não precisa de uma instância existente\n    return new Utilizador(\"Convidado\");\n  }\n\n  static get totalCriados() {\n    return Utilizador.contagem;\n  }\n}\n\nconst u1 = new Utilizador(\"Marta\");\nconst u2 = Utilizador.criarConvidado();\n\nconsole.log(Utilizador.totalCriados); // 2\nconsole.log(u1.contagem); // undefined — não existe na instância",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏷️",
+          "text": "static pertence à classe, não às instâncias"
+        },
+        {
+          "icon": "🏭",
+          "text": "Útil para métodos de fábrica e contadores"
+        },
+        {
+          "icon": "🚪",
+          "text": "Acesso sempre via NomeDaClasse.membro"
+        }
+      ]
+    },
+    {
+      "heading": "Classes como açúcar sintático sobre protótipos",
+      "body": [
+        "Apesar da sintaxe nova, uma classe em JavaScript continua a ser, por baixo, uma função, e os métodos definidos no seu corpo são colocados no objeto Classe.prototype, exatamente o mesmo modelo de herança baseado em protótipos já visto na aula anterior. Por isso se diz que class é açúcar sintático: não introduz um paradigma de orientação a objetos totalmente novo, apenas uma forma mais clara e menos propensa a erros de escrever o que antes já se conseguia com funções construtoras e manipulação direta do prototype.",
+        "A relação criada por extends entre uma subclasse e a sua classe-mãe também assenta em protótipos: o prototype da subclasse tem, ele próprio, o prototype da classe-mãe como o seu protótipo. Perceber esta equivalência ajuda a explicar comportamentos que a sintaxe de class por si só não deixa óbvios, como a ordem de procura de um método numa cadeia de heranças com vários níveis."
+      ],
+      "code": "class Ponto {\n  constructor(x, y) {\n    this.x = x;\n    this.y = y;\n  }\n\n  distanciaAOrigem() {\n    return Math.sqrt(this.x ** 2 + this.y ** 2);\n  }\n}\n\nconsole.log(typeof Ponto); // \"function\" — uma classe é uma função especial\nconsole.log(Object.getPrototypeOf(new Ponto(3, 4)) === Ponto.prototype); // true\nconsole.log(Ponto.prototype.hasOwnProperty(\"distanciaAOrigem\")); // true\n\n// O mesmo resultado, escrito ao estilo pré-ES6 com funções construtoras\nfunction PontoAntigo(x, y) {\n  this.x = x;\n  this.y = y;\n}\n\nPontoAntigo.prototype.distanciaAOrigem = function () {\n  return Math.sqrt(this.x ** 2 + this.y ** 2);\n};\n\nconst p = new Ponto(3, 4);\nconst pAntigo = new PontoAntigo(3, 4);\nconsole.log(p.distanciaAOrigem() === pAntigo.distanciaAOrigem()); // true",
+      "callout_kind": "NOTA",
+      "callout_text": "Uma classe não é um mecanismo novo do JavaScript — é uma sintaxe mais clara para o mesmo modelo de protótipos já visto anteriormente. class Ponto {} e a função construtora PontoAntigo acima produzem instâncias com uma cadeia de protótipos equivalente.",
+      "table_headers": [
+        "Aspeto",
+        "Função construtora (pré-ES6)",
+        "class (ES6+)"
+      ],
+      "table_rows": [
+        [
+          "Definir métodos",
+          "NomeFn.prototype.metodo = function () {}",
+          "metodo() {} dentro do corpo da classe"
+        ],
+        [
+          "Herança",
+          "Object.setPrototypeOf ou Object.create manual",
+          "extends e super"
+        ],
+        [
+          "Chamada sem new",
+          "Executa na mesma; this fica associado ao objeto global ou fica undefined",
+          "Lança sempre TypeError"
+        ],
+        [
+          "Modo estrito",
+          "Não é automático",
+          "Sempre ativo dentro do corpo da classe"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🍬",
+          "text": "class é açúcar sintático sobre protótipos"
+        },
+        {
+          "icon": "🔧",
+          "text": "Uma classe continua a ser, na prática, uma função"
+        },
+        {
+          "icon": "📐",
+          "text": "Métodos vivem em Classe.prototype"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "A classe Livro",
+      "difficulty": "Iniciante",
+      "statement": "Crie uma classe Livro com um constructor que recebe titulo, autor e paginas e guarda cada um numa propriedade da instância. Adicione um método de instância resumo() que devolva a string \"<titulo>, de <autor> (<paginas> páginas)\". Crie duas instâncias diferentes e imprima o resumo de cada uma com console.log.",
+      "hint": "Lembre-se que, dentro do constructor, this refere-se à instância que está a ser criada com new, e que um template literal facilita compor a string final.",
+      "solution_code": "class Livro {\n  constructor(titulo, autor, paginas) {\n    this.titulo = titulo;\n    this.autor = autor;\n    this.paginas = paginas;\n  }\n\n  resumo() {\n    return `${this.titulo}, de ${this.autor} (${this.paginas} páginas)`;\n  }\n}\n\nconst livro1 = new Livro(\"O Ano da Morte de Ricardo Reis\", \"José Saramago\", 296);\nconst livro2 = new Livro(\"Memorial do Convento\", \"José Saramago\", 384);\n\nconsole.log(livro1.resumo());\nconsole.log(livro2.resumo());",
+      "solution_explanation": "O constructor recebe os três valores e atribui-os a propriedades da instância através de this. O método resumo() usa um template literal para compor a string final, e cada instância criada com new tem as suas próprias propriedades mas partilha o mesmo método através do prototype."
+    },
+    {
+      "title": "Veículo e CarroDesportivo",
+      "difficulty": "Intermedio",
+      "statement": "Crie uma classe Veiculo com constructor(marca, velocidadeMaxima) e um método descricao() que devolva \"<marca>, até <velocidadeMaxima> km/h\". Depois crie uma classe CarroDesportivo que herda de Veiculo, recebendo também um modoTurbo (booleano) no constructor, e que sobrescreva descricao() para acrescentar \" [turbo ativo]\" ao fim do texto original apenas quando modoTurbo for true, reaproveitando o texto produzido pela classe-mãe em vez de o reescrever do zero.",
+      "hint": "super.descricao() dentro do método sobrescrito devolve o texto já produzido pela versão da classe-mãe, pronto a ser reutilizado.",
+      "solution_code": "class Veiculo {\n  constructor(marca, velocidadeMaxima) {\n    this.marca = marca;\n    this.velocidadeMaxima = velocidadeMaxima;\n  }\n\n  descricao() {\n    return `${this.marca}, até ${this.velocidadeMaxima} km/h`;\n  }\n}\n\nclass CarroDesportivo extends Veiculo {\n  constructor(marca, velocidadeMaxima, modoTurbo) {\n    super(marca, velocidadeMaxima);\n    this.modoTurbo = modoTurbo;\n  }\n\n  descricao() {\n    const base = super.descricao();\n    return this.modoTurbo ? `${base} [turbo ativo]` : base;\n  }\n}\n\nconst c1 = new CarroDesportivo(\"Ferrari\", 340, true);\nconst c2 = new CarroDesportivo(\"Fiat\", 160, false);\n\nconsole.log(c1.descricao()); // Ferrari, até 340 km/h [turbo ativo]\nconsole.log(c2.descricao()); // Fiat, até 160 km/h",
+      "solution_explanation": "super(marca, velocidadeMaxima) delega a inicialização das propriedades comuns ao constructor de Veiculo. O método descricao() é sobrescrito em CarroDesportivo, mas chama super.descricao() para reaproveitar o texto base antes de decidir se acrescenta o sufixo do turbo."
+    },
+    {
+      "title": "ContaBancaria com membros estáticos",
+      "difficulty": "Avancado",
+      "statement": "Crie uma classe ContaBancaria com uma propriedade estática taxaJuro (por exemplo, 0.02) e uma propriedade estática numeroContasCriadas inicializada a 0. No constructor(titular, saldoInicial), guarde titular e saldo (inicializado a saldoInicial) na instância e incremente a propriedade estática de contas criadas. Adicione um método de instância aplicarJuro() que aumenta this.saldo multiplicando-o por (1 + ContaBancaria.taxaJuro). Adicione também um método estático de fábrica criarContaZero(titular) que devolve uma nova conta com saldo inicial 0. No final, crie três contas (uma delas com criarContaZero) e mostre com console.log quantas contas foram criadas ao todo, usando a propriedade estática.",
+      "hint": "Dentro de um método estático, this refere-se à própria classe, por isso this.numeroContasCriadas dentro de criarContaZero funcionaria tal como ContaBancaria.numeroContasCriadas.",
+      "solution_code": "class ContaBancaria {\n  static taxaJuro = 0.02;\n  static numeroContasCriadas = 0;\n\n  constructor(titular, saldoInicial) {\n    this.titular = titular;\n    this.saldo = saldoInicial;\n    ContaBancaria.numeroContasCriadas++;\n  }\n\n  aplicarJuro() {\n    this.saldo *= 1 + ContaBancaria.taxaJuro;\n    return this.saldo;\n  }\n\n  static criarContaZero(titular) {\n    return new ContaBancaria(titular, 0);\n  }\n}\n\nconst conta1 = new ContaBancaria(\"Marta\", 1000);\nconst conta2 = new ContaBancaria(\"João\", 500);\nconst conta3 = ContaBancaria.criarContaZero(\"Convidado\");\n\nconta1.aplicarJuro();\n\nconsole.log(conta1.saldo); // 1020\nconsole.log(conta3.saldo); // 0\nconsole.log(ContaBancaria.numeroContasCriadas); // 3",
+      "solution_explanation": "As propriedades estáticas taxaJuro e numeroContasCriadas existem uma única vez, associadas à própria classe, e não a cada instância. O método de fábrica criarContaZero() é estático porque não depende de nenhuma instância existente para ser chamado — cria uma instância nova a partir de dados fixos."
+    },
+    {
+      "title": "Hierarquia de formas e polimorfismo",
+      "difficulty": "Avancado",
+      "statement": "Crie uma classe Forma com um método area() que devolve 0 por omissão (para ser sobrescrito) e um método estático compararAreas(formaA, formaB) que recebe duas instâncias de Forma (ou de subclasses) e devolve a string \"iguais\" se as áreas forem iguais, \"primeira maior\" se a área de formaA for maior, ou \"segunda maior\" caso contrário. Crie as subclasses Circulo (extends Forma, constructor(raio), sobrescrevendo area() para devolver Math.PI * raio ** 2) e Quadrado (extends Forma, constructor(lado), sobrescrevendo area() para devolver lado ** 2). Teste Forma.compararAreas com um Circulo de raio 2 e um Quadrado de lado 3, e confirme também, com console.log, que Object.getPrototypeOf(Circulo.prototype) === Forma.prototype.",
+      "hint": "compararAreas() não precisa de saber se recebeu um Circulo ou um Quadrado: basta chamar formaA.area() e formaB.area(), porque cada subclasse fornece a sua própria versão sobrescrita do método.",
+      "solution_code": "class Forma {\n  area() {\n    return 0;\n  }\n\n  static compararAreas(formaA, formaB) {\n    const areaA = formaA.area();\n    const areaB = formaB.area();\n\n    if (areaA === areaB) return \"iguais\";\n    return areaA > areaB ? \"primeira maior\" : \"segunda maior\";\n  }\n}\n\nclass Circulo extends Forma {\n  constructor(raio) {\n    super();\n    this.raio = raio;\n  }\n\n  area() {\n    return Math.PI * this.raio ** 2;\n  }\n}\n\nclass Quadrado extends Forma {\n  constructor(lado) {\n    super();\n    this.lado = lado;\n  }\n\n  area() {\n    return this.lado ** 2;\n  }\n}\n\nconst circulo = new Circulo(2);\nconst quadrado = new Quadrado(3);\n\nconsole.log(Forma.compararAreas(circulo, quadrado)); // primeira maior\nconsole.log(Object.getPrototypeOf(Circulo.prototype) === Forma.prototype); // true",
+      "solution_explanation": "compararAreas() é polimórfico: não sabe, nem precisa de saber, que tipo concreto de forma recebeu, porque cada subclasse sobrescreve area() com o seu próprio cálculo. A verificação final confirma que extends liga o prototype de Circulo ao prototype de Forma, o mesmo mecanismo de protótipos que a sintaxe class está a esconder por trás de si."
+    }
+  ],
+  "summary": [
+    "A palavra-chave class define construtores e métodos de instância de forma mais legível do que funções construtoras.",
+    "constructor corre automaticamente ao instanciar com new, e é o local onde se inicializam as propriedades com this.",
+    "extends cria uma subclasse; super(...) chama o constructor da classe-mãe e tem de ser executado antes de usar this.",
+    "Uma subclasse pode sobrescrever métodos herdados, e super.metodo() permite reaproveitar o comportamento original.",
+    "static define propriedades e métodos que pertencem à classe, não às instâncias — úteis para contadores, constantes e métodos de fábrica.",
+    "Por baixo da sintaxe, uma classe continua a ser uma função e os seus métodos vivem no prototype: class é açúcar sintático sobre o modelo de protótipos."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 04",
+  "next_label": "Aula 04 → Getters, Setters e Campos Privados",
+  "_stage": "revisao"
+}

@@ -1,0 +1,392 @@
+{
+  "module_num": "09",
+  "module_title": "Módulos, tsconfig e Declarações",
+  "module_dir": "09-Modulos-tsconfig-e-Declaracoes",
+  "lesson_num": "02",
+  "lesson_slug": "tsconfig-Essencial",
+  "kind": "aula",
+  "title": "tsconfig.json: as opções que interessam",
+  "filename_base": "02-tsconfig-Essencial",
+  "subtitle": "As opções do tsconfig.json que decidem o que o compilador aceita, gera e resolve",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Perceber para que serve o tsconfig.json e como o tsc o encontra automaticamente",
+    "Distinguir o papel de target (sintaxe emitida) e lib (APIs assumidas em runtime)",
+    "Ligar module e moduleResolution ao que já foi visto sobre import/export na Aula 01",
+    "Saber o que outDir, rootDir, declaration, declarationMap e sourceMap geram",
+    "Perceber o problema que esModuleInterop resolve na interoperação com CommonJS",
+    "Usar resolveJsonModule e conhecer o limite de baseUrl/paths fora do compilador"
+  ],
+  "sections": [
+    {
+      "heading": "Para que serve o tsconfig.json",
+      "body": [
+        "Até agora, cada exemplo deste curso foi compilado com um conjunto fixo de flags escritas diretamente na linha de comandos. Num projeto real isso não é prático: o tsconfig.json centraliza essas decisões por projeto, para não repetir a mesma lista de flags sempre que o compilador corre. É um ficheiro JSON normal, sem sintaxe própria a aprender.",
+        "O tsc procura um tsconfig.json na pasta atual e nas pastas acima; correr tsc sem argumentos lê-o automaticamente. Passar ficheiros diretamente na linha de comandos, como este curso faz para verificar cada exemplo, ignora sempre o tsconfig.json: usa só as flags dadas nessa chamada. Para apontar para um ficheiro específico fora da pasta atual existe a flag -p (ou --project).",
+        "O exemplo abaixo mostra um tsconfig.json típico, com as opções que esta aula dissecta a seguir. As opções do modo strict (noImplicitAny, strictNullChecks, etc.) ficam de fora de propósito: são inteiramente o tema da Aula 03."
+      ],
+      "code": "{\n  \"compilerOptions\": {\n    \"target\": \"es2022\",\n    \"module\": \"es2022\",\n    \"moduleResolution\": \"bundler\",\n    \"strict\": true,\n    \"outDir\": \"dist\",\n    \"rootDir\": \"src\"\n  },\n  \"include\": [\"src\"]\n}",
+      "callout_kind": "NOTA",
+      "callout_text": "Passar ficheiros diretamente na linha de comandos do tsc, como a verificação automática deste curso faz, ignora sempre o tsconfig.json. Só um tsc sem argumentos, ou tsc -p seguido do caminho do ficheiro, o lê.",
+      "table_headers": [
+        "Chave de topo",
+        "Para que serve"
+      ],
+      "table_rows": [
+        [
+          "compilerOptions",
+          "todas as opções do compilador vistas nesta aula e na Aula 03"
+        ],
+        [
+          "include",
+          "que ficheiros ou pastas entram na compilação"
+        ],
+        [
+          "exclude",
+          "que ficheiros ou pastas ficam de fora (por omissão, node_modules)"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📄",
+          "text": "tsconfig.json centraliza as opções do compilador"
+        },
+        {
+          "icon": "🔍",
+          "text": "tsc sem argumentos encontra-o sozinho"
+        },
+        {
+          "icon": "🚫",
+          "text": "Ficheiros na linha de comandos ignoram-no sempre"
+        },
+        {
+          "icon": "🎯",
+          "text": "-p aponta para um tsconfig.json específico"
+        }
+      ]
+    },
+    {
+      "heading": "target e lib: sintaxe emitida vs APIs assumidas",
+      "body": [
+        "target decide para que versão de JavaScript o compilador traduz o código, e por consequência que sintaxe aceita usar. A maior parte da sintaxe moderna (arrow functions, destructuring, classes, optional chaining) compila para qualquer target: o compilador transforma-a em código mais antigo equivalente. target só recusa a sintaxe que não consegue mesmo representar numa versão mais antiga.",
+        "lib é um problema diferente: é a lista de ficheiros de tipos que o compilador assume estarem disponíveis em runtime, como os métodos de Array de uma certa versão do ECMAScript ou os globais do DOM (document, window). lib não gera nada nem verifica se essas APIs existem mesmo — é uma promessa feita ao compilador, não uma garantia. Quando lib não é escrito explicitamente, o compilador escolhe um por omissão a partir do target.",
+        "A função abaixo usa um literal bigint, uma sintaxe introduzida no ES2020. Compila sem problemas com o target desta aula (es2022). A tabela regista o que foi medido ao recompilar o mesmo tipo de exemplo com outras combinações de target e lib."
+      ],
+      "code": "function calcularFatorialGrande(n: number): bigint {\n  let resultado = 1n;\n  for (let i = 2n; i <= BigInt(n); i++) {\n    resultado *= i;\n  }\n  return resultado;\n}\n\nconsole.log(calcularFatorialGrande(10)); // 3628800n",
+      "callout_kind": "ATENCAO",
+      "callout_text": "target e lib resolvem problemas diferentes. Um target moderno não chega se o lib escolhido a dedo excluir as APIs usadas no código; e um lib generoso não obriga o motor que vai correr o JavaScript a suportar mesmo essas APIs. lib é uma promessa ao compilador, nunca uma garantia em runtime.",
+      "table_headers": [
+        "Combinação testada",
+        "Resultado medido"
+      ],
+      "table_rows": [
+        [
+          "--target es5 com o literal 10n",
+          "TS2737: BigInt literals are not available when targeting lower than ES2020"
+        ],
+        [
+          "--target es5 com um campo de classe #valor",
+          "TS18028: Private identifiers are only available when targeting ECMAScript 2015 and higher"
+        ],
+        [
+          "--target es2022 sem --lib explícito, usando document.title",
+          "compila: o lib por omissão para es2022 já inclui DOM"
+        ],
+        [
+          "--target es2022 com --lib es2022 explícito (sem dom), usando document",
+          "TS2584: Cannot find name 'document'. Do you need to change your target library?"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🎯",
+          "text": "target: que sintaxe o compilador aceita e emite"
+        },
+        {
+          "icon": "📚",
+          "text": "lib: que APIs o compilador assume existirem"
+        },
+        {
+          "icon": "🧪",
+          "text": "es5 recusa BigInt (TS2737) e campos # (TS18028)"
+        },
+        {
+          "icon": "❓",
+          "text": "lib sem dom torna document desconhecido (TS2584)"
+        }
+      ]
+    },
+    {
+      "heading": "module e moduleResolution",
+      "body": [
+        "A sintaxe de import e export escrita no código-fonte, vista na Aula 01, não muda com nenhuma destas opções. module decide antes o formato dos módulos que saem da compilação: commonjs (o clássico do Node, baseado em require) ou um formato ECMAScript nativo como es2022 (mantém import/export tal como foram escritos). moduleResolution decide, à parte, como o compilador transforma um caminho de import num ficheiro real: que extensões tenta, se respeita o campo exports de um package.json, etc.",
+        "A combinação module: es2022 com moduleResolution: bundler, usada em todos os exemplos deste curso, imita como um bundler moderno (Vite, esbuild) ou um runtime com suporte nativo a ESM resolvem os módulos. moduleResolution: node é o modo clássico do Node.js com CommonJS, mais restrito na forma como resolve caminhos e extensões.",
+        "A função abaixo compila da mesma forma seja qual for a opção module escolhida — a diferença só aparece no JavaScript emitido, registada na tabela a seguir a partir de uma medição real com as duas opções."
+      ],
+      "code": "export interface ConfiguracaoModulo {\n  nome: string;\n  ativo: boolean;\n}\n\nexport function criarConfiguracao(nome: string): ConfiguracaoModulo {\n  return { nome, ativo: true };\n}\n\nconst configuracao = criarConfiguracao(\"exemplo\");\nconsole.log(configuracao.nome, configuracao.ativo); // exemplo true",
+      "callout_kind": "DICA",
+      "callout_text": "moduleResolution: bundler é a escolha recomendada para código que passa por um bundler ou por um runtime moderno com ESM nativo. moduleResolution: node fica reservado a projetos Node clássicos em CommonJS.",
+      "table_headers": [
+        "module",
+        "O que o compilador emite (medido a partir do mesmo ficheiro)"
+      ],
+      "table_rows": [
+        [
+          "commonjs",
+          "\"use strict\"; ... const { dobro } = require(\"./lib\"); (chamada envolvida num helper)"
+        ],
+        [
+          "es2022",
+          "import { dobro } from \"./lib\"; ... (import/export ficam exatamente como escritos)"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "module: o formato dos módulos emitidos"
+        },
+        {
+          "icon": "🧭",
+          "text": "moduleResolution: como um caminho vira ficheiro"
+        },
+        {
+          "icon": "⚖️",
+          "text": "commonjs emite require(); es2022 mantém import"
+        },
+        {
+          "icon": "✅",
+          "text": "bundler + es2022 é a combinação deste curso"
+        }
+      ]
+    },
+    {
+      "heading": "outDir, rootDir e o que a compilação gera",
+      "body": [
+        "outDir e rootDir só decidem para onde vai o JavaScript compilado, sem mudar o que o verificador de tipos aceita ou rejeita. rootDir marca a raiz do código-fonte considerado; outDir marca o destino. A estrutura de pastas dentro de rootDir é espelhada dentro de outDir: um ficheiro em src/utilitarios/somar.ts, com rootDir src e outDir dist, sai em dist/utilitarios/somar.js — medido diretamente ao compilar um ficheiro de exemplo.",
+        "declaration gera automaticamente um ficheiro .d.ts a par de cada .js, a partir dos tipos do próprio código. É o oposto do que a Aula 04 vai ensinar: lá o foco é escrever um .d.ts à mão para código que não tem tipos nenhuns; aqui o .d.ts nasce sozinho a partir de um .ts já tipado. declarationMap gera um .d.ts.map, que liga esse .d.ts de volta ao .ts original (útil para o editor saltar para a fonte real). sourceMap gera um .js.map, que liga o .js compilado ao .ts original para depurar o código fonte enquanto corre o JavaScript.",
+        "A função abaixo, compilada com as três opções ligadas, confirmou os três ficheiros: somar.d.ts, somar.d.ts.map e somar.js.map, todos gerados sem escrever nenhum à mão."
+      ],
+      "code": "export function converterParaMinutos(segundos: number): number {\n  return segundos / 60;\n}\n\nconsole.log(converterParaMinutos(120)); // 2",
+      "callout_kind": "NOTA",
+      "callout_text": "skipLibCheck evita verificar os ficheiros .d.ts de bibliotecas de terceiros, verificando só os do próprio projeto. Não muda nada do que é gerado; poupa apenas tempo de compilação em projetos com muitas dependências, cujos .d.ts costumam já ser assumidos como corretos.",
+      "table_headers": [
+        "Opção",
+        "Ficheiro que produz (medido)"
+      ],
+      "table_rows": [
+        [
+          "declaration",
+          "somar.d.ts"
+        ],
+        [
+          "declarationMap",
+          "somar.d.ts.map"
+        ],
+        [
+          "sourceMap",
+          "somar.js.map"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📁",
+          "text": "outDir/rootDir: só para onde o JS compilado vai"
+        },
+        {
+          "icon": "🪞",
+          "text": "A estrutura de pastas é espelhada no destino"
+        },
+        {
+          "icon": "📜",
+          "text": "declaration gera .d.ts a partir do próprio .ts"
+        },
+        {
+          "icon": "🗺️",
+          "text": "declarationMap e sourceMap ligam de volta à fonte"
+        }
+      ]
+    },
+    {
+      "heading": "esModuleInterop e allowSyntheticDefaultImports",
+      "body": [
+        "Um módulo CommonJS clássico (module.exports = algo) não tem uma exportação por omissão real, no sentido que o ESM entende. Sem esModuleInterop, o compilador recusa import valor from \"modulo\" nesses casos, com o erro TS1259, e obriga a escrever import * as valor from \"modulo\" em vez disso.",
+        "Medido à parte com module: commonjs (a configuração clássica onde este problema aparece): sem esModuleInterop, o import por omissão de um módulo que usa export = dá mesmo TS1259. Com esModuleInterop ligado, o mesmo ficheiro compila, e o JavaScript emitido muda: o require() do módulo passa a estar envolvido por um auxiliar (__importDefault) que verifica se existe a marca __esModule; quando não existe — o caso de um module.exports simples — trata o próprio module.exports como o valor por omissão. Corrido com node, o resultado leu corretamente o valor exportado.",
+        "allowSyntheticDefaultImports é mais limitado: relaxa só a verificação de tipos para aceitar a sintaxe de import por omissão, sem tocar no que é emitido — útil quando um bundler já trata da interoperação em runtime e só falta o compilador deixar de se queixar. Um facto medido com tsc --showConfig: sob moduleResolution: bundler, a mesma usada neste curso, allowSyntheticDefaultImports já vem implicitamente true, mesmo sem o escrever — mas esModuleInterop continua false por omissão."
+      ],
+      "code": "{\n  \"compilerOptions\": {\n    \"target\": \"es2022\",\n    \"module\": \"commonjs\",\n    \"esModuleInterop\": true\n  }\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Sob module: es2022, o usado neste curso, a construção clássica export = nem chega a compilar: dá um erro à parte (TS1203), por não existir no formato de módulos ECMAScript. O cenário de esModuleInterop acima foi medido com module: commonjs; aplica-se a projetos Node clássicos ou a pacotes CommonJS sem exportação por omissão nativa.",
+      "table_headers": [
+        "Cenário medido",
+        "Resultado"
+      ],
+      "table_rows": [
+        [
+          "module: commonjs, import por omissão de um export =, sem esModuleInterop",
+          "TS1259: só pode ser importado por omissão com a flag esModuleInterop"
+        ],
+        [
+          "mesmo caso, com esModuleInterop ligado",
+          "compila; o require() emitido fica envolvido num helper __importDefault"
+        ],
+        [
+          "moduleResolution: bundler, sem nenhuma flag adicional escrita",
+          "allowSyntheticDefaultImports já vem true por omissão; esModuleInterop continua false"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔌",
+          "text": "CommonJS não tem exportação por omissão real"
+        },
+        {
+          "icon": "❌",
+          "text": "Sem esModuleInterop: TS1259 ao importar por omissão"
+        },
+        {
+          "icon": "🤝",
+          "text": "Com a flag, require() ganha um helper de interop"
+        },
+        {
+          "icon": "📦",
+          "text": "bundler já implica allowSyntheticDefaultImports"
+        }
+      ]
+    },
+    {
+      "heading": "resolveJsonModule",
+      "body": [
+        "resolveJsonModule permite escrever import dados from \"./dados.json\" e obter um tipo inferido diretamente do conteúdo do ficheiro, em vez de um erro a dizer que o módulo não existe. Cada propriedade do JSON fica tipada com o tipo do seu valor literal, tal como aconteceria com um objeto escrito diretamente em TypeScript — confirmado ao atribuir um campo numérico do JSON a uma variável do tipo string e ver o compilador recusar.",
+        "Um facto medido que vale a pena registar: sob moduleResolution: node (o modo clássico), a opção tem mesmo de ser ligada — sem ela, o erro é TS2732, que pede exatamente --resolveJsonModule. Mas sob moduleResolution: bundler, a usada neste curso, resolveJsonModule já vem implicitamente true, confirmado com tsc --showConfig: importar JSON funciona mesmo sem escrever a opção.",
+        "Ainda assim, escrevê-la explicitamente no tsconfig.json costuma ser preferível: documenta a intenção para quem lê o projeto depois, sem depender de se lembrar qual é o comportamento por omissão de cada moduleResolution."
+      ],
+      "code": "{\n  \"nome\": \"curso-typescript\",\n  \"versaoMajor\": 5\n}",
+      "callout_kind": "DICA",
+      "callout_text": "Mesmo quando a opção já vem implícita, escrevê-la no tsconfig.json documenta a intenção para quem lê o projeto depois — inclui quem escreveu o código, meses depois.",
+      "table_headers": [
+        "moduleResolution",
+        "resolveJsonModule por omissão (medido)"
+      ],
+      "table_rows": [
+        [
+          "node (clássico)",
+          "false — falha com TS2732 sem a ligar explicitamente"
+        ],
+        [
+          "bundler (usada neste curso)",
+          "true — já vem implícita, confirmado com tsc --showConfig"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📄",
+          "text": "import direto de .json com tipo inferido"
+        },
+        {
+          "icon": "🔎",
+          "text": "O tipo vem do conteúdo real do ficheiro"
+        },
+        {
+          "icon": "⚙️",
+          "text": "node exige a flag; bundler já a implica"
+        },
+        {
+          "icon": "📝",
+          "text": "Escrevê-la à mesma documenta a intenção"
+        }
+      ]
+    },
+    {
+      "heading": "baseUrl e paths: aliases só para o compilador",
+      "body": [
+        "baseUrl marca uma pasta base a partir da qual imports não-relativos são resolvidos; paths mapeia prefixos, como @utils/*, para pastas reais dentro dessa base. Com isto, o código escreve import { formatarPreco } from \"@utils/formatar\" em vez de uma cadeia longa de ../../../utils/formatar.",
+        "O aviso importante, confirmado ao medir: o tsc resolve este alias corretamente para verificar tipos — compila sem erros — mas o JavaScript que emite mantém o especificador tal como foi escrito, sem qualquer reescrita. O ficheiro compilado tem literalmente import { formatarPreco } from \"@utils/formatar\". Ao correr esse ficheiro com node diretamente, o resultado foi um erro real: ERR_MODULE_NOT_FOUND, porque o Node não sabe o que é \"@utils/formatar\" — não existe pasta nenhuma, nem em node_modules, com esse nome.",
+        "baseUrl e paths são portanto uma conveniência só do compilador (e dos editores, que passam a oferecer autocompletar e saltar para a definição). Um bundler precisa da sua própria configuração de alias para reescrever o mesmo caminho no ficheiro final, e o Node precisa da sua (por exemplo o campo imports do package.json, ou um loader) — o tema volta com mais detalhe na Aula 05."
+      ],
+      "code": "{\n  \"compilerOptions\": {\n    \"target\": \"es2022\",\n    \"module\": \"es2022\",\n    \"moduleResolution\": \"bundler\",\n    \"baseUrl\": \".\",\n    \"paths\": {\n      \"@utils/*\": [\"src/utils/*\"]\n    }\n  }\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "baseUrl e paths só existem para o compilador. Sem configuração equivalente no bundler ou no runtime, o alias compila mas rebenta quando o código corre: medido diretamente, o .js gerado mantém o especificador @utils/formatar tal e qual, e o node falha com ERR_MODULE_NOT_FOUND ao tentar resolvê-lo.",
+      "table_headers": [
+        "Onde o alias funciona",
+        "Precisa de quê"
+      ],
+      "table_rows": [
+        [
+          "Verificação de tipos (tsc)",
+          "só baseUrl e paths no tsconfig.json"
+        ],
+        [
+          "Bundler (Vite, webpack, esbuild)",
+          "configuração própria de alias na ferramenta"
+        ],
+        [
+          "node a correr o .js diretamente",
+          "nada disto resolve sozinho — falha em runtime"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🏷️",
+          "text": "paths troca caminhos relativos por um alias curto"
+        },
+        {
+          "icon": "✅",
+          "text": "O compilador resolve o alias e verifica tipos"
+        },
+        {
+          "icon": "💥",
+          "text": "O JS emitido mantém o alias tal como escrito"
+        },
+        {
+          "icon": "🛠️",
+          "text": "Bundler e Node precisam da sua própria configuração"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "O último elemento com at()",
+      "difficulty": "Iniciante",
+      "statement": "Escreva uma função genérica obterUltimoElemento<T>(lista: T[]): T | undefined que devolva o último elemento de uma lista usando o método at(-1) dos arrays. Teste-a com uma lista de números e com uma lista vazia, mostrando os dois resultados com console.log. Depois, num comentário acima da função, explique a partir de que target este método deixa de estar disponível ao compilador.",
+      "hint": "at() é um método de array introduzido no ES2022; um array vazio devolve undefined em vez de lançar erro.",
+      "solution_code": "function obterUltimoElemento<T>(lista: T[]): T | undefined {\n  // at(-1) é um método de ES2022: só está disponível se o target (e o lib associado)\n  // for ES2022 ou superior.\n  return lista.at(-1);\n}\n\nconsole.log(obterUltimoElemento([10, 20, 30])); // 30\nconsole.log(obterUltimoElemento([])); // undefined",
+      "solution_explanation": "at(-1) só está tipado a partir do lib associado ao ES2022 (lib.es2022.array); com um target anterior e sem incluir esse lib à parte, o compilador desconhece o método e recusa a chamada. Num array vazio, at(-1) devolve undefined em vez de lançar exceção, daí o tipo de retorno T | undefined."
+    },
+    {
+      "title": "Um import por omissão que o compilador recusa",
+      "difficulty": "Intermedio",
+      "statement": "Um projeto usa module: commonjs no tsconfig.json e importa um pacote de terceiros que faz module.exports = funcao (sem export default). A linha import funcao from \"pacote\"; falha a compilar com o erro TS1259: Module ... can only be default-imported using the 'esModuleInterop' flag. Que opção do tsconfig.json resolve isto? Escreva o excerto de compilerOptions que a liga, e explique em duas frases o que muda no JavaScript emitido depois de a ligar.",
+      "hint": "A opção não muda a sintaxe de import que se escreve no ficheiro — muda o que o compilador aceita e o que emite à volta do require().",
+      "solution_code": "{\n  \"compilerOptions\": {\n    \"target\": \"es2022\",\n    \"module\": \"commonjs\",\n    \"esModuleInterop\": true\n  }\n}",
+      "solution_explanation": "esModuleInterop resolve isto. Com a opção ligada, o compilador passa a aceitar o import por omissão, e o JavaScript emitido envolve o require() do módulo com um pequeno auxiliar (__importDefault) que verifica se existe a marca __esModule; quando não existe, como acontece com module.exports = funcao, trata o próprio module.exports como o valor por omissão."
+    },
+    {
+      "title": "Validar uma configuração lida como texto",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função lerConfiguracao(json: string): { nome: string } que faça JSON.parse ao texto recebido e valide, com uma type guard própria, que o resultado tem mesmo uma propriedade nome do tipo string — lançando um erro com uma mensagem clara caso não tenha. Teste com um JSON válido e mostre o nome lido; teste depois com um JSON sem essa propriedade dentro de um try/catch e mostre a mensagem do erro apanhado.",
+      "hint": "JSON.parse devolve any; atribua o resultado a uma variável do tipo unknown antes de a validar, para o compilador obrigar a confirmar a forma antes de a usar.",
+      "solution_code": "interface ConfiguracaoValida {\n  nome: string;\n}\n\nfunction ehConfiguracaoValida(valor: unknown): valor is ConfiguracaoValida {\n  return typeof valor === \"object\" && valor !== null && typeof (valor as ConfiguracaoValida).nome === \"string\";\n}\n\nfunction lerConfiguracao(json: string): ConfiguracaoValida {\n  const analisado: unknown = JSON.parse(json);\n  if (!ehConfiguracaoValida(analisado)) {\n    throw new Error(\"JSON sem a propriedade nome (string)\");\n  }\n  return analisado;\n}\n\nconsole.log(lerConfiguracao('{\"nome\":\"curso\"}').nome); // curso\n\ntry {\n  lerConfiguracao('{\"outra\":1}');\n} catch (erro) {\n  console.log(\"erro:\", (erro as Error).message); // erro: JSON sem a propriedade nome (string)\n}",
+      "solution_explanation": "unknown obriga a confirmar a forma do valor antes de o usar, ao contrário de any. A type guard ehConfiguracaoValida verifica em runtime que existe uma propriedade nome do tipo string; sem essa confirmação, lerConfiguracao devolveria um objeto com a forma errada disfarçado de ConfiguracaoValida. É o oposto do que resolveJsonModule faz: aqui o JSON só existe como texto em runtime, não como um ficheiro importado em tempo de compilação."
+    },
+    {
+      "title": "Um tsconfig.json para três problemas ao mesmo tempo",
+      "difficulty": "Avancado",
+      "statement": "Um projeto Node com module: es2022 e moduleResolution: bundler precisa de três coisas: (a) gerar automaticamente um ficheiro .d.ts para cada módulo compilado; (b) importar ficheiros .json com o tipo inferido do próprio conteúdo; (c) usar o alias @core/* para apontar para src/core/*, em vez de caminhos relativos longos. Escreva o excerto de compilerOptions do tsconfig.json que ativa (a) e (b) e configura (c). Depois, em prosa, explique porque (c) sozinho não chega para o alias funcionar também quando o projeto é empacotado ou corrido diretamente com node.",
+      "hint": "As três coisas ficam em compilerOptions: uma flag booleana para cada uma das duas primeiras, e baseUrl mais paths para o alias.",
+      "solution_code": "{\n  \"compilerOptions\": {\n    \"target\": \"es2022\",\n    \"module\": \"es2022\",\n    \"moduleResolution\": \"bundler\",\n    \"declaration\": true,\n    \"resolveJsonModule\": true,\n    \"baseUrl\": \".\",\n    \"paths\": {\n      \"@core/*\": [\"src/core/*\"]\n    }\n  }\n}",
+      "solution_explanation": "declaration gera o .d.ts a partir do próprio código tipado; resolveJsonModule permite o import direto de .json com o tipo inferido do conteúdo (sob moduleResolution: bundler já vem implícita, mas escrevê-la explicitamente documenta a intenção). baseUrl e paths resolvem o alias só para o compilador: o JavaScript emitido mantém @core/... tal como foi escrito, sem qualquer reescrita, por isso um bundler precisa da sua própria configuração de alias, e o node, a correr o .js diretamente, falha a encontrar o módulo — o mesmo comportamento medido nesta aula para baseUrl/paths em geral."
+    }
+  ],
+  "summary": [
+    "tsconfig.json centraliza as opções do compilador por projeto; passar ficheiros diretamente na linha de comandos, como fez este curso até agora, ignora-o sempre.",
+    "target decide a sintaxe que o compilador aceita e emite; lib decide que APIs o compilador assume existirem em runtime — são independentes, e um lib mal escolhido bloqueia globais mesmo com um target moderno.",
+    "module decide o formato dos módulos emitidos (commonjs, es2022, ...); moduleResolution decide como um caminho de import é resolvido a um ficheiro — a combinação es2022/bundler usada neste curso é a recomendada para bundlers e runtimes modernos.",
+    "declaration, declarationMap e sourceMap geram automaticamente .d.ts, .d.ts.map e .js.map a partir do próprio código; outDir e rootDir só decidem para onde vai o JavaScript compilado.",
+    "esModuleInterop resolve a interoperação com módulos CommonJS sem exportação por omissão nativa; resolveJsonModule permite importar .json com o tipo inferido do conteúdo — e já vem implícita sob moduleResolution: bundler.",
+    "baseUrl e paths só existem para o compilador: o JavaScript emitido mantém o alias tal como escrito, e um bundler ou o Node precisam de configuração própria para o mesmo alias funcionar também em runtime."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 03",
+  "next_label": "Aula 03 → O Modo strict, opção a opção"
+}

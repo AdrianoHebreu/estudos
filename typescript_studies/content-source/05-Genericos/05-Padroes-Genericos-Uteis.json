@@ -1,0 +1,313 @@
+{
+  "module_num": "05",
+  "module_title": "Genéricos",
+  "module_dir": "05-Genericos",
+  "lesson_num": "05",
+  "lesson_slug": "Padroes-Genericos-Uteis",
+  "kind": "aula",
+  "title": "Padrões Genéricos Úteis",
+  "filename_base": "05-Padroes-Genericos-Uteis",
+  "subtitle": "Combinar genéricos, uniões e predicados em padrões que se usam todos os dias",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Modelar sucesso e falha com o padrão Resultado, sem exceções invisíveis",
+    "Escrever utilitários genéricos sobre coleções com Map tipado",
+    "Montar uma cache genérica que devolve V ou undefined, sem mentir",
+    "Criar fábricas tipadas que propagam o tipo para a função devolvida",
+    "Envolver qualquer função sem perder a assinatura, com rest variádico",
+    "Reconhecer sobre-engenharia e saber quando não vale a pena um genérico"
+  ],
+  "sections": [
+    {
+      "heading": "O padrão Resultado",
+      "body": [
+        "Uma função que pode correr mal tem duas saídas possíveis e, na maior parte dos casos, só uma delas aparece na assinatura. O retorno diz number, e o facto de a função poder lançar fica escondido no corpo, num comentário ou na memória de quem a escreveu. O padrão Resultado traz essa segunda saída para o tipo de retorno.",
+        "É uma união discriminada, exatamente como as do Módulo 04, com um parâmetro de tipo para o valor e outro para o erro, este último com string por omissão. Duas funções auxiliares, sucesso e falha, poupam a escrita do objeto literal e deixam a inferência tratar do resto.",
+        "O ganho está no consumo. Sem verificar ok não há acesso a valor, e o compilador recusa deixar passar o caso de erro por esquecimento. O narrowing que já era conhecido passa a funcionar sobre um tipo que serve o programa inteiro."
+      ],
+      "code": "type Resultado<T, E = string> =\n  | { ok: true; valor: T }\n  | { ok: false; erro: E };\n\nfunction sucesso<T>(valor: T): Resultado<T, never> {\n  return { ok: true, valor };\n}\n\nfunction falha<E>(erro: E): Resultado<never, E> {\n  return { ok: false, erro };\n}\n\nfunction dividir(a: number, b: number): Resultado<number> {\n  if (b === 0) {\n    return falha(\"divisão por zero\");\n  }\n  return sucesso(a / b);\n}\n\nconst conta = dividir(10, 4);\nif (conta.ok) {\n  console.log(conta.valor.toFixed(2)); // \"2.50\"\n} else {\n  console.log(conta.erro.toUpperCase());\n}\n\nconst partida = dividir(3, 0);\nconsole.log(partida.ok); // false\n\n// @ts-expect-error sem verificar o ok, o compilador só vê a união: valor pode não existir\nconsole.log(partida.valor);",
+      "callout_kind": "NOTA",
+      "callout_text": "A auxiliar sucesso devolve Resultado<T, never> e falha devolve Resultado<never, E>: cada uma só conhece metade da história, e por isso encaixa em qualquer Resultado que o retorno da função declare.",
+      "table_headers": [
+        "Aspeto",
+        "Lançar uma exceção",
+        "Devolver um Resultado"
+      ],
+      "table_rows": [
+        [
+          "Aparece na assinatura",
+          "Não",
+          "Sim, no tipo de retorno"
+        ],
+        [
+          "O compilador obriga a tratar",
+          "Não",
+          "Sim: sem ver o ok não há valor"
+        ],
+        [
+          "Tipo do erro",
+          "unknown, apanhado no catch",
+          "E, escolhido por quem escreve"
+        ],
+        [
+          "Custo de escrita",
+          "Baixo",
+          "Mais alto: há que reembrulhar"
+        ],
+        [
+          "Onde encaixa melhor",
+          "Falhas mesmo excecionais",
+          "Falhas esperadas e frequentes"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🎯",
+          "text": "Resultado põe a falha no tipo de retorno"
+        },
+        {
+          "icon": "🔀",
+          "text": "É uma união discriminada com dois parâmetros de tipo"
+        },
+        {
+          "icon": "🔒",
+          "text": "Sem verificar o ok, não há acesso ao valor"
+        }
+      ]
+    },
+    {
+      "heading": "Utilitários genéricos sobre coleções",
+      "body": [
+        "A função de agrupamento é o exemplo clássico: recebe itens de qualquer tipo e uma função que extrai a categoria de cada um. Escrita com dois parâmetros de tipo, um para o item e outro para a categoria, serve qualquer coleção sem uma única asserção.",
+        "O Map é a estrutura certa aqui, e é ele próprio um genérico da biblioteca padrão. Map<C, T[]> obriga as chaves a serem do tipo que a função de chave devolveu, e o get devolve honestamente o valor ou undefined.",
+        "Repare-se em como a inferência trabalha sozinha. Ao receber uma função que devolve uma união de literais, C fica com essa união e o Map recusa qualquer chave de fora. Trocando a função de chave por outra que devolve um booleano, C acompanha, sem mexer numa linha do utilitário."
+      ],
+      "code": "function agruparPor<T, C>(itens: readonly T[], chave: (item: T) => C): Map<C, T[]> {\n  const grupos = new Map<C, T[]>();\n  for (const item of itens) {\n    const categoria = chave(item);\n    const existente = grupos.get(categoria);\n    if (existente === undefined) {\n      grupos.set(categoria, [item]);\n    } else {\n      existente.push(item);\n    }\n  }\n  return grupos;\n}\n\ntype Livro = { titulo: string; genero: \"ensaio\" | \"romance\"; paginas: number };\n\nconst estante: Livro[] = [\n  { titulo: \"O Ano da Morte\", genero: \"romance\", paginas: 336 },\n  { titulo: \"Ensaio sobre a Lucidez\", genero: \"romance\", paginas: 328 },\n  { titulo: \"Discurso do Método\", genero: \"ensaio\", paginas: 96 },\n];\n\n// C é inferido como \"ensaio\" | \"romance\": o Map fica Map<\"ensaio\" | \"romance\", Livro[]>\nconst porGenero = agruparPor(estante, (livro) => livro.genero);\nconsole.log(porGenero.get(\"romance\")?.length); // 2\nconsole.log(porGenero.get(\"ensaio\")?.[0]?.titulo); // \"Discurso do Método\"\n\n// com outra função de chave, C passa a boolean sem mudar uma linha de agruparPor\nconst porTamanho = agruparPor(estante, (livro) => livro.paginas > 300);\nconsole.log(porTamanho.get(false)?.length); // 1\n\n// @ts-expect-error a chave do Map só aceita os géneros que a função devolveu\nporGenero.get(\"poesia\");",
+      "callout_kind": "DICA",
+      "callout_text": "Quando a chave não é um string, o Map é a única estrutura correta: as chaves de um objeto simples são sempre string ou symbol, e um número acaba convertido.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🗂️",
+          "text": "Dois parâmetros de tipo: o item e a categoria"
+        },
+        {
+          "icon": "🔑",
+          "text": "Map<C, T[]> mantém o tipo exato da chave"
+        },
+        {
+          "icon": "🤖",
+          "text": "A inferência descobre C pela função de chave"
+        }
+      ]
+    },
+    {
+      "heading": "Uma cache genérica com Map",
+      "body": [
+        "Guardar valores em memória é das primeiras necessidades de qualquer programa, e é onde o objeto simples engana mais. Uma classe genérica assente em Map<K, V> fixa de uma vez o tipo das chaves e o dos valores, e expõe um obter com o tipo que a realidade tem: V ou undefined.",
+        "O contraste com a assinatura de índice é duro. Um objeto declarado com chave string e valor string afirma que qualquer acesso dá um string, mesmo para uma chave que nunca foi guardada. O programa compila e rebenta em execução.",
+        "O método obterOuCalcular mostra outra vantagem. A função de cálculo recebe a chave já tipada como K e é obrigada a devolver V, por isso não há maneira de guardar um valor do tipo errado."
+      ],
+      "code": "class CacheSimples<K, V> {\n  private readonly entradas = new Map<K, V>();\n\n  guardar(chave: K, valor: V): void {\n    this.entradas.set(chave, valor);\n  }\n\n  obter(chave: K): V | undefined {\n    return this.entradas.get(chave);\n  }\n\n  obterOuCalcular(chave: K, calcular: (chave: K) => V): V {\n    const guardado = this.entradas.get(chave);\n    if (guardado !== undefined) {\n      return guardado;\n    }\n    const novo = calcular(chave);\n    this.entradas.set(chave, novo);\n    return novo;\n  }\n\n  get tamanho(): number {\n    return this.entradas.size;\n  }\n}\n\nconst moradas = new CacheSimples<number, string>();\nmoradas.guardar(1, \"Rua das Flores\");\nconsole.log(moradas.obter(1)?.toUpperCase()); // \"RUA DAS FLORES\"\nconsole.log(moradas.obter(99)); // undefined\nconsole.log(moradas.obterOuCalcular(2, (id) => `morada gerada ${id}`)); // \"morada gerada 2\"\nconsole.log(moradas.tamanho); // 2\n\n// com um objeto e assinatura de índice, o compilador promete um string que não está lá\nconst soltas: { [chave: string]: string } = { \"1\": \"Rua das Flores\" };\nconst inexistente = soltas[\"99\"]; // tipado string, vale undefined\ntry {\n  console.log(inexistente.toUpperCase());\n} catch (erro) {\n  console.log(\"rebentou em execução:\", erro instanceof TypeError); // \"rebentou em execução: true\"\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Com a opção noUncheckedIndexedAccess ligada no tsconfig, o acesso por índice passa a dar V ou undefined e o compilador apanha este caso. Sem ela, só o Map conta a verdade.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "💾",
+          "text": "Map<K, V> tipa chaves e valores de uma vez"
+        },
+        {
+          "icon": "❓",
+          "text": "obter devolve V ou undefined, como é a realidade"
+        },
+        {
+          "icon": "⚠️",
+          "text": "A assinatura de índice promete o que não existe"
+        }
+      ]
+    },
+    {
+      "heading": "Fábricas tipadas",
+      "body": [
+        "Uma fábrica é uma função que devolve outra função, já especializada. Em TypeScript o interesse está em ver o parâmetro de tipo atravessar as duas: fixa-se uma vez, na criação, e a função devolvida passa a carregá-lo em todo o lado.",
+        "É o padrão que evita repetir o mesmo tipo em vinte chamadas. Quem usa a função especializada já não escolhe nada, porque a carga tem a forma que a fábrica decidiu, e qualquer desvio é apanhado na chamada, não lá dentro."
+      ],
+      "code": "type Evento<TCarga> = { nome: string; instante: number; carga: TCarga };\n\nfunction criarFabricaDeEventos<TCarga>(\n  nome: string,\n): (carga: TCarga, instante: number) => Evento<TCarga> {\n  return (carga, instante) => ({ nome, instante, carga });\n}\n\nconst criarLogin = criarFabricaDeEventos<{ utilizador: string }>(\"login\");\nconst criarCompra = criarFabricaDeEventos<{ artigo: string; total: number }>(\"compra\");\n\nconst entrada = criarLogin({ utilizador: \"ana\" }, 1000);\nconst compra = criarCompra({ artigo: \"teclado\", total: 49.9 }, 1200);\n\nconsole.log(entrada.nome, entrada.carga.utilizador); // \"login ana\"\nconsole.log(compra.carga.total.toFixed(2)); // \"49.90\"\n\n// @ts-expect-error a fábrica já está especializada: esta carga não tem utilizador\ncriarLogin({ artigo: \"teclado\" }, 1300);",
+      "callout_kind": "DICA",
+      "callout_text": "Aqui o tipo não se consegue inferir de nenhum argumento, porque a carga só aparece mais tarde. É o momento certo para o escrever à mão, e escreve-se uma vez só.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏭",
+          "text": "A fábrica fixa o tipo uma única vez"
+        },
+        {
+          "icon": "➡️",
+          "text": "O tipo propaga-se para a função devolvida"
+        },
+        {
+          "icon": "✍️",
+          "text": "Uma anotação na criação chega para tudo o resto"
+        }
+      ]
+    },
+    {
+      "heading": "Envolver uma função sem perder a assinatura",
+      "body": [
+        "Registar chamadas, medir tempos, contar invocações: envolver uma função noutra é trabalho de todos os dias. A dificuldade em TypeScript é não estragar a assinatura pelo caminho, porque um envelope tipado com any deita fora tudo o que o compilador sabia sobre a função original.",
+        "A solução é um parâmetro de tipo para a lista de argumentos, com a constraint unknown[], e outro para o retorno. TArgs fica com a tupla exata dos parâmetros da função recebida, e a função devolvida declara esses mesmos parâmetros através do rest.",
+        "O resultado serve qualquer função e continua a recusar chamadas com argumentos a menos, a mais ou do tipo errado."
+      ],
+      "code": "function comRegisto<TArgs extends unknown[], TRetorno>(\n  etiqueta: string,\n  fn: (...args: TArgs) => TRetorno,\n): (...args: TArgs) => TRetorno {\n  return (...args: TArgs): TRetorno => {\n    console.log(`${etiqueta}: ${args.length} argumento(s)`);\n    const resultado = fn(...args);\n    console.log(`${etiqueta} devolveu ${String(resultado)}`);\n    return resultado;\n  };\n}\n\nfunction area(largura: number, altura: number): number {\n  return largura * altura;\n}\n\nconst areaComRegisto = comRegisto(\"area\", area);\n\nconst total = areaComRegisto(3, 4);\n// escreve \"area: 2 argumento(s)\" e depois \"area devolveu 12\"\nconsole.log(total.toFixed(1)); // \"12.0\"\n\n// @ts-expect-error a assinatura sobrevive ao wrapper: falta o segundo argumento\nareaComRegisto(3);",
+      "callout_kind": "NOTA",
+      "callout_text": "TArgs extends unknown[] é uma constraint sobre uma tupla, não sobre um array qualquer. Ao receber a função area, TArgs fica exatamente com dois números, e é isso que a função devolvida exige.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎁",
+          "text": "TArgs extends unknown[] captura os argumentos"
+        },
+        {
+          "icon": "🧷",
+          "text": "A função devolvida mantém a assinatura original"
+        },
+        {
+          "icon": "🚫",
+          "text": "Tipar o envelope com any deita tudo fora"
+        }
+      ]
+    },
+    {
+      "heading": "Genéricos ao serviço dos type predicates",
+      "body": [
+        "Um dos predicados mais úteis que há para escrever é genérico e cabe numa linha: recebe algo que pode ser nulo e afirma que, se a verificação passar, o valor é do tipo sem null nem undefined.",
+        "Aplicado ao filter, faz o que o filter sozinho não consegue. O compilador percebe que o array resultante já não tem buracos e deixa declará-lo como array do tipo limpo. Sem o predicado, o retorno continuaria a incluir null e seria preciso uma asserção para calar o erro.",
+        "Combina-se particularmente bem com o Map da secção anterior, onde cada get devolve V ou undefined: procurar muitas chaves de uma vez dá sempre um array cheio de buracos que o predicado limpa."
+      ],
+      "code": "function naoENulo<T>(valor: T | null | undefined): valor is T {\n  return valor !== null && valor !== undefined;\n}\n\nconst respostas: (string | null)[] = [\"sim\", null, \"talvez\", null];\nconst validas: string[] = respostas.filter(naoENulo);\nconsole.log(validas); // [ 'sim', 'talvez' ]\n\nconst stock = new Map<string, number>([\n  [\"café\", 12],\n  [\"chá\", 4],\n]);\n\nconst pedidos = [\"café\", \"cacau\", \"chá\"];\nconst quantidades: number[] = pedidos.map((artigo) => stock.get(artigo)).filter(naoENulo);\nconsole.log(quantidades); // [ 12, 4 ]\nconsole.log(quantidades.reduce((soma, q) => soma + q, 0)); // 16",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Vale a pena guardar este predicado num ficheiro de utilitários do projeto: é dos poucos que acabam por aparecer em praticamente todos.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧹",
+          "text": "naoENulo limpa arrays sem asserções"
+        },
+        {
+          "icon": "🔎",
+          "text": "O predicado é genérico: serve qualquer tipo"
+        },
+        {
+          "icon": "🤝",
+          "text": "Casa bem com o get de um Map"
+        }
+      ]
+    },
+    {
+      "heading": "Quando o genérico piora o código",
+      "body": [
+        "Nem toda a função merece um parâmetro de tipo. A regra prática é curta: um genérico existe para ligar duas coisas, o que entra ao que sai, ou um parâmetro a outro. Se o parâmetro de tipo aparece uma só vez na assinatura, não está a ligar nada e só serve para tornar a leitura mais lenta.",
+        "O segundo erro é mais perigoso do que feio: usar o genérico para prometer aquilo que o corpo não cumpre. Uma função que declara devolver T mas pode devolver undefined está a mentir ao compilador, e a mentira só aparece em execução, longe de onde foi escrita.",
+        "A tabela reúne os sinais de alarme que valem por si. Nenhum deles é uma proibição, mas cada um é um convite a perguntar o que é que aquele parâmetro de tipo está mesmo a resolver."
+      ],
+      "code": "// sinal de alarme: o parâmetro de tipo aparece uma só vez, logo não liga nada a nada\nfunction registar<T>(valor: T): void {\n  console.log(String(valor));\n}\n\n// a versão honesta diz o mesmo sem prometer relação nenhuma\nfunction registarSimples(valor: unknown): void {\n  console.log(String(valor));\n}\n\nregistar(7); // \"7\"\nregistarSimples(\"sete\"); // \"sete\"\n\n// sinal de alarme: a assinatura promete T, o corpo pode devolver undefined\nfunction primeiroMentiroso<T>(itens: T[]): T {\n  return itens[0] as T;\n}\n\nconst nenhum = primeiroMentiroso<string>([]);\ntry {\n  console.log(nenhum.toUpperCase());\n} catch (erro) {\n  console.log(\"a promessa falhou:\", erro instanceof TypeError); // \"a promessa falhou: true\"\n}\n\n// a assinatura honesta obriga quem chama a tratar o caso vazio\nfunction primeiro<T>(itens: T[]): T | undefined {\n  return itens.length > 0 ? itens[0] : undefined;\n}\n\nconsole.log(primeiro<string>([])); // undefined\nconsole.log(primeiro([\"norte\", \"sul\"])); // \"norte\"",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Um genérico nunca se justifica com a frase assim fica preparado para o futuro. O código que ninguém percebe hoje custa mais do que a alteração que se esperava evitar amanhã.",
+      "table_headers": [
+        "Sinal de alarme",
+        "O que costuma ser melhor"
+      ],
+      "table_rows": [
+        [
+          "O parâmetro de tipo aparece uma só vez",
+          "Trocar por unknown ou pelo tipo concreto"
+        ],
+        [
+          "A assinatura promete T e o corpo pode não ter nada",
+          "Declarar T ou undefined e obrigar a tratar"
+        ],
+        [
+          "Três ou mais parâmetros de tipo numa função pequena",
+          "Partir a função ou fixar parte dos tipos"
+        ],
+        [
+          "Todas as chamadas indicam os tipos à mão",
+          "A inferência falhou: rever a assinatura"
+        ],
+        [
+          "Só se percebe a chamada lendo a implementação",
+          "Dar nomes aos parâmetros de tipo ou simplificar"
+        ],
+        [
+          "O genérico existe para poupar um alias de tipo",
+          "Escrever o alias: é mais curto de ler"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "1️⃣",
+          "text": "Parâmetro de tipo usado uma só vez: retirar"
+        },
+        {
+          "icon": "🤥",
+          "text": "Prometer T e devolver undefined é mentir"
+        },
+        {
+          "icon": "📏",
+          "text": "O genérico serve para ligar a entrada à saída"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Analisar inteiros com o padrão Resultado",
+      "difficulty": "Iniciante",
+      "statement": "Escreva o tipo Resultado com dois parâmetros de tipo, sendo o segundo string por omissão, e as auxiliares sucesso e falha. Depois escreva analisarInteiro, que recebe um texto e devolve Resultado de number: se o texto representar um inteiro devolve esse número, caso contrário devolve uma mensagem a dizer que o texto não é um inteiro. Atenção ao texto vazio ou só com espaços, que Number converte para zero. Termine com uma função descrever, que recebe o Resultado e produz um texto, e experimente com 42, com 4.2 e com três espaços.",
+      "hint": "Number.isInteger resolve a parte numérica. O texto em branco tem de ser tratado antes, com trim.",
+      "solution_code": "type Resultado<T, E = string> =\n  | { ok: true; valor: T }\n  | { ok: false; erro: E };\n\nfunction sucesso<T>(valor: T): Resultado<T, never> {\n  return { ok: true, valor };\n}\n\nfunction falha<E>(erro: E): Resultado<never, E> {\n  return { ok: false, erro };\n}\n\nfunction analisarInteiro(texto: string): Resultado<number> {\n  const numero = Number(texto);\n  if (texto.trim() === \"\" || !Number.isInteger(numero)) {\n    return falha(`\"${texto}\" não é um inteiro`);\n  }\n  return sucesso(numero);\n}\n\nfunction descrever(resultado: Resultado<number>): string {\n  if (resultado.ok) {\n    return `valor ${resultado.valor}`;\n  }\n  return `erro: ${resultado.erro}`;\n}\n\nconsole.log(descrever(analisarInteiro(\"42\"))); // \"valor 42\"\nconsole.log(descrever(analisarInteiro(\"4.2\"))); // 'erro: \"4.2\" não é um inteiro'\nconsole.log(descrever(analisarInteiro(\"   \"))); // 'erro: \"   \" não é um inteiro'",
+      "solution_explanation": "O tipo de retorno anuncia as duas saídas possíveis, por isso descrever é obrigada a verificar ok antes de tocar em valor. As auxiliares devolvem Resultado<T, never> e Resultado<never, E>, o que as deixa encaixar em qualquer Resultado concreto sem anotações extra."
+    },
+    {
+      "title": "Indexar uma coleção e limpar as faltas",
+      "difficulty": "Intermedio",
+      "statement": "Escreva indexarPor, com um parâmetro de tipo para o item e outro para a chave, que recebe um array só de leitura e uma função extratora e devolve um Map da chave para o item. Escreva também o predicado genérico naoENulo. Com uma lista de utilizadores com id e nome, construa o índice por id, procure os identificadores 3, 9 e 1 e produza um array só com os utilizadores encontrados, tipado como array de Utilizador e sem qualquer asserção.",
+      "hint": "O map sobre os identificadores dá Utilizador ou undefined em cada posição. É aí, no filter seguinte, que o predicado entra.",
+      "solution_code": "function indexarPor<T, K>(itens: readonly T[], chave: (item: T) => K): Map<K, T> {\n  const indice = new Map<K, T>();\n  for (const item of itens) {\n    indice.set(chave(item), item);\n  }\n  return indice;\n}\n\nfunction naoENulo<T>(valor: T | null | undefined): valor is T {\n  return valor !== null && valor !== undefined;\n}\n\ntype Utilizador = { id: number; nome: string };\n\nconst utilizadores: Utilizador[] = [\n  { id: 1, nome: \"Ana\" },\n  { id: 2, nome: \"Bruno\" },\n  { id: 3, nome: \"Carla\" },\n];\n\nconst porId = indexarPor(utilizadores, (utilizador) => utilizador.id);\nconsole.log(porId.get(2)?.nome); // \"Bruno\"\nconsole.log(porId.get(9)); // undefined\n\nconst pedidos = [3, 9, 1];\nconst encontrados: Utilizador[] = pedidos.map((id) => porId.get(id)).filter(naoENulo);\nconsole.log(encontrados.map((utilizador) => utilizador.nome)); // [ 'Carla', 'Ana' ]",
+      "solution_explanation": "O Map guarda o tipo da chave que a função extraiu, por isso a procura pelo identificador 2 devolve Utilizador ou undefined, e nunca any. O predicado genérico retira o undefined do tipo do array, o que permite declarar o resultado como array de Utilizador sem asserções."
+    },
+    {
+      "title": "Recolher uma lista de Resultados",
+      "difficulty": "Intermedio",
+      "statement": "Partindo do tipo Resultado e das auxiliares sucesso e falha, escreva recolher, com um parâmetro de tipo para o valor e outro para o erro, que recebe um array de Resultado e devolve um único Resultado: se todos correram bem, o valor é o array dos valores; ao primeiro erro, devolve esse erro e não continua. Teste com uma lista só de sucessos e com outra que tem duas falhas, confirmando que só a primeira chega ao fim.",
+      "hint": "Percorra com um ciclo normal e devolva logo dentro do ciclo quando o ok for falso. É esse return que garante a paragem à primeira falha.",
+      "solution_code": "type Resultado<T, E = string> =\n  | { ok: true; valor: T }\n  | { ok: false; erro: E };\n\nfunction sucesso<T>(valor: T): Resultado<T, never> {\n  return { ok: true, valor };\n}\n\nfunction falha<E>(erro: E): Resultado<never, E> {\n  return { ok: false, erro };\n}\n\nfunction recolher<T, E>(resultados: readonly Resultado<T, E>[]): Resultado<T[], E> {\n  const valores: T[] = [];\n  for (const resultado of resultados) {\n    if (!resultado.ok) {\n      return falha(resultado.erro);\n    }\n    valores.push(resultado.valor);\n  }\n  return sucesso(valores);\n}\n\nconst todosBons: Resultado<number>[] = [sucesso(1), sucesso(2), sucesso(3)];\nconst comUmMau: Resultado<number>[] = [\n  sucesso(1),\n  falha(\"linha 2 inválida\"),\n  falha(\"linha 3 inválida\"),\n];\n\nconst bom = recolher(todosBons);\nconsole.log(bom.ok ? bom.valor : bom.erro); // [ 1, 2, 3 ]\n\nconst mau = recolher(comUmMau);\nconsole.log(mau.ok ? mau.valor : mau.erro); // \"linha 2 inválida\"",
+      "solution_explanation": "Os dois parâmetros de tipo atravessam a transformação: o valor passa de T para um array de T e o erro mantém-se em E. O narrowing sobre o ok dentro do ciclo dá acesso seguro ao erro num ramo e ao valor no outro, sem uma única verificação manual de propriedades."
+    },
+    {
+      "title": "Memorizar qualquer função",
+      "difficulty": "Avancado",
+      "statement": "Escreva memorizar, que recebe uma função com qualquer número de argumentos e devolve um objeto com dois membros: chamar, com exatamente a mesma assinatura da função recebida, e calculos, que diz quantas vezes a função original foi mesmo executada. Use um Map cujas chaves sejam a serialização dos argumentos. Confirme com uma função distancia de dois números que chamar duas vezes com os mesmos argumentos só conta um cálculo, e mostre que uma chamada a que falta um argumento é recusada pelo compilador, marcando essa linha com ts-expect-error.",
+      "hint": "A constraint TArgs extends unknown[] captura a lista de argumentos. Para a chave do Map, JSON.stringify aplicado ao próprio array de argumentos chega.",
+      "solution_code": "function memorizar<TArgs extends unknown[], TRetorno>(\n  fn: (...args: TArgs) => TRetorno,\n): { chamar: (...args: TArgs) => TRetorno; calculos: () => number } {\n  const guardados = new Map<string, TRetorno>();\n  let calculos = 0;\n\n  return {\n    chamar(...args: TArgs): TRetorno {\n      const chave = JSON.stringify(args);\n      const guardado = guardados.get(chave);\n      if (guardado !== undefined) {\n        return guardado;\n      }\n      calculos += 1;\n      const novo = fn(...args);\n      guardados.set(chave, novo);\n      return novo;\n    },\n    calculos: () => calculos,\n  };\n}\n\nfunction distancia(x: number, y: number): number {\n  return Math.sqrt(x * x + y * y);\n}\n\nconst memoria = memorizar(distancia);\nconsole.log(memoria.chamar(3, 4)); // 5\nconsole.log(memoria.chamar(3, 4)); // 5, sem voltar a calcular\nconsole.log(memoria.chamar(6, 8)); // 10\nconsole.log(memoria.calculos()); // 2\n\n// @ts-expect-error o wrapper conserva a assinatura original: distancia precisa de dois números\nmemoria.chamar(3);",
+      "solution_explanation": "TArgs guarda a tupla de argumentos e é reutilizado na assinatura de chamar, por isso o envelope fica tão exigente como a função original. O Map devolve TRetorno ou undefined, e é a comparação com undefined que decide entre reaproveitar e calcular, o que traz uma consequência a conhecer: uma função que devolva undefined nunca chega a ser memorizada."
+    }
+  ],
+  "summary": [
+    "O padrão Resultado traz a falha para o tipo de retorno e obriga a tratá-la",
+    "Map<K, V> é o genérico da biblioteca padrão que mais rende: chave tipada e get honesto",
+    "Uma fábrica fixa o tipo uma vez e propaga-o para a função que devolve",
+    "Com TArgs extends unknown[] envolve-se qualquer função sem perder a assinatura",
+    "Um predicado genérico limpa arrays de nulos sem uma única asserção",
+    "Um parâmetro de tipo usado uma só vez não liga nada: é ruído"
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para o Módulo 06",
+  "next_label": "Aula 01 → keyof, typeof e Indexed Access Types"
+}

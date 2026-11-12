@@ -1,0 +1,647 @@
+{
+  "module_num": "15",
+  "module_title": "Cheat Sheet — Referência Rápida",
+  "module_dir": "15-Cheat-Sheet",
+  "lesson_num": "",
+  "lesson_slug": "",
+  "kind": "cheatsheet",
+  "title": "Cheat Sheet — Referência Rápida",
+  "filename_base": "15-Cheat-Sheet",
+  "subtitle": "Toda a sintaxe essencial de JavaScript numa única referência rápida e consultável",
+  "objectives_label": "Este cheat sheet cobre:",
+  "objectives": [
+    "Consultar rapidamente a sintaxe de declaração de variáveis, tipos primitivos e operadores sem procurar noutros módulos.",
+    "Ter à mão os métodos de Array, String e Object mais usados no dia a dia, cada um com um exemplo curto.",
+    "Rever a sintaxe de classes, incluindo construtor, herança com extends/super, getters/setters e campos privados.",
+    "Comparar lado a lado a sintaxe de Promises (.then/.catch) e de async/await para escolher a forma mais legível em cada caso.",
+    "Recordar a sintaxe de tratamento de erros, de módulos ES (import/export) e dos principais recursos introduzidos a partir do ES2020.",
+    "Usar esta unidade como referência de consulta rápida durante o resto do curso e em projetos futuros."
+  ],
+  "sections": [
+    {
+      "heading": "Variáveis, Tipos Primitivos e Operadores",
+      "body": [
+        "const é a escolha por omissão para declarar qualquer valor; let usa-se apenas quando o valor precisa de ser reatribuído mais tarde; var deve ser evitado por ter um comportamento de âmbito menos previsível.",
+        "JavaScript tem sete tipos primitivos: string, number, boolean, undefined, null, symbol e bigint. O operador typeof permite verificar o tipo de um valor em tempo de execução, com a exceção histórica de typeof null devolver 'object'.",
+        "Os operadores mais usados dividem-se em aritméticos, de comparação (=== e !== comparam tipo e valor, ao contrário de == e !=), lógicos (&&, ||, !) e o operador ternário como forma compacta de if/else."
+      ],
+      "code": "const idade = 30;\nlet total = 0;\ntotal += 10;\n\nconsole.log(typeof 'Ana');        // 'string'\nconsole.log(typeof 3.14);         // 'number'\nconsole.log(typeof true);         // 'boolean'\nconsole.log(typeof undefined);    // 'undefined'\nconsole.log(typeof null);         // 'object' (peculiaridade histórica)\nconsole.log(typeof Symbol('id')); // 'symbol'\nconsole.log(typeof 10n);          // 'bigint'\n\nconsole.log(2 ** 10);             // 1024\nconsole.log('5' === 5);           // false\nconsole.log(idade >= 18 ? 'adulto' : 'menor');",
+      "callout_kind": "ATENCAO",
+      "callout_text": "== e != fazem coerção de tipos antes de comparar, o que produz resultados enganadores como '' == 0 // true. Use sempre === e !==.",
+      "table_headers": [
+        "Categoria",
+        "Sintaxe / Operador",
+        "Exemplo"
+      ],
+      "table_rows": [
+        [
+          "Declaração",
+          "const",
+          "const idade = 30;"
+        ],
+        [
+          "Declaração",
+          "let",
+          "let total = 0; total += 10;"
+        ],
+        [
+          "Tipo primitivo",
+          "string",
+          "typeof 'Ana' // 'string'"
+        ],
+        [
+          "Tipo primitivo",
+          "number",
+          "typeof 3.14 // 'number'"
+        ],
+        [
+          "Tipo primitivo",
+          "boolean",
+          "typeof true // 'boolean'"
+        ],
+        [
+          "Tipo primitivo",
+          "undefined",
+          "typeof x // 'undefined'"
+        ],
+        [
+          "Tipo primitivo",
+          "null",
+          "typeof null // 'object'"
+        ],
+        [
+          "Tipo primitivo",
+          "symbol",
+          "typeof Symbol('id') // 'symbol'"
+        ],
+        [
+          "Tipo primitivo",
+          "bigint",
+          "typeof 10n // 'bigint'"
+        ],
+        [
+          "Operador aritmético",
+          "** (exponenciação)",
+          "2 ** 10 // 1024"
+        ],
+        [
+          "Operador de comparação",
+          "=== / !==",
+          "'5' === 5 // false"
+        ],
+        [
+          "Operador lógico",
+          "&& / || / !",
+          "utilizador && utilizador.nome"
+        ],
+        [
+          "Operador ternário",
+          "condição ? a : b",
+          "idade >= 18 ? 'adulto' : 'menor'"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "const por omissão, let quando reatribui"
+        },
+        {
+          "icon": "🔤",
+          "text": "7 tipos primitivos, verificados com typeof"
+        },
+        {
+          "icon": "⚖️",
+          "text": "=== compara tipo e valor, == só valor"
+        },
+        {
+          "icon": "➗",
+          "text": "Aritméticos, lógicos e operador ternário"
+        }
+      ]
+    },
+    {
+      "heading": "Métodos de Array Mais Usados",
+      "body": [
+        "Grande parte do trabalho com arrays faz-se com métodos de ordem superior que recebem uma função: map transforma cada elemento, filter seleciona elementos e reduce acumula um resultado único. Estes três não alteram o array original.",
+        "Outros métodos alteram o array diretamente (in-place), como push, pop, splice e sort, pelo que convém ter sempre presente qual é o comportamento de cada método antes de o usar numa estrutura partilhada."
+      ],
+      "code": "const numeros = [5, 12, 8, 3, 20, 15];\n\nconst resultado = numeros\n  .filter((n) => n > 5)\n  .map((n) => n * 2)\n  .reduce((soma, n) => soma + n, 0);\n\nconsole.log(resultado); // 110\nconsole.log(numeros);   // [5, 12, 8, 3, 20, 15] (inalterado)",
+      "callout_kind": "NOTA",
+      "callout_text": "map, filter, slice, concat e flat devolvem sempre um novo array; push, pop, splice, sort e reverse alteram o array original (in-place).",
+      "table_headers": [
+        "Método",
+        "O Que Faz",
+        "Exemplo"
+      ],
+      "table_rows": [
+        [
+          "map",
+          "Cria novo array transformando cada elemento",
+          "[1,2,3].map(n => n * 2) // [2,4,6]"
+        ],
+        [
+          "filter",
+          "Cria novo array só com elementos que passam no teste",
+          "[1,2,3,4].filter(n => n % 2 === 0) // [2,4]"
+        ],
+        [
+          "reduce",
+          "Reduz o array a um único valor acumulado",
+          "[1,2,3].reduce((acc,n) => acc + n, 0) // 6"
+        ],
+        [
+          "find",
+          "Devolve o primeiro elemento que satisfaz a condição",
+          "[1,2,3].find(n => n > 1) // 2"
+        ],
+        [
+          "some",
+          "Verifica se pelo menos um elemento satisfaz a condição",
+          "[1,2,3].some(n => n > 2) // true"
+        ],
+        [
+          "every",
+          "Verifica se todos os elementos satisfazem a condição",
+          "[1,2,3].every(n => n > 0) // true"
+        ],
+        [
+          "includes",
+          "Verifica se um valor existe no array",
+          "[1,2,3].includes(2) // true"
+        ],
+        [
+          "sort",
+          "Ordena o array in-place",
+          "[3,1,2].sort((a,b) => a - b) // [1,2,3]"
+        ],
+        [
+          "push / pop",
+          "Adiciona / remove no fim, in-place",
+          "arr.push(4); arr.pop();"
+        ],
+        [
+          "splice",
+          "Remove/insere elementos in-place",
+          "arr.splice(1, 2, 'novo')"
+        ],
+        [
+          "slice",
+          "Copia uma parte do array, sem alterar o original",
+          "[1,2,3,4].slice(1,3) // [2,3]"
+        ],
+        [
+          "flat / flatMap",
+          "Achata arrays aninhados",
+          "[[1,2],[3]].flat() // [1,2,3]"
+        ],
+        [
+          "join",
+          "Junta elementos numa string",
+          "[1,2,3].join('-') // '1-2-3'"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔁",
+          "text": "map, filter, reduce: a base funcional"
+        },
+        {
+          "icon": "🔍",
+          "text": "find, some, every para procurar/testar"
+        },
+        {
+          "icon": "✂️",
+          "text": "slice não altera; splice altera in-place"
+        }
+      ]
+    },
+    {
+      "heading": "Métodos de String Mais Usados",
+      "body": [
+        "Strings são imutáveis: nenhum método de string altera a string original, todos devolvem uma nova. O conjunto mais usado no dia a dia serve para limpar, procurar, dividir e formatar texto."
+      ],
+      "code": "const ficheiro = '  relatorio_2024.PDF  ';\n\nconst nomeLimpo = ficheiro.trim().toLowerCase();\nconsole.log(nomeLimpo); // 'relatorio_2024.pdf'\n\nconsole.log(nomeLimpo.endsWith('.pdf'));        // true\nconsole.log(nomeLimpo.replace('2024', '2025')); // 'relatorio_2025.pdf'\nconsole.log('7'.padStart(3, '0'));              // '007'",
+      "callout_kind": "DICA",
+      "callout_text": "Combine template literals com métodos de string e de número, por exemplo `Preço: ${preco.toFixed(2)}€`, para formatar valores sem concatenação manual.",
+      "table_headers": [
+        "Método",
+        "O Que Faz",
+        "Exemplo"
+      ],
+      "table_rows": [
+        [
+          "trim",
+          "Remove espaços no início/fim",
+          "'  ola  '.trim() // 'ola'"
+        ],
+        [
+          "includes",
+          "Verifica se contém uma substring",
+          "'JavaScript'.includes('Script') // true"
+        ],
+        [
+          "slice",
+          "Extrai parte da string por índices",
+          "'JavaScript'.slice(0,4) // 'Java'"
+        ],
+        [
+          "split",
+          "Divide a string num array",
+          "'a,b,c'.split(',') // ['a','b','c']"
+        ],
+        [
+          "replace / replaceAll",
+          "Substitui ocorrências",
+          "'ai ai'.replaceAll('ai','oi') // 'oi oi'"
+        ],
+        [
+          "toUpperCase / toLowerCase",
+          "Muda a capitalização",
+          "'Ola'.toUpperCase() // 'OLA'"
+        ],
+        [
+          "padStart / padEnd",
+          "Preenche até um comprimento fixo",
+          "'5'.padStart(2,'0') // '05'"
+        ],
+        [
+          "startsWith / endsWith",
+          "Testa o início/fim da string",
+          "'ficheiro.js'.endsWith('.js') // true"
+        ],
+        [
+          "repeat",
+          "Repete a string n vezes",
+          "'ab'.repeat(3) // 'ababab'"
+        ],
+        [
+          "at",
+          "Acede a um caráter por índice (aceita negativos)",
+          "'JS'.at(-1) // 'S'"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "✂️",
+          "text": "Strings são imutáveis: métodos devolvem novas"
+        },
+        {
+          "icon": "🔎",
+          "text": "includes, startsWith, endsWith para testar"
+        },
+        {
+          "icon": "🧵",
+          "text": "split/join convertem entre string e array"
+        }
+      ]
+    },
+    {
+      "heading": "Métodos de Object Mais Usados",
+      "body": [
+        "Object.keys, Object.values e Object.entries permitem percorrer as propriedades de um objeto sem escrever ciclos for...in manuais. Object.assign e o spread {...} servem para copiar ou combinar propriedades em novos objetos, sem alterar os originais.",
+        "Object.freeze impede alterações às propriedades diretas de um objeto, mas apenas de forma superficial: propriedades que sejam elas próprias objetos continuam mutáveis."
+      ],
+      "code": "const config = { tema: 'escuro', idioma: 'pt-PT' };\n\nfor (const [chave, valor] of Object.entries(config)) {\n  console.log(`${chave}: ${valor}`);\n}\n\nconst configAtualizada = { ...config, idioma: 'pt-BR' };\nconsole.log(configAtualizada);\nconsole.log(config); // original mantém-se inalterado\n\nObject.freeze(config);\nconfig.tema = 'claro'; // ignorado silenciosamente (erro em modo estrito)\nconsole.log(config.tema); // 'escuro'",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Object.freeze e o spread {...} fazem apenas cópias/proteção superficiais: objetos aninhados dentro da estrutura continuam partilhados e mutáveis.",
+      "table_headers": [
+        "Método",
+        "O Que Faz",
+        "Exemplo"
+      ],
+      "table_rows": [
+        [
+          "Object.keys",
+          "Devolve array com as chaves",
+          "Object.keys({a:1,b:2}) // ['a','b']"
+        ],
+        [
+          "Object.values",
+          "Devolve array com os valores",
+          "Object.values({a:1,b:2}) // [1,2]"
+        ],
+        [
+          "Object.entries",
+          "Devolve array de pares [chave, valor]",
+          "Object.entries({a:1}) // [['a',1]]"
+        ],
+        [
+          "Object.assign",
+          "Copia propriedades para um objeto alvo",
+          "Object.assign({}, obj1, obj2)"
+        ],
+        [
+          "Object.freeze",
+          "Torna o objeto imutável (nível superficial)",
+          "Object.freeze(config)"
+        ],
+        [
+          "Object.fromEntries",
+          "Cria objeto a partir de pares [chave, valor]",
+          "Object.fromEntries([['a',1]]) // {a:1}"
+        ],
+        [
+          "structuredClone",
+          "Cria uma cópia profunda do objeto",
+          "structuredClone(obj)"
+        ],
+        [
+          "spread {...}",
+          "Copia/combina propriedades num novo objeto",
+          "{ ...obj, extra: true }"
+        ],
+        [
+          "in",
+          "Verifica se uma propriedade existe no objeto",
+          "'a' in obj"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔑",
+          "text": "keys, values, entries para percorrer objetos"
+        },
+        {
+          "icon": "🧬",
+          "text": "spread {...} copia propriedades sem mutar"
+        },
+        {
+          "icon": "🧊",
+          "text": "Object.freeze só congela o nível superficial"
+        }
+      ]
+    },
+    {
+      "heading": "Sintaxe de Classes",
+      "body": [
+        "A classe organiza construtor, métodos e membros estáticos numa sintaxe declarativa que continua a assentar em protótipos por baixo. extends cria uma subclasse e super chama o construtor ou os métodos da classe-mãe.",
+        "Getters e setters (get/set) expõem uma propriedade calculada com sintaxe de acesso direto, e o prefixo # cria campos e métodos privados, verdadeiramente inacessíveis fora da classe."
+      ],
+      "code": "class Funcionario {\n  #salario;\n\n  constructor(nome, salario) {\n    this.nome = nome;\n    this.#salario = salario;\n  }\n\n  get salarioAnual() {\n    return this.#salario * 14;\n  }\n\n  static criar(dados) {\n    return new Funcionario(dados.nome, dados.salario);\n  }\n}\n\nclass Gestor extends Funcionario {\n  constructor(nome, salario, equipa) {\n    super(nome, salario);\n    this.equipa = equipa;\n  }\n\n  get salarioAnual() {\n    return super.salarioAnual + 2000;\n  }\n}\n\nconst gestor = new Gestor('Rita', 2000, ['Ana', 'Bruno']);\nconsole.log(gestor.salarioAnual); // 30000",
+      "callout_kind": "NOTA",
+      "callout_text": "Campos privados (#) só são acessíveis dentro da própria classe; tentar aceder-lhes de fora lança um erro de sintaxe/execução.",
+      "table_headers": [
+        "Elemento",
+        "Sintaxe",
+        "Exemplo"
+      ],
+      "table_rows": [
+        [
+          "Construtor",
+          "constructor(...) {}",
+          "constructor(nome) { this.nome = nome; }"
+        ],
+        [
+          "Herança",
+          "class Filha extends Mae",
+          "class Gestor extends Funcionario {}"
+        ],
+        [
+          "Chamar o pai",
+          "super(...)",
+          "constructor(nome) { super(nome); }"
+        ],
+        [
+          "Getter",
+          "get propriedade() {}",
+          "get salarioAnual() { return this.#salario * 14; }"
+        ],
+        [
+          "Setter",
+          "set propriedade(valor) {}",
+          "set idade(valor) { this._idade = valor; }"
+        ],
+        [
+          "Campo privado",
+          "#campo",
+          "#salario = 0;"
+        ],
+        [
+          "Método privado",
+          "#metodo() {}",
+          "#validar() { ... }"
+        ],
+        [
+          "Membro estático",
+          "static",
+          "static criar(dados) { return new this(dados); }"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🏗️",
+          "text": "constructor inicializa a instância"
+        },
+        {
+          "icon": "🧬",
+          "text": "extends + super para herança"
+        },
+        {
+          "icon": "🔒",
+          "text": "# torna campos e métodos privados"
+        }
+      ]
+    },
+    {
+      "heading": "Promises e Async/Await",
+      "body": [
+        "async/await é açúcar sintático sobre Promises: qualquer função marcada async devolve sempre uma Promise, e await suspende a execução dessa função até a Promise à sua frente resolver ou rejeitar, sem bloquear o resto do programa.",
+        "A tabela seguinte mostra a mesma operação escrita das duas formas, para comparar a legibilidade lado a lado."
+      ],
+      "code": "// Com .then / .catch\nfunction obterUtilizadorComThen(id) {\n  return fetch(`/api/utilizadores/${id}`)\n    .then((resposta) => resposta.json())\n    .then((dados) => dados.nome)\n    .catch((erro) => {\n      console.error('Falhou:', erro);\n      throw erro;\n    });\n}\n\n// A mesma lógica com async/await\nasync function obterUtilizadorComAwait(id) {\n  try {\n    const resposta = await fetch(`/api/utilizadores/${id}`);\n    const dados = await resposta.json();\n    return dados.nome;\n  } catch (erro) {\n    console.error('Falhou:', erro);\n    throw erro;\n  }\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Esquecer o await faz a função continuar sem esperar pelo resultado, devolvendo uma Promise pendente em vez do valor esperado.",
+      "table_headers": [
+        "Conceito",
+        "Com Promises (.then)",
+        "Com Async/Await"
+      ],
+      "table_rows": [
+        [
+          "Encadear",
+          "promise.then(r => ...).then(...)",
+          "const r = await promise;"
+        ],
+        [
+          "Tratar erro",
+          "promise.catch(err => ...)",
+          "try { ... } catch (err) { ... }"
+        ],
+        [
+          "Finalizar sempre",
+          "promise.finally(() => ...)",
+          "finally { ... }"
+        ],
+        [
+          "Várias em paralelo",
+          "Promise.all([p1, p2])",
+          "const [a,b] = await Promise.all([p1,p2]);"
+        ],
+        [
+          "Primeira a resolver",
+          "Promise.race([p1, p2])",
+          "const r = await Promise.race([p1,p2]);"
+        ],
+        [
+          "Todas, sem rejeitar tudo",
+          "Promise.allSettled([p1,p2])",
+          "const r = await Promise.allSettled([p1,p2]);"
+        ],
+        [
+          "Criar uma Promise",
+          "new Promise((resolve, reject) => {...})",
+          "await consome Promises já existentes"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "⏳",
+          "text": "await só funciona dentro de função async"
+        },
+        {
+          "icon": "🧵",
+          "text": "async/await é açúcar sobre Promises"
+        },
+        {
+          "icon": "🛡️",
+          "text": "try/catch substitui o .catch() encadeado"
+        }
+      ]
+    },
+    {
+      "heading": "Erros, Módulos ES e Recursos ES2020+",
+      "body": [
+        "throw lança um erro, try/catch/finally captura-o e trata-o, e classes personalizadas que estendem Error permitem identificar o tipo exato de falha através de instanceof ou de erro.name.",
+        "Os módulos ES organizam código entre ficheiros com export (nomeado ou default) e import, de forma estática e analisável antes da execução.",
+        "A partir do ES2020, optional chaining (?.) e nullish coalescing (??) simplificam o acesso seguro a propriedades e a definição de valores por omissão, complementados por operadores de atribuição lógica, separadores numéricos e BigInt."
+      ],
+      "code": "class ErroValidacao extends Error {\n  constructor(mensagem) {\n    super(mensagem);\n    this.name = 'ErroValidacao';\n  }\n}\n\nfunction validarIdade(idade) {\n  if (idade < 0) {\n    throw new ErroValidacao('idade não pode ser negativa');\n  }\n  return idade;\n}\n\ntry {\n  validarIdade(-5);\n} catch (erro) {\n  console.error(`${erro.name}: ${erro.message}`);\n} finally {\n  console.log('validação terminada');\n}\n\n// ficheiro utils.js\nexport const PI = 3.14159;\nexport default function somar(a, b) {\n  return a + b;\n}\n\n// noutro ficheiro\nimport somar, { PI } from './utils.js';\n\nconst utilizador = { morada: null };\nconst cidade = utilizador?.morada?.cidade ?? 'desconhecida';\nconsole.log(cidade); // 'desconhecida'",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Reveja um projeto seu e substitua verificações como if (obj && obj.prop) por optional chaining (?.), e usos de || para valores por omissão por ?? nos casos em que 0 ou '' são valores válidos.",
+      "table_headers": [
+        "Tópico",
+        "Sintaxe",
+        "Exemplo"
+      ],
+      "table_rows": [
+        [
+          "Lançar erro",
+          "throw new Error('msg')",
+          "throw new Error('valor inválido')"
+        ],
+        [
+          "Capturar erro",
+          "try / catch / finally",
+          "try { ... } catch (e) { ... } finally { ... }"
+        ],
+        [
+          "Erro personalizado",
+          "class X extends Error",
+          "class ErroValidacao extends Error {}"
+        ],
+        [
+          "Exportar nomeado",
+          "export const/function",
+          "export const PI = 3.14;"
+        ],
+        [
+          "Exportar por omissão",
+          "export default",
+          "export default function somar() {}"
+        ],
+        [
+          "Importar",
+          "import x, { y } from './f.js'",
+          "import somar, { PI } from './utils.js';"
+        ],
+        [
+          "Importar tudo",
+          "import * as ns from './f.js'",
+          "import * as utils from './utils.js';"
+        ],
+        [
+          "Optional chaining",
+          "obj?.prop",
+          "utilizador?.morada?.cidade"
+        ],
+        [
+          "Nullish coalescing",
+          "valor ?? padrao",
+          "const n = contagem ?? 0;"
+        ],
+        [
+          "Atribuição lógica",
+          "??= / ||= / &&=",
+          "config.tema ??= 'claro';"
+        ],
+        [
+          "Separador numérico",
+          "1_000_000",
+          "const milhao = 1_000_000;"
+        ],
+        [
+          "BigInt",
+          "10n",
+          "const grande = 9007199254740993n;"
+        ],
+        [
+          "Todas as promises, sem falhar",
+          "Promise.allSettled([...])",
+          "ver secção de Promises e Async/Await"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🚨",
+          "text": "throw + try/catch/finally tratam erros"
+        },
+        {
+          "icon": "📦",
+          "text": "export/import ligam ficheiros entre si"
+        },
+        {
+          "icon": "❓",
+          "text": "?. e ?? evitam verificações manuais de null"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Formatação de Produtos",
+      "difficulty": "Iniciante",
+      "statement": "Dado um array de objetos produto, cada um com as propriedades nome e preco, crie um novo array de strings no formato \"Nome: 12.50€\", usando map, desestruturação e template literals. O array original não pode ser alterado.\n\nconst produtos = [\n  { nome: 'Teclado', preco: 25.5 },\n  { nome: 'Rato', preco: 12 },\n  { nome: 'Monitor', preco: 149.99 },\n];",
+      "hint": "map devolve sempre um novo array; toFixed(2) formata um número com exatamente duas casas decimais.",
+      "solution_code": "const produtos = [\n  { nome: 'Teclado', preco: 25.5 },\n  { nome: 'Rato', preco: 12 },\n  { nome: 'Monitor', preco: 149.99 },\n];\n\nconst etiquetas = produtos.map(({ nome, preco }) => `${nome}: ${preco.toFixed(2)}€`);\n\nconsole.log(etiquetas);\n// ['Teclado: 25.50€', 'Rato: 12.00€', 'Monitor: 149.99€']\nconsole.log(produtos); // inalterado",
+      "solution_explanation": "map cria sempre um novo array sem tocar em produtos; desestruturar {nome, preco} diretamente no parâmetro evita escrever produto.nome e produto.preco, e o template literal com toFixed(2) garante sempre duas casas decimais."
+    },
+    {
+      "title": "Total de Encomendas com Desconto Opcional",
+      "difficulty": "Intermedio",
+      "statement": "Tem um array de encomendas. Cada encomenda tem preco e cliente, mas cliente pode ser null ou não ter a propriedade desconto. Use reduce, optional chaining e nullish coalescing para calcular o total a pagar (preco menos o desconto, sendo o desconto 0 quando não existir ou o cliente for null).\n\nconst encomendas = [\n  { preco: 100, cliente: { desconto: 10 } },\n  { preco: 50, cliente: {} },\n  { preco: 80, cliente: null },\n];",
+      "hint": "Encadeie ?. antes de aceder a desconto para o caso de cliente ser null, e use ?? para substituir o undefined resultante por 0.",
+      "solution_code": "const encomendas = [\n  { preco: 100, cliente: { desconto: 10 } },\n  { preco: 50, cliente: {} },\n  { preco: 80, cliente: null },\n];\n\nconst total = encomendas.reduce((acumulado, encomenda) => {\n  const desconto = encomenda.cliente?.desconto ?? 0;\n  return acumulado + (encomenda.preco - desconto);\n}, 0);\n\nconsole.log(total); // 220",
+      "solution_explanation": "cliente?.desconto devolve undefined em vez de lançar erro quando cliente é null ou não tem essa propriedade; o operador ?? substitui esse undefined por 0, e o reduce acumula a diferença preco - desconto para cada encomenda até obter o total final."
+    },
+    {
+      "title": "Conta Bancária com Levantamentos Assíncronos",
+      "difficulty": "Avancado",
+      "statement": "Crie uma classe ContaBancaria com um campo privado #saldo, um getter saldo e um método assíncrono levantar(valor) que simula uma operação assíncrona (uma Promise com setTimeout) e lança um erro personalizado SaldoInsuficienteError quando o valor pedido excede o saldo. Depois crie duas contas e, usando Promise.allSettled, tente levantar um valor de cada em simultâneo, registando no fim se cada levantamento teve sucesso ou falhou.",
+      "hint": "Use Promise.allSettled em vez de Promise.all, para que a rejeição numa conta não impeça de saber o resultado da outra.",
+      "solution_code": "class SaldoInsuficienteError extends Error {\n  constructor(valorPedido, saldoDisponivel) {\n    super(`Saldo insuficiente: pedido ${valorPedido}€, disponível ${saldoDisponivel}€`);\n    this.name = 'SaldoInsuficienteError';\n  }\n}\n\nclass ContaBancaria {\n  #saldo;\n\n  constructor(saldoInicial) {\n    this.#saldo = saldoInicial;\n  }\n\n  get saldo() {\n    return this.#saldo;\n  }\n\n  async levantar(valor) {\n    await new Promise((resolve) => setTimeout(resolve, 100));\n\n    if (valor > this.#saldo) {\n      throw new SaldoInsuficienteError(valor, this.#saldo);\n    }\n\n    this.#saldo -= valor;\n    return this.#saldo;\n  }\n}\n\nasync function testarLevantamentos() {\n  const contaA = new ContaBancaria(100);\n  const contaB = new ContaBancaria(30);\n\n  const resultados = await Promise.allSettled([\n    contaA.levantar(50),\n    contaB.levantar(50),\n  ]);\n\n  resultados.forEach((resultado, indice) => {\n    if (resultado.status === 'fulfilled') {\n      console.log(`Conta ${indice}: novo saldo ${resultado.value}€`);\n    } else {\n      console.error(`Conta ${indice}: ${resultado.reason.message}`);\n    }\n  });\n}\n\ntestarLevantamentos();\n// Conta 0: novo saldo 50€\n// Conta 1: SaldoInsuficienteError: Saldo insuficiente: pedido 50€, disponível 30€",
+      "solution_explanation": "O campo privado #saldo só é acessível dentro da classe, sendo exposto para o exterior apenas através do getter saldo; levantar é assíncrono para simular uma chamada real com await, e lança um erro personalizado quando o valor excede o saldo. Promise.allSettled espera pelas duas operações e devolve o estado (fulfilled ou rejected) de cada uma sem que a rejeição de uma cancele a outra, ao contrário de Promise.all."
+    }
+  ],
+  "summary": [
+    "const é a escolha por omissão para declarar variáveis; use let só quando o valor for reatribuído, e evite var.",
+    "Os métodos de array que devolvem um novo array (map, filter, reduce, slice) não alteram o original; os que alteram in-place (push, splice, sort) fazem-no diretamente na estrutura.",
+    "Strings e a maioria dos métodos de Object trabalham por cópia: nenhum altera o valor original, exceto Object.assign no seu próprio alvo.",
+    "async/await é açúcar sintático sobre Promises: continua a ser necessário try/catch (ou .catch) para tratar rejeições, e Promise.allSettled evita que uma falha cancele as restantes operações.",
+    "Módulos ES usam import/export estático e funcionam em ficheiros .mjs ou com \"type\": \"module\" no package.json.",
+    "Optional chaining (?.) e nullish coalescing (??) substituem verificações manuais encadeadas de undefined/null, mantendo o código mais curto e mais seguro."
+  ],
+  "summary_label": "Resumo",
+  "closing_message": "Vamos continuar para o Módulo 16",
+  "next_label": "Módulo 16 → Gabarito dos Exercícios",
+  "_stage": "autoria"
+}

@@ -1,0 +1,323 @@
+{
+  "module_num": "07",
+  "module_title": "Utility Types",
+  "module_dir": "07-Utility-Types",
+  "lesson_num": "03",
+  "lesson_slug": "ReturnType-Parameters-e-Awaited",
+  "kind": "aula",
+  "title": "ReturnType, Parameters e Awaited",
+  "filename_base": "03-ReturnType-Parameters-e-Awaited",
+  "subtitle": "Tipos derivados das funções que já existem, com o infer a fazer o trabalho",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Derivar tipos a partir de funções já escritas, em vez de os declarar duas vezes",
+    "Usar o par typeof e ReturnType, e perceber por que o typeof é obrigatório",
+    "Tratar os parâmetros como um tuplo com Parameters e reencaminhá-los num embrulho",
+    "Desembrulhar promessas com Awaited, incluindo promessas aninhadas e thenables",
+    "Conhecer InstanceType, ConstructorParameters, ThisParameterType e OmitThisParameter",
+    "Escrever um embrulho genérico que preserva a assinatura da função original"
+  ],
+  "sections": [
+    {
+      "heading": "Derivar em vez de declarar duas vezes",
+      "body": [
+        "Uma função bem escrita já contém toda a informação de tipo que interessa: o que recebe e o que devolve. Declarar à parte uma interface para o objeto que ela devolve é escrever a mesma verdade duas vezes, e as duas versões afastam-se na primeira alteração. O utility type ReturnType resolve isto: o tipo passa a nascer da função e acompanha-a sempre.",
+        "Há um pormenor que confunde ao princípio. ReturnType trabalha sobre tipos, e o nome de uma função é um valor, não um tipo. É por isso que se escreve ReturnType do typeof da função e não ReturnType da função: o typeof da Aula 01 do Módulo 06 é a ponte que leva um valor para o mundo dos tipos.",
+        "Esse par, typeof seguido de ReturnType, é provavelmente o padrão mais usado no dia a dia de quem escreve TypeScript. Aparece sempre que existe uma fábrica, um redutor, um carregador de configuração ou qualquer função cujo resultado seja preciso nomear."
+      ],
+      "code": "// A função já diz tudo: os parâmetros e a forma do objeto que devolve.\nfunction criarSessao(utilizador: string, minutos: number) {\n  return { utilizador, expiraEm: minutos * 60, ativa: true };\n}\n\n// typeof faz a ponte do valor para o tipo: a função vista como tipo de função.\ntype FuncaoCriarSessao = typeof criarSessao;\n// (utilizador: string, minutos: number) => { utilizador: string; expiraEm: number; ativa: boolean }\n\n// ReturnType recebe um TIPO, por isso o typeof é obrigatório pelo meio.\ntype Sessao = ReturnType<typeof criarSessao>;\n\nconst sessao: Sessao = criarSessao(\"ana\", 30);\nconsole.log(sessao.expiraEm, sessao.ativa); // 1800 true\n\nconst outra: FuncaoCriarSessao = criarSessao;\nconsole.log(outra(\"bruno\", 1).expiraEm); // 60\n\n// @ts-expect-error criarSessao é um valor; sem typeof não há tipo nenhum para passar\ntype Errada = ReturnType<criarSessao>;\nexport {};",
+      "callout_kind": "DICA",
+      "callout_text": "Quando der por si a escrever uma interface só para descrever o que uma função devolve, apague-a e derive-a: ReturnType do typeof dessa função.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔗",
+          "text": "A função é a fonte de verdade do tipo"
+        },
+        {
+          "icon": "🌉",
+          "text": "typeof leva o valor para o mundo dos tipos"
+        },
+        {
+          "icon": "🔁",
+          "text": "ReturnType<typeof f> é o padrão mais usado"
+        },
+        {
+          "icon": "🧹",
+          "text": "Menos uma interface para manter à mão"
+        }
+      ]
+    },
+    {
+      "heading": "ReturnType por dentro, e o caso das sobrecargas",
+      "body": [
+        "A definição de ReturnType cabe numa linha e não tem nada de novo: é o conditional type com infer do Módulo 06, mais uma constraint que obriga o argumento a ser uma função. É exatamente o TipoDeRetorno que foi escrito à mão na aula do infer, agora com nome oficial e disponível sem declarar nada.",
+        "Repare no ramo falso, que devolve any em vez de never. Como a constraint já garante que T é uma função, esse ramo quase nunca é alcançado; está lá por razões de compatibilidade antigas.",
+        "Há um comportamento que convém saber de cor. Quando a função tem sobrecargas, das que o Módulo 03 ensinou, o conditional type não consegue produzir a união de todos os retornos: o compilador escolhe a última assinatura da lista. Quem precisa das outras tem de as extrair à mão ou reordenar a lista."
+      ],
+      "code": "// A definição real, tal como está na biblioteca padrão, numa linha:\ntype MeuReturnType<T extends (...args: any) => any> =\n  T extends (...args: any) => infer R ? R : any;\n\n// É o TipoDeRetorno escrito à mão no módulo anterior, com uma constraint a mais.\nfunction calcularFatura(valor: number, taxa: number) {\n  return { base: valor, imposto: valor * taxa, total: valor + valor * taxa };\n}\n\ntype Fatura = MeuReturnType<typeof calcularFatura>;\ntype FaturaDaLib = ReturnType<typeof calcularFatura>;\n\nconst fatura: Fatura = calcularFatura(100, 0.25);\nconst mesma: FaturaDaLib = fatura; // são o mesmo tipo\nconsole.log(mesma.total); // 125\n\n// Sobrecargas (Módulo 03): a lista tem duas assinaturas visíveis.\nfunction medir(valor: string): number;\nfunction medir(valor: readonly unknown[]): number[];\nfunction medir(valor: string | readonly unknown[]): number | number[] {\n  return typeof valor === \"string\" ? valor.length : valor.map(() => 1);\n}\n\n// O compilador resolve pela ÚLTIMA assinatura da lista, não pela união das duas.\ntype RetornoMedir = ReturnType<typeof medir>; // number[]\nconst medido: RetornoMedir = medir([\"a\", \"b\"]);\nconsole.log(medido); // [ 1, 1 ]\n\n// @ts-expect-error RetornoMedir é number[]; o number da primeira sobrecarga perdeu-se\nconst escalar: RetornoMedir = 3;\nexport {};",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Com funções sobrecarregadas, ReturnType e Parameters resolvem pela última assinatura declarada. Se a sobrecarga que interessa não for a última, o resultado não é o esperado.",
+      "table_headers": [
+        "Utility type",
+        "Definição",
+        "Resultado"
+      ],
+      "table_rows": [
+        [
+          "ReturnType<T>",
+          "T extends (...a: any) => infer R ? R : any",
+          "o tipo devolvido pela função"
+        ],
+        [
+          "Parameters<T>",
+          "T extends (...a: infer P) => any ? P : never",
+          "um tuplo com os parâmetros"
+        ],
+        [
+          "Ambos, com sobrecargas",
+          "o conditional só vê uma assinatura",
+          "a última assinatura da lista"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📏",
+          "text": "Uma linha: conditional type mais infer"
+        },
+        {
+          "icon": "🏷️",
+          "text": "É o TipoDeRetorno do Módulo 06 com nome oficial"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Sobrecargas: ganha a última assinatura"
+        },
+        {
+          "icon": "🧪",
+          "text": "O ramo falso devolve any, por história"
+        }
+      ]
+    },
+    {
+      "heading": "Parameters: os argumentos como tuplo",
+      "body": [
+        "Parameters é a mesma linha com o infer noutro sítio: em vez de apanhar o retorno, apanha a lista de parâmetros. O resultado é um tuplo, o tipo que o Módulo 01 apresentou, e os nomes dos parâmetros sobrevivem como rótulos das posições, o que torna as mensagens de erro muito mais legíveis.",
+        "Sendo um tuplo, aceita tudo o que um tuplo aceita: acesso por índice para tirar o tipo de um argumento isolado, e propagação com três pontos para reencaminhar a lista inteira para a função original.",
+        "É desta combinação que nasce o padrão dos embrulhos genéricos. Uma função que recebe outra função e devolve uma versão com contagem, registo ou validação descreve-se numa assinatura só: recebe os parâmetros da original e devolve o retorno da original."
+      ],
+      "code": "// A definição real: o infer ocupa o lugar da lista de parâmetros.\ntype MeusParameters<T extends (...args: any) => any> =\n  T extends (...args: infer P) => any ? P : never;\n\nfunction enviarEmail(destino: string, assunto: string, urgente: boolean): string {\n  return `${destino} | ${assunto} | ${urgente ? \"urgente\" : \"normal\"}`;\n}\n\n// O resultado é um TUPLO, com os nomes dos parâmetros como rótulos.\ntype ArgsEmail = Parameters<typeof enviarEmail>;\n// [destino: string, assunto: string, urgente: boolean]\ntype IguaisAosMeus = MeusParameters<typeof enviarEmail>;\n\nconst args: ArgsEmail = [\"ana@exemplo.pt\", \"Relatório\", true];\nconst mesmos: IguaisAosMeus = args;\nconsole.log(enviarEmail(...mesmos)); // ana@exemplo.pt | Relatório | urgente\n\n// Sendo um tuplo, aceita acesso por índice como qualquer outro.\ntype Destino = ArgsEmail[0]; // string\ntype Urgente = ArgsEmail[2]; // boolean\nconst destino: Destino = \"bruno@exemplo.pt\";\nconst urgente: Urgente = false;\nconsole.log(destino, urgente); // bruno@exemplo.pt false\n\n// O par Parameters + ReturnType descreve um embrulho que não altera a assinatura.\nfunction comContagem<T extends (...args: any[]) => any>(fn: T) {\n  let vezes = 0;\n  const embrulhada = (...args: Parameters<T>): ReturnType<T> => {\n    vezes += 1;\n    return fn(...args);\n  };\n  return { embrulhada, vezes: () => vezes };\n}\n\nconst contado = comContagem(enviarEmail);\nconsole.log(contado.embrulhada(\"ana@exemplo.pt\", \"Olá\", false)); // ana@exemplo.pt | Olá | normal\nconsole.log(contado.vezes()); // 1\n\n// @ts-expect-error o tuplo tem três posições; faltam argumentos\nconst incompleto: ArgsEmail = [\"ana@exemplo.pt\", \"Relatório\"];",
+      "callout_kind": "NOTA",
+      "callout_text": "Parameters<T>[0] dá o tipo do primeiro argumento. É a forma mais curta de tipar uma variável que vai ser passada a uma função escrita por outra pessoa.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "O resultado é um tuplo, não uma união"
+        },
+        {
+          "icon": "🏷️",
+          "text": "Os nomes dos parâmetros ficam como rótulos"
+        },
+        {
+          "icon": "🔢",
+          "text": "Parameters<T>[0] isola um argumento"
+        },
+        {
+          "icon": "🎁",
+          "text": "A base de qualquer embrulho genérico"
+        }
+      ]
+    },
+    {
+      "heading": "Awaited: desembrulhar até ao fim",
+      "body": [
+        "Awaited responde a uma pergunta simples: dado um tipo, qual é o valor que um await sobre ele produz. A definição é a mais complicada das três porque é recursiva, e é exatamente o tipo de recursão que o Módulo 06 apresentou: se o tipo tiver um then cuja função de resolução recebe um valor, o tipo volta a aplicar-se a si próprio a esse valor; caso contrário devolve o tipo tal como está.",
+        "Daí saem três comportamentos de uma vez. Promessas aninhadas ficam achatadas até ao valor final, qualquer thenable é desembrulhado mesmo sem ser uma Promise, e um tipo que não seja thenable sai como entrou, pelo que Awaited de number é number. Este último caso é o que permite usar Awaited em código genérico sem saber se a função é assíncrona.",
+        "Uma nota sobre o exemplo. Uma promessa dentro de outra promessa só se consegue mostrar numa assinatura declarada, porque em tempo de execução Promise.resolve de uma promessa já devolve a promessa achatada. O tipo aninhado existe, o valor aninhado é que não sobrevive."
+      ],
+      "code": "// A definição real é recursiva: enquanto encontrar um then, volta a desembrulhar.\ntype MeuAwaited<T> = T extends null | undefined\n  ? T\n  : T extends object & { then(aoResolver: infer F, ...resto: infer _): any }\n    ? F extends (valor: infer V, ...resto: infer _) => any\n      ? MeuAwaited<V>\n      : never\n    : T;\n\n// Uma promessa dentro de outra só se consegue exprimir na assinatura:\n// em tempo de execução Promise.resolve já achata o valor sozinho.\ndeclare function obterPerfil(): Promise<Promise<{ nome: string }>>;\n\ntype Perfil = Awaited<ReturnType<typeof obterPerfil>>; // { nome: string }\ntype PerfilPeloMeu = MeuAwaited<ReturnType<typeof obterPerfil>>; // o mesmo\nconst perfil: Perfil = { nome: \"Ana\" };\nconst perfil2: PerfilPeloMeu = perfil;\n\n// Um tipo que não é promessa sai como entrou: o último ramo devolve T.\ntype Numero = Awaited<number>; // number\nconst numero: Numero = 7;\n\n// Qualquer thenable é desembrulhado, mesmo sem ser uma Promise.\ninterface Tarefa {\n  then(aoResolver: (valor: string) => void): void;\n}\ntype ValorDaTarefa = Awaited<Tarefa>; // string\nconst valorDaTarefa: ValorDaTarefa = \"pronto\";\n\nconsole.log(perfil2.nome, numero, valorDaTarefa); // Ana 7 pronto\n\n// @ts-expect-error Awaited já tirou a promessa: Perfil é o objeto, não a promessa\nconst enganado: Perfil = Promise.resolve({ nome: \"Ana\" });",
+      "callout_kind": "NOTA",
+      "callout_text": "Awaited é o ValorDaPromessa do Módulo 06 com recursão: aquele tirava uma camada, este tira todas e ainda sabe o que fazer com tipos que não são promessas.",
+      "table_headers": [
+        "Entrada",
+        "Awaited dá",
+        "Porquê"
+      ],
+      "table_rows": [
+        [
+          "Promise<string>",
+          "string",
+          "tira a única camada"
+        ],
+        [
+          "Promise<Promise<number>>",
+          "number",
+          "a recursão continua enquanto houver then"
+        ],
+        [
+          "number",
+          "number",
+          "não é thenable, sai como entrou"
+        ],
+        [
+          "{ then(cb: (v: Data) => void): void }",
+          "Data",
+          "qualquer thenable serve"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🌀",
+          "text": "Definição recursiva: tira todas as camadas"
+        },
+        {
+          "icon": "🫱",
+          "text": "Funciona com thenables, não só com Promise"
+        },
+        {
+          "icon": "➖",
+          "text": "Awaited<number> é number"
+        },
+        {
+          "icon": "🧵",
+          "text": "Peça-chave em embrulhos genéricos"
+        }
+      ]
+    },
+    {
+      "heading": "Os vizinhos de função",
+      "body": [
+        "A biblioteca padrão tem mais quatro utility types feitos com o mesmo molde, todos a extrair uma peça de uma assinatura. InstanceType e ConstructorParameters usam o padrão de um construtor em vez de uma função, e são a forma de falar do tipo das instâncias e dos argumentos de new sem os repetir.",
+        "ThisParameterType e OmitThisParameter tratam do parâmetro this declarado, que o Módulo 03 apresentou. O primeiro extrai o tipo do contexto exigido; o segundo devolve a mesma função já sem essa exigência, que é precisamente o tipo que o bind produz.",
+        "As classes têm um módulo só para elas mais à frente. Aqui interessa apenas que typeof de uma classe dá o tipo do construtor, e que estes dois utilitários existem para descer desse construtor até à instância e até aos argumentos."
+      ],
+      "code": "class Relatorio {\n  constructor(\n    public titulo: string,\n    public linhas: number,\n  ) {}\n  resumo(): string {\n    return `${this.titulo}: ${this.linhas} linhas`;\n  }\n}\n\n// typeof Relatorio é o tipo do CONSTRUTOR; InstanceType dá o tipo das instâncias.\ntype Instancia = InstanceType<typeof Relatorio>; // Relatorio\ntype ArgsConstrutor = ConstructorParameters<typeof Relatorio>;\n// [titulo: string, linhas: number]\n\nconst argsConstrutor: ArgsConstrutor = [\"Vendas\", 12];\nconst relatorio: Instancia = new Relatorio(...argsConstrutor);\nconsole.log(relatorio.resumo()); // Vendas: 12 linhas\n\n// ThisParameterType e OmitThisParameter trabalham sobre o this declarado (Módulo 03).\nfunction formatar(this: { moeda: string }, valor: number): string {\n  return `${valor.toFixed(2)} ${this.moeda}`;\n}\n\ntype Contexto = ThisParameterType<typeof formatar>; // { moeda: string }\ntype SemThis = OmitThisParameter<typeof formatar>; // (valor: number) => string\n\nconst contexto: Contexto = { moeda: \"EUR\" };\nconst ligada: SemThis = formatar.bind(contexto);\nconsole.log(ligada(20)); // 20.00 EUR\n\ntry {\n  // @ts-expect-error formatar exige um this com moeda; só a versão ligada dispensa\n  formatar(20);\n} catch {\n  console.log(\"sem this não há moeda\"); // sem this não há moeda\n}",
+      "callout_kind": "DICA",
+      "callout_text": "Para uma classe com nome, o tipo da instância também se escreve só com o nome da classe. InstanceType ganha valor quando o construtor chega como parâmetro genérico e não tem nome.",
+      "table_headers": [
+        "Utility type",
+        "Recebe",
+        "Devolve"
+      ],
+      "table_rows": [
+        [
+          "InstanceType<T>",
+          "o tipo de um construtor",
+          "o tipo das instâncias que ele cria"
+        ],
+        [
+          "ConstructorParameters<T>",
+          "o tipo de um construtor",
+          "o tuplo dos argumentos de new"
+        ],
+        [
+          "ThisParameterType<T>",
+          "o tipo de uma função",
+          "o tipo do this declarado, ou unknown"
+        ],
+        [
+          "OmitThisParameter<T>",
+          "o tipo de uma função",
+          "a mesma função já sem o this"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🏭",
+          "text": "typeof de uma classe é o tipo do construtor"
+        },
+        {
+          "icon": "🧍",
+          "text": "InstanceType desce do construtor à instância"
+        },
+        {
+          "icon": "🔧",
+          "text": "ConstructorParameters dá o tuplo do new"
+        },
+        {
+          "icon": "📌",
+          "text": "OmitThisParameter é o tipo que o bind produz"
+        }
+      ]
+    },
+    {
+      "heading": "Um embrulho com cache, todo tipado",
+      "body": [
+        "Juntando as três peças sai o exemplo que justifica a aula. Um embrulho recebe uma função qualquer, guarda os resultados numa cache e devolve uma versão com a mesma assinatura. Quem usa a função embrulhada não nota diferença nenhuma no editor: os mesmos parâmetros, o mesmo retorno, o mesmo autocompletar.",
+        "O Awaited entra aqui por uma razão concreta. A função original já devolve uma promessa, logo o retorno dela é uma promessa. Se o embrulho declarasse uma promessa do retorno da original, ficaria com uma promessa dentro de outra no tipo, quando em tempo de execução só existe uma. Awaited do retorno corrige exatamente essa camada a mais.",
+        "O mesmo molde serve para registo de chamadas, medição de tempos, tentativas repetidas ou validação de argumentos. Muda o corpo, a assinatura é sempre a mesma."
+      ],
+      "code": "// O embrulho não conhece a função que recebe: descreve-a com Parameters e ReturnType.\n// Sem o Awaited, o retorno seria Promise<ReturnType<T>>, ou seja Promise<Promise<...>>.\nfunction comCache<T extends (...args: any[]) => Promise<any>>(\n  fn: T,\n): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>> {\n  const cache = new Map<string, Promise<Awaited<ReturnType<T>>>>();\n  return (...args: Parameters<T>) => {\n    const chave = JSON.stringify(args);\n    const guardado = cache.get(chave);\n    if (guardado !== undefined) {\n      console.log(`cache: ${chave}`);\n      return guardado;\n    }\n    const nova: Promise<Awaited<ReturnType<T>>> = fn(...args);\n    cache.set(chave, nova);\n    return nova;\n  };\n}\n\nlet idas = 0;\nasync function precoDe(artigo: string, quantidade: number): Promise<number> {\n  idas += 1;\n  return artigo.length * quantidade;\n}\n\nconst precoComCache = comCache(precoDe);\n\nasync function principal(): Promise<void> {\n  // O tipo de total é number, não Promise<number>: foi o Awaited que o achatou.\n  const total: number = await precoComCache(\"livro\", 2);\n  console.log(total); // 10\n\n  const repetido = await precoComCache(\"livro\", 2); // escreve: cache: [\"livro\",2]\n  console.log(repetido); // 10\n  console.log(idas); // 1\n}\n\nvoid principal();",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Pegue neste embrulho e troque a cache por um contador de tempo. A assinatura não muda uma vírgula: é isso que mostra que o padrão está bem tipado.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎁",
+          "text": "Parameters e ReturnType preservam a assinatura"
+        },
+        {
+          "icon": "🌀",
+          "text": "Awaited evita a promessa dentro da promessa"
+        },
+        {
+          "icon": "🗂️",
+          "text": "Serve para cache, registo, tempos ou tentativas"
+        },
+        {
+          "icon": "👀",
+          "text": "Quem usa a função não nota o embrulho"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Derivar tudo de uma função",
+      "difficulty": "Iniciante",
+      "statement": "Escreva a função criarEncomenda, que recebe um cliente do tipo string, uma lista de artigos do tipo string e um booleano expresso, e devolve um objeto com esses três valores mais um campo portes calculado a partir de expresso. Sem escrever nenhuma interface, declare o tipo Encomenda a partir do retorno da função, o tipo ArgsEncomenda a partir dos parâmetros, e o tipo Cliente a partir da primeira posição de ArgsEncomenda. Depois crie uma constante com os argumentos, chame a função com propagação e escreva o cliente e os portes na consola.",
+      "hint": "O nome da função é um valor. Para o transformar num tipo falta um operador que já veio do Módulo 06, e só depois é que ReturnType e Parameters entram.",
+      "solution_code": "function criarEncomenda(cliente: string, artigos: string[], expresso: boolean) {\n  return {\n    cliente,\n    artigos,\n    expresso,\n    portes: expresso ? 9.9 : 3.5,\n  };\n}\n\ntype Encomenda = ReturnType<typeof criarEncomenda>;\ntype ArgsEncomenda = Parameters<typeof criarEncomenda>;\ntype Cliente = ArgsEncomenda[0];\n\nconst args: ArgsEncomenda = [\"Ana\", [\"livro\", \"caneta\"], true];\nconst encomenda: Encomenda = criarEncomenda(...args);\nconst cliente: Cliente = encomenda.cliente;\n\nconsole.log(cliente, encomenda.portes); // Ana 9.9\nconsole.log(encomenda.artigos.length); // 2\nexport {};",
+      "solution_explanation": "Nenhuma interface foi escrita à mão: os três tipos descem todos da função. O typeof converte o valor criarEncomenda no tipo da função, ReturnType e Parameters extraem as duas pontas da assinatura, e o acesso por índice funciona porque Parameters devolve um tuplo."
+    },
+    {
+      "title": "Reescrever os dois e usá-los num embrulho",
+      "difficulty": "Intermedio",
+      "statement": "Escreva de raiz os tipos RetornoDe e ArgumentosDe, cada um numa linha, com um conditional type e infer, incluindo a constraint que obriga o argumento a ser uma função. Use-os depois para escrever comMedicao, que recebe uma etiqueta e uma função, e devolve um objeto com a função embrulhada, que regista cada chamada, e um historico que devolve os registos. Prove que os tipos escritos à mão são intermutáveis com Parameters, atribuindo um ao outro.",
+      "hint": "A única diferença entre os dois é onde fica o infer: no lugar do retorno ou no lugar da lista de parâmetros. A função embrulhada recebe os argumentos com três pontos e reencaminha-os da mesma maneira.",
+      "solution_code": "type RetornoDe<T extends (...args: any) => any> =\n  T extends (...args: any) => infer R ? R : never;\n\ntype ArgumentosDe<T extends (...args: any) => any> =\n  T extends (...args: infer P) => any ? P : never;\n\nfunction comMedicao<T extends (...args: any[]) => any>(etiqueta: string, fn: T) {\n  const chamadas: string[] = [];\n  const embrulhada = (...args: ArgumentosDe<T>): RetornoDe<T> => {\n    chamadas.push(`${etiqueta}(${args.length} argumentos)`);\n    return fn(...args);\n  };\n  return { embrulhada, historico: () => chamadas };\n}\n\nfunction juntar(separador: string, ...partes: string[]): string {\n  return partes.join(separador);\n}\n\nconst medido = comMedicao(\"juntar\", juntar);\nconsole.log(medido.embrulhada(\"-\", \"a\", \"b\", \"c\")); // a-b-c\nconsole.log(medido.historico()); // [ 'juntar(4 argumentos)' ]\n\n// Os utilitários escritos à mão e os da biblioteca são o mesmo tipo.\nconst meus: ArgumentosDe<typeof juntar> = [\"/\", \"x\"];\nconst daLib: Parameters<typeof juntar> = meus;\nconsole.log(juntar(...daLib)); // x",
+      "solution_explanation": "Os dois utilitários são a mesma forma com o infer trocado de sítio, e a atribuição cruzada no fim mostra que são o mesmo tipo que a biblioteca padrão entrega. Como juntar tem um parâmetro rest, o tuplo termina em elementos variáveis e a propagação continua a funcionar."
+    },
+    {
+      "title": "Um utilitário para resultados assíncronos",
+      "difficulty": "Intermedio",
+      "statement": "Escreva o tipo ResultadoDe, que a partir do tipo de uma função dá o valor final que ela produz, já sem promessas. Aplique-o a uma assinatura declarada que devolve uma promessa dentro de outra promessa, a uma função síncrona que conta palavras e à versão assíncrona dessa mesma função, e mostre que as duas últimas dão o mesmo tipo. Acrescente uma linha marcada com ts-expect-error a provar que o resultado já não é uma promessa.",
+      "hint": "São dois utility types encaixados um no outro, sem nada pelo meio. Para a promessa aninhada use declare function, porque em tempo de execução uma promessa de promessa achata-se sozinha.",
+      "solution_code": "// O utilitário pedido: o retorno da função, já desembrulhado.\ntype ResultadoDe<T extends (...args: any) => any> = Awaited<ReturnType<T>>;\n\n// Uma assinatura com promessa dentro de promessa, para provar a recursão.\ndeclare function obterPerfilRemoto(\n  id: number,\n): Promise<Promise<{ id: number; nome: string }>>;\n\ntype Perfil = ResultadoDe<typeof obterPerfilRemoto>; // { id: number; nome: string }\nconst perfil: Perfil = { id: 1, nome: \"Ana\" };\nconsole.log(perfil.nome); // Ana\n\n// Uma função síncrona também passa: Awaited de um tipo que não é promessa é ele próprio.\nfunction contarPalavras(texto: string): number {\n  return texto.split(\" \").length;\n}\ntype Contagem = ResultadoDe<typeof contarPalavras>; // number\nconst contagem: Contagem = contarPalavras(\"um dois três\");\nconsole.log(contagem); // 3\n\n// E a versão assíncrona da mesma função dá exatamente o mesmo tipo.\nasync function contarPalavrasAsync(texto: string): Promise<number> {\n  return texto.split(\" \").length;\n}\ntype ContagemAsync = ResultadoDe<typeof contarPalavrasAsync>; // number\nconst mesma: ContagemAsync = contagem;\nconsole.log(mesma); // 3\n\nasync function principal(): Promise<void> {\n  const valor: ResultadoDe<typeof contarPalavrasAsync> =\n    await contarPalavrasAsync(\"a b\");\n  console.log(valor); // 2\n}\nvoid principal();\n\n// @ts-expect-error ResultadoDe já tirou a promessa: Contagem é number\nconst errado: Contagem = Promise.resolve(3);",
+      "solution_explanation": "ResultadoDe é apenas Awaited aplicado a ReturnType, e é essa composição que faz uma função síncrona e a sua versão assíncrona darem o mesmo tipo de resultado. A recursão do Awaited trata da promessa aninhada, e a última linha confirma que uma promessa já não é atribuível ao tipo desembrulhado."
+    },
+    {
+      "title": "Tentativas repetidas com a assinatura intacta",
+      "difficulty": "Avancado",
+      "statement": "Escreva comTentativas, que recebe uma função assíncrona e um número máximo de tentativas, e devolve uma função com os mesmos parâmetros da original e um retorno que é uma promessa do valor final, já desembrulhado. Em cada falha regista a tentativa na consola e volta a tentar; esgotadas as tentativas, relança o último erro. Prove o comportamento com uma função que só tem sucesso à terceira chamada, e depois com um máximo de duas tentativas, apanhando o erro num try catch.",
+      "hint": "A assinatura devolvida junta as três peças da aula. O erro apanhado no catch chega como unknown, por isso é preciso decidir como lhe aceder antes de escrever a mensagem.",
+      "solution_code": "type FuncaoAssincrona = (...args: any[]) => Promise<any>;\n\n// O embrulho preserva os parâmetros e devolve o valor já desembrulhado.\nfunction comTentativas<T extends FuncaoAssincrona>(\n  fn: T,\n  maximo: number,\n): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>> {\n  return async (...args: Parameters<T>): Promise<Awaited<ReturnType<T>>> => {\n    let ultimoErro: unknown;\n    for (let tentativa = 1; tentativa <= maximo; tentativa += 1) {\n      try {\n        return await fn(...args);\n      } catch (erro) {\n        ultimoErro = erro;\n        console.log(`tentativa ${tentativa} falhou`);\n      }\n    }\n    throw ultimoErro;\n  };\n}\n\nlet chamadas = 0;\nasync function lerConfiguracao(\n  nome: string,\n): Promise<{ nome: string; versao: number }> {\n  chamadas += 1;\n  if (chamadas < 3) {\n    throw new Error(\"indisponível\");\n  }\n  return { nome, versao: chamadas };\n}\n\nconst lerComTentativas = comTentativas(lerConfiguracao, 5);\n\nasync function principal(): Promise<void> {\n  // O await devolve o objeto, não a promessa: o Awaited está na assinatura.\n  const config: { nome: string; versao: number } = await lerComTentativas(\"app\");\n  console.log(config); // { nome: 'app', versao: 3 }\n\n  chamadas = 0;\n  const poucasTentativas = comTentativas(lerConfiguracao, 2);\n  try {\n    await poucasTentativas(\"app\");\n  } catch (erro) {\n    console.log((erro as Error).message); // indisponível\n  }\n}\nvoid principal();",
+      "solution_explanation": "A assinatura devolvida combina Parameters para os argumentos com uma promessa de Awaited do retorno, e por isso nunca aparece uma promessa dentro de outra no tipo. O ciclo devolve o resultado na primeira tentativa bem sucedida e, se todas falharem, relança o último erro guardado, que o chamador apanha no try catch."
+    }
+  ],
+  "summary": [
+    "ReturnType e Parameters são um conditional type com infer numa linha: o que o Módulo 06 chamou TipoDeRetorno e TiposDosParametros",
+    "Como os utility types trabalham sobre tipos, o nome de uma função tem de passar primeiro por typeof",
+    "Parameters devolve um tuplo com rótulos, pronto para acesso por índice e para propagação",
+    "Com sobrecargas, o compilador resolve pela última assinatura declarada, não pela união de todas",
+    "Awaited é recursivo: achata promessas aninhadas, aceita thenables e devolve tal e qual os tipos que não são promessas",
+    "InstanceType, ConstructorParameters, ThisParameterType e OmitThisParameter extraem as restantes peças de uma assinatura"
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 04",
+  "next_label": "Aula 04 → Criar os Seus Próprios Utility Types"
+}

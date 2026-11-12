@@ -1,0 +1,296 @@
+{
+  "module_num": "12",
+  "module_title": "Padrões de Projeto e Boas Práticas",
+  "module_dir": "12-Padroes-de-Projeto-e-Boas-Praticas",
+  "lesson_num": "04",
+  "lesson_slug": "Testes-e-Depuracao",
+  "kind": "aula",
+  "title": "Testes e Depuração",
+  "filename_base": "04-Testes-e-Depuracao",
+  "subtitle": "Consola avançada, breakpoints, node:test e os primeiros passos com TDD.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Usar console.table, console.error, console.assert e console.group para depurar de forma mais eficaz do que só com console.log.",
+    "Colocar breakpoints e a instrução debugger para pausar a execução e inspecionar variáveis, o scope e a call stack.",
+    "Depurar código Node.js com node --inspect / --inspect-brk, ligando-o às DevTools do Chrome ou ao depurador do editor.",
+    "Escrever testes unitários com node:test e node:assert/strict seguindo o padrão Arrange-Act-Assert.",
+    "Criar dublês de teste (stubs/mocks) manuais, sem depender de bibliotecas externas.",
+    "Compreender o ciclo TDD (red-green-refactor) e escrever um teste antes da implementação correspondente."
+  ],
+  "sections": [
+    {
+      "heading": "Depurar com a consola: além do console.log",
+      "body": [
+        "O objeto console oferece vários métodos além de log, cada um pensado para um cenário de depuração diferente. console.table apresenta um array de objetos como uma tabela, com uma coluna por propriedade, o que torna muito mais fácil comparar vários registos de uma vez do que ler um array impresso linha a linha. console.error escreve a mensagem no canal de erro (stderr, no Node, ou destacada a vermelho no browser) e, quando recebe um objeto Error, mostra também o stack trace. console.assert só escreve alguma coisa na consola quando a condição passada como primeiro argumento é falsa, o que o torna útil para verificações de sanidade que não devem poluir a consola em execução normal. console.group e console.groupEnd agrupam mensagens relacionadas em blocos recolhíveis nas DevTools do browser.",
+        "A instrução debugger, escrita diretamente no código, funciona como um breakpoint permanente: sempre que o motor de JavaScript a encontra com as ferramentas de depuração abertas (DevTools do browser ou o inspetor do Node), a execução pára nesse ponto exato, permitindo inspecionar variáveis, o call stack e o scope antes de continuar. Ao contrário de um console.log, não é preciso decidir de antemão o que mostrar: o estado do programa pode ser explorado interativamente. Ainda assim, deve ser removida do código antes de o entregar ou fazer commit, tal como aconteceria com um console.log de depuração esquecido."
+      ],
+      "code": "const utilizadores = [\n  { id: 1, nome: \"Ana\", idade: 28 },\n  { id: 2, nome: \"Bruno\", idade: 17 },\n];\n\nconsole.table(utilizadores);\n\nconsole.group(\"Validação de utilizadores\");\nutilizadores.forEach((u) => {\n  console.assert(u.idade >= 18, `Utilizador ${u.nome} é menor de idade`, u);\n});\nconsole.groupEnd();\n\nconsole.error(\"Falha ao contactar a API:\", new Error(\"Timeout\"));\n\nfunction calcularDesconto(preco, percentagem) {\n  debugger; // a execução para aqui se as DevTools/inspetor estiverem abertos\n  return preco - preco * (percentagem / 100);\n}",
+      "callout_kind": "DICA",
+      "callout_text": "console.assert nunca interrompe a execução do programa, mesmo quando a condição é falsa - é apenas um aviso na consola, e não deve ser confundido com uma verificação real de erro como um throw.",
+      "table_headers": [
+        "Método",
+        "Quando usar"
+      ],
+      "table_rows": [
+        [
+          "console.log",
+          "Mostrar um valor ou mensagem genérica"
+        ],
+        [
+          "console.table",
+          "Comparar vários objetos/registos lado a lado"
+        ],
+        [
+          "console.error",
+          "Sinalizar falhas, com stack trace se for um Error"
+        ],
+        [
+          "console.assert",
+          "Avisar só quando uma condição esperada falha"
+        ],
+        [
+          "console.group / groupEnd",
+          "Agrupar mensagens relacionadas"
+        ],
+        [
+          "debugger",
+          "Pausar a execução para inspeção interativa"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🗂️",
+          "text": "console.table mostra arrays/objetos em tabela"
+        },
+        {
+          "icon": "🛑",
+          "text": "debugger; pausa a execução nas DevTools"
+        },
+        {
+          "icon": "✅",
+          "text": "console.assert só avisa quando a condição falha"
+        },
+        {
+          "icon": "📛",
+          "text": "console.error destaca erros com stack trace"
+        }
+      ]
+    },
+    {
+      "heading": "Debug interativo no browser: breakpoints e watch",
+      "body": [
+        "Nas DevTools do browser (painel Sources no Chrome/Edge, Debugger no Firefox), clicar no número de uma linha coloca um breakpoint, que pausa a execução sempre que essa linha for alcançada, tal como o debugger statement mas sem tocar no código fonte. É também possível criar breakpoints condicionais, que só param quando uma expressão fornecida for verdadeira, o que evita ter de parar dezenas de vezes num ciclo até chegar à iteração problemática.",
+        "Depois de parado num breakpoint, o painel Scope mostra as variáveis locais, os closures e o âmbito global acessíveis nesse ponto; o painel Watch permite adicionar expressões arbitrárias (por exemplo, array.length ou obj.propriedade) cujo valor é recalculado a cada passo; e o Call Stack mostra a cadeia de chamadas de funções que levou até ali, permitindo subir na pilha para ver o estado de quem chamou a função atual. Os controlos de execução - step over, step into e step out - avançam o programa linha a linha, entrando ou não dentro de funções chamadas, tornando possível seguir exatamente o caminho que os dados percorrem."
+      ],
+      "code": "function processarEncomendas(encomendas) {\n  let totalGeral = 0;\n\n  for (const encomenda of encomendas) {\n    // Bom local para um breakpoint condicional: encomenda.total > 1000\n    const totalComPortes = encomenda.total + encomenda.portes;\n    totalGeral += totalComPortes;\n  }\n\n  return totalGeral;\n}",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔴",
+          "text": "Breakpoints pausam o código numa linha exata"
+        },
+        {
+          "icon": "👀",
+          "text": "Watch expressions mostram variáveis em direto"
+        },
+        {
+          "icon": "📚",
+          "text": "Call stack revela quem chamou cada função"
+        },
+        {
+          "icon": "⏭️",
+          "text": "Step over/into/out avançam linha a linha"
+        }
+      ]
+    },
+    {
+      "heading": "Depurar código Node.js fora do browser",
+      "body": [
+        "Um script Node.js não corre dentro de um separador de browser, mas as mesmas DevTools podem ser usadas para o depurar. A flag node --inspect liga o processo Node a um endpoint de depuração e deixa o programa correr normalmente até encontrar um breakpoint já definido; node --inspect-brk faz o mesmo, mas pausa imediatamente na primeira linha do ficheiro, à espera que um depurador se ligue antes de continuar. Depois de arrancar com uma destas flags, abre-se chrome://inspect no Chrome, clica-se em inspect junto ao processo listado, e usa-se exatamente o mesmo painel Sources descrito antes.",
+        "Editores como o VS Code integram este fluxo sem sair do ecrã de código: o menu Run and Debug cria uma configuração (launch.json) que arranca o script já ligado ao depurador, permitindo colocar breakpoints diretamente nas linhas do editor, inspecionar variáveis e avançar passo a passo tal como no browser."
+      ],
+      "code": "// ficheiro: relatorio.js\nfunction gerarRelatorio(vendas) {\n  const total = vendas.reduce((soma, venda) => soma + venda.valor, 0);\n  const media = total / vendas.length;\n  return { total, media };\n}\n\nconsole.log(gerarRelatorio([{ valor: 100 }, { valor: 50 }]));\n\n// Terminal: node --inspect-brk relatorio.js\n// Depois abrir chrome://inspect no Chrome e clicar em \"inspect\"\n// junto ao processo Node, ou usar \"Run and Debug\" no VS Code\n// para colocar breakpoints diretamente no editor.",
+      "callout_kind": "ATENCAO",
+      "callout_text": "--inspect-brk pausa a execução logo na primeira linha do ficheiro, à espera que o depurador se ligue; --inspect deixa o programa correr imediatamente e só pára em breakpoints já definidos.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔌",
+          "text": "node --inspect liga o Node às DevTools do Chrome"
+        },
+        {
+          "icon": "⏸️",
+          "text": "--inspect-brk pausa logo na primeira linha"
+        },
+        {
+          "icon": "🧩",
+          "text": "VS Code integra breakpoints sem sair do editor"
+        }
+      ]
+    },
+    {
+      "heading": "Testes unitários com node:test e node:assert",
+      "body": [
+        "Desde a versão 18, o Node.js inclui o módulo nativo node:test e o módulo node:assert (com a variante estrita node:assert/strict), o que permite escrever e correr testes unitários sem instalar nenhuma biblioteca externa. A função test() define um caso de teste com um nome descritivo e uma função que o executa; test() podem ainda ser agrupados dentro de describe() para organizar suites relacionadas. Os testes correm-se com o comando node --test, que procura automaticamente ficheiros como *.test.js.",
+        "É boa prática organizar cada teste em três partes claras, conhecidas como Arrange-Act-Assert: Arrange prepara os dados de entrada e quaisquer dependências necessárias; Act executa a unidade de código que se quer testar; Assert verifica se o resultado obtido corresponde ao esperado, usando funções como assert.equal, assert.deepEqual ou assert.throws. Separar estas três fases, mesmo com um comentário a marcá-las, torna cada teste mais fácil de ler e de perceber o que está realmente a ser validado."
+      ],
+      "code": "// ficheiro: carrinho.js\nexport function calcularTotal(itens) {\n  if (!Array.isArray(itens)) {\n    throw new TypeError(\"itens deve ser um array\");\n  }\n  return itens.reduce((total, item) => total + item.preco * item.quantidade, 0);\n}\n\n// ficheiro: carrinho.test.js\nimport { test } from \"node:test\";\nimport assert from \"node:assert/strict\";\nimport { calcularTotal } from \"./carrinho.js\";\n\ntest(\"calcula o total de um carrinho com vários itens\", () => {\n  // Arrange\n  const itens = [\n    { preco: 10, quantidade: 2 },\n    { preco: 5, quantidade: 3 },\n  ];\n\n  // Act\n  const total = calcularTotal(itens);\n\n  // Assert\n  assert.strictEqual(total, 35);\n});\n\ntest(\"lança erro quando o argumento não é um array\", () => {\n  assert.throws(() => calcularTotal(null), TypeError);\n});",
+      "callout_kind": "NOTA",
+      "callout_text": "node:test e node:assert fazem parte do Node.js desde a versão 18 (com melhorias na 20+), pelo que não é preciso instalar Jest, Mocha ou outra biblioteca para começar a escrever testes.",
+      "table_headers": [
+        "Método de assert",
+        "Verifica"
+      ],
+      "table_rows": [
+        [
+          "assert.equal / strictEqual",
+          "Igualdade de valores (strict compara também o tipo)"
+        ],
+        [
+          "assert.deepEqual / deepStrictEqual",
+          "Igualdade estrutural de objetos/arrays"
+        ],
+        [
+          "assert.ok",
+          "Que o valor é \"truthy\""
+        ],
+        [
+          "assert.throws",
+          "Que a função lança um erro"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧪",
+          "text": "node:test e node:assert vêm nativos no Node.js"
+        },
+        {
+          "icon": "🧱",
+          "text": "Arrange-Act-Assert organiza cada teste"
+        },
+        {
+          "icon": "▶️",
+          "text": "node --test corre todos os *.test.js"
+        }
+      ]
+    },
+    {
+      "heading": "Dublês de teste feitos à mão: mocks e stubs simples",
+      "body": [
+        "Muitas funções dependem de coisas difíceis de usar diretamente num teste automático: chamadas de rede reais, o relógio do sistema, ou um serviço externo de envio de email. A solução mais simples é a injeção de dependências: em vez de a função chamar diretamente essa dependência, ela recebe-a como parâmetro, e no teste passa-se uma versão falsa, chamada dublê de teste. Um stub é o caso mais simples, uma função que apenas devolve um valor fixo; um mock vai um pouco mais longe e também regista como foi chamado (quantas vezes, com que argumentos), permitindo ao teste verificar não só o resultado final mas também a interação.",
+        "Construir estes dublês à mão, sem uma biblioteca como Sinon, é perfeitamente viável para casos simples e tem a vantagem de tornar explícito o que está realmente a acontecer: uma função normal, um array a acumular chamadas, e um retorno controlado. Para cenários mais complexos - contar chamadas, simular várias respostas diferentes em sequência, verificar a ordem exata das chamadas - uma biblioteca dedicada poupa código repetitivo, mas o mecanismo por trás é exatamente este."
+      ],
+      "code": "// ficheiro: notificador.js\nexport function notificarUtilizador(utilizador, enviarEmail) {\n  if (!utilizador.email) {\n    throw new Error(\"Utilizador sem email\");\n  }\n  enviarEmail(utilizador.email, \"Bem-vindo!\");\n  return true;\n}\n\n// ficheiro: notificador.test.js\nimport { test } from \"node:test\";\nimport assert from \"node:assert/strict\";\nimport { notificarUtilizador } from \"./notificador.js\";\n\ntest(\"chama o serviço de email com o endereço correto\", () => {\n  // Arrange: um dublê de teste feito à mão, sem biblioteca\n  const chamadas = [];\n  const enviarEmailFalso = (destinatario, assunto) => {\n    chamadas.push({ destinatario, assunto });\n  };\n  const utilizador = { nome: \"Rita\", email: \"rita@exemplo.pt\" };\n\n  // Act\n  const resultado = notificarUtilizador(utilizador, enviarEmailFalso);\n\n  // Assert\n  assert.equal(resultado, true);\n  assert.equal(chamadas.length, 1);\n  assert.equal(chamadas[0].destinatario, \"rita@exemplo.pt\");\n});",
+      "callout_kind": "DICA",
+      "callout_text": "Esta técnica funciona bem quando a função a testar recebe a dependência como parâmetro (injeção de dependências); se a dependência estiver fixa lá dentro (por exemplo, um import direto usado sem parâmetro), é preciso reestruturar o código antes de conseguir substituí-la num teste.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎭",
+          "text": "Um dublê substitui uma dependência real no teste"
+        },
+        {
+          "icon": "💉",
+          "text": "Injeção de dependências facilita criar dublês"
+        },
+        {
+          "icon": "📋",
+          "text": "Guardar chamadas permite verificar interações"
+        }
+      ]
+    },
+    {
+      "heading": "Introdução ao TDD: escrever o teste antes do código",
+      "body": [
+        "Test-Driven Development (TDD) inverte a ordem habitual de trabalho: em vez de escrever o código e só depois testá-lo, escreve-se primeiro um teste que descreve o comportamento desejado - e que, nesse momento, falha, porque o código ainda não existe (fase Red). Só depois se escreve o código mínimo necessário para esse teste passar (fase Green), sem preocupações prematuras de generalidade ou otimização. Com o teste a passar, o código pode ser melhorado - clareza, duplicação, desempenho - sabendo que qualquer alteração que quebre o comportamento é imediatamente sinalizada pelo teste (fase Refactor).",
+        "Esta disciplina não depende de nenhuma framework em particular; aplica-se com node:test tal como com qualquer outra ferramenta de testes. A vantagem principal não é apenas ter testes no final, mas o próprio ato de escrever o teste primeiro obrigar a pensar com clareza sobre o que a função deve realmente fazer, incluindo casos-limite, antes de qualquer implementação existir."
+      ],
+      "code": "// Passo 1 - RED: escreve-se o teste antes do código existir\n// ficheiro: palindromo.test.js\nimport { test } from \"node:test\";\nimport assert from \"node:assert/strict\";\nimport { isPalindromo } from \"./palindromo.js\";\n\ntest(\"reconhece uma palavra palíndroma\", () => {\n  assert.equal(isPalindromo(\"ovo\"), true);\n});\n\ntest(\"reconhece uma frase que não é palíndroma\", () => {\n  assert.equal(isPalindromo(\"javascript\"), false);\n});\n\n// Passo 2 - GREEN: escreve-se o mínimo de código para o teste passar\n// ficheiro: palindromo.js\nexport function isPalindromo(texto) {\n  const normalizado = texto.toLowerCase().replace(/[^a-z0-9]/g, \"\");\n  return normalizado === [...normalizado].reverse().join(\"\");\n}\n\n// Passo 3 - REFACTOR: com os testes a passar, pode simplificar-se\n// ou otimizar-se com confiança, correndo os testes a cada alteração.",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Nos próximos exercícios sobre TDD, tenta escrever primeiro os testes (mesmo sabendo que vão falhar) e só depois a implementação - é a melhor forma de sentir a diferença na prática.",
+      "table_headers": [
+        "Fase",
+        "O que se faz"
+      ],
+      "table_rows": [
+        [
+          "Red",
+          "Escreve-se um teste para um comportamento que ainda não existe; o teste falha"
+        ],
+        [
+          "Green",
+          "Escreve-se o código mínimo necessário para o teste passar"
+        ],
+        [
+          "Refactor",
+          "Melhora-se o código mantendo os testes a passar"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔴",
+          "text": "Red: escreve-se um teste que falha"
+        },
+        {
+          "icon": "🟢",
+          "text": "Green: código mínimo para o teste passar"
+        },
+        {
+          "icon": "🔵",
+          "text": "Refactor: melhora-se o código com testes a proteger"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Depurar um carrinho de compras com a consola",
+      "difficulty": "Iniciante",
+      "statement": "Tens um array de produtos, cada um com nome, preco e quantidade. Escreve uma função calcularValorTotal(produtos) que devolve a soma de preco * quantidade de todos os produtos. Antes de fazeres o cálculo, usa console.table para mostrares o array de produtos. Dentro da função, para cada produto, usa console.assert para avisar (sem interromper o cálculo) sempre que a quantidade for menor ou igual a zero, incluindo o nome do produto na mensagem de aviso. Adiciona também a instrução debugger; imediatamente antes do return, para poderes inspecionar as variáveis se abrires o ficheiro nas DevTools. No final, usa console.log para mostrar o valor total calculado.",
+      "hint": "Lembra-te que console.assert só escreve algo na consola quando a condição passada como primeiro argumento é falsa.",
+      "solution_code": "const produtos = [\n  { nome: \"Teclado\", preco: 25, quantidade: 3 },\n  { nome: \"Rato\", preco: 12, quantidade: 0 },\n  { nome: \"Monitor\", preco: 150, quantidade: 2 },\n];\n\nconsole.table(produtos);\n\nfunction calcularValorTotal(produtos) {\n  produtos.forEach((produto) => {\n    console.assert(\n      produto.quantidade > 0,\n      `Quantidade inválida para o produto \"${produto.nome}\"`\n    );\n  });\n\n  const total = produtos.reduce(\n    (soma, produto) => soma + produto.preco * produto.quantidade,\n    0\n  );\n\n  debugger;\n  return total;\n}\n\nconst valorTotal = calcularValorTotal(produtos);\nconsole.log(\"Valor total:\", valorTotal);",
+      "solution_explanation": "console.table apresenta os produtos numa grelha fácil de comparar, e console.assert só escreve um aviso na consola quando a quantidade de um produto é zero ou negativa (o caso do \"Rato\"), sem interromper o cálculo. A instrução debugger antes do return permite pausar a execução e inspecionar produtos e total nas DevTools, enquanto reduce soma preco * quantidade de todos os produtos para obter o valor total."
+    },
+    {
+      "title": "Caçar um bug com o debugger",
+      "difficulty": "Intermedio",
+      "statement": "O código seguinte devia calcular a média de um array de notas, mas devolve sempre NaN:\n\nfunction calcularMedia(notas) {\n  let soma = 0;\n  for (let i = 0; i <= notas.length; i++) {\n    soma += notas[i];\n  }\n  return soma / notas.length;\n}\n\nconsole.log(calcularMedia([15, 12, 18, 9]));\n\nUsa o painel Sources do browser (ou o depurador do teu editor) para colocares um breakpoint dentro do ciclo for e observares, iteração a iteração, os valores de i, notas[i] e soma através de um watch expression, até identificares onde é que soma deixa de ser um número. Corrige a função e acrescenta um console.assert que avise, sem lançar erro, sempre que o resultado final estiver fora do intervalo 0 a 20.",
+      "hint": "Presta atenção à condição do ciclo for: quantas vezes é que ela permite que a variável i chegue a notas.length, e o que é que notas[notas.length] vale?",
+      "solution_code": "function calcularMedia(notas) {\n  let soma = 0;\n  for (let i = 0; i < notas.length; i++) {\n    soma += notas[i];\n  }\n\n  const media = soma / notas.length;\n  console.assert(\n    media >= 0 && media <= 20,\n    `Média fora do intervalo esperado (0-20): ${media}`\n  );\n  return media;\n}\n\nconsole.log(calcularMedia([15, 12, 18, 9])); // 13.5",
+      "solution_explanation": "O ciclo original usava i <= notas.length, pelo que a última iteração acedia a notas[notas.length], uma posição inexistente que vale undefined; somar undefined a soma transforma-a em NaN a partir daí. A correção troca a condição para i < notas.length, e o console.assert acrescentado funciona como uma rede de segurança que avisaria na consola se a média alguma vez saísse do intervalo 0-20."
+    },
+    {
+      "title": "TDD: escrever os testes antes do validador de email",
+      "difficulty": "Intermedio",
+      "statement": "Antes de escreveres qualquer implementação, cria um ficheiro validador.test.js que use node:test e node:assert/strict para testar uma função validarEmail(email) que ainda não existe. Escreve pelo menos três testes, seguindo Arrange-Act-Assert: um email válido (por exemplo \"ana@exemplo.pt\"), um email sem \"@\", e um email com \"@\" mas sem nenhum \".\" depois dele. Corre node --test e confirma que os testes falham porque validarEmail não está definida. Só depois cria o ficheiro validador.js com a implementação de validarEmail, usando apenas split, indexOf ou includes sobre strings (sem expressões regulares), até os três testes passarem.",
+      "hint": "Corre node --test assim que escreveres os testes, antes de criares o ficheiro validador.js - deves ver os testes falharem porque a função ainda não existe (fase Red do TDD).",
+      "solution_code": "// ficheiro: validador.test.js\nimport { test } from \"node:test\";\nimport assert from \"node:assert/strict\";\nimport { validarEmail } from \"./validador.js\";\n\ntest(\"aceita um email válido\", () => {\n  // Arrange\n  const email = \"ana@exemplo.pt\";\n\n  // Act\n  const resultado = validarEmail(email);\n\n  // Assert\n  assert.equal(resultado, true);\n});\n\ntest(\"rejeita um email sem @\", () => {\n  const resultado = validarEmail(\"ana.exemplo.pt\");\n  assert.equal(resultado, false);\n});\n\ntest(\"rejeita um email com @ mas sem ponto no domínio\", () => {\n  const resultado = validarEmail(\"ana@exemplo\");\n  assert.equal(resultado, false);\n});\n\n// ficheiro: validador.js\nexport function validarEmail(email) {\n  const partes = email.split(\"@\");\n  if (partes.length !== 2) {\n    return false;\n  }\n\n  const [, dominio] = partes;\n  return dominio.includes(\".\") && dominio.indexOf(\".\") > 0;\n}",
+      "solution_explanation": "Os testes são escritos e corridos antes de validarEmail existir, garantindo que falham pelo motivo certo (fase Red do TDD). A implementação usa split(\"@\") para confirmar que existe exatamente um \"@\", e depois indexOf/includes sobre o domínio para garantir que há um \".\" depois dele e que este não é o primeiro carácter, fazendo os três testes passarem sem lhes tocar (fase Green)."
+    },
+    {
+      "title": "TDD com um dublê de teste manual",
+      "difficulty": "Avancado",
+      "statement": "Segue o TDD: antes de implementares, escreve num ficheiro carrinho.test.js pelo menos dois testes para uma função processarCompra(carrinho, processarPagamento) que ainda não existe. carrinho é um array de itens { preco, quantidade}; processarCompra deve chamar processarPagamento com o valor total do carrinho (soma de preco * quantidade de cada item) e: se processarPagamento devolver true, devolver o objeto { sucesso: true, total }; se devolver false, lançar um Error com a mensagem \"Pagamento recusado\". Nos testes, cria tu mesmo (sem bibliotecas) uma função simples que simule processarPagamento em cada caso. Só depois de escreveres os testes implementa processarCompra em carrinho.js para os fazer passar.",
+      "hint": "O dublê de pagamento pode ser uma função que apenas devolve um valor fixo (true ou false); se precisares de confirmar com que valor foi chamada, guarda o argumento recebido numa variável externa antes de o devolver.",
+      "solution_code": "// ficheiro: carrinho.test.js\nimport { test } from \"node:test\";\nimport assert from \"node:assert/strict\";\nimport { processarCompra } from \"./carrinho.js\";\n\ntest(\"processa a compra com sucesso e chama o pagamento com o total correto\", () => {\n  // Arrange\n  const carrinho = [\n    { preco: 20, quantidade: 2 },\n    { preco: 5, quantidade: 4 },\n  ];\n  let valorRecebido = null;\n  const pagamentoAprovadoFalso = (valor) => {\n    valorRecebido = valor;\n    return true;\n  };\n\n  // Act\n  const resultado = processarCompra(carrinho, pagamentoAprovadoFalso);\n\n  // Assert\n  assert.equal(valorRecebido, 60);\n  assert.deepEqual(resultado, { sucesso: true, total: 60 });\n});\n\ntest(\"lança erro quando o pagamento é recusado\", () => {\n  const carrinho = [{ preco: 10, quantidade: 1 }];\n  const pagamentoRecusadoFalso = () => false;\n\n  assert.throws(\n    () => processarCompra(carrinho, pagamentoRecusadoFalso),\n    /Pagamento recusado/\n  );\n});\n\n// ficheiro: carrinho.js\nexport function processarCompra(carrinho, processarPagamento) {\n  const total = carrinho.reduce(\n    (soma, item) => soma + item.preco * item.quantidade,\n    0\n  );\n\n  const aprovado = processarPagamento(total);\n  if (!aprovado) {\n    throw new Error(\"Pagamento recusado\");\n  }\n\n  return { sucesso: true, total };\n}",
+      "solution_explanation": "Os dois testes são escritos antes de processarCompra existir e usam funções criadas à mão como dublês de pagamento: uma que devolve sempre true e guarda o valor recebido numa variável externa, e outra que devolve sempre false. A implementação calcula o total do carrinho com reduce, chama o dublê recebido como segundo argumento (injeção de dependências) e lança um Error com a mensagem esperada quando o pagamento é recusado, que assert.throws verifica através de uma expressão regular sobre a mensagem."
+    }
+  ],
+  "summary": [
+    "console.table, console.group, console.error e console.assert tornam a inspeção de dados mais rápida e legível do que console.log isolado.",
+    "A instrução debugger e os breakpoints do browser/Node param a execução para inspecionar o estado exato do programa, sem alterar o comportamento do código.",
+    "node --inspect e node --inspect-brk ligam o Node.js às DevTools do Chrome ou ao depurador do editor para depuração passo a passo fora do browser.",
+    "node:test e node:assert/strict, nativos do Node.js desde a versão 18, permitem escrever testes unitários sem instalar dependências externas.",
+    "O padrão Arrange-Act-Assert organiza cada teste em preparação, execução e verificação, tornando-os mais fáceis de ler.",
+    "TDD inverte a ordem habitual: escreve-se primeiro um teste que falha (red), depois o código mínimo para o passar (green), e só depois se refina o código (refactor)."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para o Módulo 13",
+  "next_label": "Aula 01 → Datas: Date e Temporal",
+  "_stage": "autoria"
+}

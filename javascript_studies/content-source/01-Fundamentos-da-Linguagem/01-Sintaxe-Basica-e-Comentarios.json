@@ -1,0 +1,306 @@
+{
+  "module_num": "01",
+  "module_title": "Fundamentos da Linguagem",
+  "module_dir": "01-Fundamentos-da-Linguagem",
+  "lesson_num": "01",
+  "lesson_slug": "Sintaxe-Basica-e-Comentarios",
+  "kind": "aula",
+  "title": "Sintaxe Básica e Comentários",
+  "filename_base": "01-Sintaxe-Basica-e-Comentarios",
+  "subtitle": "As regras essenciais de sintaxe que sustentam todo o código JavaScript que vai escrever.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Distinguir declarações de expressões em JavaScript e saber quando cada uma é usada.",
+    "Compreender o papel do ponto e vírgula e o mecanismo de ASI (Automatic Semicolon Insertion).",
+    "Escrever comentários de linha e de bloco para documentar código de forma útil.",
+    "Reconhecer identificadores válidos e a sensibilidade a maiúsculas/minúsculas do JavaScript.",
+    "Ativar o modo estrito com \"use strict\" e entender o que ele muda no comportamento da linguagem.",
+    "Usar console.log e outras formas de output para observar e depurar valores num programa."
+  ],
+  "sections": [
+    {
+      "heading": "Declarações vs. Expressões",
+      "body": [
+        "Em JavaScript, todo o código é composto por declarações (statements) e expressões (expressions). Uma expressão é qualquer trecho de código que produz um valor: 5 + 3, \"Olá\".toUpperCase() ou até uma função anónima são expressões, porque podem ser avaliadas e substituídas mentalmente pelo valor resultante. Uma declaração, por outro lado, executa uma ação e não produz por si só um valor a usar noutro sítio: é o caso de declarar uma variável, definir uma função nomeada ou controlar o fluxo com um if. O programa completo é, no fundo, uma sequência de declarações, e muitas dessas declarações contêm expressões dentro delas.",
+        "A distinção fica mais clara comparando formas equivalentes: function saudacao() {} é uma declaração de função, reconhecida antes de o código começar a correr; const saudacao = function () {} é uma declaração de variável cujo valor é uma expressão de função, só disponível a partir da linha em que é definida. Da mesma forma, if/else é uma declaração de controlo de fluxo, enquanto o operador ternário condicao ? a : b é uma expressão, porque devolve um valor que pode ser atribuído a uma variável ou passado como argumento."
+      ],
+      "code": "// Declaração de função (function declaration)\nfunction somar(a, b) {\n  return a + b;\n}\n\n// Declaração de variável cujo valor é uma expressão de função\nconst multiplicar = function (a, b) {\n  return a * b;\n};\n\n// Expressão (arrow function) atribuída a uma constante\nconst dividir = (a, b) => a / b;\n\n// Expressão condicional (ternário) usada dentro de uma declaração\nconst resultado = somar(2, 3) > 4 ? \"maior\" : \"menor ou igual\";\n\nconsole.log(resultado); // \"maior\"",
+      "callout_kind": "NOTA",
+      "callout_text": "Uma expressão pode sempre ser usada onde se espera um valor; uma declaração não. Se conseguir escrever console.log(x), então x é uma expressão.",
+      "table_headers": [
+        "Conceito",
+        "Exemplo",
+        "Produz um valor?"
+      ],
+      "table_rows": [
+        [
+          "Declaração de variável",
+          "let x = 10;",
+          "Não (a declaração em si)"
+        ],
+        [
+          "Expressão aritmética",
+          "10 + 5",
+          "Sim"
+        ],
+        [
+          "Declaração de função",
+          "function f() {}",
+          "Não"
+        ],
+        [
+          "Expressão de função",
+          "const f = function () {};",
+          "Sim, a função é o valor"
+        ],
+        [
+          "Declaração if",
+          "if (x > 0) { ... }",
+          "Não"
+        ],
+        [
+          "Expressão ternária",
+          "x > 0 ? \"pos\" : \"neg\"",
+          "Sim"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧩",
+          "text": "Expressão: produz um valor"
+        },
+        {
+          "icon": "⚙️",
+          "text": "Declaração: executa uma ação"
+        },
+        {
+          "icon": "🔁",
+          "text": "if é declaração, ?: é expressão"
+        }
+      ]
+    },
+    {
+      "heading": "Ponto e Vírgula e o ASI",
+      "body": [
+        "O ponto e vírgula assinala o fim de uma declaração em JavaScript. Contudo, o motor não obriga a escrevê-lo em todos os casos, graças a um mecanismo chamado ASI, Automatic Semicolon Insertion: o interpretador insere pontos e vírgula automaticamente em certas posições, nomeadamente antes de uma quebra de linha que não faça sentido continuar, antes de uma chaveta de fecho } e no final do ficheiro. É por isso que código como let nome = \"Ana\", sem ponto e vírgula, funciona sem qualquer erro.",
+        "O ASI tem, no entanto, casos problemáticos que convém conhecer. O mais comum ocorre com return: se escrever return numa linha e o valor a devolver na linha seguinte, o ASI insere um ponto e vírgula logo a seguir a return, e a função devolve undefined em vez do valor esperado. Outro caso conhecido é quando uma linha começa por ( ou [: o motor pode interpretar essa linha como continuação da anterior, produzindo um erro ou um comportamento inesperado. Por isso, mesmo confiando no ASI, é boa prática nunca começar uma linha com ( ou [ sem cuidado, e nunca separar return do seu valor."
+      ],
+      "code": "// ASI funciona bem na maioria dos casos\nconst a = 1\nconst b = 2\nconsole.log(a + b) // 3, sem erro\n\n// Armadilha clássica do ASI com \"return\"\nfunction criarUtilizador() {\n  return\n  {\n    nome: \"Rita\"\n  };\n}\nconsole.log(criarUtilizador()); // undefined, não o objeto esperado\n\n// Forma correta\nfunction criarUtilizadorCorreto() {\n  return {\n    nome: \"Rita\"\n  };\n}\nconsole.log(criarUtilizadorCorreto()); // { nome: \"Rita\" }",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Nunca separe return do valor que quer devolver com uma quebra de linha - o ASI insere um ponto e vírgula logo a seguir a return e a função devolve undefined.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "➗",
+          "text": "ASI insere ; automaticamente"
+        },
+        {
+          "icon": "⚠️",
+          "text": "return + newline = undefined"
+        },
+        {
+          "icon": "✅",
+          "text": "Seja consistente no estilo"
+        }
+      ]
+    },
+    {
+      "heading": "Comentários: // e /* */",
+      "body": [
+        "JavaScript suporta dois tipos de comentários, que o motor ignora completamente ao executar o código: o comentário de linha, iniciado por //, que se estende até ao fim dessa linha, e o comentário de bloco, delimitado por /* e */, que pode ocupar várias linhas ou ser inserido no meio de uma instrução. Comentários servem para explicar o porquê de uma decisão, deixar notas para quem lê o código, incluindo o próprio autor no futuro, ou desativar temporariamente uma linha durante a depuração.",
+        "Os comentários de bloco não podem ser aninhados: se escrever /* comentario /* interno */ mais texto */, o bloco fecha-se no primeiro */ encontrado, e o resto passa a ser código válido ou um erro de sintaxe. Uma convenção muito usada em bibliotecas e ferramentas é o comentário de documentação, que começa por /** (dois asteriscos) e segue o formato JSDoc para descrever parâmetros e valores de retorno de funções; isso será útil mais tarde ao trabalhar com editores que mostram sugestões automáticas."
+      ],
+      "code": "// Isto é um comentário de linha: explica a variável seguinte\nconst IVA = 0.23; // taxa de IVA em Portugal\n\n/*\n  Isto é um comentário de bloco.\n  Pode ocupar várias linhas\n  e é útil para explicações mais longas.\n*/\nfunction calcularTotalComIva(preco) {\n  return preco * (1 + IVA);\n}\n\n/**\n * Calcula o preço final com IVA incluído.\n * @param {number} preco - Preço sem IVA.\n * @returns {number} Preço com IVA incluído.\n */\nfunction calcularTotal(preco) {\n  return calcularTotalComIva(preco);\n}",
+      "callout_kind": "DICA",
+      "callout_text": "Comente o \"porquê\", não o \"o quê\" - o código já mostra o que faz; o comentário deve explicar a razão de uma decisão não óbvia.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "💬",
+          "text": "// comenta até ao fim da linha"
+        },
+        {
+          "icon": "📦",
+          "text": "/* */ comenta blocos inteiros"
+        },
+        {
+          "icon": "📘",
+          "text": "/** */ documenta com JSDoc"
+        }
+      ]
+    },
+    {
+      "heading": "Identificadores e Sensibilidade a Maiúsculas",
+      "body": [
+        "O JavaScript é case-sensitive, ou seja, sensível a maiúsculas e minúsculas: as variáveis idade, Idade e IDADE são três identificadores completamente distintos, tal como os métodos toString e ToString não seriam o mesmo. Isto aplica-se a tudo: nomes de variáveis, funções, classes, propriedades e palavras-chave da linguagem, que têm de ser escritas exatamente como definidas, let e não Let ou LET.",
+        "Um identificador válido tem de começar por uma letra, um underscore _ ou um cifrão $, seguido de qualquer combinação de letras, dígitos, _ ou $; nunca pode começar por um dígito nem coincidir com uma palavra reservada da linguagem, como const, class, return ou function. O JavaScript aceita letras acentuadas e outros caracteres Unicode em identificadores, mas a convenção da comunidade é evitar acentos e usar inglês ou um português sem diacríticos, para manter compatibilidade entre projetos. Quanto ao estilo, camelCase é usado para variáveis e funções (precoTotal), PascalCase para classes (Utilizador), e MAIUSCULAS_COM_UNDERSCORE para constantes que representam valores fixos (MAX_TENTATIVAS)."
+      ],
+      "code": "// Identificadores válidos\nlet nomeUtilizador = \"Marta\";\nlet _contador = 0;\nlet $valor = 19.99; // $ é válido, muito usado em bibliotecas como jQuery\nclass Utilizador {}\nconst MAX_TENTATIVAS = 3;\n\n// case sensitivity: são três variáveis diferentes\nlet cidade = \"Lisboa\";\nlet Cidade = \"Porto\";\nlet CIDADE = \"Faro\";\nconsole.log(cidade, Cidade, CIDADE); // Lisboa Porto Faro\n\n// Identificadores inválidos (não descomentar, causam SyntaxError):\n// let 1idade = 20;\n// let const = 5;",
+      "callout_kind": "ATENCAO",
+      "callout_text": "idade e Idade são duas variáveis diferentes para o motor de JavaScript - um erro de maiúsculas/minúsculas é uma causa comum de bugs difíceis de detetar.",
+      "table_headers": [
+        "Convenção",
+        "Uso típico",
+        "Exemplo"
+      ],
+      "table_rows": [
+        [
+          "camelCase",
+          "variáveis e funções",
+          "precoTotal"
+        ],
+        [
+          "PascalCase",
+          "classes",
+          "Utilizador"
+        ],
+        [
+          "MAIUSCULAS_COM_UNDERSCORE",
+          "constantes fixas",
+          "MAX_TENTATIVAS"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔤",
+          "text": "JS distingue maiúsculas de minúsculas"
+        },
+        {
+          "icon": "🆔",
+          "text": "Identificador: letra, _ ou $ no início"
+        },
+        {
+          "icon": "🚫",
+          "text": "Nunca usar palavras reservadas"
+        }
+      ]
+    },
+    {
+      "heading": "O Modo Estrito: \"use strict\"",
+      "body": [
+        "A diretiva \"use strict\", colocada no início de um ficheiro ou no início de uma função, ativa o modo estrito do JavaScript. Este modo desativa comportamentos antigos e pouco seguros da linguagem, transformando-os em erros claros em vez de falhas silenciosas: por exemplo, atribuir um valor a uma variável não declarada, idadeNaoDeclarada = 30; sem let, const ou var, lança um ReferenceError em vez de criar silenciosamente uma variável global.",
+        "O modo estrito também impede a duplicação de nomes de parâmetros numa função, proíbe a palavra-chave with e faz com que this seja undefined dentro de uma função normal chamada sem contexto, em vez de apontar para o objeto global. Na prática, o código moderno raramente precisa de escrever \"use strict\" manualmente: qualquer código dentro de uma classe ou de um ES Module, um ficheiro carregado com type=\"module\" ou que usa import/export, já corre em modo estrito por definição. Ainda assim, é essencial perceber o que o modo estrito muda, porque explica erros que só aparecem em certos contextos e não noutros."
+      ],
+      "code": "\"use strict\";\n\nfunction testar() {\n  idadeNaoDeclarada = 25; // ReferenceError: idadeNaoDeclarada is not defined\n}\n\n// testar(); // lançaria erro em modo estrito\n\n// Sem \"use strict\" (modo normal, também chamado sloppy mode), isto criaria\n// silenciosamente uma variável global - um dos erros mais difíceis de detetar\n\nclass Contador {\n  // dentro de uma classe, o modo estrito é sempre automático\n  incrementar() {\n    valorNaoDeclarado = 1; // também lança ReferenceError aqui\n  }\n}",
+      "callout_kind": "NOTA",
+      "callout_text": "Dentro de classes e de ES Modules, o modo estrito é automático - não precisa de escrever \"use strict\". Só é necessário adicionar manualmente em scripts clássicos, sem módulos.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔒",
+          "text": "\"use strict\" torna erros silenciosos em explícitos"
+        },
+        {
+          "icon": "🚷",
+          "text": "Proíbe variáveis globais acidentais"
+        },
+        {
+          "icon": "🤖",
+          "text": "Automático em classes e ES Modules"
+        }
+      ]
+    },
+    {
+      "heading": "console.log e Outras Formas de Output",
+      "body": [
+        "A forma mais comum de observar o comportamento de um programa em JavaScript é console.log(), disponível tanto no browser, na consola de programador, como em Node.js. Aceita qualquer número de argumentos, separados por vírgulas, e mostra valores de qualquer tipo, números, strings, objetos, arrays, de forma legível, incluindo a estrutura interna de objetos e arrays quando estes são passados diretamente.",
+        "Além de console.log, o objeto console disponibiliza métodos mais específicos: console.error() para mensagens de erro, destacadas a vermelho na maioria das consolas, console.warn() para avisos, console.table() para mostrar arrays de objetos em formato de tabela, e console.group()/console.groupEnd() para agrupar mensagens relacionadas com indentação. Fora da consola, o browser oferece ainda alert(), prompt() e confirm(), mas estas não fazem parte da linguagem JavaScript em si, são funções fornecidas pelo ambiente, pelo que não estão disponíveis em Node.js."
+      ],
+      "code": "console.log(\"Olá, mundo!\");\nconsole.log(\"Soma:\", 2 + 3, \"Tipo:\", typeof (2 + 3));\n\nconst utilizador = { nome: \"João\", idade: 34 };\nconsole.log(utilizador); // mostra o objeto de forma legível e navegável\n\nconsole.error(\"Erro: ligação perdida\");\nconsole.warn(\"Aviso: valor obsoleto\");\n\nconsole.table([\n  { produto: \"Teclado\", preco: 25 },\n  { produto: \"Rato\", preco: 12 }\n]);\n\nconsole.group(\"Validação do formulário\");\nconsole.log(\"Nome válido\");\nconsole.log(\"Email válido\");\nconsole.groupEnd();",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Abra a consola do browser (F12) ou execute node no terminal e experimente cada um dos métodos de console apresentados acima com valores diferentes.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🖥️",
+          "text": "console.log mostra qualquer valor"
+        },
+        {
+          "icon": "🎯",
+          "text": "error/warn destacam mensagens"
+        },
+        {
+          "icon": "📊",
+          "text": "console.table mostra dados tabulares"
+        }
+      ]
+    },
+    {
+      "heading": "Estrutura Geral de um Programa JavaScript",
+      "body": [
+        "Ao contrário de linguagens como Java ou C, o JavaScript não exige uma função principal (main) como ponto de entrada: um ficheiro .js é executado de cima para baixo, declaração a declaração, e essa sequência de topo é o próprio programa. Isto significa que a ordem em que o código aparece no ficheiro importa, com exceções como o hoisting de declarações de função, e que qualquer código escrito diretamente no ficheiro, fora de funções, corre imediatamente quando o ficheiro é carregado.",
+        "Um programa JavaScript típico organiza-se, por convenção, numa ordem lógica: primeiro eventuais diretivas como \"use strict\" e importações de módulos, depois declarações de constantes, funções e classes que definem o vocabulário do programa, e só depois o código que efetivamente usa essas declarações para produzir um resultado. Não existe uma imposição rígida da linguagem sobre esta ordem, mas segui-la torna o código mais previsível e fácil de ler, evitando que a lógica de execução se misture com as definições."
+      ],
+      "code": "\"use strict\";\n\n// 1. Declarações que definem o vocabulário do programa\nconst TAXA_DESCONTO = 0.1;\n\nfunction calcularPrecoFinal(preco, temDesconto) {\n  // Expressão ternária dentro de uma declaração de retorno\n  return temDesconto ? preco * (1 - TAXA_DESCONTO) : preco;\n}\n\n// 2. Lógica principal, executada de cima para baixo\nconst precoOriginal = 50;\nconst precoComDesconto = calcularPrecoFinal(precoOriginal, true);\n\nconsole.log(`Preço original: ${precoOriginal} EUR`);\nconsole.log(`Preço final: ${precoComDesconto} EUR`);",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📜",
+          "text": "JS não precisa de função main"
+        },
+        {
+          "icon": "⬇️",
+          "text": "Executa de cima para baixo"
+        },
+        {
+          "icon": "🧱",
+          "text": "Organize: declarações depois lógica"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Identificadores Válidos",
+      "difficulty": "Iniciante",
+      "statement": "Tem a seguinte lista de identificadores candidatos a nomes de variáveis: 2idade, nome-completo, _pontuacao, const, $valor, Preço. Escreva um pequeno programa que declare com let ou const apenas os identificadores válidos da lista, atribuindo-lhes um valor à sua escolha, e que, para cada identificador inválido, inclua um comentário de linha a explicar por que motivo não pode ser usado.",
+      "hint": "Lembre-se das regras: um identificador não pode começar por um dígito nem coincidir com uma palavra reservada, mas pode conter $, _ e até letras acentuadas.",
+      "solution_code": "// 2idade -> inválido: não pode começar por um dígito\n// nome-completo -> inválido: o hífen não é permitido (seria lido como o operador de subtração)\n// const -> inválido: é uma palavra reservada da linguagem\n\nconst _pontuacao = 100;\nconst $valor = 250;\nconst Preço = 19.99; // válido: JS aceita letras acentuadas em identificadores\n\nconsole.log(_pontuacao, $valor, Preço);",
+      "solution_explanation": "Dos seis candidatos, três são inválidos por motivos diferentes: 2idade começa por um dígito, nome-completo contém um hífen que seria lido como o operador de subtração, e const é uma palavra reservada da linguagem. Os restantes três, _pontuacao, $valor e Preço, cumprem as regras de identificadores válidos, incluindo o uso de _, $ e de letras acentuadas."
+    },
+    {
+      "title": "A Armadilha do return",
+      "difficulty": "Intermedio",
+      "statement": "A função abaixo devia devolver um objeto com os dados de um produto, mas devolve sempre undefined quando é chamada. Corrija o código e explique na sua solução qual foi o mecanismo da linguagem responsável pelo comportamento incorreto.\n\nfunction criarProduto(nome, preco) {\n  return\n  {\n    nome: nome,\n    preco: preco\n  };\n}\n\nconsole.log(criarProduto(\"Livro\", 15));",
+      "hint": "Pense no que o ASI (Automatic Semicolon Insertion) faz automaticamente logo a seguir à palavra return quando encontra uma quebra de linha.",
+      "solution_code": "function criarProduto(nome, preco) {\n  return {\n    nome: nome,\n    preco: preco\n  };\n}\n\nconsole.log(criarProduto(\"Livro\", 15)); // { nome: \"Livro\", preco: 15 }",
+      "solution_explanation": "O problema é o ASI (Automatic Semicolon Insertion): como return ficava sozinho numa linha, o motor insere automaticamente um ponto e vírgula a seguir a ele, o que equivale a escrever return; e faz a função devolver undefined antes de chegar ao objeto. A correção mantém a chaveta de abertura { na mesma linha do return, eliminando a quebra de linha que separava a palavra-chave do valor a devolver."
+    },
+    {
+      "title": "Declaração ou Expressão?",
+      "difficulty": "Intermedio",
+      "statement": "Considere o código abaixo:\n\nconst idadeMinima = 18;\nlet mensagem;\n\nfunction podeVotar(idade) {\n  return idade >= idadeMinima;\n}\n\nmensagem = podeVotar(20) ? \"Pode votar\" : \"Não pode votar\";\nconsole.log(mensagem);\n\nReescreva apenas a função podeVotar, substituindo a atual declaração de função por uma expressão de arrow function atribuída a uma constante com o mesmo nome, mantendo exatamente o mesmo comportamento do programa.",
+      "hint": "Uma expressão de função (incluindo arrow functions) é atribuída a uma variável com let ou const, em vez de começar a instrução com a palavra function seguida de um nome.",
+      "solution_code": "const idadeMinima = 18;\nlet mensagem;\n\nconst podeVotar = (idade) => idade >= idadeMinima;\n\nmensagem = podeVotar(20) ? \"Pode votar\" : \"Não pode votar\";\nconsole.log(mensagem); // \"Pode votar\"",
+      "solution_explanation": "A declaração de função function podeVotar(idade) { return idade >= idadeMinima; } foi substituída pela expressão de arrow function const podeVotar = (idade) => idade >= idadeMinima;, que é um valor atribuído a uma constante em vez de uma declaração nomeada. O comportamento mantém-se idêntico porque ambas as formas recebem o mesmo argumento e devolvem o mesmo valor booleano."
+    },
+    {
+      "title": "Depurar um Script em Modo Estrito",
+      "difficulty": "Avancado",
+      "statement": "O script abaixo, escrito em modo estrito, devia calcular o preço final (com IVA incluído) de dois produtos e mostrá-los numa tabela, mas ao executá-lo obtém um ReferenceError. Identifique a linha exata onde está o erro, explique por que motivo o modo estrito o provoca, corrija o código e adicione no final uma chamada a console.table() que mostre o nome e o preço final de cada produto.\n\n\"use strict\";\n\nconst IVA = 0.23;\nconst produtos = [\n  { nome: \"Cadeira\", preco: 80 },\n  { nome: \"Mesa\", preco: 150 }\n];\n\nfunction calcularPrecoComIva(preco) {\n  precoFinal = preco * (1 + IVA);\n  return precoFinal;\n}\n\nconsole.log(calcularPrecoComIva(produtos[0].preco));",
+      "hint": "Em modo estrito, atribuir um valor a um nome que nunca foi declarado com let, const ou var lança um erro em vez de criar uma variável global — procure a linha onde isso acontece dentro da função.",
+      "solution_code": "\"use strict\";\n\nconst IVA = 0.23;\nconst produtos = [\n  { nome: \"Cadeira\", preco: 80 },\n  { nome: \"Mesa\", preco: 150 }\n];\n\nfunction calcularPrecoComIva(preco) {\n  const precoFinal = preco * (1 + IVA);\n  return precoFinal;\n}\n\nconst produtosComPrecoFinal = produtos.map((produto) => ({\n  nome: produto.nome,\n  precoFinal: calcularPrecoComIva(produto.preco)\n}));\n\nprodutosComPrecoFinal.forEach((produto) => {\n  console.log(`${produto.nome}: ${produto.precoFinal} EUR`);\n});\n\nconsole.table(produtosComPrecoFinal);",
+      "solution_explanation": "O erro está na linha precoFinal = preco * (1 + IVA);, dentro de calcularPrecoComIva: precoFinal nunca foi declarado com let, const ou var, e em modo estrito uma atribuição a um identificador não declarado lança um ReferenceError em vez de criar silenciosamente uma variável global. A correção declara precoFinal com const, e a solução final usa console.table() para mostrar o nome e o preço final de cada um dos dois produtos."
+    }
+  ],
+  "summary": [
+    "JavaScript distingue declarações, que executam ações, de expressões, que produzem valores; um bom código combina as duas de forma deliberada.",
+    "O ASI insere pontos e vírgula automaticamente, mas tem armadilhas conhecidas, sobretudo com return seguido de quebra de linha.",
+    "Comentários (//, /* */ e /** */ para documentação) não são executados e servem para explicar o porquê do código, não o que ele faz.",
+    "JavaScript é case-sensitive: idade, Idade e IDADE são identificadores diferentes; nomes válidos começam por letra, _ ou $.",
+    "\"use strict\" ativa um modo mais seguro da linguagem, e já é automático dentro de classes e de ES Modules.",
+    "console.log e os restantes métodos de console (error, warn, table, group) são a principal ferramenta de output e depuração em JavaScript.",
+    "Um programa JavaScript executa-se de cima para baixo sem precisar de uma função principal; organizar primeiro as declarações e só depois a lógica de execução torna o código mais previsível."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 02",
+  "next_label": "Aula 02 → Variáveis: var, let e const",
+  "_stage": "revisao"
+}

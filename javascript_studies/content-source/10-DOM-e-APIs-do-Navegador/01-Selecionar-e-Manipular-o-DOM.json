@@ -1,0 +1,264 @@
+{
+  "module_num": "10",
+  "module_title": "DOM e APIs do Navegador",
+  "module_dir": "10-DOM-e-APIs-do-Navegador",
+  "lesson_num": "01",
+  "lesson_slug": "Selecionar-e-Manipular-o-DOM",
+  "kind": "aula",
+  "title": "Selecionar e Manipular o DOM",
+  "filename_base": "01-Selecionar-e-Manipular-o-DOM",
+  "subtitle": "Selecionar, criar, alterar e remover elementos do DOM com segurança.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Selecionar elementos do DOM com document.querySelector e document.querySelectorAll usando seletores CSS.",
+    "Criar, inserir e remover elementos dinamicamente com createElement, appendChild/append e remove().",
+    "Adicionar, remover, alternar e verificar classes CSS com classList sem sobrescrever outras classes.",
+    "Distinguir innerHTML, textContent e innerText e escolher a propriedade certa em cada situação.",
+    "Reconhecer e evitar o risco de XSS ao inserir conteúdo não confiável com innerHTML.",
+    "Ler e escrever atributos (incluindo data-*) e estilos inline de um elemento."
+  ],
+  "sections": [
+    {
+      "heading": "Selecionar elementos com querySelector e querySelectorAll",
+      "body": [
+        "O método document.querySelector recebe um seletor CSS, como '.classe', '#id' ou 'ul > li.ativo', e devolve o primeiro elemento do documento que corresponde a esse seletor, ou null caso não exista nenhum. Por assentar em CSS, permite reutilizar exatamente os mesmos seletores já usados nas folhas de estilo, tornando a seleção de elementos mais expressiva do que métodos mais antigos como getElementById.",
+        "document.querySelectorAll funciona de forma semelhante, mas devolve todos os elementos correspondentes dentro de um NodeList. Este NodeList é estático, ou seja, é uma fotografia do DOM no momento da consulta, ao contrário de uma HTMLCollection (devolvida, por exemplo, por getElementsByClassName), que é live e reflete alterações posteriores ao documento. Um NodeList moderno já suporta forEach diretamente, mas não tem map nem filter; para os usar converte-se para array com Array.from(lista) ou com o operador de espalhamento [...lista]."
+      ],
+      "code": "const lista = document.querySelector('#lista-compras');\nconst itens = document.querySelectorAll('#lista-compras li');\n\nitens.forEach((item, indice) => {\n  console.log(`Item ${indice}: ${item.textContent.trim()}`);\n});\n\n// querySelector devolve null se não encontrar nada\nconst itemAtivo = document.querySelector('li.ativo');\nitemAtivo?.classList.add('destacado');\n\n// NodeList é estático; para usar map/filter, converte-se para array\nconst textos = [...itens].map((item) => item.textContent.trim());",
+      "callout_kind": "NOTA",
+      "callout_text": "querySelectorAll devolve sempre um NodeList estático: adicionar ou remover elementos do DOM depois da consulta não altera a lista já obtida. Isto é diferente de uma HTMLCollection (getElementsByClassName, getElementsByTagName), que é live e se atualiza automaticamente.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔍",
+          "text": "querySelector devolve o 1º elemento"
+        },
+        {
+          "icon": "📋",
+          "text": "querySelectorAll devolve um NodeList"
+        },
+        {
+          "icon": "🎯",
+          "text": "Usa a mesma sintaxe do CSS"
+        },
+        {
+          "icon": "🔒",
+          "text": "NodeList é estático, não live"
+        }
+      ]
+    },
+    {
+      "heading": "Criar, inserir e remover elementos do DOM",
+      "body": [
+        "document.createElement(tag) cria um novo nó de elemento completamente desligado do documento, permitindo configurar o seu conteúdo, atributos e classes antes de o inserir. Para o colocar na árvore usa-se appendChild, que aceita exatamente um nó, ou o método mais recente append, que aceita vários nós e também strings de texto simples numa única chamada; existem ainda prepend para inserir no início e insertBefore para controlar uma posição específica em relação a um nó de referência.",
+        "Para remover um elemento já não é preciso aceder ao parentNode e chamar removeChild: qualquer elemento tem o método remove(), que se elimina a si próprio da árvore diretamente. Esta API mais direta simplifica bastante código que antes só precisava de uma referência ao pai para conseguir eliminar o filho."
+      ],
+      "code": "const lista = document.querySelector('#lista-tarefas');\n\nconst novoItem = document.createElement('li');\nnovoItem.textContent = 'Estudar DOM';\nnovoItem.classList.add('tarefa');\n\nlista.appendChild(novoItem); // insere no fim\n\nconst primeiro = lista.firstElementChild;\nlista.insertBefore(novoItem.cloneNode(true), primeiro); // insere uma cópia antes do 1º item\n\n// remover é direto, sem precisar do parentNode\nnovoItem.remove();",
+      "callout_kind": "DICA",
+      "callout_text": "elemento.remove() é suportado em todos os browsers modernos; evita o padrão antigo elemento.parentNode.removeChild(elemento) quando só é preciso eliminar o próprio elemento.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏗️",
+          "text": "createElement cria um nó solto"
+        },
+        {
+          "icon": "➕",
+          "text": "append/appendChild inserem-no na árvore"
+        },
+        {
+          "icon": "🗑️",
+          "text": "elemento.remove() remove sem parentNode"
+        },
+        {
+          "icon": "🔀",
+          "text": "insertBefore controla a posição exata"
+        }
+      ]
+    },
+    {
+      "heading": "Gerir classes CSS com classList",
+      "body": [
+        "A propriedade classList de qualquer elemento devolve um DOMTokenList com métodos dedicados à gestão de classes: add e remove para adicionar ou tirar uma ou várias classes de uma só vez, contains para verificar se uma classe está presente, e replace para trocar uma classe por outra. Estes métodos evitam manipular diretamente a string className, que obrigaria a lidar manualmente com espaços e duplicados e arriscaria apagar classes que já estavam no elemento.",
+        "O método toggle é particularmente útil em interações como abrir e fechar um menu ou alternar um tema: sem segundo argumento, adiciona a classe se ela não existir e remove-a se já existir, devolvendo um booleano com o novo estado; com um segundo argumento booleano (a chamada força), garante que a classe fica exatamente nesse estado, independentemente do estado anterior."
+      ],
+      "code": "const botao = document.querySelector('#menu-toggle');\nconst menu = document.querySelector('#menu');\n\nbotao.addEventListener('click', () => {\n  const aberto = menu.classList.toggle('aberto');\n  botao.setAttribute('aria-expanded', String(aberto));\n});\n\nconst cartao = document.querySelector('.cartao');\ncartao.classList.add('destaque', 'sombra');\ncartao.classList.remove('sombra');\n\nif (cartao.classList.contains('destaque')) {\n  cartao.classList.replace('destaque', 'destaque-ativo');\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Nunca fazer elemento.className = 'nova-classe' só para adicionar uma classe: isso substitui todas as classes existentes no elemento. Para adicionar sem afetar as restantes, usar sempre classList.add().",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "✅",
+          "text": "add/remove alteram classes específicas"
+        },
+        {
+          "icon": "🔁",
+          "text": "toggle alterna e devolve o novo estado"
+        },
+        {
+          "icon": "🔎",
+          "text": "contains verifica se a classe existe"
+        },
+        {
+          "icon": "🚫",
+          "text": "nunca sobrescrever className diretamente"
+        }
+      ]
+    },
+    {
+      "heading": "innerHTML, textContent e innerText: as diferenças",
+      "body": [
+        "innerHTML lê ou escreve o conteúdo de um elemento como uma string de marcação HTML: ao atribuir um valor, o browser interpreta essa string e constrói os elementos correspondentes; ao lê-lo, devolve o HTML serializado dos descendentes, incluindo as próprias tags. textContent, pelo contrário, ignora completamente a marcação: ao escrever, qualquer HTML passado é tratado como texto literal, e ao ler devolve o texto de todos os descendentes concatenado, incluindo o de elementos escondidos com CSS, sendo a opção mais rápida por não exigir qualquer análise de HTML.",
+        "innerText é parecido a textContent mas tem em conta a apresentação visual: não devolve texto de elementos ocultados por CSS, respeita quebras de linha visuais e pode ter pequenas variações de comportamento entre motores de navegador. Por depender do CSS já aplicado, obriga o browser a calcular o layout antes de responder, o que o torna a opção mais lenta das três."
+      ],
+      "code": "const container = document.querySelector('#resultado');\ncontainer.innerHTML = '<strong>Total:</strong> 42 pontos';\n\nconsole.log(container.textContent); // \"Total: 42 pontos\", sem as tags\n\ncontainer.textContent = '<strong>Isto não é HTML</strong>';\n// as tags são inseridas como texto literal, visíveis no ecrã\n\n// supondo um <span style=\"display:none\">oculto</span> dentro de #bloco\nconst bloco = document.querySelector('#bloco');\nconsole.log(bloco.textContent); // inclui \"oculto\"\nconsole.log(bloco.innerText);   // não inclui \"oculto\" (respeita o CSS)",
+      "callout_kind": "DICA",
+      "callout_text": "Quando só é preciso ler ou escrever texto simples, textContent é geralmente a escolha certa: é mais rápido do que innerText e, ao contrário de innerHTML, nunca interpreta marcação.",
+      "table_headers": [
+        "Propriedade",
+        "Interpreta marcação HTML",
+        "Considera CSS/visibilidade",
+        "Custo de desempenho"
+      ],
+      "table_rows": [
+        [
+          "innerHTML",
+          "Sim, cria elementos a partir da string",
+          "Não",
+          "Mais lento (analisa HTML)"
+        ],
+        [
+          "textContent",
+          "Não, texto sempre literal",
+          "Não, devolve também texto oculto",
+          "Rápido"
+        ],
+        [
+          "innerText",
+          "Não, texto sempre literal",
+          "Sim, ignora texto oculto por CSS",
+          "Mais lento (força reflow)"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🏷️",
+          "text": "innerHTML interpreta a marcação HTML"
+        },
+        {
+          "icon": "📝",
+          "text": "textContent: texto puro e rápido"
+        },
+        {
+          "icon": "👁️",
+          "text": "innerText respeita CSS e visibilidade"
+        }
+      ]
+    },
+    {
+      "heading": "O perigo de innerHTML com conteúdo não confiável",
+      "body": [
+        "Atribuir a innerHTML uma string que inclui dados fornecidos por um utilizador, como um comentário, um nome ou um parâmetro lido da URL, é uma das causas mais comuns de XSS (cross-site scripting). Se essa string contiver marcação como uma tag img com um atributo onerror, ou uma tag script, o browser interpreta-a como HTML real e executa o código embutido, com acesso a cookies, tokens guardados ou à própria página que a vítima está a visitar.",
+        "A defesa mais simples é nunca construir innerHTML por concatenação de dados não confiáveis: quando só é preciso mostrar texto, usa-se textContent, que trata sempre o valor como texto literal; quando é mesmo necessário inserir HTML vindo de fora, deve passar antes por uma biblioteca de sanitização (como o DOMPurify), que remove tags e atributos perigosos antes da inserção."
+      ],
+      "code": "// PERIGOSO: nunca fazer isto com dados vindos de um utilizador\nfunction mostrarComentarioInseguro(comentario) {\n  const div = document.querySelector('#comentarios');\n  div.innerHTML += `<p>${comentario}</p>`;\n  // se comentario for '<img src=x onerror=\"roubarDados()\">', o script corre no browser\n}\n\n// SEGURO: usar textContent para texto simples do utilizador\nfunction mostrarComentarioSeguro(comentario) {\n  const p = document.createElement('p');\n  p.textContent = comentario; // qualquer HTML é tratado como texto literal\n  document.querySelector('#comentarios').appendChild(p);\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Nunca inserir texto de um utilizador (formulários, parâmetros de URL, respostas de terceiros) diretamente em innerHTML. Usar textContent para texto simples, ou sanitizar o HTML com uma biblioteca dedicada antes de o inserir.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⚠️",
+          "text": "innerHTML + dados de utilizador = risco XSS"
+        },
+        {
+          "icon": "💉",
+          "text": "onerror/script embutido executa no browser"
+        },
+        {
+          "icon": "🛡️",
+          "text": "textContent neutraliza a marcação"
+        },
+        {
+          "icon": "🧴",
+          "text": "HTML de fora exige sanitização (DOMPurify)"
+        }
+      ]
+    },
+    {
+      "heading": "Atributos e estilos inline",
+      "body": [
+        "Para atributos HTML genéricos existem os métodos getAttribute, setAttribute, removeAttribute e hasAttribute, que funcionam com qualquer nome de atributo, incluindo os personalizados. Muitos atributos comuns, como id, href ou value, também estão disponíveis como propriedades diretas do elemento, mas os atributos data-* têm uma via dedicada: a propriedade dataset expõe-os como um objeto, convertendo automaticamente entre o formato kebab-case do HTML (data-estado-atual) e o camelCase do JavaScript (dataset.estadoAtual).",
+        "Os estilos inline lêem-se e escrevem-se através de element.style, com os nomes das propriedades CSS em camelCase, como backgroundColor em vez de background-color. style.setProperty é a forma correta de definir propriedades CSS personalizadas, que começam por --, já que a notação de ponto não é válida para esses nomes; style.cssText, por sua vez, permite substituir de uma só vez todo o atributo style do elemento."
+      ],
+      "code": "const link = document.querySelector('a.externo');\nlink.setAttribute('target', '_blank');\nlink.setAttribute('rel', 'noopener noreferrer');\nconsole.log(link.getAttribute('href'));\nlink.removeAttribute('title');\n\nconst cartao = document.querySelector('.cartao');\ncartao.dataset.estado = 'ativo'; // cria/atualiza o atributo data-estado=\"ativo\"\nconsole.log(cartao.dataset.estado);\n\ncartao.style.backgroundColor = '#1e293b';\ncartao.style.setProperty('--destaque', 'orange');\ncartao.style.cssText = 'padding: 1rem; border-radius: 8px;';",
+      "callout_kind": "NOTA",
+      "callout_text": "dataset expõe todos os atributos data-* de um elemento como propriedades de um objeto, convertendo automaticamente entre kebab-case (HTML) e camelCase (JavaScript) nos dois sentidos.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏷️",
+          "text": "getAttribute/setAttribute para atributos"
+        },
+        {
+          "icon": "📊",
+          "text": "dataset lê e escreve data-*"
+        },
+        {
+          "icon": "🎨",
+          "text": "style/setProperty para estilos inline"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Marcar itens de uma lista de compras",
+      "difficulty": "Iniciante",
+      "statement": "Existe no documento uma lista <ul id=\"lista-compras\"> com vários elementos <li>, cada um com o nome de um produto como texto. Escreve código que selecione a lista com querySelector, selecione todos os itens com querySelectorAll e, percorrendo-os, adicione a classe \"comprado\" a todos os itens cujo texto contenha a palavra \"leite\" (a comparação não deve ser sensível a maiúsculas/minúsculas).",
+      "hint": "Usa item.textContent para obter o texto de cada <li>, o método toLowerCase() e includes() para procurar a palavra, e classList.add() para marcar o item.",
+      "solution_code": "const itens = document.querySelectorAll('#lista-compras li');\n\nitens.forEach((item) => {\n  const texto = item.textContent.toLowerCase();\n  if (texto.includes('leite')) {\n    item.classList.add('comprado');\n  }\n});",
+      "solution_explanation": "querySelectorAll devolve um NodeList com todos os <li> da lista, que suporta forEach diretamente. Para cada item, o texto é normalizado com toLowerCase() antes de procurar a palavra-chave, e classList.add() acrescenta a classe sem afetar outras classes já presentes no elemento."
+    },
+    {
+      "title": "Alternador de tema escuro",
+      "difficulty": "Intermedio",
+      "statement": "Existe um botão <button id=\"toggle-tema\">Modo escuro</button>. Escreve o código que, ao clicar no botão, alterna a classe \"tema-escuro\" em document.body, atualiza o atributo aria-pressed do botão para \"true\" ou \"false\" conforme o novo estado, e muda o texto do botão para \"Modo claro\" quando o tema escuro está ativo, ou de volta para \"Modo escuro\" quando não está.",
+      "hint": "classList.toggle() devolve um valor booleano com o novo estado da classe; podes usar esse valor diretamente para decidir o resto sem fazer verificações extra.",
+      "solution_code": "const botaoTema = document.querySelector('#toggle-tema');\n\nbotaoTema.addEventListener('click', () => {\n  const escuroAtivo = document.body.classList.toggle('tema-escuro');\n  botaoTema.setAttribute('aria-pressed', String(escuroAtivo));\n  botaoTema.textContent = escuroAtivo ? 'Modo claro' : 'Modo escuro';\n});",
+      "solution_explanation": "classList.toggle('tema-escuro') adiciona ou remove a classe e devolve logo o novo estado como booleano, evitando uma chamada extra a contains(). Esse booleano é reutilizado para escrever o atributo aria-pressed (convertido para string) e para escolher o texto correto do botão."
+    },
+    {
+      "title": "Lista de tarefas com remoção",
+      "difficulty": "Intermedio",
+      "statement": "Existe uma lista <ul id=\"lista-tarefas\"></ul> vazia. Escreve uma função adicionarTarefa(texto) que cria um novo <li> com o texto recebido, cria dentro dele um <button> com o texto \"Remover\", insere o botão dentro do <li> e o <li> dentro da lista, e configura o botão para que, ao ser clicado, remova apenas esse <li> do documento.",
+      "hint": "Cria o botão com createElement, adiciona-lhe um listener de clique antes ou depois de o inserir, e dentro do listener chama remove() diretamente sobre a referência ao <li> (aproveitando o closure da função).",
+      "solution_code": "function adicionarTarefa(texto) {\n  const lista = document.querySelector('#lista-tarefas');\n\n  const item = document.createElement('li');\n  item.textContent = texto;\n\n  const botaoRemover = document.createElement('button');\n  botaoRemover.textContent = 'Remover';\n  botaoRemover.addEventListener('click', () => item.remove());\n\n  item.appendChild(botaoRemover);\n  lista.appendChild(item);\n}",
+      "solution_explanation": "O <li> e o botão são criados desligados do documento com createElement e só depois inseridos, o botão dentro do item e o item dentro da lista. O listener de clique guarda, por closure, a referência exata a item, por isso chamar item.remove() elimina sempre o <li> correto, mesmo que existam vários na lista."
+    },
+    {
+      "title": "Renderizar comentários em segurança",
+      "difficulty": "Avancado",
+      "statement": "Tens um array de strings chamado comentarios, com texto escrito por utilizadores (que pode conter, propositadamente ou não, marcação como \"<img src=x onerror='alert(1)'>\"). Existe um elemento <div id=\"caixa-comentarios\"></div>. Escreve uma função renderizarComentarios(comentarios) que limpa o conteúdo anterior da caixa, e depois, para cada comentário, cria um <div class=\"comentario\"> que: mostra o texto do comentário sem nunca o executar como HTML; tem um atributo data-indice igual à posição do comentário no array (acedido depois através de dataset); e tem também a classe \"par\" quando o índice é par. No fim, confirma que mesmo um comentário com marcação maliciosa é apresentado como texto simples.",
+      "hint": "Usa replaceChildren() sem argumentos para limpar a caixa, textContent (nunca innerHTML) para colocar o texto do utilizador, e dataset.indice para gravar o índice.",
+      "solution_code": "function renderizarComentarios(comentarios) {\n  const contentor = document.querySelector('#caixa-comentarios');\n  contentor.replaceChildren(); // limpa o conteúdo anterior sem usar innerHTML = ''\n\n  comentarios.forEach((texto, indice) => {\n    const div = document.createElement('div');\n    div.classList.add('comentario');\n\n    if (indice % 2 === 0) {\n      div.classList.add('par');\n    }\n\n    div.dataset.indice = String(indice);\n    div.textContent = texto; // texto do utilizador nunca passa por innerHTML\n\n    contentor.appendChild(div);\n  });\n}",
+      "solution_explanation": "replaceChildren() sem argumentos remove todos os filhos anteriores da caixa de forma direta, sem recorrer a innerHTML = ''. Cada comentário é colocado com textContent, que trata qualquer marcação como texto literal e por isso neutraliza tentativas de XSS, enquanto dataset.indice e classList.add tratam a metadata e o estilo sem tocar no conteúdo textual do utilizador."
+    }
+  ],
+  "summary": [
+    "querySelector devolve o primeiro elemento correspondente ao seletor CSS (ou null); querySelectorAll devolve todos, num NodeList estático que suporta forEach mas não map/filter sem conversão.",
+    "createElement cria elementos desligados do documento; appendChild/append inserem-nos na árvore; elemento.remove() elimina-os diretamente, sem precisar do parentNode.",
+    "classList (add, remove, toggle, contains, replace) é a forma correta de gerir classes CSS, evitando sobrescrever className por inteiro.",
+    "textContent é rápido e trata sempre o valor como texto literal; innerText respeita a visibilidade CSS mas é mais lento; innerHTML interpreta HTML e cria elementos reais a partir da string.",
+    "Inserir dados de utilizadores diretamente em innerHTML abre a porta a ataques XSS; a defesa passa por usar textContent ou sanitizar o HTML antes de o inserir.",
+    "Atributos genéricos usam getAttribute/setAttribute/removeAttribute, os atributos data-* usam dataset, e os estilos inline lêem-se e escrevem-se com element.style ou style.setProperty."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 02",
+  "next_label": "Aula 02 → Eventos",
+  "_stage": "autoria"
+}

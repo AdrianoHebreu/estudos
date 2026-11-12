@@ -1,0 +1,306 @@
+{
+  "module_num": "02",
+  "module_title": "Objetos, Interfaces e Type Aliases",
+  "module_dir": "02-Objetos-Interfaces-e-Type-Aliases",
+  "lesson_num": "05",
+  "lesson_slug": "Tipagem-Estrutural",
+  "kind": "aula",
+  "title": "Tipagem Estrutural e Excess Property Checks",
+  "filename_base": "05-Tipagem-Estrutural",
+  "subtitle": "O compilador compara formas, não nomes, e a exceção que apanha gralhas nos literais",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Explicar o que é a tipagem estrutural e em que difere da tipagem nominal",
+    "Perceber por que razão um objeto com propriedades a mais cumpre o contrato",
+    "Reconhecer os excess property checks e saber quando é que eles atuam",
+    "Escolher entre variável intermédia, assertion e index signature",
+    "Identificar as confusões semânticas que a tipagem estrutural deixa passar",
+    "Aplicar branded types para separar tipos que têm a mesma forma"
+  ],
+  "sections": [
+    {
+      "heading": "O compilador compara formas, não nomes",
+      "body": [
+        "O sistema de tipos do TypeScript é estrutural. Quando o compilador pergunta se um valor cabe num tipo, olha apenas para a forma: que propriedades existem e que tipo tem cada uma. O nome que escreveu a seguir a interface ou a type não entra na conta. Dois tipos declarados em ficheiros diferentes, por pessoas diferentes, com nomes diferentes, são o mesmo tipo se descreverem a mesma forma.",
+        "Em Java ou em C sharp a regra é a oposta e chama-se tipagem nominal. Lá, uma classe Ponto e uma classe Coordenada com exatamente os mesmos campos continuam a ser tipos distintos, e só se tornam compatíveis se uma delas declarar explicitamente que implementa a outra. Em TypeScript não há nada a declarar: a compatibilidade é calculada a partir da forma, sempre.",
+        "Se já programava em JavaScript, isto é na verdade a formalização daquilo que sempre fez. O duck typing do JavaScript diz que qualquer objeto com um método agora serve onde se espera um relógio. A tipagem estrutural é a mesma ideia, com a diferença de que agora existe alguém a verificar que o objeto tem mesmo esse método antes do programa correr."
+      ],
+      "code": "interface Ponto {\n  x: number;\n  y: number;\n}\n\ntype Coordenada = { x: number; y: number };\n\nconst p: Ponto = { x: 1, y: 2 };\n\n// nomes diferentes, mesma forma: a atribuição funciona nos dois sentidos\nconst c: Coordenada = p;\nconst devolta: Ponto = c;\n\nconsole.log(c.x, devolta.y); // 1 2\n\nfunction distanciaOrigem(ponto: Ponto): number {\n  return Math.hypot(ponto.x, ponto.y);\n}\n\nconsole.log(distanciaOrigem(c)); // 2.23606797749979\n\ninterface Etiqueta {\n  nome: string;\n}\n\n// @ts-expect-error forma diferente: um Ponto não tem a propriedade nome\nconst e: Etiqueta = p;\nconsole.log(e); // { x: 1, y: 2 }",
+      "callout_kind": "NOTA",
+      "callout_text": "Uma interface não é um clube em que se entra por convite. Não é preciso implementar nada nem importar nada: se o objeto tem a forma certa, já pertence ao tipo.",
+      "table_headers": [
+        "Aspeto",
+        "Tipagem nominal (Java, C sharp)",
+        "Tipagem estrutural (TypeScript)"
+      ],
+      "table_rows": [
+        [
+          "O que se compara",
+          "O nome declarado do tipo",
+          "A forma: propriedades e respetivos tipos"
+        ],
+        [
+          "Compatibilidade",
+          "Tem de ser declarada com implements ou extends",
+          "É calculada automaticamente pelo compilador"
+        ],
+        [
+          "Tipos iguais com nomes diferentes",
+          "São incompatíveis",
+          "São intercambiáveis"
+        ],
+        [
+          "Usar um objeto de outra biblioteca",
+          "Só se ela implementar a sua interface",
+          "Basta que a forma coincida"
+        ],
+        [
+          "Risco típico",
+          "Cerimónia e conversões a mais",
+          "Confundir tipos que só por acaso têm a mesma forma"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧩",
+          "text": "O que conta é a forma, nunca o nome do tipo"
+        },
+        {
+          "icon": "🔄",
+          "text": "Mesma forma, nomes diferentes: intercambiáveis"
+        },
+        {
+          "icon": "🦆",
+          "text": "É o duck typing do JavaScript, agora verificado"
+        }
+      ]
+    },
+    {
+      "heading": "Propriedades a mais cumprem o contrato",
+      "body": [
+        "A consequência imediata da regra da forma é que um tipo descreve um mínimo, não um máximo. Se uma função pede um objeto com id e nome, qualquer objeto que tenha id e nome serve, mesmo que traga mais dez propriedades. Ter propriedades a mais não quebra contrato nenhum: a função continua a encontrar tudo aquilo de que precisa.",
+        "Isto é o que torna o TypeScript prático com dados reais. A resposta de uma API traz vinte campos e a sua função só precisa de três; um objeto de configuração completo passa por várias funções que só olham para a sua fatia. Não é preciso construir objetos intermédios só para os encolher ao tamanho exato do parâmetro.",
+        "Repare, no entanto, no que acontece do lado do tipo. Depois de atribuir o objeto a uma variável do tipo mais restrito, as propriedades extra continuam lá em memória, mas deixam de estar visíveis para o compilador. O valor tem-nas, o tipo não as declara, e o acesso é recusado."
+      ],
+      "code": "interface Utilizador {\n  id: number;\n  nome: string;\n}\n\nfunction saudar(u: Utilizador): string {\n  return `Ola, ${u.nome}`;\n}\n\nconst admin = {\n  id: 1,\n  nome: \"Ana\",\n  permissoes: [\"tudo\"],\n  ultimoLogin: \"2024-05-01\",\n};\n\n// admin tem duas propriedades a mais, mas cumpre o contrato Utilizador\nconsole.log(saudar(admin)); // \"Ola, Ana\"\n\nconst guardado: Utilizador = admin;\nconsole.log(guardado.id, guardado.nome); // 1 \"Ana\"\n\n// @ts-expect-error o valor em memória tem permissoes, mas o tipo Utilizador não\nconsole.log(guardado.permissoes);\n\nconsole.log(admin.permissoes); // [\"tudo\"]",
+      "callout_kind": "DICA",
+      "callout_text": "Pense num tipo de objeto como uma lista de exigências mínimas, não como uma descrição exaustiva do valor. É por isso que quase nunca precisa de copiar objetos só para os fazer caber num parâmetro.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📋",
+          "text": "Um tipo de objeto descreve o mínimo exigido"
+        },
+        {
+          "icon": "➕",
+          "text": "Propriedades a mais não quebram o contrato"
+        },
+        {
+          "icon": "🕶️",
+          "text": "Mas o tipo restrito deixa de as mostrar"
+        }
+      ]
+    },
+    {
+      "heading": "Excess Property Checks: a exceção dos literais",
+      "body": [
+        "Se propriedades a mais são aceites, por que razão aquele objeto que escreveu à mão foi recusado com um erro sobre uma propriedade desconhecida? Porque existe uma exceção, e é a exceção que confunde toda a gente. Chama-se excess property check e aplica-se apenas a literais de objeto novos, escritos diretamente no sítio onde são atribuídos ou passados como argumento.",
+        "A lógica é simples quando se vê o problema que ela resolve. Quando escreve um literal ali mesmo, mais ninguém no programa o usa. Se ele tem uma propriedade que o tipo não conhece, ou escreveu o nome com uma gralha, ou está a atribuir algo que não vai ter efeito nenhum. Nos dois casos é quase de certeza um erro seu, e o compilador prefere avisar.",
+        "Repare bem no exemplo: é o mesmo objeto, com as mesmas propriedades. Escrito diretamente, é recusado. Atribuído primeiro a uma variável e só depois usado, passa sem qualquer queixa. O termo técnico é frescura, freshness: um literal acabado de escrever está fresco e sujeito ao check, e perde essa frescura assim que é guardado numa variável com tipo inferido."
+      ],
+      "code": "interface Config {\n  largura: number;\n  altura: number;\n}\n\n// @ts-expect-error literal de objeto fresco: altrua é uma propriedade desconhecida\nconst comGralha: Config = { largura: 100, altura: 50, altrua: 10 };\nconsole.log(comGralha.largura); // 100\n\n// o MESMO objeto, passando primeiro por uma variável, já é aceite\nconst solto = { largura: 100, altura: 50, extra: true };\nconst aceite: Config = solto;\nconsole.log(aceite.altura); // 50\n\nfunction aplicar(config: Config): number {\n  return config.largura * config.altura;\n}\n\n// @ts-expect-error o excess property check também atua no argumento literal\naplicar({ largura: 4, altura: 5, cor: \"azul\" });\n\nconsole.log(aplicar(solto)); // 5000",
+      "callout_kind": "ATENCAO",
+      "callout_text": "O excess property check não é a regra geral da compatibilidade, é uma proteção extra só para literais frescos. Se lhe parecer que o compilador se contradiz, é quase sempre isto.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⚠️",
+          "text": "Literais frescos: propriedades desconhecidas são erro"
+        },
+        {
+          "icon": "🎯",
+          "text": "Serve para apanhar gralhas nos nomes"
+        },
+        {
+          "icon": "📦",
+          "text": "Guardado numa variável, o mesmo objeto já passa"
+        }
+      ]
+    },
+    {
+      "heading": "Contornar o check quando é mesmo intencional",
+      "body": [
+        "Há casos em que as propriedades a mais são mesmo de propósito e o aviso não ajuda. Existem três saídas, e escolher bem entre elas diz muito sobre a qualidade do código.",
+        "A variável intermédia é a saída mais honesta e a que deve ser o seu instinto. Não desliga verificação nenhuma: apenas retira a frescura ao literal, mantendo intacta a verificação de que a forma exigida está lá toda. É o que se usa quando os dados vêm de fora e trazem campos que não lhe interessam. A assertion com as, que já viu no Módulo 01, resolve numa linha, mas é a única das três que perde qualidade, porque cala também as gralhas verdadeiras. Reserve-a para quando escreveu o objeto agora mesmo e tem a certeza absoluta do que lá está.",
+        "A index signature é a única que documenta a intenção no próprio tipo. Escrever que o tipo aceita chaves extra deixa de ser um contorno e passa a ser uma decisão de desenho, visível para quem ler o tipo depois de si. É a escolha certa quando os campos extra fazem realmente parte do modelo, como em metadados ou em atributos livres. Repare que a index signature continua a verificar o tipo dos valores: ela abre a porta às chaves, não a tudo."
+      ],
+      "code": "interface Opcoes {\n  titulo: string;\n  visivel: boolean;\n  tema?: string;\n}\n\n// 1. variável intermédia: o objeto deixa de ser fresco e o check não corre\nconst bruto = { titulo: \"Painel\", visivel: true, debug: true };\nconst porVariavel: Opcoes = bruto;\n\n// 2. assertion com as: cala o check, mas também cala as gralhas\nconst porAssertion = { titulo: \"Painel\", visivel: true, tena: \"escuro\" } as Opcoes;\n\n// 3. index signature: o próprio tipo passa a declarar que admite extras\ninterface OpcoesAbertas {\n  titulo: string;\n  visivel: boolean;\n  [chave: string]: unknown;\n}\nconst porIndexSignature: OpcoesAbertas = {\n  titulo: \"Painel\",\n  visivel: true,\n  debug: true,\n};\n\nconsole.log(porVariavel.titulo); // \"Painel\"\nconsole.log(porAssertion.tema); // undefined\nconsole.log(porIndexSignature[\"debug\"]); // true",
+      "callout_kind": "DICA",
+      "callout_text": "Regra prática: se os dados vêm de fora, use uma variável; se as chaves extra são parte do modelo, use uma index signature; a assertion fica para último caso, e com um comentário a explicar porquê.",
+      "table_headers": [
+        "Forma",
+        "O que faz",
+        "Quando compensa"
+      ],
+      "table_rows": [
+        [
+          "Variável intermédia",
+          "Tira a frescura ao literal e mantém o resto da verificação",
+          "Dados vindos de fora com campos a mais"
+        ],
+        [
+          "Assertion com as",
+          "Cala o check e também as gralhas reais",
+          "Último recurso, num objeto que acabou de escrever"
+        ],
+        [
+          "Index signature",
+          "Declara no tipo que há chaves extra permitidas",
+          "As chaves livres fazem parte do modelo"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📥",
+          "text": "Variável intermédia: segura e quase sempre certa"
+        },
+        {
+          "icon": "✂️",
+          "text": "Assertion: rápida, mas cala também as gralhas"
+        },
+        {
+          "icon": "🔑",
+          "text": "Index signature: a intenção fica escrita no tipo"
+        }
+      ]
+    },
+    {
+      "heading": "O reverso da medalha: confusões semânticas",
+      "body": [
+        "A tipagem estrutural tem um custo, e vale a pena vê-lo com clareza. Se o que conta é a forma, então tudo o que tem a mesma forma é a mesma coisa para o compilador, mesmo quando para si são conceitos completamente diferentes.",
+        "Um identificador de utilizador e um identificador de produto são ambos string. Metros e pés são ambos number. Um token de sessão, um email e um código postal são os três string. Dar-lhes nomes de tipo diferentes documenta a intenção para quem lê, e isso já tem valor, mas não cria proteção nenhuma: um type alias não é um tipo novo, é apenas outro nome para o mesmo tipo. Trocar um pelo outro na chamada de uma função compila sem um único aviso.",
+        "Este é exatamente o tipo de erro que custa caro: não rebenta, faz o programa procurar o produto errado ou somar unidades diferentes em silêncio. Para quem vem de Java ou de C sharp, é uma perda real face a criar uma classe por conceito."
+      ],
+      "code": "type IdUtilizador = string;\ntype IdProduto = string;\n\nfunction carregarUtilizador(id: IdUtilizador): string {\n  return `utilizador ${id}`;\n}\n\nconst idProduto: IdProduto = \"prod-42\";\n\n// nenhum erro: para o compilador ambos os tipos são apenas string\nconsole.log(carregarUtilizador(idProduto)); // \"utilizador prod-42\"\n\ninterface Metros {\n  valor: number;\n}\ninterface Pes {\n  valor: number;\n}\n\nconst altura: Metros = { valor: 10 };\nconst comprimento: Pes = altura; // mesma forma, nenhum aviso\n\nconsole.log(comprimento.valor); // 10",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Um type alias nunca cria um tipo novo. Escrever type IdProduto igual a string dá um nome melhor, e só isso: para o compilador continua a ser string e aceita qualquer string.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🙃",
+          "text": "Mesma forma significa mesmo tipo, sempre"
+        },
+        {
+          "icon": "🏷️",
+          "text": "Um alias documenta, mas não protege"
+        },
+        {
+          "icon": "🤫",
+          "text": "O erro passa em silêncio até produzir dados errados"
+        }
+      ]
+    },
+    {
+      "heading": "Branded Types: nominalidade simulada",
+      "body": [
+        "Se o compilador compara formas, então a maneira de separar dois tipos é dar-lhes formas diferentes. É isso que fazem os branded types, também chamados tipos nominais simulados: junta-se ao tipo original uma propriedade fantasma, com um valor literal diferente em cada marca. Fantasma porque nunca existe em execução, só no sistema de tipos.",
+        "O resultado é que o identificador de utilizador e o de produto deixam de ser a mesma coisa. Passam a ser string com marcas diferentes, e o compilador recusa trocar um pelo outro. A propriedade não chega a existir no valor real, por isso não há custo nenhum em memória nem em velocidade: continua a ser uma string simples.",
+        "O preço está noutro sítio e convém ser honesto sobre ele. Como a marca não existe mesmo, nenhuma string normal passa a ser aceite, e é preciso uma função criadora que faz a assertion uma única vez, num sítio controlado. Esse ponto único costuma ser uma vantagem disfarçada, porque é o lugar ideal para validar o formato do valor. Em troca, todo o código a jusante fica com a garantia. Use branded types onde a troca é cara, como identificadores, unidades de medida ou valores já validados, e não em toda a base de código. O Módulo 06 mostra formas mais elaboradas de escrever a marca."
+      ],
+      "code": "type IdUtilizador = string & { readonly __marca: \"utilizador\" };\ntype IdProduto = string & { readonly __marca: \"produto\" };\n\nfunction criarIdUtilizador(valor: string): IdUtilizador {\n  return valor as IdUtilizador;\n}\n\nfunction criarIdProduto(valor: string): IdProduto {\n  return valor as IdProduto;\n}\n\nfunction carregarUtilizador(id: IdUtilizador): string {\n  return `utilizador ${id}`;\n}\n\nconst idU = criarIdUtilizador(\"u-1\");\nconst idP = criarIdProduto(\"p-9\");\n\nconsole.log(carregarUtilizador(idU)); // \"utilizador u-1\"\n\n// @ts-expect-error IdProduto deixou de ser intercambiável com IdUtilizador\ncarregarUtilizador(idP);\n\n// @ts-expect-error uma string solta não passa sem a função criadora\ncarregarUtilizador(\"u-2\");\n\n// em execução continua a ser apenas uma string\nconsole.log(idU.toUpperCase()); // \"U-1\"",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Experimente apagar as duas funções criadoras e passar as strings diretamente. Vai ver que nada compila: e é esse o ponto, obrigar a que os valores nasçam num sítio único e controlado.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏷️",
+          "text": "Uma propriedade fantasma dá formas diferentes"
+        },
+        {
+          "icon": "💨",
+          "text": "Não existe em execução: custo zero em memória"
+        },
+        {
+          "icon": "🏭",
+          "text": "Exige uma função criadora, ideal para validar"
+        }
+      ]
+    },
+    {
+      "heading": "Onde isto aparece no dia a dia",
+      "body": [
+        "A pista mais clara de que o sistema de tipos é estrutural está nas mensagens de erro. Elas raramente dizem que o tipo A não é o tipo B; dizem que falta a propriedade email, ou que a propriedade cor não existe no tipo alvo, e imprimem a forma dos dois lados por extenso. Quando a forma é grande, essas mensagens ficam longas. A técnica para as ler é ignorar o resto e procurar a frase que nomeia a propriedade: é quase sempre aí que está o problema real, e costuma ser numa propriedade aninhada, não no topo.",
+        "Do lado bom, é a tipagem estrutural que torna os testes leves. Um duplo escrito à mão serve onde se espera uma interface, sem importar nada nem declarar que a implementa. Basta ter os métodos certos. O mesmo se aplica quando quer aceitar objetos de uma biblioteca que nunca ouviu falar dos seus tipos.",
+        "Duas notas de arrumação. As funções também são comparadas estruturalmente, com regras próprias para os parâmetros e para o valor de retorno, e isso é o Módulo 03. As classes também, com uma exceção importante: membros privados quebram a comparação estrutural e tornam a classe única, o que é o único mecanismo nominal que o TypeScript tem de raiz. Esse detalhe fica para o Módulo 08."
+      ],
+      "code": "interface Encomenda {\n  id: string;\n  total: number;\n  cliente: { nome: string; email: string };\n}\n\n// o erro fala de email e da forma do objeto, nunca do nome Encomenda\nconst incompleta: Encomenda = {\n  id: \"e-1\",\n  total: 10,\n  // @ts-expect-error Property 'email' is missing in type '{ nome: string; }'\n  cliente: { nome: \"Ana\" },\n};\n\nconsole.log(incompleta.id); // \"e-1\"\n\n// o lado bom da mesma moeda: um duplo de teste serve sem declarar nada\ninterface Relogio {\n  agora(): number;\n}\n\nconst relogioFalso = { agora: () => 0, chamadas: 0 };\n\nfunction medir(relogio: Relogio): number {\n  return relogio.agora();\n}\n\nconsole.log(medir(relogioFalso)); // 0",
+      "callout_kind": "DICA",
+      "callout_text": "Perante um erro de atribuição com muitas linhas, leia primeiro a última: é nela que o compilador costuma dizer qual é a propriedade concreta que não bate certo.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔍",
+          "text": "Os erros falam de propriedades, não de nomes de tipo"
+        },
+        {
+          "icon": "🧪",
+          "text": "Duplos de teste funcionam sem declarar nada"
+        },
+        {
+          "icon": "🔐",
+          "text": "Membros privados quebram a comparação estrutural"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Formas iguais, nomes diferentes",
+      "difficulty": "Iniciante",
+      "statement": "Declare uma interface Livro com titulo de texto e paginas numérico, e um type alias Publicacao com exatamente a mesma forma. Escreva a função descrever, que recebe um Livro e devolve o título seguido do número de páginas entre parênteses, no formato Manual (120 p.). Mostre três coisas: que uma Publicacao serve onde se pede um Livro; que uma variável com uma propriedade editora a mais também serve; e que escrever esse mesmo objeto com editora diretamente na chamada é recusado. Marque a linha recusada com o comentário de erro esperado para que o ficheiro continue a compilar.",
+      "hint": "Não há nenhuma conversão a fazer entre os dois tipos: se a forma coincide, a atribuição funciona. Para a última parte, guarde primeiro o objeto numa variável e repare que o erro desaparece.",
+      "solution_code": "interface Livro {\n  titulo: string;\n  paginas: number;\n}\n\ntype Publicacao = { titulo: string; paginas: number };\n\nfunction descrever(item: Livro): string {\n  return `${item.titulo} (${item.paginas} p.)`;\n}\n\nconst revista: Publicacao = { titulo: \"TS Mensal\", paginas: 40 };\nconsole.log(descrever(revista)); // \"TS Mensal (40 p.)\"\n\nconst manual = { titulo: \"Manual\", paginas: 120, editora: \"Casa\" };\nconsole.log(descrever(manual)); // \"Manual (120 p.)\"\n\n// @ts-expect-error literal de objeto direto: editora é uma propriedade desconhecida\ndescrever({ titulo: \"Guia\", paginas: 10, editora: \"Casa\" });",
+      "solution_explanation": "Livro e Publicacao têm a mesma forma, por isso são o mesmo tipo para o compilador, e o nome que lhes deu não entra na verificação. A variável manual tem uma propriedade a mais, mas cumpre o mínimo exigido e é aceite. Já o literal escrito diretamente na chamada está fresco e cai no excess property check, que recusa a propriedade editora."
+    },
+    {
+      "title": "Uma gralha apanhada a tempo",
+      "difficulty": "Intermedio",
+      "statement": "Declare uma interface Pedido com produto de texto e quantidade numérica, e a função linha, que devolve a quantidade seguida de um x e do nome do produto, no formato 2 x Caderno. Escreva depois um literal com a gralha quantidde em vez de quantidade e marque-o como erro esperado. Finalmente, construa dois pedidos válidos a partir de objetos que trazem uma propriedade origem a mais: um usando uma variável intermédia e outro usando uma assertion, e comente em cada caso porque escolheu essa via.",
+      "hint": "O erro da gralha aparece porque o literal está fresco. Repare que o compilador se queixa das duas coisas ao mesmo tempo: da propriedade desconhecida e da propriedade obrigatória em falta.",
+      "solution_code": "interface Pedido {\n  produto: string;\n  quantidade: number;\n}\n\nfunction linha(pedido: Pedido): string {\n  return `${pedido.quantidade} x ${pedido.produto}`;\n}\n\n// @ts-expect-error gralha apanhada: quantidde não existe e quantidade falta\nconst comGralha: Pedido = { produto: \"Caneta\", quantidde: 3 };\nconsole.log(comGralha.produto); // \"Caneta\"\n\n// contorno 1: variável intermédia, para dados que trazem campos a mais\nconst bruto = { produto: \"Caderno\", quantidade: 2, origem: \"csv\" };\nconst pedidoA: Pedido = bruto;\n\n// contorno 2: assertion, quando a intenção é mesmo ignorar o extra\nconst pedidoB = { produto: \"Lapis\", quantidade: 5, origem: \"api\" } as Pedido;\n\nconsole.log(linha(pedidoA)); // \"2 x Caderno\"\nconsole.log(linha(pedidoB)); // \"5 x Lapis\"",
+      "solution_explanation": "A gralha só é apanhada porque o objeto foi escrito diretamente na atribuição, que é precisamente o cenário para o qual o excess property check existe. A variável intermédia é a via preferível, porque apenas retira a frescura ao objeto e mantém a verificação da forma. A assertion resolve na mesma linha, mas teria deixado passar a mesma gralha sem aviso."
+    },
+    {
+      "title": "Eventos com campos livres",
+      "difficulty": "Intermedio",
+      "statement": "Um sistema de analítica regista eventos que têm sempre nome de texto e timestamp numérico, mas que podem trazer quaisquer campos extra, desde que os valores sejam texto, número ou booleano. Declare a interface Evento com uma index signature que exprima isso e escreva a função resumir, que devolve o nome seguido de um arroba e do timestamp. Crie um evento com dois campos extra e demonstre, com linhas marcadas como erro esperado, duas limitações: que um valor de tipo não permitido continua a ser recusado e que a index signature não dispensa as propriedades obrigatórias.",
+      "hint": "A index signature escreve-se com um nome de chave entre parênteses retos, seguido do tipo dos valores. Atenção: o tipo dos valores tem de incluir os tipos das propriedades declaradas, ou o compilador queixa-se logo na declaração da interface.",
+      "solution_code": "interface Evento {\n  nome: string;\n  timestamp: number;\n  [extra: string]: string | number | boolean | undefined;\n}\n\nfunction resumir(evento: Evento): string {\n  return `${evento.nome} @ ${evento.timestamp}`;\n}\n\nconst clique: Evento = {\n  nome: \"clique\",\n  timestamp: 1700000000,\n  botao: \"esquerdo\",\n  duplo: false,\n};\n\nconsole.log(resumir(clique)); // \"clique @ 1700000000\"\nconsole.log(clique[\"botao\"]); // \"esquerdo\"\n\n// @ts-expect-error a index signature continua a limitar o TIPO dos valores extra\nconst invalido: Evento = { nome: \"scroll\", timestamp: 1, alvo: { id: 2 } };\nconsole.log(invalido.nome); // \"scroll\"\n\n// @ts-expect-error a index signature não dispensa as propriedades obrigatórias\nconst semNome: Evento = { timestamp: 2 };\nconsole.log(semNome.timestamp); // 2",
+      "solution_explanation": "A index signature declara no próprio tipo que há chaves extra permitidas, o que desliga o excess property check sem esconder a intenção de quem lê o código. Note que ela tem de aceitar também os tipos das propriedades fixas, e que abre a porta apenas às chaves: os tipos dos valores e as propriedades obrigatórias continuam a ser verificados."
+    },
+    {
+      "title": "Identificadores que não se trocam",
+      "difficulty": "Avancado",
+      "statement": "Crie dois branded types sobre string, IdUtilizador e IdEncomenda, cada um com a sua marca fantasma. Escreva uma função criadora para cada um, que valide o prefixo do valor e lance um erro se ele não começar por u traço ou por e traço, conforme o caso, devolvendo o valor marcado. Escreva depois a função encomendasDe, que só aceita um IdUtilizador. Demonstre, com linhas marcadas como erro esperado, que passar um IdEncomenda é recusado e que uma string comum também não passa.",
+      "hint": "A marca é uma interseção entre string e um objeto com uma propriedade readonly cujo tipo é um literal diferente em cada caso. Dentro da função criadora, é a assertion com as que converte a string validada no tipo marcado, e esse deve ser o único sítio do programa onde ela aparece.",
+      "solution_code": "type IdUtilizador = string & { readonly __marca: \"utilizador\" };\ntype IdEncomenda = string & { readonly __marca: \"encomenda\" };\n\nfunction criarIdUtilizador(valor: string): IdUtilizador {\n  if (!valor.startsWith(\"u-\")) {\n    throw new Error(`id de utilizador inválido: ${valor}`);\n  }\n  return valor as IdUtilizador;\n}\n\nfunction criarIdEncomenda(valor: string): IdEncomenda {\n  if (!valor.startsWith(\"e-\")) {\n    throw new Error(`id de encomenda inválido: ${valor}`);\n  }\n  return valor as IdEncomenda;\n}\n\nfunction encomendasDe(id: IdUtilizador): string {\n  return `encomendas de ${id}`;\n}\n\nconst idU = criarIdUtilizador(\"u-7\");\nconst idE = criarIdEncomenda(\"e-3\");\n\nconsole.log(encomendasDe(idU)); // \"encomendas de u-7\"\nconsole.log(idE.toUpperCase()); // \"E-3\"\n\n// @ts-expect-error IdEncomenda não é atribuível a IdUtilizador\nencomendasDe(idE);\n\n// @ts-expect-error uma string comum não passa sem a função criadora\nencomendasDe(\"u-8\");",
+      "solution_explanation": "As duas marcas dão formas diferentes a dois tipos que, sem elas, seriam ambos apenas string, e é por isso que o compilador passa a recusar a troca. As funções criadoras concentram a assertion num único ponto, o que as torna também o sítio natural para validar o formato do valor. Em execução nada disto existe: os valores continuam a ser strings simples, como se vê pela chamada a toUpperCase."
+    }
+  ],
+  "summary": [
+    "O TypeScript compara tipos pela forma e nunca pelo nome, ao contrário das linguagens de tipagem nominal, onde a compatibilidade tem de ser declarada.",
+    "Um tipo de objeto descreve um mínimo, por isso um valor com propriedades a mais é aceite, embora o tipo restrito deixe de as mostrar.",
+    "Os excess property checks são a exceção: um literal de objeto escrito diretamente é recusado se tiver propriedades desconhecidas, para apanhar gralhas nos nomes.",
+    "Para contornar o check há três vias: a variável intermédia, segura e quase sempre a certa; a assertion, rápida mas cega às gralhas; e a index signature, que documenta a intenção no próprio tipo.",
+    "Tipos com a mesma forma são indistinguíveis, o que deixa passar confusões semânticas entre identificadores, unidades ou códigos que são todos string.",
+    "Os branded types resolvem isso com uma propriedade fantasma, sem custo em execução, mas ao preço de obrigar a uma função criadora que centraliza a assertion e a validação."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para o Módulo 03",
+  "next_label": "Aula 01 → Parâmetros e Tipos de Retorno"
+}

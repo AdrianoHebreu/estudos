@@ -1,0 +1,138 @@
+{
+  "module_num": "03",
+  "module_title": "Funções",
+  "module_dir": "03-Funcoes",
+  "lesson_num": "03",
+  "lesson_slug": "Escopo-Hoisting-e-Closures",
+  "kind": "aula",
+  "filename_base": "03-Escopo-Hoisting-e-Closures",
+  "title": "Escopo, Hoisting e Closures",
+  "subtitle": "Como o JavaScript resolve variáveis e porque as funções “lembram” o seu contexto",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "A diferença entre escopo de função e escopo de bloco",
+    "O que é hoisting e como afeta var, let e const",
+    "O que é uma closure e para que serve na prática",
+    "Erros comuns causados por mal-entendidos de escopo"
+  ],
+  "sections": [
+    {
+      "heading": "Escopo de Função vs. Escopo de Bloco",
+      "body": [
+        "Antes do ES6, o JavaScript só tinha escopo de função: uma variável declarada com var ficava visível em toda a função onde foi criada, independentemente de estar dentro de um if ou de um for.",
+        "Com let e const, cada bloco delimitado por chavetas { } cria o seu próprio escopo. Isto torna o comportamento muito mais previsível e é a razão pela qual let e const são hoje a escolha recomendada."
+      ],
+      "code": "function exemplo() {\n  if (true) {\n    var a = 1;\n    let b = 2;\n  }\n  console.log(a); // 1 — var \"escapa\" do bloco\n  console.log(b); // ReferenceError — b só existe dentro do if\n}",
+      "callout_kind": "NOTA",
+      "callout_text": "Escopo é a região do código onde uma variável pode ser acedida. Cada função cria um novo escopo; cada bloco { } cria um novo escopo apenas para let/const.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "var vive no escopo da função inteira"
+        },
+        {
+          "icon": "🧩",
+          "text": "let/const vivem apenas no bloco { }"
+        },
+        {
+          "icon": "✅",
+          "text": "Prefira let/const para escopos previsíveis"
+        }
+      ]
+    },
+    {
+      "heading": "Hoisting",
+      "body": [
+        "O motor do JavaScript processa as declarações antes de executar o código, linha a linha — a isto chama-se hoisting (\"içamento\"). Declarações de var e de function são içadas com o seu valor inicial (undefined ou o corpo da função); let e const também são içadas, mas ficam numa \"zona morta temporal\" até à linha onde são declaradas."
+      ],
+      "code": "console.log(x); // undefined (var foi içada, sem valor ainda)\nvar x = 10;\n\nconsole.log(y); // ReferenceError: Cannot access 'y' before initialization\nlet y = 20;",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Usar uma variável let/const antes da sua declaração não dá undefined — lança um erro. Isto é diferente de var e é uma proteção, não um defeito.",
+      "table_headers": [
+        "Declaração",
+        "Içada?",
+        "Valor antes da declaração"
+      ],
+      "table_rows": [
+        [
+          "var",
+          "Sim",
+          "undefined"
+        ],
+        [
+          "let / const",
+          "Sim (zona morta)",
+          "ReferenceError ao aceder"
+        ],
+        [
+          "function foo(){}",
+          "Sim, com o corpo todo",
+          "a função já pode ser chamada"
+        ]
+      ],
+      "slide_bullets": []
+    },
+    {
+      "heading": "Closures",
+      "body": [
+        "Uma closure é criada sempre que uma função \"interior\" acede a variáveis da função \"exterior\" onde foi definida. O JavaScript mantém essas variáveis vivas na memória enquanto a função interior existir — mesmo depois de a função exterior já ter terminado a sua execução.",
+        "Closures são a base de padrões como contadores privados, memoização e módulos com estado encapsulado."
+      ],
+      "code": "function criarContador() {\n  let contagem = 0;\n  return function () {\n    contagem += 1;\n    return contagem;\n  };\n}\n\nconst contador = criarContador();\nconsole.log(contador()); // 1\nconsole.log(contador()); // 2\nconsole.log(contador()); // 3 — \"contagem\" continua viva entre chamadas",
+      "callout_kind": "DICA",
+      "callout_text": "Pense numa closure como uma \"mochila\" que a função interior carrega, com as variáveis de que precisa do sítio onde nasceu.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎒",
+          "text": "A função interior \"carrega\" as variáveis externas"
+        },
+        {
+          "icon": "🔐",
+          "text": "Permite estado privado sem classes"
+        },
+        {
+          "icon": "♻️",
+          "text": "As variáveis sobrevivem entre chamadas"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Corrigir o var solto",
+      "difficulty": "Iniciante",
+      "statement": "Reescreva um loop for que usa var i e que, ao guardar funções num array, faz com que todas imprimam o mesmo valor final. Use let para corrigir o comportamento.",
+      "hint": "O problema é que var i é partilhado por todas as iterações; let cria uma nova ligação por iteração.",
+      "solution_code": "const funcoes = [];\nfor (let i = 0; i < 3; i++) {\n  funcoes.push(() => console.log(i));\n}\nfuncoes.forEach(f => f()); // 0, 1, 2",
+      "solution_explanation": "Com let, cada iteração do for tem a sua própria variável i, por isso cada função guardada \"lembra\" o valor correto."
+    },
+    {
+      "title": "Contador com closures",
+      "difficulty": "Intermedio",
+      "statement": "Implemente uma função criarContaBancaria(saldoInicial) que devolve um objeto com métodos depositar(valor) e consultarSaldo(), mantendo o saldo privado através de uma closure.",
+      "hint": "O saldo deve viver apenas dentro da função exterior, nunca exposto diretamente.",
+      "solution_code": "function criarContaBancaria(saldoInicial) {\n  let saldo = saldoInicial;\n  return {\n    depositar(valor) { saldo += valor; return saldo; },\n    consultarSaldo() { return saldo; },\n  };\n}",
+      "solution_explanation": "O objeto devolvido só expõe métodos; a variável saldo nunca é acedida diretamente de fora, o que é encapsulamento através de closures."
+    },
+    {
+      "title": "Memoização com closures",
+      "difficulty": "Avancado",
+      "statement": "Implemente uma função memoizar(fn) que recebe uma função pura de um argumento e devolve uma nova função com o mesmo comportamento, mas que guarda em cache os resultados já calculados. Demonstre-a com uma função lenta (por exemplo, um cálculo de Fibonacci recursivo).",
+      "hint": "A cache tem de viver no escopo exterior, entre chamadas, e um Map é uma boa estrutura para guardar argumento e resultado.",
+      "solution_code": "function memoizar(fn) {\n  const cache = new Map();\n  return function (argumento) {\n    if (cache.has(argumento)) {\n      return cache.get(argumento);\n    }\n    const resultado = fn(argumento);\n    cache.set(argumento, resultado);\n    return resultado;\n  };\n}\n\nconst fibonacci = memoizar(function fib(n) {\n  return n < 2 ? n : fibonacci(n - 1) + fibonacci(n - 2);\n});\n\nconsole.log(fibonacci(40)); // 102334155, calculado quase instantaneamente",
+      "solution_explanation": "O Map cache é criado uma única vez, quando memoizar é chamada, e sobrevive graças à closure da função devolvida. Como o fibonacci recursivo chama a versão memoizada, cada valor de n é calculado apenas uma vez."
+    }
+  ],
+  "summary": [
+    "var tem escopo de função; let e const têm escopo de bloco",
+    "Todas as declarações são içadas, mas let/const ficam numa zona morta temporal até serem inicializadas",
+    "Uma closure mantém vivas as variáveis do escopo exterior enquanto a função interior existir",
+    "Closures permitem estado privado e são a base de contadores, memoização e módulos"
+  ],
+  "closing_message": "Vamos continuar para a Aula 04",
+  "next_label": "Aula 04 → this, call, apply e bind"
+}

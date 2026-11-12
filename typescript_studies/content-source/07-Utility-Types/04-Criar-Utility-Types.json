@@ -1,0 +1,405 @@
+{
+  "module_num": "07",
+  "module_title": "Utility Types",
+  "module_dir": "07-Utility-Types",
+  "lesson_num": "04",
+  "lesson_slug": "Criar-Utility-Types",
+  "kind": "aula",
+  "title": "Criar os Seus Próprios Utility Types",
+  "filename_base": "04-Criar-Utility-Types",
+  "subtitle": "Exclude, Extract e NonNullable, composição e utilitários próprios escritos de raiz",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Ler a definição real de Exclude, Extract e NonNullable",
+    "Filtrar uniões com a distributividade dos conditional types",
+    "Compor utility types da biblioteca padrão para resolver casos concretos",
+    "Escrever versões recursivas que sobrevivem a arrays e a funções",
+    "Derivar um tipo de formulário a partir de um modelo de dados",
+    "Decidir quando um utilitário próprio compensa e quando basta uma interface"
+  ],
+  "sections": [
+    {
+      "heading": "As três definições que faltavam",
+      "body": [
+        "As três aulas anteriores mostraram sempre a definição antes do uso. Faltam três utility types que nenhuma delas nomeou, e são os mais curtos de todos: Exclude retira de uma união tudo o que for atribuível ao segundo argumento, Extract faz o contrário e fica só com isso, e NonNullable tira null e undefined de qualquer tipo.",
+        "Vale a pena abrir o ficheiro lib.es5.d.ts da instalação do TypeScript e confirmar: são três linhas. Duas são conditional types com os ramos trocados entre si, e a terceira, na versão 5.9.3, nem sequer é um conditional. O Módulo 06 já tinha escrito as duas primeiras à mão, com os nomes TirarDaUniao e SoEstes.",
+        "São também as peças que faltavam para perceber os utility types das aulas anteriores: Omit está definido como Pick<T, Exclude<keyof T, K>>, ou seja, escolhe todas as chaves menos as excluídas."
+      ],
+      "code": "// As definições reais, tal como estão em lib.es5.d.ts do TypeScript 5.9.3:\n//   type Exclude<T, U> = T extends U ? never : T;\n//   type Extract<T, U> = T extends U ? T : never;\n//   type NonNullable<T> = T & {};\n\ntype Estado = \"rascunho\" | \"revisao\" | \"publicado\" | \"arquivado\";\n\ntype EstadoEditavel = Exclude<Estado, \"publicado\" | \"arquivado\">;\n// \"rascunho\" | \"revisao\"\n\ntype EstadoFinal = Extract<Estado, \"publicado\" | \"arquivado\">;\n// \"publicado\" | \"arquivado\"\n\ntype Titulo = NonNullable<string | null | undefined>;\n// string\n\nconst emEdicao: EstadoEditavel = \"revisao\";\nconst fechado: EstadoFinal = \"publicado\";\nconst titulo: Titulo = \"Relatorio anual\";\n\n// @ts-expect-error \"publicado\" foi retirado da união por Exclude\nconst invalido: EstadoEditavel = \"publicado\";\n\n// No Módulo 06, o equivalente escrito à mão chamou-se TirarDaUniao. É a mesma linha.\ntype TirarDaUniao<T, U> = T extends U ? never : T;\ntype Igual = TirarDaUniao<Estado, \"publicado\" | \"arquivado\">;\n\nconst mesmoTipo: Igual = emEdicao;\n\nconsole.log(emEdicao, fechado, titulo, mesmoTipo);\n// revisao publicado Relatorio anual revisao",
+      "callout_kind": "DICA",
+      "callout_text": "Num editor com TypeScript, ir à definição de Exclude abre o lib.es5.d.ts na linha exata. É a forma mais rápida de confirmar que não há magia nenhuma.",
+      "table_headers": [
+        "Utility type",
+        "Definição na biblioteca padrão",
+        "Nome dado no Módulo 06"
+      ],
+      "table_rows": [
+        [
+          "Exclude<T, U>",
+          "T extends U ? never : T",
+          "TirarDaUniao"
+        ],
+        [
+          "Extract<T, U>",
+          "T extends U ? T : never",
+          "SoEstes"
+        ],
+        [
+          "NonNullable<T>",
+          "T & {}",
+          "SemNulos"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "✂️",
+          "text": "Exclude retira da união o que for atribuível a U"
+        },
+        {
+          "icon": "🎯",
+          "text": "Extract fica só com o que for atribuível a U"
+        },
+        {
+          "icon": "🚫",
+          "text": "NonNullable tira null e undefined"
+        }
+      ]
+    },
+    {
+      "heading": "Distributividade, o motor por baixo",
+      "body": [
+        "Exclude e Extract não teriam utilidade nenhuma sem a distributividade que o Módulo 06 explicou: quando o tipo verificado é um parâmetro de tipo nu, o conditional é aplicado a cada membro da união em separado e os resultados voltam a ser unidos. É por isso que Exclude filtra a união membro a membro, em vez de comparar a união inteira de uma vez. Envolver os dois lados num tuplo desliga essa distribuição e o tipo deixa de retirar seja o que for.",
+        "Como a comparação é feita membro a membro, Extract também funciona com uniões de objetos: Extract<Evento, { tipo: \"tecla\" }> devolve o membro cujo discriminante corresponde. É o caminho tipado para isolar um caso de uma união discriminada sem repetir a forma desse caso.",
+        "NonNullable é o caso curioso do grupo: deixou de ser um conditional e passou a ser a interseção T & {}. O tipo {} aceita qualquer valor exceto null e undefined, por isso a interseção elimina-os sozinha. A diferença nota-se dentro de uma função genérica: com a interseção, um valor já estreitado por uma verificação contra null e undefined pode ser devolvido como NonNullable<T> sem qualquer asserção; escrito à antiga, com um conditional, o compilador rejeita o mesmo return com TS2322, porque o conditional fica por resolver enquanto T for desconhecido."
+      ],
+      "code": "type Cor = \"vermelho\" | \"verde\" | \"azul\";\n\n// Exclude<Cor, \"verde\"> distribui membro a membro:\n//   (\"vermelho\" extends \"verde\" ? never : \"vermelho\")\n// | (\"verde\"    extends \"verde\" ? never : \"verde\")\n// | (\"azul\"     extends \"verde\" ? never : \"azul\")\n// = \"vermelho\" | never | \"azul\" = \"vermelho\" | \"azul\"\ntype SemVerde = Exclude<Cor, \"verde\">;\nconst escolhida: SemVerde = \"azul\";\n\n// Envolver os dois lados num tuplo desliga a distributividade: nada é retirado.\ntype NaoDistributivo<T, U> = [T] extends [U] ? never : T;\ntype Tentativa = NaoDistributivo<Cor, \"verde\">;\nconst aindaLa: Tentativa = \"verde\";\n\n// A distributividade é o que torna Extract útil em uniões discriminadas.\ntype Evento =\n  | { tipo: \"clique\"; x: number; y: number }\n  | { tipo: \"tecla\"; codigo: string }\n  | { tipo: \"scroll\"; delta: number };\n\ntype EventoTecla = Extract<Evento, { tipo: \"tecla\" }>;\ntype SemScroll = Exclude<Evento, { tipo: \"scroll\" }>;\n\nconst tecla: EventoTecla = { tipo: \"tecla\", codigo: \"Enter\" };\n\nconst qualquer: Evento = { tipo: \"scroll\", delta: 120 };\n// @ts-expect-error a variável está tipada como Evento, que ainda inclui o scroll\nconst filtrado: SemScroll = qualquer;\n\n// NonNullable já não é um conditional: é a interseção T & {}.\n// O tipo {} aceita qualquer valor exceto null e undefined, logo a interseção elimina-os.\ntype Texto = NonNullable<string | null | undefined>;\nconst t: Texto = \"presente\";\n\n// Por ser interseção e não conditional, aplica-se sem esperar pela resolução de T.\nfunction primeiroDefinido<T>(valores: (T | null | undefined)[]): NonNullable<T> | undefined {\n  for (const valor of valores) {\n    if (valor !== null && valor !== undefined) {\n      return valor;\n    }\n  }\n  return undefined;\n}\n\nconsole.log(escolhida, aindaLa, tecla.codigo, t);\n// azul verde Enter presente\nconsole.log(primeiroDefinido([null, undefined, \"encontrado\"]));\n// encontrado",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Para provar que um tipo filtrado já não aceita um membro, é preciso atribuir-lhe uma variável já tipada. Um literal de objeto escrito no momento é verificado de outra maneira e pode passar sem erro.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔄",
+          "text": "O conditional distribui membro a membro da união"
+        },
+        {
+          "icon": "📦",
+          "text": "Um tuplo em volta desliga a distributividade"
+        },
+        {
+          "icon": "➕",
+          "text": "NonNullable é hoje a interseção T & {}"
+        }
+      ]
+    },
+    {
+      "heading": "Compor em vez de reescrever",
+      "body": [
+        "Os utility types foram feitos para encaixar uns nos outros. Antes de escrever um tipo novo, vale a pena perguntar se duas ou três peças já existentes não resolvem o caso: é menos código para manter e quem ler depois reconhece os nomes.",
+        "Quatro composições cobrem a maioria das situações do dia a dia. Partial<Pick<T, K>> descreve o corpo de um PATCH, Omit com uma interseção troca o tipo de um campo sem copiar a interface, Record<Exclude<keyof T, K>, V> constrói um dicionário com uma entrada por campo menos as excluídas, e Readonly<Required<T>> fecha os opcionais e congela o resultado."
+      ],
+      "code": "interface Produto {\n  id: number;\n  nome: string;\n  preco: number;\n  stock: number;\n  descricao: string;\n}\n\n// 1. Partial<Pick<T, K>>: estes campos, todos opcionais. O corpo de um PATCH.\ntype PatchProduto = Partial<Pick<Produto, \"nome\" | \"preco\" | \"stock\">>;\nconst patch: PatchProduto = { preco: 19.9 };\n\n// 2. Omit<T, K> com interseção: substituir o tipo de um campo sem copiar a interface.\ntype ProdutoSerializado = Omit<Produto, \"preco\"> & { preco: string };\nconst enviado: ProdutoSerializado = {\n  id: 1,\n  nome: \"Caneca\",\n  preco: \"19.90\",\n  stock: 7,\n  descricao: \"Cerâmica pintada à mão\",\n};\n\n// 3. Record<Exclude<keyof T, K>, V>: uma entrada por campo, menos as excluídas.\ntype Etiquetas = Record<Exclude<keyof Produto, \"id\">, string>;\nconst etiquetas: Etiquetas = {\n  nome: \"Nome\",\n  preco: \"Preço\",\n  stock: \"Em stock\",\n  descricao: \"Descrição\",\n};\n\n// 4. Readonly<Required<T>>: fechar os opcionais e congelar tudo de uma vez.\ninterface Configuracao {\n  host?: string;\n  porta?: number;\n}\ntype ConfiguracaoResolvida = Readonly<Required<Configuracao>>;\nconst config: ConfiguracaoResolvida = { host: \"localhost\", porta: 8080 };\n\nconsole.log(patch.preco, enviado.preco, etiquetas.preco, config.porta);\n// 19.9 19.90 Preço 8080\n\n// @ts-expect-error \"id\" foi retirado de Etiquetas por Exclude\netiquetas.id = \"Identificador\";\n\n// @ts-expect-error Readonly tornou \"porta\" só de leitura\nconfig.porta = 9090;",
+      "callout_kind": "DICA",
+      "callout_text": "Dar um nome ao resultado da composição, como PatchProduto ou ProdutoSerializado, vale mais do que repetir Partial<Pick<Produto, ...>> em dez sítios.",
+      "table_headers": [
+        "Composição",
+        "O que resolve"
+      ],
+      "table_rows": [
+        [
+          "Partial<Pick<T, K>>",
+          "O corpo de uma atualização parcial limitada a certos campos"
+        ],
+        [
+          "Omit<T, K> com interseção",
+          "Trocar o tipo de um campo, por exemplo Date para string"
+        ],
+        [
+          "Record<Exclude<keyof T, K>, V>",
+          "Uma entrada por campo, excluindo as chaves internas"
+        ],
+        [
+          "Readonly<Required<T>>",
+          "Configuração já resolvida e imutável"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧩",
+          "text": "Compor primeiro, escrever um tipo novo só depois"
+        },
+        {
+          "icon": "🏷️",
+          "text": "Dar nome ao resultado da composição"
+        },
+        {
+          "icon": "🔁",
+          "text": "Omit mais interseção troca o tipo de um campo"
+        }
+      ]
+    },
+    {
+      "heading": "Recursão: versões profundas escritas de raiz",
+      "body": [
+        "Partial e Readonly são superficiais: só mexem no primeiro nível. As versões profundas não estão na biblioteca padrão, e a razão é simples: não há uma resposta única e correta. Cada projeto tem de decidir o que fazer com arrays, tuplos, funções, Date, Map e instâncias de classes, e uma escolha errada estraga tipos que antes funcionavam.",
+        "O mapped type recursivo mais óbvio prova-o. Por ser homomórfico, preserva a forma do que recebe: os primitivos passam intactos e os arrays continuam arrays, mas o modificador opcional atravessa-os e cada elemento passa a ser do tipo do elemento ou undefined. Pior ainda, uma função é tratada como um objeto qualquer e perde a assinatura de chamada, pelo que deixa de poder ser chamada. O mesmo acontece aos métodos de instâncias como Date.",
+        "A versão utilizável testa primeiro o caso da função e devolve-a intacta, depois trata os arrays à parte, reconstruindo-os com infer, e só então recorre nas propriedades. Foi o que o Módulo 06 chamou ProfundamenteOpcional e ProfundamenteSoLeitura."
+      ],
+      "code": "interface Definicoes {\n  tema: { cor: string; contraste: number };\n  etiquetas: string[];\n  aoGuardar: (id: number) => void;\n}\n\n// A tentativa ingénua: um mapped type homomórfico que se chama a si próprio.\ntype Ingenuo<T> = { [K in keyof T]?: Ingenuo<T[K]> };\n\nconst ingenuo: Ingenuo<Definicoes> = { tema: { cor: \"azul\" }, etiquetas: [\"nova\"] };\n\n// @ts-expect-error o \"?\" atravessou o array: cada elemento passou a string | undefined\nconst etiqueta: string = ingenuo.etiquetas![0];\n\nconst funcaoMapeada: Ingenuo<(id: number) => void> = (id: number) => console.log(id);\n\n// @ts-expect-error a função foi mapeada como objeto e perdeu a assinatura de chamada\nfuncaoMapeada(1);\n// 1 (o JavaScript emitido continua a ser uma função; perdeu-se apenas o tipo)\n\n// A versão correta: parar nas funções, tratar os arrays à parte, só depois recorrer.\ntype ProfundamenteOpcional<T> =\n  T extends (...args: never[]) => unknown ? T :\n  T extends readonly (infer E)[] ? ProfundamenteOpcional<E>[] :\n  T extends object ? { [K in keyof T]?: ProfundamenteOpcional<T[K]> } :\n  T;\n\ntype ProfundamenteSoLeitura<T> =\n  T extends (...args: never[]) => unknown ? T :\n  T extends readonly (infer E)[] ? ReadonlyArray<ProfundamenteSoLeitura<E>> :\n  T extends object ? { readonly [K in keyof T]: ProfundamenteSoLeitura<T[K]> } :\n  T;\n\nconst bom: ProfundamenteOpcional<Definicoes> = {\n  tema: { cor: \"verde\" },\n  etiquetas: [\"nova\"],\n  aoGuardar: (id) => console.log(\"guardado\", id),\n};\n\nbom.aoGuardar?.(7);\n// guardado 7\nconsole.log(bom.etiquetas?.[0], bom.tema?.cor, bom.tema?.contraste);\n// nova verde undefined\n\nconst congelado: ProfundamenteSoLeitura<Definicoes> = {\n  tema: { cor: \"azul\", contraste: 4 },\n  etiquetas: [\"a\"],\n  aoGuardar: () => {},\n};\n\n// @ts-expect-error o readonly chegou à propriedade aninhada\ncongelado.tema.cor = \"vermelho\";",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Um mapped type homomórfico aplicado a uma função devolve um objeto sem assinatura de chamada. O JavaScript emitido continua a ser uma função: o que se perde é o tipo.",
+      "table_headers": [
+        "O que entra",
+        "Mapped type ingénuo",
+        "Versão com conditional"
+      ],
+      "table_rows": [
+        [
+          "string",
+          "string, intacto",
+          "string, intacto"
+        ],
+        [
+          "string[]",
+          "Array de string ou undefined",
+          "string[] com os elementos intactos"
+        ],
+        [
+          "(id: number) => void",
+          "Objeto sem assinatura de chamada",
+          "A função, intacta"
+        ],
+        [
+          "{ cor: string }",
+          "{ cor?: string }",
+          "{ cor?: string }"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🌀",
+          "text": "As versões profundas não estão na biblioteca padrão"
+        },
+        {
+          "icon": "⚠️",
+          "text": "O mapped type ingénuo mata a assinatura de chamada"
+        },
+        {
+          "icon": "🧭",
+          "text": "Tratar funções e arrays antes de recorrer"
+        }
+      ]
+    },
+    {
+      "heading": "Tipos que a biblioteca padrão não tem",
+      "body": [
+        "Há regras comuns que nenhum utility type exprime. Duas aparecem em quase todas as APIs: uma atualização que exige o identificador e torna o resto opcional, e um filtro que exige pelo menos uma propriedade preenchida.",
+        "A primeira é uma composição com nome: Pick das chaves obrigatórias, em interseção com Partial de todas as outras. A segunda precisa de um passo a mais: gera-se um objeto auxiliar onde cada chave produz a variante em que essa propriedade é obrigatória, e depois indexa-se esse objeto por todas as chaves para obter a união dessas variantes. O resultado rejeita o objeto vazio e aceita qualquer combinação com pelo menos um campo.",
+        "Repare na constraint K extends keyof T. Sem ela, uma chave mal escrita seria aceite em silêncio e o erro só apareceria muito mais à frente, se chegasse a aparecer."
+      ],
+      "code": "interface Utilizador {\n  id: number;\n  nome: string;\n  email: string;\n  ativo: boolean;\n}\n\n// Exige as chaves indicadas e torna o resto opcional.\ntype Atualizacao<T, K extends keyof T> = Pick<T, K> & Partial<Omit<T, K>>;\n\ntype AtualizarUtilizador = Atualizacao<Utilizador, \"id\">;\n\nconst pedido: AtualizarUtilizador = { id: 7, email: \"ana@exemplo.pt\" };\n\n// @ts-expect-error falta o id, que Pick manteve obrigatório\nconst semId: AtualizarUtilizador = { email: \"ana@exemplo.pt\" };\n\n// A constraint falha cedo, no sítio onde o engano foi escrito.\n// @ts-expect-error \"telefone\" não satisfaz keyof Utilizador\ntype Impossivel = Atualizacao<Utilizador, \"telefone\">;\n\n// Pelo menos uma: a união de \"esta propriedade é obrigatória, as outras opcionais\".\ntype PeloMenosUma<T, K extends keyof T = keyof T> =\n  Partial<T> & { [C in K]-?: Required<Pick<T, C>> }[K];\n\ntype Filtro = PeloMenosUma<Pick<Utilizador, \"nome\" | \"email\">>;\n\nconst porNome: Filtro = { nome: \"Ana\" };\nconst porAmbos: Filtro = { nome: \"Ana\", email: \"ana@exemplo.pt\" };\n\n// @ts-expect-error objeto vazio: nenhuma das propriedades foi dada\nconst vazio: Filtro = {};\n\nfunction descrever(f: Filtro): string {\n  return f.nome ?? f.email ?? \"\";\n}\n\nconsole.log(pedido.email, descrever(porNome), descrever(porAmbos));\n// ana@exemplo.pt Ana Ana",
+      "callout_kind": "NOTA",
+      "callout_text": "Indexar um mapped type pelas suas próprias chaves, no padrão { [C in K]: ... }[K], é a forma habitual de transformar um objeto de variantes numa união dessas variantes.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🆔",
+          "text": "Atualização: Pick das obrigatórias mais Partial do resto"
+        },
+        {
+          "icon": "✔️",
+          "text": "PeloMenosUma: união de variantes indexada por keyof"
+        },
+        {
+          "icon": "🚧",
+          "text": "A constraint apanha a chave mal escrita no sítio certo"
+        }
+      ]
+    },
+    {
+      "heading": "Um formulário derivado do modelo",
+      "body": [
+        "Há um caso em que os utilitários próprios compensam quase sempre: o estado de um formulário. Em vez de escrever à mão uma interface paralela ao modelo de dados, que fica dessincronizada ao primeiro campo novo, deriva-se o estado do modelo com um mapped type.",
+        "Cada campo passa a ser um objeto com valor, erro e tocado, mantendo o tipo original no valor. Acrescentar um campo ao modelo faz aparecer o campo correspondente no formulário, e o compilador aponta logo o objeto inicial que ficou incompleto. Com key remapping gera-se também um manipulador por campo, com o nome derivado da chave e o parâmetro já com o tipo certo.",
+        "O caminho de volta, do formulário para o modelo, escreve-se como uma função genérica sobre Formulario<T> que devolve T."
+      ],
+      "code": "interface PerfilPublico {\n  nome: string;\n  idade: number;\n  subscrito: boolean;\n}\n\ntype Campo<V> = {\n  valor: V;\n  erro: string | null;\n  tocado: boolean;\n};\n\n// Cada campo do modelo passa a um Campo com o mesmo tipo de valor.\ntype Formulario<T> = { [K in keyof T]: Campo<T[K]> };\n\n// Key remapping: um manipulador por campo, com o nome derivado da chave.\ntype Manipuladores<T> = {\n  [K in keyof T as `mudar${Capitalize<string & K>}`]: (valor: T[K]) => void;\n};\n\nconst form: Formulario<PerfilPublico> = {\n  nome: { valor: \"Ana\", erro: null, tocado: true },\n  idade: { valor: 34, erro: null, tocado: false },\n  subscrito: { valor: false, erro: null, tocado: false },\n};\n\n// O caminho de volta: do formulário para o modelo de dados.\nfunction valores<T>(f: Formulario<T>): T {\n  const saida = {} as T;\n  for (const chave in f) {\n    saida[chave] = f[chave].valor;\n  }\n  return saida;\n}\n\nconst acoes: Manipuladores<PerfilPublico> = {\n  mudarNome: (valor) => console.log(\"nome:\", valor),\n  mudarIdade: (valor) => console.log(\"idade:\", valor),\n  mudarSubscrito: (valor) => console.log(\"subscrito:\", valor),\n};\n\nacoes.mudarIdade(35);\n// idade: 35\nconsole.log(valores(form));\n// { nome: 'Ana', idade: 34, subscrito: false }\n\n// @ts-expect-error o campo \"idade\" continua a exigir number, tal como no modelo\nform.idade.valor = \"34\";",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Acrescente um campo à interface PerfilPublico e veja onde o compilador se queixa: é a melhor demonstração do valor de derivar em vez de duplicar.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📝",
+          "text": "O estado do formulário deriva do modelo de dados"
+        },
+        {
+          "icon": "🔗",
+          "text": "Um campo novo no modelo aparece sozinho no formulário"
+        },
+        {
+          "icon": "🏷️",
+          "text": "Key remapping gera um manipulador por campo"
+        }
+      ]
+    },
+    {
+      "heading": "Quando escrever um utilitário, e quando não",
+      "body": [
+        "Um utility type próprio só se justifica se for reutilizado e se a regra que exprime for mesmo genérica. Para uma forma concreta que aparece num sítio, uma interface simples é mais legível, mais rápida a compilar e mais fácil de ler numa mensagem de erro. Tipos genéricos muito encadeados produzem erros longos e difíceis de interpretar.",
+        "Três hábitos poupam problemas. Primeiro, nomear em português e pelo efeito, não pela mecânica: Atualizacao diz mais do que MapeadoParcial. Segundo, pôr constraints em todos os parâmetros que sejam chaves, para o engano falhar no sítio onde foi escrito. Terceiro, não abusar da recursão: cada nível custa trabalho ao compilador e há um teto real, que nesta versão está entre 999 e 1000 instanciações encadeadas.",
+        "A tabela abaixo fecha o módulo com os dezasseis utility types vistos nas quatro aulas."
+      ],
+      "code": "interface Artigo {\n  id: number;\n  titulo: string;\n  corpo: string;\n}\n\n// Sem constraint, um engano no nome da chave passa em silêncio.\ntype SemConstraint<T, K> = { [P in keyof T as P extends K ? never : P]: T[P] };\ntype AindaTudo = SemConstraint<Artigo, \"titlo\">;\nconst nadaFoiRetirado: AindaTudo = { id: 1, titulo: \"Aberto\", corpo: \"Corpo\" };\n\n// Com constraint, o compilador aponta o dedo ao sítio onde o engano foi escrito.\ntype ComConstraint<T, K extends keyof T> = Omit<T, K>;\ntype SemTitulo = ComConstraint<Artigo, \"titulo\">;\nconst resumo: SemTitulo = { id: 1, corpo: \"Corpo\" };\n\n// @ts-expect-error \"titlo\" não satisfaz keyof Artigo\ntype Erro = ComConstraint<Artigo, \"titlo\">;\n\n// A recursão tem um teto real. Medido neste TypeScript 5.9.3:\n// Repetir<999> compila e Repetir<1000> dá TS2589.\ntype Repetir<N extends number, Acc extends unknown[] = []> =\n  Acc[\"length\"] extends N ? Acc : Repetir<N, [...Acc, unknown]>;\n\ntype Tres = Repetir<3>;\nconst tres: Tres = [null, null, null];\n\nconsole.log(nadaFoiRetirado.titulo, resumo.corpo, tres.length);\n// Aberto Corpo 3",
+      "callout_kind": "DICA",
+      "callout_text": "Se o tipo só for usado uma vez e não depender de nenhum parâmetro, escreva uma interface. Um genérico usado uma única vez raramente compensa o custo de o ler.",
+      "table_headers": [
+        "Utility type",
+        "O que faz",
+        "Aula"
+      ],
+      "table_rows": [
+        [
+          "Partial<T>",
+          "Todas as propriedades opcionais",
+          "01"
+        ],
+        [
+          "Required<T>",
+          "Todas as propriedades obrigatórias",
+          "01"
+        ],
+        [
+          "Readonly<T>",
+          "Todas as propriedades só de leitura",
+          "01"
+        ],
+        [
+          "Pick<T, K>",
+          "Só as chaves indicadas",
+          "02"
+        ],
+        [
+          "Omit<T, K>",
+          "Todas as chaves menos as indicadas",
+          "02"
+        ],
+        [
+          "Record<K, V>",
+          "Um objeto com as chaves K e valores V",
+          "02"
+        ],
+        [
+          "ReturnType<F>",
+          "O tipo devolvido pela função",
+          "03"
+        ],
+        [
+          "Parameters<F>",
+          "O tuplo dos parâmetros da função",
+          "03"
+        ],
+        [
+          "Awaited<T>",
+          "O valor final de uma promessa, mesmo aninhada",
+          "03"
+        ],
+        [
+          "InstanceType<C>",
+          "O tipo da instância de um construtor",
+          "03"
+        ],
+        [
+          "ConstructorParameters<C>",
+          "O tuplo dos parâmetros do construtor",
+          "03"
+        ],
+        [
+          "ThisParameterType<F>",
+          "O tipo do this declarado na função",
+          "03"
+        ],
+        [
+          "OmitThisParameter<F>",
+          "A mesma função sem o parâmetro this",
+          "03"
+        ],
+        [
+          "Exclude<T, U>",
+          "Retira da união o que for atribuível a U",
+          "04"
+        ],
+        [
+          "Extract<T, U>",
+          "Fica só com o que for atribuível a U",
+          "04"
+        ],
+        [
+          "NonNullable<T>",
+          "Retira null e undefined",
+          "04"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "✍️",
+          "text": "Nomear pelo efeito, não pela mecânica"
+        },
+        {
+          "icon": "🔒",
+          "text": "Constraints para o engano falhar cedo"
+        },
+        {
+          "icon": "🧮",
+          "text": "A recursão tem teto: entre 999 e 1000 níveis"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Métodos HTTP de leitura e de escrita",
+      "difficulty": "Iniciante",
+      "statement": "Partindo da união literal Metodo, que junta GET, HEAD, POST, PUT e DELETE, defina MetodoDeLeitura com os métodos GET e HEAD, e MetodoDeEscrita com todos os restantes, sem voltar a escrever os literais um a um em MetodoDeEscrita. Escreva ainda a função ouEntao, que recebe um valor do tipo string, null ou undefined e uma alternativa, e devolve sempre uma string, declarando o retorno com o utility type adequado. Inclua uma linha marcada com ts-expect-error que prove que POST não pertence aos métodos de leitura.",
+      "hint": "São dois utility types irmãos: um fica com o que corresponde, o outro fica com o resto. Para o retorno da função, o utilitário que retira null e undefined.",
+      "solution_code": "type Metodo = \"GET\" | \"HEAD\" | \"POST\" | \"PUT\" | \"DELETE\";\n\ntype MetodoDeLeitura = Extract<Metodo, \"GET\" | \"HEAD\">;\ntype MetodoDeEscrita = Exclude<Metodo, \"GET\" | \"HEAD\">;\n\nfunction ouEntao(valor: string | null | undefined, alternativa: string): NonNullable<string> {\n  return valor ?? alternativa;\n}\n\nconst leitura: MetodoDeLeitura = \"HEAD\";\nconst escrita: MetodoDeEscrita = \"DELETE\";\n\n// @ts-expect-error \"POST\" não pertence aos métodos de leitura\nconst errado: MetodoDeLeitura = \"POST\";\n\nconsole.log(leitura, escrita, ouEntao(null, \"vazio\"), ouEntao(\"dado\", \"vazio\"));\n// HEAD DELETE vazio dado",
+      "solution_explanation": "Extract e Exclude percorrem a união membro a membro graças à distributividade, por isso basta uma linha para cada caso e MetodoDeEscrita acompanha automaticamente qualquer método novo acrescentado à união. NonNullable<string> resolve para string, tornando explícito no tipo de retorno que o valor devolvido nunca é nulo."
+    },
+    {
+      "title": "A encomenda à entrada e à saída",
+      "difficulty": "Intermedio",
+      "statement": "Dada a interface Encomenda, com id, cliente, total, criadaEm do tipo Date e notas, defina dois tipos derivados sem repetir os campos. NovaEncomenda representa o que o cliente envia para criar uma encomenda: sem id e sem criadaEm, que o servidor atribui, e com notas opcional. EncomendaEmJson representa o que o servidor devolve depois de serializar: igual a Encomenda mas com criadaEm em string. Prove com ts-expect-error que NovaEncomenda rejeita um objeto que traga id.",
+      "hint": "Omit retira campos; Partial<Pick<...>> torna opcionais apenas alguns; uma interseção junta as duas metades e também serve para substituir o tipo de um campo.",
+      "solution_code": "interface Encomenda {\n  id: number;\n  cliente: string;\n  total: number;\n  criadaEm: Date;\n  notas: string;\n}\n\ntype NovaEncomenda = Partial<Pick<Encomenda, \"notas\">> &\n  Omit<Encomenda, \"id\" | \"criadaEm\" | \"notas\">;\n\ntype EncomendaEmJson = Omit<Encomenda, \"criadaEm\"> & { criadaEm: string };\n\nconst nova: NovaEncomenda = { cliente: \"Ana\", total: 42 };\n\nconst doServidor: EncomendaEmJson = {\n  id: 1,\n  cliente: \"Ana\",\n  total: 42,\n  criadaEm: \"2024-03-01T10:00:00.000Z\",\n  notas: \"\",\n};\n\n// @ts-expect-error o id é atribuído pelo servidor: Omit retirou-o de NovaEncomenda\nconst comId: NovaEncomenda = { id: 9, cliente: \"Ana\", total: 42 };\n\nconsole.log(nova.cliente, nova.notas, doServidor.criadaEm);\n// Ana undefined 2024-03-01T10:00:00.000Z",
+      "solution_explanation": "NovaEncomenda é a interseção de duas composições: Partial<Pick<Encomenda, \"notas\">> torna notas opcional e Omit retira os três campos que o cliente não envia. EncomendaEmJson usa o padrão de retirar o campo com Omit e voltar a declará-lo com outro tipo na interseção, que é a forma de substituir um campo sem copiar a interface toda."
+    },
+    {
+      "title": "Substituir o tipo de um campo, em genérico",
+      "difficulty": "Intermedio",
+      "statement": "Generalize o padrão do exercício anterior num utility type Substituir<T, K, V> que devolva T com a chave K passada a ter o tipo V. A chave K tem de ser obrigada a existir em T, de modo a que um nome mal escrito seja rejeitado na própria declaração do tipo. Aplique-o a uma interface Registo com id, etiquetas e atualizadoEm do tipo Date, produzindo uma versão com atualizadoEm em string, e prove com ts-expect-error tanto a rejeição de uma chave inexistente como a rejeição de um valor Date no campo substituído.",
+      "hint": "Retirar a chave e voltar a acrescentá-la é trabalho para Omit e Record. A constraint que obriga a chave a existir escreve-se na própria lista de parâmetros do tipo.",
+      "solution_code": "type Substituir<T, K extends keyof T, V> = Omit<T, K> & Record<K, V>;\n\ninterface Registo {\n  id: number;\n  etiquetas: string[];\n  atualizadoEm: Date;\n}\n\ntype RegistoEmTexto = Substituir<Registo, \"atualizadoEm\", string>;\n\nconst emTexto: RegistoEmTexto = {\n  id: 3,\n  etiquetas: [\"a\", \"b\"],\n  atualizadoEm: \"2024-05-04\",\n};\n\n// @ts-expect-error \"criadoEm\" não é chave de Registo: a constraint apanha o engano\ntype Impossivel = Substituir<Registo, \"criadoEm\", string>;\n\n// @ts-expect-error depois da substituição \"atualizadoEm\" é string, não Date\nconst comData: RegistoEmTexto = { id: 3, etiquetas: [], atualizadoEm: new Date(0) };\n\nconsole.log(emTexto.atualizadoEm, emTexto.etiquetas.length);\n// 2024-05-04 2",
+      "solution_explanation": "Omit<T, K> retira a chave e Record<K, V> volta a introduzi-la com o tipo novo; a interseção junta as duas partes. A constraint K extends keyof T é o que faz o compilador rejeitar criadoEm logo na declaração de Impossivel, em vez de deixar o engano passar e só dar problemas mais tarde."
+    },
+    {
+      "title": "Exatamente uma chave de busca",
+      "difficulty": "Avancado",
+      "statement": "Escreva ExatamenteUma<T>, um utility type que produza a união dos objetos em que exatamente uma propriedade de T está presente e todas as outras estão ausentes. Aplique-o a uma interface Identificacao com id, email e telefone, obtendo um tipo ChaveDeBusca que aceite um objeto só com o id ou só com o email, mas rejeite tanto o objeto vazio como um objeto com id e email ao mesmo tempo. Escreva ainda uma função que receba ChaveDeBusca e devolva uma descrição em texto.",
+      "hint": "Para cada chave, a variante é: essa propriedade obrigatória, mais todas as outras opcionais e do tipo never. Indexar o mapped type resultante por keyof T transforma o objeto de variantes numa união.",
+      "solution_code": "type ExatamenteUma<T> = {\n  [K in keyof T]: Required<Pick<T, K>> & Partial<Record<Exclude<keyof T, K>, never>>;\n}[keyof T];\n\ninterface Identificacao {\n  id: number;\n  email: string;\n  telefone: string;\n}\n\ntype ChaveDeBusca = ExatamenteUma<Identificacao>;\n\nconst porId: ChaveDeBusca = { id: 10 };\nconst porEmail: ChaveDeBusca = { email: \"ana@exemplo.pt\" };\n\n// @ts-expect-error duas chaves ao mesmo tempo: as restantes foram fixadas em never\nconst duas: ChaveDeBusca = { id: 10, email: \"ana@exemplo.pt\" };\n\n// @ts-expect-error nenhuma chave: a união exige sempre uma\nconst nenhuma: ChaveDeBusca = {};\n\nfunction descrever(chave: ChaveDeBusca): string {\n  if (chave.id !== undefined) return `id=${chave.id}`;\n  if (chave.email !== undefined) return `email=${chave.email}`;\n  return `telefone=${chave.telefone}`;\n}\n\nconsole.log(descrever(porId), descrever(porEmail));\n// id=10 email=ana@exemplo.pt",
+      "solution_explanation": "Required<Pick<T, K>> torna a chave escolhida obrigatória e Partial<Record<Exclude<keyof T, K>, never>> permite as restantes apenas com o valor never, o que na prática as proíbe. Indexar o mapped type por keyof T devolve a união das variantes, o que rejeita o objeto vazio, e dentro da função a comparação com undefined chega para estreitar cada caso."
+    }
+  ],
+  "summary": [
+    "Exclude, Extract e NonNullable são três linhas do lib.es5.d.ts: dois conditional types simétricos e uma interseção",
+    "A distributividade do conditional sobre uniões é o que faz Exclude e Extract funcionarem, inclusive em uniões discriminadas",
+    "NonNullable é hoje T & {}, e por isso aplica-se dentro de funções genéricas onde a versão em conditional falhava",
+    "Compor resolve a maioria dos casos: Partial<Pick<...>>, Omit com interseção, Record<Exclude<...>>",
+    "As versões profundas têm de tratar funções e arrays à parte, senão o mapped type destrói a assinatura de chamada",
+    "Um utilitário próprio só compensa se for reutilizado e genérico: para uma forma concreta, escreva uma interface"
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para o Módulo 08",
+  "next_label": "Aula 01 → Classes Tipadas e Modificadores de Acesso"
+}

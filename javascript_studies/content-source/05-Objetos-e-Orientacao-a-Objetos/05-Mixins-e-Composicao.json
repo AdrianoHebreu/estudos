@@ -1,0 +1,251 @@
+{
+  "module_num": "05",
+  "module_title": "Objetos e Orientação a Objetos",
+  "module_dir": "05-Objetos-e-Orientacao-a-Objetos",
+  "lesson_num": "05",
+  "lesson_slug": "Mixins-e-Composicao",
+  "kind": "aula",
+  "title": "Mixins e Composição",
+  "filename_base": "05-Mixins-e-Composicao",
+  "subtitle": "Como combinar comportamentos em JavaScript sem depender de uma única cadeia de herança",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Identificar as limitações da cadeia única de herança (extends) em JavaScript.",
+    "Aplicar o princípio de preferir composição (\"tem um\") a herança (\"é um\") na modelação de classes.",
+    "Implementar mixins com Object.assign sobre o prototype de uma classe.",
+    "Construir mixins funcionais (funções que devolvem classes) para compor capacidades encadeadas, incluindo estado privado.",
+    "Detetar e resolver explicitamente colisões de nomes entre mixins."
+  ],
+  "sections": [
+    {
+      "heading": "As limitações da herança simples em JavaScript",
+      "body": [
+        "Em JavaScript, uma classe só pode estender uma única superclasse através de extends. Ao contrário de linguagens que suportam herança múltipla, a hierarquia de classes forma sempre uma cadeia linear: uma classe tem no máximo um pai direto, que por sua vez tem no máximo um pai, e assim sucessivamente. Isto obriga a decisões de modelação difíceis sempre que um objeto precisa de combinar duas ou mais capacidades que, no domínio, não têm entre si uma relação natural de especialização.",
+        "O problema agrava-se com o chamado problema da base frágil: alterações numa classe base propagam-se, por vezes de forma inesperada, a todas as subclasses ao longo da cadeia, mesmo que algumas não devessem ser afetadas. Quanto mais profunda for a hierarquia, mais difícil é perceber de onde vem um determinado método, e mais acoplado fica o código a uma estrutura decidida cedo e cara de alterar mais tarde."
+      ],
+      "code": "class Animal {\n  constructor(nome) {\n    this.nome = nome;\n  }\n}\n\n// Se \"voar\" e \"nadar\" forem modelados como classes base separadas,\n// um Pato que precise das duas capacidades fica sem solução por extends.\nclass AnimalQueVoa extends Animal {\n  voar() {\n    console.log(`${this.nome} está a voar.`);\n  }\n}\n\nclass AnimalQueNada extends Animal {\n  nadar() {\n    console.log(`${this.nome} está a nadar.`);\n  }\n}\n\n// Impossível: uma classe não pode estender duas classes ao mesmo tempo.\n// class Pato extends AnimalQueVoa, AnimalQueNada {} -> SyntaxError",
+      "callout_kind": "NOTA",
+      "callout_text": "JavaScript não tem suporte nativo para herança múltipla nem para traits; qualquer combinação de comportamentos independentes tem de ser feita por composição ou por mixins, como se vê nas próximas secções.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔗",
+          "text": "extends só permite uma cadeia linear"
+        },
+        {
+          "icon": "🧩",
+          "text": "Combinar capacidades distintas é difícil"
+        },
+        {
+          "icon": "🐣",
+          "text": "Base frágil: mudanças propagam-se em cadeia"
+        }
+      ]
+    },
+    {
+      "heading": "Composição sobre herança: \"tem um\" em vez de \"é um\"",
+      "body": [
+        "O princípio de preferir composição a herança defende que, sempre que a relação entre dois conceitos é \"tem um\" e não \"é um\", a solução mais robusta é a classe possuir uma referência a um objeto colaborador e delegar-lhe o trabalho, em vez de estender esse objeto ou uma classe base partilhada. Um Carro não é um Motor, mas tem um motor; modelar isto como Carro extends Motor confundiria a relação e impediria, por exemplo, trocar de motor sem recriar a classe inteira.",
+        "A composição também facilita a substituição de comportamento em tempo de execução e o teste isolado de cada peça, porque cada colaborador é uma unidade independente com a sua própria responsabilidade. O custo é escrever explicitamente os métodos de delegação, mas esse código extra é pequeno comparado com a rigidez que uma hierarquia de herança profunda acaba por impor mais tarde."
+      ],
+      "code": "class Motor {\n  constructor(potencia) {\n    this.potencia = potencia;\n  }\n\n  arrancar() {\n    console.log(`Motor a arrancar com ${this.potencia}cv.`);\n  }\n}\n\nclass SistemaTravagem {\n  travar() {\n    console.log('A travar...');\n  }\n}\n\nclass Carro {\n  constructor(motor, travoes) {\n    this.motor = motor; // \"tem um\" motor\n    this.travoes = travoes; // \"tem um\" sistema de travagem\n  }\n\n  arrancar() {\n    this.motor.arrancar();\n  }\n\n  travar() {\n    this.travoes.travar();\n  }\n}\n\nconst carroDesportivo = new Carro(new Motor(450), new SistemaTravagem());\ncarroDesportivo.arrancar();",
+      "callout_kind": "DICA",
+      "callout_text": "Heurística simples: se conseguir descrever a relação com a frase \"X tem um Y\", use composição; só use extends quando a frase \"X é um Y\" for verdadeira e continuar verdadeira à medida que o código evolui.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧱",
+          "text": "'Tem um' pede composição, não herança"
+        },
+        {
+          "icon": "🔄",
+          "text": "Colaboradores trocam-se em runtime"
+        },
+        {
+          "icon": "🧪",
+          "text": "Cada peça testa-se isoladamente"
+        }
+      ]
+    },
+    {
+      "heading": "Mixins com Object.assign sobre o prototype",
+      "body": [
+        "Um mixin é um objeto simples que agrupa um conjunto de métodos relacionados com uma única capacidade, pensado para ser copiado para o prototype de várias classes não relacionadas entre si. Object.assign(Classe.prototype, mixin1, mixin2, ...) copia as propriedades enumeráveis desses objetos diretamente para o prototype, tornando os seus métodos disponíveis em todas as instâncias, sem que exista qualquer relação de herança entre a classe e o mixin.",
+        "Este padrão simula, na prática, uma forma de herança múltipla: a mesma classe pode incorporar métodos de vários mixins independentes. A limitação é que estes mixins costumam ser stateless e dependem implicitamente de propriedades que esperam encontrar em this, um contrato que não é verificado pela linguagem, apenas pela convenção e pela documentação do próprio mixin."
+      ],
+      "code": "const SerializavelMixin = {\n  paraJSON() {\n    return JSON.stringify(this);\n  }\n};\n\nconst ComparavelMixin = {\n  igualA(outro) {\n    return JSON.stringify(this) === JSON.stringify(outro);\n  }\n};\n\nclass Produto {\n  constructor(nome, preco) {\n    this.nome = nome;\n    this.preco = preco;\n  }\n}\n\nObject.assign(Produto.prototype, SerializavelMixin, ComparavelMixin);\n\nconst produto1 = new Produto('Teclado', 49.9);\nconsole.log(produto1.paraJSON()); // '{\"nome\":\"Teclado\",\"preco\":49.9}'",
+      "callout_kind": "DICA",
+      "callout_text": "Mantenha cada mixin pequeno e focado numa única responsabilidade; um mixin com dez métodos sobre assuntos diferentes é, na prática, uma classe base disfarçada.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📋",
+          "text": "Mixin = objeto com métodos reutilizáveis"
+        },
+        {
+          "icon": "🧬",
+          "text": "Object.assign copia-os para o prototype"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Dependem implicitamente de this"
+        }
+      ]
+    },
+    {
+      "heading": "Mixins funcionais: funções que devolvem classes",
+      "body": [
+        "Uma alternativa mais expressiva ao mixin como objeto simples é o mixin funcional: uma função que recebe uma classe base e devolve uma nova classe anónima que a estende, acrescentando métodos, getters e até estado privado com campos #. Como cada mixin funcional devolve uma classe, é possível encadeá-los livremente: class Final extends MixinA(MixinB(Base)) {} aplica primeiro MixinB e depois MixinA, formando uma cadeia de prototypes em que cada camada acrescenta uma capacidade.",
+        "Esta abordagem resolve a maior limitação dos mixins com objetos simples: permite estado privado genuíno, encapsulado dentro da classe gerada por cada mixin e inacessível a partir de fora ou de outras camadas da composição. Também tira partido de super, que deixa cada camada invocar o comportamento da camada anterior, algo que o padrão Object.assign não oferece."
+      ],
+      "code": "const ComEventos = (Base) => class extends Base {\n  #ouvintes = new Map();\n\n  on(evento, callback) {\n    if (!this.#ouvintes.has(evento)) this.#ouvintes.set(evento, []);\n    this.#ouvintes.get(evento).push(callback);\n    return this;\n  }\n\n  emitir(evento, ...args) {\n    (this.#ouvintes.get(evento) ?? []).forEach((cb) => cb(...args));\n  }\n};\n\nconst ComHistorico = (Base) => class extends Base {\n  #historico = [];\n\n  registar(acao) {\n    this.#historico.push({ acao, data: new Date() });\n  }\n\n  get historico() {\n    return [...this.#historico];\n  }\n};\n\nclass ContaBancariaBase {\n  constructor(saldo = 0) {\n    this.saldo = saldo;\n  }\n\n  depositar(valor) {\n    this.saldo += valor;\n  }\n}\n\nclass ContaBancaria extends ComEventos(ComHistorico(ContaBancariaBase)) {\n  depositar(valor) {\n    super.depositar(valor);\n    this.registar(`deposito de ${valor}`);\n    this.emitir('deposito', valor);\n  }\n}\n\nconst conta = new ContaBancaria(100);\nconta.on('deposito', (valor) => console.log(`Depositado: ${valor}`));\nconta.depositar(50);\nconsole.log(conta.historico);",
+      "callout_kind": "DICA",
+      "callout_text": "É comum nomear mixins funcionais com um prefixo como Com... (ComEventos, ComHistorico) para deixar claro, no ponto de uso, que capacidade cada camada acrescenta à cadeia.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏭",
+          "text": "Mixin funcional: função que devolve classe"
+        },
+        {
+          "icon": "🔗",
+          "text": "Encadeiam-se: MixinA(MixinB(Base))"
+        },
+        {
+          "icon": "🔒",
+          "text": "Suportam estado privado com #campos"
+        },
+        {
+          "icon": "⬆️",
+          "text": "super chama a camada anterior"
+        }
+      ]
+    },
+    {
+      "heading": "Conflitos de nomes e boas práticas",
+      "body": [
+        "Quando dois mixins definem um método com o mesmo nome, não há deteção automática de conflito: com Object.assign, o último mixin aplicado sobrescreve silenciosamente o método do anterior; com mixins funcionais, o método mais próximo do fim da cadeia é o que fica visível através da procura no prototype chain. Em ambos os casos, o resultado pode ser um bug silencioso e difícil de detetar, porque o código continua a correr sem erros, apenas com um comportamento errado.",
+        "Como boas práticas: mantenha cada mixin focado numa única responsabilidade e com uma interface pequena; escolha nomes de métodos suficientemente específicos para reduzir a probabilidade de colisão; e, quando a ordem de aplicação importa ou o número de mixins cresce, escreva uma pequena função auxiliar que detete e sinalize conflitos explicitamente, em vez de confiar na sobreposição silenciosa."
+      ],
+      "code": "function aplicarMixins(Classe, ...mixins) {\n  mixins.forEach((mixin) => {\n    Object.getOwnPropertyNames(mixin).forEach((nome) => {\n      if (nome === 'constructor') return;\n      if (nome in Classe.prototype) {\n        console.warn(`Aviso: \"${nome}\" já existe e vai ser sobrescrito.`);\n      }\n      Object.defineProperty(\n        Classe.prototype,\n        nome,\n        Object.getOwnPropertyDescriptor(mixin, nome)\n      );\n    });\n  });\n}\n\nconst ComVoo = { mover() { console.log(`${this.nome} está a voar.`); } };\nconst ComNado = { mover() { console.log(`${this.nome} está a nadar.`); } };\n\nclass Pato {\n  constructor(nome) {\n    this.nome = nome;\n  }\n}\n\naplicarMixins(Pato, ComVoo, ComNado);\n// Aviso: \"mover\" já existe e vai ser sobrescrito.\n\nnew Pato('Donald').mover(); // Donald está a nadar. (ComNado venceu por ser aplicado depois)",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Nunca assuma que dois mixins escritos por pessoas diferentes, ou em momentos diferentes, não vão colidir; à medida que cresce o número de mixins aplicados a uma classe, cresce com ele a probabilidade de colisão de nomes.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🥷",
+          "text": "Colisões de nomes são silenciosas"
+        },
+        {
+          "icon": "🎯",
+          "text": "Mixins pequenos e focados colidem menos"
+        },
+        {
+          "icon": "🛡️",
+          "text": "Valide conflitos em vez de confiar na sorte"
+        }
+      ]
+    },
+    {
+      "heading": "Herança, composição ou mixin: como escolher",
+      "body": [
+        "A escolha entre extends, composição e mixins depende da natureza real da relação entre os conceitos do domínio, não de qual é mais rápido de escrever num dado momento. Herança simples faz sentido quando existe uma relação \"é um\" genuína, estável e de um só nível de especialização. Composição faz sentido quando a relação é \"tem um\" e o colaborador pode variar ou ser substituído. Mixins fazem sentido quando várias classes, sem relação de especialização entre si, precisam de partilhar uma capacidade transversal, como ser observável ou ser serializável."
+      ],
+      "code": "",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Antes de escrever extends no seu próximo projeto, escreva por extenso a frase \"X é um Y\" e verifique se continua a fazer sentido daqui a seis meses; em caso de dúvida, comece por composição, que é mais fácil de evoluir para herança do que o inverso.",
+      "table_headers": [
+        "Abordagem",
+        "Quando usar",
+        "Limitação principal"
+      ],
+      "table_rows": [
+        [
+          "Herança (extends)",
+          "Relação 'é um' clara, uma só especialização",
+          "Cadeia única; frágil se a hierarquia crescer"
+        ],
+        [
+          "Composição",
+          "Relação 'tem um'; colaborador intercambiável em runtime",
+          "Mais código explícito de delegação"
+        ],
+        [
+          "Mixin (objeto)",
+          "Adicionar métodos simples e sem estado a várias classes",
+          "Colisões de nomes; difícil gerir estado"
+        ],
+        [
+          "Mixin funcional",
+          "Combinar capacidades com estado privado e ordem controlada",
+          "Cadeia de prototypes mais profunda e mais difícil de depurar"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧭",
+          "text": "'É um' estável → herança simples"
+        },
+        {
+          "icon": "🧲",
+          "text": "'Tem um' variável → composição"
+        },
+        {
+          "icon": "🔀",
+          "text": "Capacidade transversal → mixin"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Um mixin simples com Object.assign",
+      "difficulty": "Iniciante",
+      "statement": "Crie um objeto mixin chamado ComLog que tenha um único método log(mensagem), o qual escreve na consola algo como \"[NomeDaClasse] mensagem\", usando this.constructor.name para obter o nome da classe da instância. De seguida, crie uma classe Tarefa com um construtor que recebe titulo (guardado em this.titulo) e inicializa this.concluida a false. Aplique o mixin ComLog ao prototype de Tarefa com Object.assign e demonstre a chamada de log numa instância.",
+      "hint": "Object.assign(Alvo.prototype, mixin) copia os métodos do mixin diretamente para o prototype da classe, tornando-os disponíveis em todas as instâncias sem qualquer relação de herança.",
+      "solution_code": "const ComLog = {\n  log(mensagem) {\n    console.log(`[${this.constructor.name}] ${mensagem}`);\n  }\n};\n\nclass Tarefa {\n  constructor(titulo) {\n    this.titulo = titulo;\n    this.concluida = false;\n  }\n}\n\nObject.assign(Tarefa.prototype, ComLog);\n\nconst tarefa = new Tarefa('Estudar mixins');\ntarefa.log('Tarefa criada.');\n// [Tarefa] Tarefa criada.",
+      "solution_explanation": "ComLog é um objeto simples com um método reutilizável; Object.assign copia-o para Tarefa.prototype, tornando log disponível em todas as instâncias sem qualquer herança. this.constructor.name devolve dinamicamente o nome da classe da instância que chamou o método."
+    },
+    {
+      "title": "Composição em vez de herança: multifunções de escritório",
+      "difficulty": "Intermedio",
+      "statement": "Tem duas capacidades independentes: imprimir e digitalizar. Crie uma classe Impressora com o método imprimir(documento) que escreve \"A imprimir: <documento>\" na consola, e uma classe Scanner com o método digitalizar(documento) que escreve \"A digitalizar: <documento>\". De seguida crie uma classe MultifuncoesEscritorio que recebe no construtor uma instância de Impressora e uma de Scanner, guarda-as como propriedades, e expõe os métodos imprimirDocumento(documento) e digitalizarDocumento(documento), que delegam para os objetos guardados. Não use extends em nenhuma das três classes.",
+      "hint": "Guarde as instâncias de Impressora e Scanner como propriedades da instância de MultifuncoesEscritorio (uma relação \"tem um\") e limite-se a delegar as chamadas nos métodos públicos correspondentes.",
+      "solution_code": "class Impressora {\n  imprimir(documento) {\n    console.log(`A imprimir: ${documento}`);\n  }\n}\n\nclass Scanner {\n  digitalizar(documento) {\n    console.log(`A digitalizar: ${documento}`);\n  }\n}\n\nclass MultifuncoesEscritorio {\n  constructor(impressora, scanner) {\n    this.impressora = impressora;\n    this.scanner = scanner;\n  }\n\n  imprimirDocumento(documento) {\n    this.impressora.imprimir(documento);\n  }\n\n  digitalizarDocumento(documento) {\n    this.scanner.digitalizar(documento);\n  }\n}\n\nconst multifuncoes = new MultifuncoesEscritorio(new Impressora(), new Scanner());\nmultifuncoes.imprimirDocumento('relatorio.pdf');\nmultifuncoes.digitalizarDocumento('contrato.pdf');",
+      "solution_explanation": "A relação aqui é \"tem um\": o multifunções não é uma impressora nem um scanner, mas possui ambos e delega o trabalho para cada colaborador. Isto permite substituir a Impressora ou o Scanner por outra implementação (por exemplo, uma impressora a laser diferente) sem alterar a classe MultifuncoesEscritorio."
+    },
+    {
+      "title": "Detetar colisões de nomes entre mixins",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função aplicarMixinsSemColisao(Classe, ...mixins) que percorre os mixins recebidos e copia os seus métodos, um a um, para Classe.prototype. Se dois mixins passados na mesma chamada definirem um método com o mesmo nome, a função deve lançar um Error a identificar esse nome, em vez de deixar o segundo mixin sobrescrever silenciosamente o primeiro. Demonstre com dois mixins ComArea e ComVolume, ambos com um método calcular: primeiro aplique só ComVolume a uma classe Caixa (sem conflito) e chame calcular numa instância; depois tente aplicar ComArea e ComVolume juntos à mesma classe e capture o Error resultante com try/catch.",
+      "hint": "Use um Set para memorizar, dentro da mesma chamada, os nomes de métodos já copiados pelos mixins anteriores; se um nome se repetir antes de terminar essa chamada, lance o Error nesse momento.",
+      "solution_code": "function aplicarMixinsSemColisao(Classe, ...mixins) {\n  const jaAdicionados = new Set();\n\n  mixins.forEach((mixin) => {\n    Object.keys(mixin).forEach((nome) => {\n      if (jaAdicionados.has(nome)) {\n        throw new Error(`Conflito ao aplicar mixins: \"${nome}\" já foi definido por um mixin anterior.`);\n      }\n      Classe.prototype[nome] = mixin[nome];\n      jaAdicionados.add(nome);\n    });\n  });\n}\n\nconst ComArea = {\n  calcular() {\n    return this.largura * this.altura;\n  }\n};\n\nconst ComVolume = {\n  calcular() {\n    return this.largura * this.altura * this.profundidade;\n  }\n};\n\nclass Caixa {\n  constructor(largura, altura, profundidade) {\n    this.largura = largura;\n    this.altura = altura;\n    this.profundidade = profundidade;\n  }\n}\n\naplicarMixinsSemColisao(Caixa, ComVolume);\nconst caixa = new Caixa(2, 3, 4);\nconsole.log(caixa.calcular()); // 24\n\ntry {\n  aplicarMixinsSemColisao(Caixa, ComArea, ComVolume);\n} catch (erro) {\n  console.error(erro.message);\n  // Conflito ao aplicar mixins: \"calcular\" já foi definido por um mixin anterior.\n}",
+      "solution_explanation": "A função percorre cada mixin e regista, num Set local à chamada, os nomes dos métodos que vai copiando; se um nome se repetir entre os mixins passados nessa mesma chamada, o conflito é detetado explicitamente em vez de um mixin sobrescrever silenciosamente o outro. Isto evita bugs subtis quando dois mixins independentes, escritos sem conhecimento um do outro, usam o mesmo nome de método."
+    },
+    {
+      "title": "Mixins funcionais encadeados com estado privado",
+      "difficulty": "Avancado",
+      "statement": "Crie dois mixins funcionais. O primeiro, ComValidacao(Base), acrescenta um método validar(campos), que recebe um array de nomes de campos e verifica se todos existem na instância com um valor diferente de undefined, null ou string vazia; se algum estiver em falta, deve lançar um Error com a mensagem \"Campos em falta: \" seguida dos nomes em falta separados por vírgula, e caso contrário deve devolver true. O segundo, ComAuditoria(Base), acrescenta um campo privado #registos (array, inicialmente vazio), um método registar(acao) que acrescenta a esse array um objeto { acao, quando: new Date() }, e um getter registos que devolve uma cópia do array. Crie uma classe base Formulario cujo construtor recebe um objeto dados (por omissão {}) e o aplica à instância com Object.assign(this, dados). Crie depois uma classe FormularioContacto que resulte de encadear os dois mixins sobre Formulario, com um método submeter(camposObrigatorios) que valida os campos, regista a ação 'submissao' e devolve true. Demonstre um caso de sucesso e um caso em que a validação falha, tratando o erro com try/catch.",
+      "hint": "Encadeie os mixins como ComAuditoria(ComValidacao(Formulario)) na cláusula extends; dentro de submeter chame primeiro this.validar(...) e só depois this.registar(...), e lembre-se de que #registos só é acessível a partir de métodos definidos dentro da classe gerada por ComAuditoria.",
+      "solution_code": "const ComValidacao = (Base) => class extends Base {\n  validar(campos) {\n    const emFalta = campos.filter(\n      (campo) => this[campo] === undefined || this[campo] === null || this[campo] === ''\n    );\n    if (emFalta.length > 0) {\n      throw new Error(`Campos em falta: ${emFalta.join(', ')}`);\n    }\n    return true;\n  }\n};\n\nconst ComAuditoria = (Base) => class extends Base {\n  #registos = [];\n\n  registar(acao) {\n    this.#registos.push({ acao, quando: new Date() });\n  }\n\n  get registos() {\n    return [...this.#registos];\n  }\n};\n\nclass Formulario {\n  constructor(dados = {}) {\n    Object.assign(this, dados);\n  }\n}\n\nclass FormularioContacto extends ComAuditoria(ComValidacao(Formulario)) {\n  submeter(camposObrigatorios) {\n    this.validar(camposObrigatorios);\n    this.registar('submissao');\n    return true;\n  }\n}\n\nconst formulario = new FormularioContacto({ nome: 'Ana', email: 'ana@exemplo.pt' });\nconsole.log(formulario.submeter(['nome', 'email'])); // true\nconsole.log(formulario.registos);\n\nconst formularioInvalido = new FormularioContacto({ nome: 'Bruno' });\ntry {\n  formularioInvalido.submeter(['nome', 'email']);\n} catch (erro) {\n  console.error(erro.message); // Campos em falta: email\n}",
+      "solution_explanation": "Cada mixin funcional devolve uma subclasse anónima que estende a classe recebida, permitindo encadear ComAuditoria(ComValidacao(Formulario)) para compor as duas capacidades numa única cadeia de prototypes. O campo privado #registos fica encapsulado dentro da classe gerada por ComAuditoria, mesmo quando a instância real é de FormularioContacto, enquanto submeter reutiliza validar e registar herdados de cada camada da composição."
+    }
+  ],
+  "summary": [
+    "Em JavaScript, extends só permite uma cadeia de herança; não existe herança múltipla nativa.",
+    "Preferir composição (\"tem um\") a herança (\"é um\") reduz o acoplamento e facilita substituir colaboradores em runtime.",
+    "Mixins com Object.assign(prototype, ...) acrescentam comportamento partilhado, sem estado, a várias classes não relacionadas.",
+    "Mixins funcionais (funções que devolvem classes) permitem encadear capacidades, incluindo estado privado com campos #.",
+    "Colisões de nomes entre mixins devem ser detetadas e resolvidas explicitamente, nunca deixadas ao acaso.",
+    "A escolha entre herança, composição ou mixin depende da relação real entre os conceitos do domínio, não de conveniência sintática."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 06",
+  "next_label": "Aula 06 → Métodos Avançados de Object",
+  "_stage": "revisao"
+}

@@ -1,0 +1,220 @@
+{
+  "module_num": "06",
+  "module_title": "Strings e Expressões Regulares",
+  "module_dir": "06-Strings-e-Expressoes-Regulares",
+  "lesson_num": "02",
+  "lesson_slug": "Template-Literals-e-Tagged-Templates",
+  "kind": "aula",
+  "title": "Template Literals e Tagged Templates",
+  "filename_base": "02-Template-Literals-e-Tagged-Templates",
+  "subtitle": "Crases que interpolam, escrevem texto multi-linha e permitem tags que processam valores.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Interpolar variáveis e expressões em strings usando crases e ${}.",
+    "Escrever texto multi-linha nativamente, sem caracteres de escape nem concatenação.",
+    "Incluir expressões JavaScript complexas (chamadas de função, ternários, cálculos) dentro de ${}.",
+    "Compreender como uma tagged template function separa os literais dos valores interpolados.",
+    "Criar uma tagged template que escapa valores para prevenir XSS ao gerar HTML.",
+    "Usar String.raw para obter o texto literal sem processamento de sequências de escape."
+  ],
+  "sections": [
+    {
+      "heading": "Crases e interpolação com ${}",
+      "body": [
+        "Um template literal escreve-se entre crases (`) em vez de aspas simples ou duplas. Dentro dele, a sequência ${expressao} é um marcador de interpolação: o motor de JavaScript avalia expressao, converte o resultado para string e insere-o exatamente nesse ponto do texto. Isto elimina a necessidade de concatenar pedaços de texto com o operador +, tornando o resultado muito mais legível quando há várias variáveis envolvidas.",
+        "As crases não têm nenhum significado especial fora dos marcadores ${}; todo o resto do texto é tratado literalmente, incluindo aspas simples e duplas, o que evita problemas de escaping quando o texto contém esse tipo de caracteres."
+      ],
+      "code": "const nome = \"Ana\";\nconst idade = 34;\n\nconst mensagem = `Olá, ${nome}! Tens ${idade} anos.`;\nconsole.log(mensagem);\n// Olá, Ana! Tens 34 anos.",
+      "callout_kind": "DICA",
+      "callout_text": "Prefere sempre template literals à concatenação com + quando precisares de misturar texto fixo com variáveis - o código fica mais legível e evita erros de espaços em falta ou aspas mal fechadas.",
+      "table_headers": [
+        "Necessidade",
+        "Com concatenação (+)",
+        "Com template literal"
+      ],
+      "table_rows": [
+        [
+          "Interpolar uma variável",
+          "'Olá, ' + nome + '!'",
+          "`Olá, ${nome}!`"
+        ],
+        [
+          "Incluir aspas duplas no texto",
+          "'Ele disse: \"olá\"'",
+          "`Ele disse: \"olá\"` (sem escapar)"
+        ],
+        [
+          "Combinar com uma expressão",
+          "'Total: ' + (preco * qtd)",
+          "`Total: ${preco * qtd}`"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "✨",
+          "text": "Crases + ${} interpolam variáveis e expressões"
+        },
+        {
+          "icon": "🔤",
+          "text": "Sem concatenar com + nem escapar aspas"
+        }
+      ]
+    },
+    {
+      "heading": "Strings multi-linha nativas",
+      "body": [
+        "Antes dos template literals, escrever texto com várias linhas obrigava a inserir o caracter \\n ou a concatenar várias strings com +. Um template literal preserva quebras de linha reais: basta premir Enter dentro das crases e essa quebra de linha passa a fazer parte da string final, exatamente como aparece no código fonte.",
+        "Isto inclui também os espaços e tabulações usados para indentar o código. Se o template literal estiver indentado dentro de uma função ou bloco, essa indentação é copiada literalmente para o resultado, o que por vezes obriga a escrever o literal encostado à margem esquerda ou a limpar o resultado depois, caso a indentação do código não deva aparecer no texto final."
+      ],
+      "code": "const destinatario = \"Sr. Costa\";\n\nconst email = `Caro ${destinatario},\n\nObrigado pela sua compra. A encomenda foi enviada hoje\ne deverá chegar em 2 a 3 dias úteis.\n\nCumprimentos,\nEquipa de Suporte`;\n\nconsole.log(email);",
+      "callout_kind": "NOTA",
+      "callout_text": "A indentação e os espaços em branco escritos dentro das crases fazem parte da string. Um template literal indentado dentro de uma função arrasta essa indentação para o resultado, a menos que a remova depois.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📄",
+          "text": "Enter dentro de crases cria uma quebra de linha real"
+        },
+        {
+          "icon": "📐",
+          "text": "Indentação do código é copiada para o texto"
+        }
+      ]
+    },
+    {
+      "heading": "Expressões complexas dentro de ${}",
+      "body": [
+        "O conteúdo de ${} não está limitado a nomes de variáveis: aceita qualquer expressão JavaScript válida, incluindo operadores aritméticos, o operador ternário, acesso a propriedades, chamadas de função e até outro template literal aninhado. O motor avalia a expressão completa e só depois converte o resultado para string.",
+        "Esta capacidade é útil para gerar texto que depende de lógica simples, como pluralizar uma palavra consoante uma quantidade ou apresentar um valor já formatado através de um método como toFixed. Quando a expressão cresce muito, compensa calculá-la antes numa variável com nome descritivo e só depois interpolar essa variável, para manter o template literal legível."
+      ],
+      "code": "const carrinho = [\n  { nome: \"Teclado\", preco: 45 },\n  { nome: \"Rato\", preco: 20 },\n];\n\nconst total = carrinho.reduce((soma, item) => soma + item.preco, 0);\n\nconst resumo = `Tens ${carrinho.length} ${carrinho.length === 1 ? \"artigo\" : \"artigos\"} no carrinho, no total de ${total.toFixed(2)}€.`;\n\nconsole.log(resumo);\n// Tens 2 artigos no carrinho, no total de 65.00€.",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Experimenta substituir uma variável simples por uma chamada a um método de array (como .filter(...).length) diretamente dentro de ${} e confirma o resultado obtido.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧮",
+          "text": "${} aceita qualquer expressão JS válida"
+        },
+        {
+          "icon": "🔁",
+          "text": "Ternários, funções e cálculos, tudo dentro de ${}"
+        }
+      ]
+    },
+    {
+      "heading": "Tagged template functions: literais e valores separados",
+      "body": [
+        "Quando o nome de uma função aparece imediatamente antes de um template literal, sem parênteses, o JavaScript não concatena o texto: chama essa função como uma tagged template function. O primeiro argumento recebido é um array com todos os trechos literais do template (o texto fora dos ${}), e cada valor interpolado é passado como um argumento adicional, na mesma ordem em que aparece.",
+        "O array de literais tem sempre um elemento a mais do que o número de valores interpolados, porque inclui o trecho antes do primeiro ${}, os trechos entre interpolações consecutivas e o trecho depois da última. Isto permite reconstruir o texto original percorrendo os literais e intercalando, entre cada par, o valor correspondente já processado como a função entender."
+      ],
+      "code": "function inspecionar(literais, ...valores) {\n  console.log(literais);\n  console.log(valores);\n}\n\nconst nome = \"Rui\";\ninspecionar`Olá ${nome}, tens ${2 + 2} mensagens novas.`;\n// [\"Olá \", \", tens \", \" mensagens novas.\"]\n// [\"Rui\", 4]",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Uma tagged template function é sempre invocada, mesmo sem nenhuma interpolação; nesse caso o array de valores fica vazio, mas o array de literais continua a ser passado, com um único elemento.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏷️",
+          "text": "tag`texto${valor}` chama a função tag"
+        },
+        {
+          "icon": "📦",
+          "text": "1º argumento: literais; restantes: valores"
+        }
+      ]
+    },
+    {
+      "heading": "Caso de uso real: escapar HTML com tagged templates",
+      "body": [
+        "Inserir dados fornecidos por um utilizador diretamente numa string HTML é uma fonte comum de vulnerabilidades XSS: se esse texto contiver marcação como <script>, o navegador pode executá-la. Uma tagged template function resolve este problema de forma sistemática, porque tem acesso separado ao texto escrito pelo próprio programador (os literais, que são de confiança) e aos valores interpolados (que podem vir de qualquer origem e devem ser tratados como não confiáveis).",
+        "A função pode assim aplicar um escape apenas aos valores interpolados, substituindo caracteres como <, >, & e aspas pelas respetivas entidades HTML, e devolver os literais sem alterações. O resultado é uma forma de escrever HTML com a legibilidade dos template literals, mas com a garantia de que nenhum valor interpolado pode alterar a estrutura do markup."
+      ],
+      "code": "function escapeHTML(valor) {\n  return String(valor)\n    .replaceAll(\"&\", \"&amp;\")\n    .replaceAll(\"<\", \"&lt;\")\n    .replaceAll(\">\", \"&gt;\")\n    .replaceAll('\"', \"&quot;\")\n    .replaceAll(\"'\", \"&#39;\");\n}\n\nfunction html(literais, ...valores) {\n  return literais.reduce((resultado, literal, indice) => {\n    const valor = indice < valores.length ? escapeHTML(valores[indice]) : \"\";\n    return resultado + literal + valor;\n  }, \"\");\n}\n\nconst nomeUtilizador = `<script>alert('XSS')</script>`;\nconst pagina = html`<p>Bem-vindo, ${nomeUtilizador}!</p>`;\n\nconsole.log(pagina);\n// <p>Bem-vindo, &lt;script&gt;alert(&#39;XSS&#39;)&lt;/script&gt;!</p>",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Nunca insiras diretamente numa string HTML um valor vindo de um utilizador ou de uma API externa sem o escapar primeiro; é essa negligência que abre a porta a ataques XSS.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🛡️",
+          "text": "Escapa só os valores interpolados, não os literais"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Previne XSS ao gerar HTML dinâmico"
+        }
+      ]
+    },
+    {
+      "heading": "String.raw e o acesso ao texto em bruto",
+      "body": [
+        "Além dos literais processados (com as sequências de escape já interpretadas), o array passado a uma tagged template function tem uma propriedade raw que contém os mesmos trechos tal como foram escritos no código fonte, sem qualquer interpretação de sequências como \\n ou barra invertida. String.raw é uma tagged template function incorporada na linguagem que devolve precisamente esse texto em bruto, unindo-o com os valores interpolados sem qualquer processamento adicional.",
+        "Isto torna-a útil para escrever caminhos de ficheiros do Windows ou padrões de expressões regulares, onde a barra invertida é frequente e não deve ser interpretada como início de uma sequência de escape."
+      ],
+      "code": "function mostrarBruto(literais) {\n  console.log(literais[0]);      // processado: contém uma quebra de linha real\n  console.log(literais.raw[0]);  // em bruto: mantém os caracteres \\ e n\n}\n\nmostrarBruto`Linha 1\\nLinha 2`;\n\nconst caminho = String.raw`C:\\Users\\adriano\\Documentos`;\nconsole.log(caminho);\n// C:\\Users\\adriano\\Documentos",
+      "callout_kind": "DICA",
+      "callout_text": "Usa String.raw sempre que escreveres caminhos de ficheiros do Windows ou padrões de expressões regulares dentro de um template literal, para não teres de duplicar cada barra invertida.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧵",
+          "text": "literais.raw guarda o texto sem processar"
+        },
+        {
+          "icon": "🗂️",
+          "text": "String.raw evita duplicar barras invertidas"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Certificado com template literal multi-linha",
+      "difficulty": "Iniciante",
+      "statement": "Tens três variáveis: const nome = \"Marta Silva\"; const curso = \"JavaScript Avançado\"; const dataInscricao = \"16/09/2026\";. Usando um único template literal, cria uma constante chamada certificado que produza um texto com exatamente três linhas: \"Certificado de Conclusão\", \"Concedido a: <nome>\" e \"Curso: <curso> | Data: <dataInscricao>\" (substituindo cada marcador pelo valor da respetiva variável). Não uses o caracter \\n nem o operador +. Imprime o resultado com console.log(certificado).",
+      "hint": "Lembra-te que, dentro de crases, uma quebra de linha real (Enter) já funciona como separador de linhas - não precisas de \\n nem de concatenar com +.",
+      "solution_code": "const nome = \"Marta Silva\";\nconst curso = \"JavaScript Avançado\";\nconst dataInscricao = \"16/09/2026\";\n\nconst certificado = `Certificado de Conclusão\nConcedido a: ${nome}\nCurso: ${curso} | Data: ${dataInscricao}`;\n\nconsole.log(certificado);",
+      "solution_explanation": "O template literal usa quebras de linha reais dentro das crases para gerar as três linhas do certificado, sem precisar do caracter \\n. As variáveis nome, curso e dataInscricao são interpoladas diretamente com ${} nos pontos certos do texto."
+    },
+    {
+      "title": "Recibo com expressões dentro de ${}",
+      "difficulty": "Intermedio",
+      "statement": "Tens um array de produtos, em que cada produto é um objeto com as propriedades nome, preco e quantidade: const produtos = [{ nome: \"Teclado mecânico\", preco: 45.5, quantidade: 1 }, { nome: \"Rato sem fios\", preco: 19.9, quantidade: 2 }, { nome: \"Tapete de secretária\", preco: 12, quantidade: 1 }];. Usando template literals e as expressões que precisares dentro de ${}, cria uma constante recibo com uma linha por produto no formato \"- <quantidade>x <nome>: <preco vezes quantidade, com duas casas decimais>€\", seguida de uma última linha \"Total: <soma de todos os subtotais, com duas casas decimais>€ (<número total de unidades> artigo ou artigos, no singular ou plural conforme o valor)\". Imprime recibo com console.log.",
+      "hint": "Podes construir a lista de linhas com .map(...).join('\\n') numa variável à parte e depois interpolar essa variável dentro do template literal final; um ${} pode conter o resultado de qualquer expressão, incluindo outro template literal ou o resultado de .map/.reduce.",
+      "solution_code": "const produtos = [\n  { nome: \"Teclado mecânico\", preco: 45.5, quantidade: 1 },\n  { nome: \"Rato sem fios\", preco: 19.9, quantidade: 2 },\n  { nome: \"Tapete de secretária\", preco: 12, quantidade: 1 },\n];\n\nconst linhas = produtos\n  .map((p) => `- ${p.quantidade}x ${p.nome}: ${(p.preco * p.quantidade).toFixed(2)}€`)\n  .join(\"\\n\");\n\nconst total = produtos.reduce((soma, p) => soma + p.preco * p.quantidade, 0);\nconst numeroArtigos = produtos.reduce((soma, p) => soma + p.quantidade, 0);\n\nconst recibo = `${linhas}\nTotal: ${total.toFixed(2)}€ (${numeroArtigos} ${numeroArtigos === 1 ? \"artigo\" : \"artigos\"})`;\n\nconsole.log(recibo);",
+      "solution_explanation": "As linhas de cada produto são geradas com .map, calculando o subtotal (preco * quantidade) diretamente dentro do ${}, e depois unidas com .join(\"\\n\") numa única string. O total geral e o número de artigos são calculados com reduce antes de serem interpolados no template literal final, incluindo um operador ternário para pluralizar \"artigo\"/\"artigos\"."
+    },
+    {
+      "title": "Tagged template que destaca e escapa valores",
+      "difficulty": "Avancado",
+      "statement": "Cria uma tagged template function chamada destaque que, ao ser usada como destaque`texto ${valor} texto`, devolve uma string em que todo o texto literal (o que está fora de ${}) fica inalterado, e cada valor interpolado é primeiro escapado (substitui os caracteres &, <, >, \" e ' pelas entidades HTML correspondentes, tal como na secção sobre escapar HTML) e depois envolvido na tag <mark>...</mark>. Testa a tua função com: const termo = \"<b>preço</b>\"; const resultado = destaque`Resultados para ${termo}: encontrados 3 artigos.`; e confirma, com console.log(resultado), que o < e o > de termo aparecem como &lt; e &gt; dentro de <mark>.",
+      "hint": "Reaproveita uma função de escape de HTML; a tua tagged function só precisa de percorrer o array de literais e, para cada índice que ainda tem um valor correspondente, concatenar esse valor já escapado e envolvido em <mark></mark> antes do literal seguinte.",
+      "solution_code": "function escapeHTML(valor) {\n  return String(valor)\n    .replaceAll(\"&\", \"&amp;\")\n    .replaceAll(\"<\", \"&lt;\")\n    .replaceAll(\">\", \"&gt;\")\n    .replaceAll('\"', \"&quot;\")\n    .replaceAll(\"'\", \"&#39;\");\n}\n\nfunction destaque(literais, ...valores) {\n  return literais.reduce((resultado, literal, indice) => {\n    if (indice === valores.length) {\n      return resultado + literal;\n    }\n    const valorEscapado = escapeHTML(valores[indice]);\n    return resultado + literal + `<mark>${valorEscapado}</mark>`;\n  }, \"\");\n}\n\nconst termo = \"<b>preço</b>\";\nconst resultado = destaque`Resultados para ${termo}: encontrados 3 artigos.`;\nconsole.log(resultado);\n// Resultados para <mark>&lt;b&gt;preço&lt;/b&gt;</mark>: encontrados 3 artigos.",
+      "solution_explanation": "A tagged template function destaque percorre o array de literais com reduce, e para cada índice que ainda tem um valor correspondente, escapa esse valor com escapeHTML e envolve-o em <mark></mark> antes de o juntar ao literal seguinte. Como o escaping acontece antes do valor ser inserido, qualquer marcação HTML presente no valor original aparece como texto visível em vez de ser interpretada pelo navegador."
+    },
+    {
+      "title": "Caminho de ficheiro com String.raw",
+      "difficulty": "Avancado",
+      "statement": "Tens uma variável const nome = \"adriano\";. Usando String.raw, cria uma constante caminho igual ao texto C:\\Utilizadores\\adriano\\Documentos\\relatorio.txt (com uma única barra invertida entre cada pasta), escrevendo esse caminho diretamente no template literal com apenas uma barra invertida em cada separador e interpolando nome com ${nome} no lugar certo, sem usares em lado nenhum o caracter de escape \\\\ nem duplicares nenhuma barra invertida. Confirma o resultado com console.log(caminho).",
+      "hint": "String.raw é ela própria uma tagged template function - usa-a diretamente antes das crases, tal como farias com qualquer outra tag, e escreve cada barra invertida uma única vez no texto literal.",
+      "solution_code": "const nome = \"adriano\";\nconst caminho = String.raw`C:\\Utilizadores\\${nome}\\Documentos\\relatorio.txt`;\nconsole.log(caminho);\n// C:\\Utilizadores\\adriano\\Documentos\\relatorio.txt",
+      "solution_explanation": "String.raw é uma tagged template function nativa que usa a propriedade raw do array de literais em vez da versão processada, pelo que qualquer barra invertida escrita no texto literal chega inalterada ao resultado final. Os valores interpolados com ${} não são afetados por este comportamento, sendo inseridos normalmente."
+    }
+  ],
+  "summary": [
+    "Template literals usam crases (`) e permitem interpolar qualquer expressão JS com ${...}.",
+    "Suportam texto multi-linha nativamente, sem precisar de \\n nem de concatenação com +.",
+    "O conteúdo dentro de ${} pode ser qualquer expressão válida: chamadas de função, ternários, cálculos ou até outro template literal.",
+    "Uma tagged template function recebe o array de literais (com a propriedade raw) como primeiro argumento e os valores interpolados como argumentos seguintes.",
+    "Tagged templates permitem processar os valores antes de os inserir no resultado final - por exemplo, para escapar HTML e prevenir XSS.",
+    "String.raw é uma tagged template incorporada que devolve os literais sem processar sequências de escape, útil para caminhos de ficheiros e regex."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 03",
+  "next_label": "Aula 03 → Expressões Regulares: Fundamentos",
+  "_stage": "autoria"
+}

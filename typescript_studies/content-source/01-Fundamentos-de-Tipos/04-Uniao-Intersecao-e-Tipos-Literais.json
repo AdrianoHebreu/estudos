@@ -1,0 +1,310 @@
+{
+  "module_num": "01",
+  "module_title": "Fundamentos de Tipos",
+  "module_dir": "01-Fundamentos-de-Tipos",
+  "lesson_num": "04",
+  "lesson_slug": "Uniao-Intersecao-e-Tipos-Literais",
+  "kind": "aula",
+  "title": "União, Interseção e Tipos Literais",
+  "filename_base": "04-Uniao-Intersecao-e-Tipos-Literais",
+  "subtitle": "Combinar tipos com ou e com e, e fechar valores num conjunto exato",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Declarar uniões com a barra vertical e perceber o que elas permitem fazer",
+    "Estreitar uma união com typeof para aceder ao que é específico de cada membro",
+    "Usar tipos literais para substituir strings soltas por conjuntos fechados de valores",
+    "Combinar literais com primitivos, como number ou \"auto\"",
+    "Aplicar as const e derivar um tipo a partir de um array de opções",
+    "Distinguir união (ou) de interseção (e) e reconhecer interseções impossíveis"
+  ],
+  "sections": [
+    {
+      "heading": "A União: um valor, vários tipos",
+      "body": [
+        "Uma união descreve um valor que pode ser de um tipo ou de outro. Escreve-se com a barra vertical entre os membros, e pode ter dois membros ou vinte. O compilador aceita qualquer valor que pertença a pelo menos um dos membros e rejeita tudo o resto.",
+        "Isto resolve um problema muito comum em código real: identificadores que às vezes são texto e às vezes são número, funções que aceitam um objeto ou o seu identificador, campos que podem vir nulos. Em JavaScript essa variedade existe na mesma, só que não está escrita em lado nenhum. A união põe-na no código, onde o compilador e quem lê a conseguem ver."
+      ],
+      "code": "type Id = string | number;\n\nconst idA: Id = \"abc-123\";\nconst idB: Id = 42;\n\n// @ts-expect-error um boolean não pertence à união string | number\nconst idC: Id = true;\n\nfunction mostrar(id: Id): string {\n  return `ID: ${String(id)}`;\n}\n\nconsole.log(mostrar(idA)); // \"ID: abc-123\"\nconsole.log(mostrar(idB)); // \"ID: 42\"\nconsole.log(idC); // true",
+      "callout_kind": "NOTA",
+      "callout_text": "A barra vertical pode aparecer também antes do primeiro membro, numa linha própria. É apenas formatação e é comum em uniões longas, escritas uma opção por linha.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔀",
+          "text": "União: o valor é de um tipo OU de outro"
+        },
+        {
+          "icon": "✍️",
+          "text": "Escreve-se com a barra vertical entre os membros"
+        },
+        {
+          "icon": "🚫",
+          "text": "Tudo o que não seja membro é rejeitado"
+        }
+      ]
+    },
+    {
+      "heading": "O que uma união deixa fazer",
+      "body": [
+        "Esta é a ideia central da aula, e a que mais surpreende quem vem do JavaScript. Sobre um valor cujo tipo é uma união, só se pode fazer o que é válido em todos os membros ao mesmo tempo. O compilador não sabe qual dos casos vai acontecer em execução, por isso só autoriza aquilo que funcionaria em qualquer um deles.",
+        "Num valor do tipo string ou number, o método toString existe dos dois lados e é permitido. Já toFixed só existe em number e trim só existe em string: qualquer um dos dois é recusado, porque metade das vezes o valor não o teria. Não é o compilador a ser difícil, é ele a descrever com rigor o que se sabe naquele ponto do programa.",
+        "A consequência prática é que uma união é uma promessa reduzida: quanto mais membros lhe juntar, menos coisas poderá fazer sem primeiro descobrir qual deles tem em mãos."
+      ],
+      "code": "type Entrada = string | number;\n\nfunction descrever(valor: Entrada): string {\n  // toString() existe em string e em number: é permitido\n  const texto = valor.toString();\n\n  // @ts-expect-error toFixed só existe em number, não no lado string da união\n  valor.toFixed(2);\n\n  // @ts-expect-error trim só existe em string, não no lado number da união\n  valor.trim();\n\n  return texto;\n}\n\nconsole.log(descrever(3.5)); // \"3.5\"\nconsole.log(descrever(\"ola\")); // \"ola\"",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Numa união só está disponível a interseção das capacidades dos membros. Se precisa de algo que só um dos lados tem, tem primeiro de provar ao compilador que é esse o lado que tem.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔑",
+          "text": "Só é permitido o que funciona em TODOS os membros"
+        },
+        {
+          "icon": "🧩",
+          "text": "Mais membros na união, menos operações disponíveis"
+        },
+        {
+          "icon": "❓",
+          "text": "O compilador não sabe qual dos casos vai acontecer"
+        }
+      ]
+    },
+    {
+      "heading": "Estreitar a União com typeof",
+      "body": [
+        "Estreitar (narrowing) é reduzir uma união a um subconjunto mais pequeno dentro de um bloco de código. A ferramenta mais simples é o typeof, que já usava em JavaScript: a diferença é que agora o compilador acompanha o raciocínio. Dentro de um bloco protegido por typeof valor igual a string, o tipo de valor deixa de ser a união e passa a ser apenas string, com todos os métodos de string disponíveis.",
+        "Quando o teste cobre um dos membros e o bloco termina com return, o que sobra a seguir é o resto da união. Numa união de dois membros, isso significa que depois do primeiro return só resta o segundo tipo, sem ser preciso testá-lo.",
+        "Isto é o suficiente para trabalhar com as uniões desta aula. O Módulo 04 dedica-se inteiramente ao assunto: guardas para objetos, uniões discriminadas, funções de type predicate e verificação de exaustividade."
+      ],
+      "code": "function formatar(valor: string | number): string {\n  if (typeof valor === \"string\") {\n    // aqui dentro valor é string\n    return valor.trim().toUpperCase();\n  }\n  // aqui só sobra number\n  return valor.toFixed(2);\n}\n\nconsole.log(formatar(\"  ola  \")); // \"OLA\"\nconsole.log(formatar(3.14159)); // \"3.14\"",
+      "callout_kind": "DICA",
+      "callout_text": "Passe o rato sobre a variável dentro e fora do bloco if. O editor mostra o tipo estreitado num sítio e a união completa no outro: é a forma mais rápida de confirmar que o narrowing está mesmo a acontecer.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔍",
+          "text": "typeof reduz a união dentro do bloco"
+        },
+        {
+          "icon": "↪️",
+          "text": "Depois de um return, sobra o resto da união"
+        },
+        {
+          "icon": "📚",
+          "text": "O Módulo 04 aprofunda todo o narrowing"
+        }
+      ]
+    },
+    {
+      "heading": "Tipos Literais: um conjunto fechado de valores",
+      "body": [
+        "Um tipo literal é um tipo com um único valor possível. O literal \"pequeno\" aceita exatamente a string pequeno e mais nada. Sozinho é pouco útil; a força aparece quando se juntam vários numa união e se obtém um conjunto fechado de opções válidas, uma espécie de lista de valores permitidos verificada pelo compilador.",
+        "Esta é provavelmente a funcionalidade do TypeScript que mais se usa no dia a dia. Em vez de declarar um campo como string e torcer para que ninguém escreva medio com acento ou Grande com maiúscula, declara-se o conjunto exato. O erro deixa de ser um comportamento estranho em produção e passa a ser um sublinhado vermelho no editor, com autocomplete das opções válidas à mistura.",
+        "Repare na diferença entre const e let na inferência: uma constante inicializada com uma string recebe o tipo literal dessa string, porque nunca poderá mudar; uma variável declarada com let recebe o tipo alargado string, porque pode vir a receber outro valor qualquer."
+      ],
+      "code": "type Tamanho = \"pequeno\" | \"medio\" | \"grande\";\n\nfunction precoBase(tamanho: Tamanho): number {\n  if (tamanho === \"pequeno\") return 2;\n  if (tamanho === \"medio\") return 3;\n  return 4;\n}\n\nlet escolhido: Tamanho = \"pequeno\";\nconsole.log(precoBase(escolhido)); // 2\n\nescolhido = \"grande\";\nconsole.log(precoBase(escolhido)); // 4\n\n// @ts-expect-error \"enorme\" não pertence ao conjunto de valores permitidos\nescolhido = \"enorme\";\n\nconst fixo = \"medio\"; // tipo inferido: \"medio\"\nlet solto = \"medio\"; // tipo inferido: string\n\nconsole.log(precoBase(fixo)); // 3\n\n// @ts-expect-error solto é string, e string não cabe em Tamanho\nconsole.log(precoBase(solto));",
+      "callout_kind": "DICA",
+      "callout_text": "Sempre que escrever um comentário a dizer quais são os valores possíveis de um campo de texto, tem ali um tipo literal por escrever. Passe o comentário para o tipo e o compilador passa a garanti-lo.",
+      "table_headers": [
+        "Aspeto",
+        "Campo declarado string",
+        "União de literais"
+      ],
+      "table_rows": [
+        [
+          "Valores aceites",
+          "Qualquer texto, incluindo erros de escrita",
+          "Apenas os que constam da união"
+        ],
+        [
+          "Deteção de gralhas",
+          "Só em execução, se houver sorte",
+          "No editor, enquanto escreve"
+        ],
+        [
+          "Autocomplete",
+          "Nenhum",
+          "Lista completa das opções"
+        ],
+        [
+          "Renomear uma opção",
+          "Procurar e substituir texto à mão",
+          "O compilador aponta todos os sítios a corrigir"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🏷️",
+          "text": "Um literal é um tipo com um só valor possível"
+        },
+        {
+          "icon": "📋",
+          "text": "Unidos, formam um conjunto fechado de opções"
+        },
+        {
+          "icon": "💡",
+          "text": "const infere o literal; let infere string"
+        }
+      ]
+    },
+    {
+      "heading": "Literais com Primitivos e as const",
+      "body": [
+        "Os literais podem ser misturados com tipos primitivos na mesma união. O tipo number ou \"auto\" descreve com precisão uma largura que ou é um número de pixéis ou é a palavra auto, e nada mais. É um padrão muito frequente em configurações e em APIs de componentes, onde um valor especial convive com um intervalo aberto de valores normais.",
+        "Quando se quer travar a inferência e obter literais em vez de tipos alargados, usa-se as const. Aplicado a um objeto ou a um array, torna todas as propriedades e posições só de leitura e preserva cada valor como tipo literal. É a diferença entre um array inferido como string[] e um array cujo tipo conhece exatamente as três strings que contém.",
+        "Daí nasce um padrão muito útil: declarar as opções uma única vez, num array marcado com as const, e derivar o tipo a partir dele com um acesso indexado por number. A lista de valores e o tipo deixam de poder divergir, porque o tipo é calculado a partir da lista."
+      ],
+      "code": "type Largura = number | \"auto\";\n\nconst l1: Largura = 320;\nconst l2: Largura = \"auto\";\n// @ts-expect-error só o literal \"auto\" é aceite, não uma string qualquer\nconst l3: Largura = \"cheio\";\n\nconsole.log(l1, l2, l3); // 320 \"auto\" \"cheio\"\n\nconst METODOS = [\"GET\", \"POST\", \"DELETE\"] as const;\ntype Metodo = (typeof METODOS)[number]; // \"GET\" | \"POST\" | \"DELETE\"\n\nfunction pedir(metodo: Metodo): string {\n  return `A enviar ${metodo}`;\n}\n\nconsole.log(pedir(\"POST\")); // \"A enviar POST\"\nconsole.log(METODOS.length); // 3\n\nconst soltos = [\"GET\", \"POST\"]; // inferido como string[]\n// @ts-expect-error sem as const perdem-se os literais: string não cabe em Metodo\nconst outro: Metodo = soltos[0];\nconsole.log(outro); // \"GET\"\n\nconst config = { modo: \"escuro\", nivel: 3 } as const;\n// @ts-expect-error as const torna todas as propriedades readonly\nconfig.nivel = 4;",
+      "callout_kind": "DICA",
+      "callout_text": "O padrão do array com as const seguido do acesso indexado por number vale a pena decorar. Dá, de uma só vez, a lista para percorrer em execução e o tipo para usar nas assinaturas, sempre sincronizados.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎛️",
+          "text": "Literais e primitivos convivem na mesma união"
+        },
+        {
+          "icon": "🔒",
+          "text": "as const fixa os literais e torna tudo readonly"
+        },
+        {
+          "icon": "♻️",
+          "text": "Uma lista de opções gera o tipo correspondente"
+        }
+      ]
+    },
+    {
+      "heading": "Interseção: juntar requisitos com &",
+      "body": [
+        "A interseção escreve-se com o e comercial e faz o contrário da união: em vez de escolher entre tipos, acumula-os. Um valor do tipo ComId & ComNome tem de cumprir os dois lados ao mesmo tempo, ou seja, tem de ter id e tem de ter nome.",
+        "Esta é a troca mental mais frequente entre quem aprende, e o motivo é razoável: a barra vertical parece somar opções, por isso deveria dar um tipo maior; o e comercial parece somar propriedades, por isso deveria dar um tipo maior também. O que ajuda é pensar em conjuntos de valores, não em conjuntos de propriedades. A união é o conjunto de valores que pertence a um lado ou ao outro, logo é maior e permite menos operações. A interseção é o conjunto de valores que pertence aos dois lados ao mesmo tempo, logo é menor e permite mais operações.",
+        "Na prática usa-se a interseção para compor tipos a partir de blocos reutilizáveis: um bloco com o identificador, outro com as datas de criação, outro com os dados próprios da entidade. O Módulo 02 mostra como fazer o mesmo com interfaces e a palavra extends."
+      ],
+      "code": "type ComId = { id: number };\ntype ComNome = { nome: string };\n\ntype Utilizador = ComId & ComNome; // tem de ter id E nome\ntype Qualquer = ComId | ComNome; // basta ter id OU nome\n\nconst completo: Utilizador = { id: 1, nome: \"Ana\" };\n\n// @ts-expect-error a interseção exige todos os requisitos: falta nome\nconst parcial: Utilizador = { id: 2 };\n\nconst soId: Qualquer = { id: 3 };\nconst soNome: Qualquer = { nome: \"Rui\" };\n\nconsole.log(completo.id, completo.nome); // 1 \"Ana\"\nconsole.log(parcial, soId, soNome); // { id: 2 } { id: 3 } { nome: \"Rui\" }",
+      "callout_kind": "NOTA",
+      "callout_text": "Leia a barra vertical como ou e o e comercial como e, aplicados ao valor: uma união é um valor que é isto ou aquilo; uma interseção é um valor que é isto e aquilo ao mesmo tempo.",
+      "table_headers": [
+        "",
+        "União com a barra vertical",
+        "Interseção com o e comercial"
+      ],
+      "table_rows": [
+        [
+          "Leitura",
+          "É um tipo ou o outro",
+          "É os dois tipos ao mesmo tempo"
+        ],
+        [
+          "Valores aceites",
+          "Mais valores possíveis",
+          "Menos valores possíveis"
+        ],
+        [
+          "Em objetos",
+          "Basta cumprir um dos lados",
+          "Tem de cumprir todos os lados"
+        ],
+        [
+          "Acesso a propriedades",
+          "Só às comuns a todos os membros",
+          "A todas as de todos os lados"
+        ],
+        [
+          "Uso típico",
+          "Um valor com várias formas possíveis",
+          "Compor um tipo a partir de blocos"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "➕",
+          "text": "Interseção acumula requisitos, não os escolhe"
+        },
+        {
+          "icon": "🧠",
+          "text": "União é maior em valores; interseção é menor"
+        },
+        {
+          "icon": "🧱",
+          "text": "Serve para compor tipos a partir de blocos"
+        }
+      ]
+    },
+    {
+      "heading": "Interseções Impossíveis e Uniões de Objetos",
+      "body": [
+        "Se pensar em conjuntos de valores, a interseção string & number tem de ser vazia: nenhum valor é simultaneamente texto e número. O TypeScript reduz essa interseção a never, o tipo sem valores, e a partir daí nenhuma atribuição é possível. Isto não é um erro do compilador, é o resultado correto, e costuma aparecer por engano quando alguém usa o e comercial onde queria a barra vertical.",
+        "No caso das uniões de objetos, a regra da secção sobre o que uma união deixa fazer continua a valer: só se acede às propriedades presentes em todos os membros. Numa união entre círculo e quadrado, o campo forma existe dos dois lados e está acessível; já raio existe só num deles e é recusado enquanto não se souber com qual dos membros se está a lidar.",
+        "A saída é testar uma propriedade comum cujo valor seja um literal diferente em cada membro. Esse campo funciona como etiqueta: depois de o comparar, o compilador sabe exatamente qual é o membro e liberta as propriedades específicas. Este padrão chama-se união discriminada e é o coração do Módulo 04, onde se vê também como garantir, com never, que nenhum caso ficou por tratar."
+      ],
+      "code": "type Impossivel = string & number; // resolve para never\n\n// @ts-expect-error nenhum valor é atribuível a never\nconst nada: Impossivel = \"ola\";\nconsole.log(nada);\n\ntype Circulo = { forma: \"circulo\"; raio: number };\ntype Quadrado = { forma: \"quadrado\"; lado: number };\ntype Figura = Circulo | Quadrado;\n\nfunction area(figura: Figura): number {\n  // forma existe nos dois membros: acesso permitido\n  console.log(figura.forma);\n\n  // @ts-expect-error raio só existe no membro Circulo\n  console.log(figura.raio);\n\n  if (figura.forma === \"circulo\") {\n    return Math.PI * figura.raio ** 2;\n  }\n  return figura.lado ** 2;\n}\n\nconsole.log(area({ forma: \"quadrado\", lado: 3 })); // 9",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Se um tipo seu se comporta como se não aceitasse valor nenhum, procure uma interseção entre tipos incompatíveis. Quase sempre o que se queria escrever era uma união.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🕳️",
+          "text": "string & number reduz-se a never: conjunto vazio"
+        },
+        {
+          "icon": "🔗",
+          "text": "Em uniões de objetos só as propriedades comuns"
+        },
+        {
+          "icon": "🏁",
+          "text": "Um campo literal comum serve de etiqueta"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Estados de uma conta",
+      "difficulty": "Iniciante",
+      "statement": "Crie um tipo Estado que aceite apenas os três textos ativo, inativo e suspenso. Escreva a função estadoLegivel, que recebe um Estado e devolve a frase Conta ativa, Conta inativa ou Conta suspensa, conforme o caso. Confirme que passar um valor fora do conjunto, como apagado, é recusado pelo compilador; marque essa linha com o comentário de erro esperado para que o ficheiro continue a compilar.",
+      "hint": "Declare o tipo como uma união de três tipos literais separados por barras verticais. Dentro da função, compare com o operador de igualdade estrita e trate o último caso no return final.",
+      "solution_code": "type Estado = \"ativo\" | \"inativo\" | \"suspenso\";\n\nfunction estadoLegivel(estado: Estado): string {\n  if (estado === \"ativo\") return \"Conta ativa\";\n  if (estado === \"inativo\") return \"Conta inativa\";\n  return \"Conta suspensa\";\n}\n\nconst atual: Estado = \"suspenso\";\n\nconsole.log(estadoLegivel(atual)); // \"Conta suspensa\"\nconsole.log(estadoLegivel(\"ativo\")); // \"Conta ativa\"\n\n// @ts-expect-error \"apagado\" não pertence ao tipo Estado\nconsole.log(estadoLegivel(\"apagado\"));",
+      "solution_explanation": "A união de três literais fecha o conjunto de valores aceites, por isso qualquer outro texto é recusado logo na chamada. Como os dois primeiros casos terminam com return, o último return já só pode corresponder a suspenso e não é preciso testá-lo."
+    },
+    {
+      "title": "Formatar valores de vários tipos",
+      "difficulty": "Intermedio",
+      "statement": "Escreva a função formatarValor, que recebe um parâmetro do tipo string, number ou boolean e devolve sempre uma string. Se receber texto, devolve-o sem espaços à volta. Se receber um número, devolve-o com duas casas decimais. Se receber um booleano, devolve sim ou nao. Repare que nenhuma destas operações estaria disponível sem estreitar a união primeiro.",
+      "hint": "Use typeof para tratar dois dos casos com return dentro do if. Depois desses dois returns, o único tipo que resta é o terceiro, e o compilador já o sabe.",
+      "solution_code": "type Valor = string | number | boolean;\n\nfunction formatarValor(valor: Valor): string {\n  if (typeof valor === \"string\") {\n    return valor.trim();\n  }\n  if (typeof valor === \"number\") {\n    return valor.toFixed(2);\n  }\n  return valor ? \"sim\" : \"nao\";\n}\n\nconsole.log(formatarValor(\"  texto  \")); // \"texto\"\nconsole.log(formatarValor(7)); // \"7.00\"\nconsole.log(formatarValor(false)); // \"nao\"\n\n// @ts-expect-error null não pertence à união Valor\nconsole.log(formatarValor(null));",
+      "solution_explanation": "Cada teste com typeof reduz a união dentro do respetivo bloco, o que liberta trim no caso da string e toFixed no caso do número. Depois dos dois returns sobra apenas boolean, por isso o operador ternário final é seguro sem qualquer teste adicional."
+    },
+    {
+      "title": "Moedas a partir de uma lista",
+      "difficulty": "Intermedio",
+      "statement": "Declare uma constante MOEDAS com as três moedas EUR, USD e GBP, marcada com as const. Derive dela um tipo Moeda com o acesso indexado por number. Crie uma tabela de taxas de câmbio a partir do euro, com uma entrada para cada moeda, e a função converterDeEuros, que recebe uma quantia e uma Moeda e devolve o valor convertido arredondado a duas casas decimais. Confirme que uma moeda fora da lista é recusada.",
+      "hint": "O tipo deriva-se com typeof sobre a constante, entre parênteses, seguido de um índice number. Para a tabela, o utilitário Record com Moeda como chave obriga a preencher todas as moedas.",
+      "solution_code": "const MOEDAS = [\"EUR\", \"USD\", \"GBP\"] as const;\ntype Moeda = (typeof MOEDAS)[number]; // \"EUR\" | \"USD\" | \"GBP\"\n\nconst TAXAS: Record<Moeda, number> = {\n  EUR: 1,\n  USD: 1.08,\n  GBP: 0.85,\n};\n\nfunction converterDeEuros(quantia: number, moeda: Moeda): number {\n  return Number((quantia * TAXAS[moeda]).toFixed(2));\n}\n\nconsole.log(MOEDAS.length); // 3\nconsole.log(converterDeEuros(100, \"USD\")); // 108\nconsole.log(converterDeEuros(50, \"GBP\")); // 42.5\n\n// @ts-expect-error \"JPY\" não consta do array MOEDAS\nconsole.log(converterDeEuros(10, \"JPY\"));",
+      "solution_explanation": "O as const preserva os três textos como tipos literais, e o acesso indexado por number transforma o array na união desses literais. Como Moeda é derivada da lista, acrescentar uma moeda ao array passa a obrigar imediatamente a preencher a taxa correspondente. O utilitário Record é tratado em detalhe no Módulo 07."
+    },
+    {
+      "title": "Compor um artigo com interseções",
+      "difficulty": "Avancado",
+      "statement": "Escreva três tipos reutilizáveis: Identificavel, com um id de texto; ComDatas, com criadoEm e atualizadoEm do tipo Date; e DadosArtigo, com um titulo de texto e um estado que só pode ser rascunho ou publicado. Componha o tipo Artigo a partir dos três com interseções e escreva a função resumir, que devolve o título, o estado, o ano de criação e o identificador numa única linha. Demonstre depois, com linhas marcadas como erro esperado, que um objeto a que falte uma propriedade é recusado e que uma interseção entre um id de texto e um id numérico não aceita valor nenhum.",
+      "hint": "Encadeie os três tipos com dois e comerciais. Para o ano use um método de Date que devolva o ano em UTC, para que o resultado não dependa do fuso horário de quem corre o código.",
+      "solution_code": "type Identificavel = { id: string };\ntype ComDatas = { criadoEm: Date; atualizadoEm: Date };\ntype DadosArtigo = { titulo: string; estado: \"rascunho\" | \"publicado\" };\n\ntype Artigo = Identificavel & ComDatas & DadosArtigo;\n\nfunction resumir(artigo: Artigo): string {\n  const ano = artigo.criadoEm.getUTCFullYear();\n  return `${artigo.titulo} (${artigo.estado}, ${ano}) [${artigo.id}]`;\n}\n\nconst publicado: Artigo = {\n  id: \"a-1\",\n  criadoEm: new Date(\"2024-01-10T00:00:00Z\"),\n  atualizadoEm: new Date(\"2024-02-01T00:00:00Z\"),\n  titulo: \"Unioes em TypeScript\",\n  estado: \"publicado\",\n};\n\nconsole.log(resumir(publicado)); // \"Unioes em TypeScript (publicado, 2024) [a-1]\"\n\n// @ts-expect-error falta atualizadoEm: a interseção exige todos os requisitos\nconst incompleto: Artigo = {\n  id: \"a-2\",\n  criadoEm: new Date(\"2024-03-01T00:00:00Z\"),\n  titulo: \"Rascunho\",\n  estado: \"rascunho\",\n};\n\nconsole.log(incompleto.id); // \"a-2\"\n\ntype Vazio = Identificavel & { id: number }; // id: string & number = never\n// @ts-expect-error não há valor possível para id: string e number ao mesmo tempo\nconst impossivel: Vazio = { id: \"a-3\" };\nconsole.log(impossivel);",
+      "solution_explanation": "A interseção acumula os requisitos dos três blocos, por isso um objeto Artigo tem de trazer as cinco propriedades e o campo estado ainda está limitado à união de dois literais. O último exemplo mostra o que acontece quando os lados são incompatíveis: a propriedade id fica com o tipo never e deixa de existir valor que satisfaça o tipo."
+    }
+  ],
+  "summary": [
+    "Uma união com a barra vertical descreve um valor que pode ser de um de vários tipos, e sobre ele só é permitido o que é válido em todos os membros ao mesmo tempo.",
+    "Estreitar com typeof reduz a união dentro de um bloco e liberta o que é específico desse tipo; o Módulo 04 trata o narrowing em profundidade.",
+    "Os tipos literais fecham o conjunto de valores aceites e são uma das funcionalidades mais usadas do TypeScript no dia a dia, com ganhos imediatos em autocomplete e em deteção de gralhas.",
+    "Literais e primitivos combinam-se na mesma união, como em number ou \"auto\", para descrever um valor especial ao lado de um intervalo aberto.",
+    "O as const preserva os valores como literais e permite derivar um tipo a partir de um array de opções, mantendo lista e tipo sempre sincronizados.",
+    "A interseção com o e comercial acumula requisitos em vez de escolher entre eles, e reduz-se a never quando os lados são incompatíveis, como em string & number."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 05",
+  "next_label": "Aula 05 → Enums e as suas Alternativas"
+}

@@ -1,0 +1,257 @@
+{
+  "module_num": "03",
+  "module_title": "Funções",
+  "module_dir": "03-Funcoes",
+  "lesson_num": "06",
+  "lesson_slug": "Programacao-Funcional-Basica",
+  "kind": "aula",
+  "title": "Programação Funcional Básica",
+  "filename_base": "06-Programacao-Funcional-Basica",
+  "subtitle": "Funções como dados: ordem superior, pureza, currying e composição",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Reconhecer e escrever funções de ordem superior que recebem ou devolvem outras funções.",
+    "Distinguir funções puras de funções com efeitos secundários e explicar porque essa distinção importa.",
+    "Aplicar imutabilidade como prática de estilo ao atualizar objetos e arrays.",
+    "Implementar currying manualmente e usá-lo para aplicação parcial de funções.",
+    "Compor funções pequenas com compose e pipe para construir pipelines de transformação.",
+    "Comparar o mesmo problema resolvido em estilo imperativo e em estilo funcional."
+  ],
+  "sections": [
+    {
+      "heading": "Funções de ordem superior",
+      "body": [
+        "Uma função de ordem superior é qualquer função que recebe outra função como argumento, devolve uma função como resultado, ou ambas as coisas. Isto é possível em JavaScript porque as funções são valores de primeira classe: podem ser guardadas em variáveis, passadas como parâmetros e devolvidas de outras funções, tal como qualquer número ou string. Na programação funcional, este uso é elevado a técnica central: em vez de repetir a mesma lógica várias vezes com pequenas variações, escreve-se uma função geral e configura-se o seu comportamento através de argumentos que são, eles próprios, funções.",
+        "Um padrão comum é a fábrica de funções: uma função que recebe alguma configuração e devolve uma nova função já ajustada a essa configuração, aproveitando closures para lembrar os valores recebidos. Métodos nativos como map, filter e reduce são também funções de ordem superior, uma vez que recebem uma função como argumento para decidir como transformar, filtrar ou combinar cada elemento de uma coleção."
+      ],
+      "code": "function criarMultiplicador(fator) {\n  return function (numero) {\n    return numero * fator;\n  };\n}\n\nconst duplicar = criarMultiplicador(2);\nconst triplicar = criarMultiplicador(3);\n\nconsole.log(duplicar(5));  // 10\nconsole.log(triplicar(5)); // 15\n\nfunction aplicarATodos(fn, valores) {\n  return valores.map(fn);\n}\n\nconsole.log(aplicarATodos(duplicar, [1, 2, 3])); // [2, 4, 6]",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔧",
+          "text": "Recebem e/ou devolvem funções"
+        },
+        {
+          "icon": "🏭",
+          "text": "Fábricas de funções especializadas"
+        },
+        {
+          "icon": "📦",
+          "text": "Abstraem padrões repetidos de código"
+        }
+      ]
+    },
+    {
+      "heading": "Funções puras vs efeitos secundários",
+      "body": [
+        "Uma função diz-se pura quando cumpre duas condições: dado o mesmo conjunto de argumentos, devolve sempre o mesmo resultado, e a sua execução não produz efeitos secundários observáveis fora dela própria - não altera variáveis externas, não modifica objetos ou arrays recebidos como argumento, não escreve no ecrã, não faz pedidos de rede nem depende de valores externos que possam mudar, como a hora atual ou um número aleatório.",
+        "Uma função com efeitos secundários pode ainda ser útil e necessária, pois um programa sem nenhum efeito visível não serve para nada, mas isolar a lógica de decisão em funções puras e empurrar os efeitos secundários para as bordas do programa torna o código mais fácil de testar, de raciocinar sobre ele e de reutilizar, porque uma função pura pode ser chamada em qualquer ordem, em paralelo, ou até ter o seu resultado guardado em cache, sem surpresas."
+      ],
+      "code": "let contador = 0;\nfunction incrementarContadorImpuro() {\n  contador += 1;\n  return contador;\n}\n\nfunction somar(a, b) {\n  return a + b;\n}\n\nconsole.log(somar(2, 3)); // 5\nconsole.log(somar(2, 3)); // 5, sempre o mesmo para os mesmos argumentos\n\nconsole.log(incrementarContadorImpuro()); // 1\nconsole.log(incrementarContadorImpuro()); // 2, resultado diferente com a mesma \"chamada\"",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Métodos de array como push, pop, splice, sort e reverse mutam o array original. Usá-los dentro de uma função que recebe esse array como argumento torna essa função impura, mesmo que ela também devolva um valor.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "✅",
+          "text": "Mesma entrada, sempre a mesma saída"
+        },
+        {
+          "icon": "🚫",
+          "text": "Sem alterar estado externo"
+        },
+        {
+          "icon": "🔍",
+          "text": "Mais fáceis de testar e prever"
+        }
+      ]
+    },
+    {
+      "heading": "Imutabilidade como preferência de estilo",
+      "body": [
+        "JavaScript não é uma linguagem imutável por definição, pois objetos e arrays podem sempre ser alterados depois de criados, mas a programação funcional adota a imutabilidade como preferência de estilo: em vez de alterar uma estrutura de dados existente, cria-se uma nova cópia com a alteração desejada, deixando o original intacto. Isto elimina uma classe inteira de bugs causados por várias partes do código partilharem a mesma referência e alterarem-na sem que as outras esperem essa mudança.",
+        "Na prática, isto significa preferir o operador de espalhamento para copiar objetos e arrays com pequenas alterações, e preferir métodos que devolvem uma nova estrutura, como map, filter, concat ou slice, em vez de métodos que alteram a estrutura original, como push, splice ou sort sem cópia prévia. Object.freeze pode ainda ser usado para impedir alterações a um objeto em tempo de execução."
+      ],
+      "code": "const utilizador = { nome: \"Marta\", idade: 28 };\n\n// Atualização imutável: cria um novo objeto\nconst utilizadorAtualizado = { ...utilizador, idade: 29 };\n\nconsole.log(utilizador);           // { nome: \"Marta\", idade: 28 } - inalterado\nconsole.log(utilizadorAtualizado); // { nome: \"Marta\", idade: 29 }\n\nconst numeros = [1, 2, 3];\nconst numerosComNovo = [...numeros, 4]; // em vez de numeros.push(4)\n\nconsole.log(numeros);        // [1, 2, 3]\nconsole.log(numerosComNovo); // [1, 2, 3, 4]",
+      "callout_kind": "NOTA",
+      "callout_text": "Object.freeze só protege o primeiro nível do objeto. Propriedades que sejam, elas próprias, objetos ou arrays continuam mutáveis, a não ser que também sejam congeladas individualmente.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧊",
+          "text": "Copiar em vez de alterar"
+        },
+        {
+          "icon": "🔄",
+          "text": "Spread e Object.freeze ajudam"
+        },
+        {
+          "icon": "🐛",
+          "text": "Evita bugs por mutação partilhada"
+        }
+      ]
+    },
+    {
+      "heading": "Currying",
+      "body": [
+        "Currying é a técnica de transformar uma função que recebe vários argumentos numa sequência de funções, cada uma recebendo apenas um argumento, até que todos tenham sido fornecidos e o resultado final possa ser calculado. Em vez de chamar soma(1, 2, 3), uma versão curried é chamada como soma(1)(2)(3), em que cada chamada devolve uma nova função à espera do argumento seguinte, aproveitando closures para ir acumulando os valores já recebidos.",
+        "A principal vantagem do currying é permitir aplicação parcial: fixar antecipadamente alguns argumentos para criar funções mais específicas e reutilizáveis a partir de uma função genérica, sem reescrever lógica. É possível fazer currying manualmente função a função, ou escrever um auxiliar genérico curry que transforma qualquer função nesse comportamento com base no número de parâmetros que ela declara."
+      ],
+      "code": "function curry(fn) {\n  return function curried(...args) {\n    if (args.length >= fn.length) {\n      return fn.apply(this, args);\n    }\n    return (...maisArgs) => curried(...args, ...maisArgs);\n  };\n}\n\nconst somarTres = (a, b, c) => a + b + c;\nconst somarTresCurried = curry(somarTres);\n\nconsole.log(somarTresCurried(1)(2)(3)); // 6\nconsole.log(somarTresCurried(1, 2)(3)); // 6\nconsole.log(somarTresCurried(1, 2, 3)); // 6",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Experimente adaptar a função curry acima para uma função com quatro argumentos e confirme, sem alterar a sua implementação, que continua a funcionar em qualquer combinação de chamadas parciais.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🍛",
+          "text": "Um argumento de cada vez"
+        },
+        {
+          "icon": "🧩",
+          "text": "Cria funções especializadas por aplicação parcial"
+        },
+        {
+          "icon": "🔁",
+          "text": "Baseia-se em closures"
+        }
+      ]
+    },
+    {
+      "heading": "Composição de funções: compose e pipe",
+      "body": [
+        "Compor funções significa combinar várias funções pequenas e independentes numa única função maior, em que a saída de cada função serve de entrada à seguinte. Isto encoraja a escrever lógica como uma sequência de transformações simples e testáveis individualmente, em vez de uma única função grande que faz tudo de uma vez.",
+        "Dois auxiliares comuns para isto são pipe, que aplica as funções pela ordem em que aparecem, da esquerda para a direita, e compose, que as aplica na ordem inversa, da direita para a esquerda, espelhando a forma matemática de escrever f(g(x)). Ambos podem ser implementados de forma genérica: pipe com reduce e compose com reduceRight, recebendo qualquer número de funções de um único argumento."
+      ],
+      "code": "const removerEspacos = (texto) => texto.trim();\nconst paraMinusculas = (texto) => texto.toLowerCase();\nconst paraSlug = (texto) => texto.replace(/\\s+/g, \"-\");\n\nconst pipe = (...fns) => (valorInicial) =>\n  fns.reduce((valor, fn) => fn(valor), valorInicial);\n\nconst compose = (...fns) => (valorInicial) =>\n  fns.reduceRight((valor, fn) => fn(valor), valorInicial);\n\nconst gerarSlugPipe = pipe(removerEspacos, paraMinusculas, paraSlug);\nconst gerarSlugCompose = compose(paraSlug, paraMinusculas, removerEspacos);\n\nconsole.log(gerarSlugPipe(\"  Programação Funcional em JS  \"));\n// \"programação-funcional-em-js\"\nconsole.log(gerarSlugCompose(\"  Programação Funcional em JS  \"));\n// \"programação-funcional-em-js\", mesmo resultado, funções na ordem inversa",
+      "callout_kind": "DICA",
+      "callout_text": "pipe costuma ler-se de forma mais natural em código porque a ordem de leitura acompanha a ordem de execução; compose é mais comum quando se segue de perto a notação matemática f(g(x)).",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "➡️",
+          "text": "pipe: esquerda para a direita"
+        },
+        {
+          "icon": "⬅️",
+          "text": "compose: direita para a esquerda"
+        },
+        {
+          "icon": "🧱",
+          "text": "Funções pequenas, grandes pipelines"
+        }
+      ]
+    },
+    {
+      "heading": "Estilo funcional vs estilo imperativo",
+      "body": [
+        "O estilo imperativo descreve um problema através de uma sequência de instruções que dizem exatamente como alcançar o resultado, normalmente com variáveis que vão sendo reatribuídas e estruturas de controlo como for e while a guiar esse percurso passo a passo. O estilo funcional, em contraste, descreve o que se quer obter, combinando funções puras através de composição, sem expor o mecanismo passo a passo nem depender de variáveis mutáveis.",
+        "Nenhum dos dois estilos é universalmente superior: o imperativo pode ser mais direto para lógica com muitas condições de paragem antecipada ou otimizações de desempenho específicas, enquanto o funcional tende a produzir código mais curto, mais fácil de testar isoladamente e menos propenso a bugs de mutação partilhada, à custa de, por vezes, criar mais objetos intermédios. Na prática, o JavaScript do dia a dia mistura os dois estilos consoante o que for mais claro em cada situação."
+      ],
+      "code": "// Estilo imperativo\nfunction calcularTotalImperativo(itens) {\n  let total = 0;\n  for (let i = 0; i < itens.length; i++) {\n    if (itens[i].comprado) {\n      total += itens[i].preco;\n    }\n  }\n  return total;\n}\n\n// Estilo funcional\nconst calcularTotalFuncional = (itens) =>\n  itens\n    .filter((item) => item.comprado)\n    .reduce((total, item) => total + item.preco, 0);\n\nconst itens = [\n  { nome: \"Livro\", preco: 15, comprado: true },\n  { nome: \"Caneta\", preco: 2, comprado: false },\n  { nome: \"Caderno\", preco: 5, comprado: true },\n];\n\nconsole.log(calcularTotalImperativo(itens)); // 20\nconsole.log(calcularTotalFuncional(itens));  // 20",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [
+        "Aspeto",
+        "Estilo imperativo",
+        "Estilo funcional"
+      ],
+      "table_rows": [
+        [
+          "Foco",
+          "Como fazer, passo a passo",
+          "O que fazer, por composição"
+        ],
+        [
+          "Estado",
+          "Variáveis mutáveis e reatribuídas",
+          "Preferência por imutabilidade"
+        ],
+        [
+          "Controlo de fluxo",
+          "for, while, condições explícitas",
+          "map, filter, reduce, compose/pipe"
+        ],
+        [
+          "Testabilidade",
+          "Depende do estado percorrido",
+          "Funções puras isoláveis e previsíveis"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "⚙️",
+          "text": "Imperativo: como fazer, passo a passo"
+        },
+        {
+          "icon": "🎯",
+          "text": "Funcional: o que fazer, por composição"
+        },
+        {
+          "icon": "📊",
+          "text": "Mesmo resultado, estilos diferentes"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Função de ordem superior simples",
+      "difficulty": "Iniciante",
+      "statement": "Escreva uma função aplicarDuasVezes(fn, valor) que recebe uma função fn e um valor, e devolve o resultado de aplicar fn duas vezes seguidas a esse valor (ou seja, fn(fn(valor))). Teste-a com uma função que duplica um número e com uma função que coloca uma string em maiúsculas.",
+      "hint": "Guarde o resultado da primeira chamada a fn numa variável antes de a passar novamente a fn.",
+      "solution_code": "function aplicarDuasVezes(fn, valor) {\n  return fn(fn(valor));\n}\n\nconst duplicar = (n) => n * 2;\nconsole.log(aplicarDuasVezes(duplicar, 5)); // 20\n\nconst paraMaiusculas = (texto) => texto.toUpperCase();\nconsole.log(aplicarDuasVezes(paraMaiusculas, \"ola\")); // \"OLA\"",
+      "solution_explanation": "aplicarDuasVezes é uma função de ordem superior porque recebe outra função como argumento. Aplica fn ao valor original e depois aplica fn novamente ao resultado obtido, funcionando com qualquer função de um argumento cujo resultado seja do mesmo tipo que a entrada."
+    },
+    {
+      "title": "De impuro para puro e imutável",
+      "difficulty": "Intermedio",
+      "statement": "A função seguinte é impura porque muta o array recebido:\n\nfunction adicionarProdutoImpuro(carrinho, produto) {\n  carrinho.push(produto);\n  return carrinho;\n}\n\nEscreva uma versão pura chamada adicionarProduto que receba um array de produtos e um novo produto, e devolva um NOVO array com o produto adicionado, sem alterar o array original. Demonstre com console.log que o array original passado como argumento não é alterado depois de chamar a sua função.",
+      "hint": "Em vez de push, que muta o array, use um operador que crie uma cópia com um elemento adicional no fim.",
+      "solution_code": "function adicionarProduto(carrinho, produto) {\n  return [...carrinho, produto];\n}\n\nconst carrinhoOriginal = [\"Teclado\", \"Rato\"];\nconst novoCarrinho = adicionarProduto(carrinhoOriginal, \"Monitor\");\n\nconsole.log(carrinhoOriginal); // [\"Teclado\", \"Rato\"] - inalterado\nconsole.log(novoCarrinho);     // [\"Teclado\", \"Rato\", \"Monitor\"]",
+      "solution_explanation": "A versão original é impura porque push muta o array recebido como argumento, um efeito secundário visível fora da função. A versão pura usa o operador spread para criar um novo array, deixando carrinhoOriginal intacto e garantindo que a mesma entrada produz sempre a mesma saída."
+    },
+    {
+      "title": "Currying manual",
+      "difficulty": "Intermedio",
+      "statement": "Implemente uma função genérica curry(fn) que transforma qualquer função de três argumentos numa versão curried, permitindo chamá-la como fn(a)(b)(c), fn(a, b)(c) ou fn(a, b, c). Use-a para transformar a função calcularVolume(comprimento, largura, altura) = comprimento * largura * altura numa versão curried, e crie a partir dela uma função especializada caixaComBaseFixa, com comprimento fixo em 2 e largura fixa em 3, faltando apenas a altura.",
+      "hint": "fn.length dá o número de parâmetros declarados na função original; compare esse número com quantos argumentos já foram recebidos até ao momento.",
+      "solution_code": "function curry(fn) {\n  return function curried(...argsRecebidos) {\n    if (argsRecebidos.length >= fn.length) {\n      return fn(...argsRecebidos);\n    }\n    return (...maisArgs) => curried(...argsRecebidos, ...maisArgs);\n  };\n}\n\nconst calcularVolume = (comprimento, largura, altura) => comprimento * largura * altura;\nconst calcularVolumeCurried = curry(calcularVolume);\n\nconst caixaComBaseFixa = calcularVolumeCurried(2, 3);\n\nconsole.log(caixaComBaseFixa(4));  // 24\nconsole.log(caixaComBaseFixa(10)); // 60",
+      "solution_explanation": "curry devolve uma função interna que acumula argumentos em argsRecebidos; quando o total atinge fn.length, executa a função original, caso contrário devolve uma nova função à espera dos argumentos em falta. caixaComBaseFixa resulta de aplicar parcialmente comprimento e largura, guardados na closure, faltando apenas a altura."
+    },
+    {
+      "title": "Pipeline de preços com pipe",
+      "difficulty": "Avancado",
+      "statement": "Implemente as funções compose e pipe, cada uma recebendo um número variável de funções de um único argumento e devolvendo uma nova função que as aplica em sequência (compose da direita para a esquerda, pipe da esquerda para a direita). Usando pipe, construa uma função calcularPrecoFinal que, a partir de um preço base, aplica por esta ordem: um desconto de 10% (multiplicar por 0.9), depois IVA de 23% (multiplicar por 1.23), e por fim arredonda a 2 casas decimais. Teste com um preço base de 100.",
+      "hint": "reduce percorre da esquerda para a direita e reduceRight da direita para a esquerda - cada um serve para uma das duas funções pedidas.",
+      "solution_code": "const compose = (...fns) => (valorInicial) =>\n  fns.reduceRight((valorAtual, fn) => fn(valorAtual), valorInicial);\n\nconst pipe = (...fns) => (valorInicial) =>\n  fns.reduce((valorAtual, fn) => fn(valorAtual), valorInicial);\n\nconst aplicarDesconto = (preco) => preco * 0.9;\nconst aplicarIVA = (preco) => preco * 1.23;\nconst arredondar = (preco) => Math.round(preco * 100) / 100;\n\nconst calcularPrecoFinal = pipe(aplicarDesconto, aplicarIVA, arredondar);\n\nconsole.log(calcularPrecoFinal(100)); // 110.7",
+      "solution_explanation": "pipe usa reduce para passar o resultado de cada função como entrada da seguinte, da esquerda para a direita, enquanto compose usa reduceRight para fazer o mesmo da direita para a esquerda. calcularPrecoFinal é a composição das três funções puras, cada uma responsável por uma única transformação do preço."
+    },
+    {
+      "title": "Do imperativo ao funcional",
+      "difficulty": "Avancado",
+      "statement": "Tem o seguinte código imperativo que, dado um array de objetos { nome, idade, ativo }, calcula a soma das idades apenas dos utilizadores ativos:\n\nfunction somarIdadesAtivosImperativo(utilizadores) {\n  let soma = 0;\n  for (let i = 0; i < utilizadores.length; i++) {\n    if (utilizadores[i].ativo) {\n      soma += utilizadores[i].idade;\n    }\n  }\n  return soma;\n}\n\nReescreva a mesma lógica num estilo funcional, somarIdadesAtivosFuncional, compondo funções puras (sem loops explícitos nem variáveis mutáveis), e teste-a com o mesmo array de utilizadores para confirmar que ambas dão o mesmo resultado.",
+      "hint": "Encadeie três passos: filtrar os ativos, extrair as suas idades e depois somar tudo - cada passo é uma transformação de dados, não uma instrução de controlo.",
+      "solution_code": "function somarIdadesAtivosFuncional(utilizadores) {\n  return utilizadores\n    .filter((utilizador) => utilizador.ativo)\n    .map((utilizador) => utilizador.idade)\n    .reduce((soma, idade) => soma + idade, 0);\n}\n\nconst utilizadores = [\n  { nome: \"Ana\", idade: 30, ativo: true },\n  { nome: \"Bruno\", idade: 25, ativo: false },\n  { nome: \"Carla\", idade: 40, ativo: true },\n];\n\nconsole.log(somarIdadesAtivosFuncional(utilizadores)); // 70",
+      "solution_explanation": "A versão funcional substitui o loop e o contador mutável por uma cadeia de transformações declarativas: filter seleciona os utilizadores ativos, map extrai apenas as idades e reduce acumula a soma final, sem reatribuir nenhuma variável externa. O resultado é idêntico ao da versão imperativa, mas expresso como composição de operações sobre os dados em vez de instruções passo a passo."
+    }
+  ],
+  "summary": [
+    "Funções de ordem superior recebem e/ou devolvem outras funções, permitindo abstrair comportamento em vez de repetir lógica.",
+    "Funções puras devolvem sempre o mesmo resultado para a mesma entrada e não produzem efeitos secundários visíveis fora delas.",
+    "Imutabilidade é uma escolha de estilo: preferir criar cópias (spread, map, filter) em vez de mutar diretamente dados existentes.",
+    "Currying transforma uma função de vários argumentos numa sequência de funções de um argumento, permitindo aplicação parcial.",
+    "compose e pipe combinam funções pequenas numa pipeline, diferindo apenas na ordem de aplicação (direita-esquerda vs esquerda-direita).",
+    "O estilo funcional troca loops e estado mutável por composição declarativa de funções puras, tornando o código mais previsível e testável."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para o Módulo 04",
+  "next_label": "Aula 01 → Criação de Arrays e Métodos Básicos",
+  "_stage": "revisao"
+}

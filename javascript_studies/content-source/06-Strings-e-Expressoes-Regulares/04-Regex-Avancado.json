@@ -1,0 +1,268 @@
+{
+  "module_num": "06",
+  "module_title": "Strings e Expressões Regulares",
+  "module_dir": "06-Strings-e-Expressoes-Regulares",
+  "lesson_num": "04",
+  "lesson_slug": "Regex-Avancado",
+  "kind": "aula",
+  "title": "Regex Avançado",
+  "filename_base": "04-Regex-Avancado",
+  "subtitle": "Grupos nomeados, lookaround e backreferences para regex mais poderosas e legíveis.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Distinguir grupos de captura, grupos não-capturantes (?:...) e saber quando usar cada um",
+    "Nomear grupos com (?<nome>...) e aceder aos valores de forma legível via match.groups ou $<nome> no replace",
+    "Usar lookahead ((?=...) / (?!...)) e lookbehind ((?<=...) / (?<!...)) para impor condições sem consumir caracteres",
+    "Aplicar backreferences (\\1, \\k<nome>) para exigir texto repetido ou estruturas simétricas",
+    "Construir padrões práticos (email, telefone, data) reconhecendo criticamente as suas limitações reais"
+  ],
+  "sections": [
+    {
+      "heading": "Grupos de captura e grupos não-capturantes",
+      "body": [
+        "Qualquer subexpressão colocada entre parênteses normais forma um grupo de captura. O motor de regex continua a usar essa subexpressão para decidir se há correspondência, mas guarda também o texto que ela apanhou, disponibilizando-o em separado do resultado global. Com match() sem a flag g, ou com exec(), o array devolvido tem a correspondência completa em result[0] e o conteúdo de cada grupo nas posições seguintes, pela ordem em que os parênteses de abertura aparecem no padrão. Com matchAll(), cada elemento do iterador tem essa mesma estrutura, o que é a forma mais direta de extrair, por exemplo, o ano, o mês e o dia de várias datas dentro de um texto maior.",
+        "Nem todos os parênteses precisam de capturar. Muitas vezes usam-se apenas para delimitar uma alternância, como em (?:jpg|png|gif), ou para aplicar um quantificador a uma sequência de vários caracteres, sem que interesse aceder depois a esse troço específico do texto. Nesses casos, o grupo não-capturante (?:...) participa da correspondência da mesma forma, mas não gera uma entrada no array de resultados nem altera a numeração dos grupos que realmente se querem capturar. É boa prática usar sempre grupos não-capturantes quando o único objetivo é agrupar, deixando os parênteses capturantes reservados para o que efetivamente se vai usar a seguir."
+      ],
+      "code": "const texto = \"Reunião marcada para 2026-09-16\";\nconst regexComCaptura = /(\\d{4})-(\\d{2})-(\\d{2})/;\nconst resultado = texto.match(regexComCaptura);\nconsole.log(resultado[0]); // \"2026-09-16\"\nconsole.log(resultado[1]); // \"2026\" (ano)\nconsole.log(resultado[2]); // \"09\"   (mês)\nconsole.log(resultado[3]); // \"16\"   (dia)\n\n// Grupo não-capturante: participa na correspondência mas não aparece no resultado\nconst regexNaoCapturante = /(?:\\d{4})-(\\d{2})-(\\d{2})/;\nconst resultado2 = texto.match(regexNaoCapturante);\nconsole.log(resultado2[1]);      // \"09\" — o ano deixou de ocupar uma posição\nconsole.log(resultado2.length);  // 3 (correspondência completa + 2 grupos)\n\n// Uso típico de (?:...): apenas para agrupar uma alternância\nconst regexFicheiro = /^documento(?:\\.pdf|\\.docx|\\.txt)$/;\nconsole.log(regexFicheiro.test(\"documento.pdf\")); // true",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔢",
+          "text": "(...) captura texto para result[1], result[2]..."
+        },
+        {
+          "icon": "🚫",
+          "text": "(?:...) agrupa sem entrar no resultado"
+        },
+        {
+          "icon": "🎯",
+          "text": "Ideal para extrair partes de uma correspondência"
+        }
+      ]
+    },
+    {
+      "heading": "Grupos nomeados: (?<nome>...)",
+      "body": [
+        "Um grupo nomeado tem exatamente o mesmo comportamento de correspondência que um grupo de captura normal, mas atribui-lhe um identificador com a sintaxe (?<nome>...). Esse nome tem de ser um identificador válido (letras, dígitos e underscore, sem começar por dígito) e único dentro do padrão. Quando a correspondência é bem-sucedida, o resultado passa a ter uma propriedade groups, um objeto simples com uma chave por cada grupo nomeado usado, o que permite desestruturar diretamente os valores em vez de decorar índices numéricos como result[1] ou result[2].",
+        "Esta capacidade também está disponível do lado da substituição: em String.prototype.replace(), pode referir-se um grupo nomeado no padrão de substituição com $<nome>, o mesmo raciocínio que $1 aplicaria a um grupo numerado. Isto é particularmente útil ao reformatar datas, números de telefone ou qualquer outro texto estruturado, porque o padrão de substituição fica autoexplicativo em vez de depender da posição dos grupos no padrão original."
+      ],
+      "code": "const regexData = /(?<ano>\\d{4})-(?<mes>\\d{2})-(?<dia>\\d{2})/;\nconst match = \"2026-09-16\".match(regexData);\n\nconst { ano, mes, dia } = match.groups;\nconsole.log(`${dia}/${mes}/${ano}`); // \"16/09/2026\"\n\n// O mesmo grupo nomeado pode ser reutilizado diretamente no replace()\nconst reformatada = \"2026-09-16\".replace(regexData, \"$<dia>/$<mes>/$<ano>\");\nconsole.log(reformatada); // \"16/09/2026\"\n\n// Com matchAll(), cada correspondência traz o seu próprio objeto groups\nconst log = \"erro em 2026-01-05 e novamente em 2026-03-12\";\nfor (const { groups } of log.matchAll(new RegExp(regexData, \"g\"))) {\n  console.log(`${groups.dia}/${groups.mes}/${groups.ano}`);\n}",
+      "callout_kind": "DICA",
+      "callout_text": "Os grupos nomeados valem sobretudo quando há mais de dois ou três grupos: compare a legibilidade de (\\d{4})-(\\d{2})-(\\d{2}) com (?<ano>\\d{4})-(?<mes>\\d{2})-(?<dia>\\d{2}) ao reler o código daqui a uns meses.",
+      "table_headers": [
+        "Tipo de grupo",
+        "Sintaxe",
+        "Aparece no resultado?"
+      ],
+      "table_rows": [
+        [
+          "Capturante numerado",
+          "(...)",
+          "Sim, em result[1], result[2]..."
+        ],
+        [
+          "Não-capturante",
+          "(?:...)",
+          "Não"
+        ],
+        [
+          "Nomeado",
+          "(?<nome>...)",
+          "Sim, em result.groups.nome"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🏷️",
+          "text": "(?<nome>...) dá um nome a um grupo"
+        },
+        {
+          "icon": "📦",
+          "text": "Acesso direto via match.groups.nome"
+        },
+        {
+          "icon": "✍️",
+          "text": "$<nome> reutiliza o valor em replace()"
+        }
+      ]
+    },
+    {
+      "heading": "Lookahead: exigir sem consumir o que vem a seguir",
+      "body": [
+        "O lookahead é uma asserção de largura zero: verifica se, a partir da posição atual, o texto seguinte corresponde (ou não) a um padrão, sem consumir esses caracteres nem os incluir na correspondência final. O lookahead positivo, (?=...), só deixa a correspondência avançar se o que vem a seguir corresponder ao padrão indicado. É a base do truque clássico para inserir separadores de milhares: em cada posição entre dígitos, confirma-se que ainda restam grupos completos de três dígitos até ao fim, sem por isso consumir esses dígitos, o que permite reaproveitá-los na verificação seguinte.",
+        "O lookahead negativo, (?!...), faz o oposto: só deixa avançar se o que vem a seguir não corresponder ao padrão. É especialmente útil combinado com vários lookaheads seguidos logo no início do padrão, todos avaliados a partir da mesma posição, para impor várias condições independentes em simultâneo, como acontece tipicamente na validação de passwords: exigir maiúscula, exigir dígito e recusar espaços em branco, sem que a ordem por que essas condições aparecem no texto importe."
+      ],
+      "code": "// Lookahead positivo encadeado: separador de milhares\nconst numero = \"1234567890\";\nconst comSeparadores = numero.replace(/\\B(?=(?:\\d{3})+(?!\\d))/g, \" \");\nconsole.log(comSeparadores); // \"1 234 567 890\"\n\n// Vários lookaheads a partir da mesma posição = várias condições em simultâneo\nfunction validarPassword(password) {\n  const regra = /^(?=.*[A-Z])(?=.*\\d)(?!.*\\s).{8,}$/;\n  return regra.test(password);\n}\n\nconsole.log(validarPassword(\"Segura123\"));   // true\nconsole.log(validarPassword(\"fraca123\"));    // false (sem maiúscula)\nconsole.log(validarPassword(\"Com Espaco1\"));  // false (contém espaço)",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Lookahead e lookbehind são asserções de largura zero: confirmam que algo existe (ou não existe) numa posição, mas não avançam o cursor nem entram na correspondência final. Se precisar de usar esse texto depois, capture-o num grupo à parte.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "👀",
+          "text": "(?=...) exige algo à frente, sem o consumir"
+        },
+        {
+          "icon": "🙅",
+          "text": "(?!...) exige que algo NÃO apareça à frente"
+        },
+        {
+          "icon": "🔗",
+          "text": "Vários lookaheads seguidos = condições em conjunto"
+        }
+      ]
+    },
+    {
+      "heading": "Lookbehind: exigir sem consumir o que vem antes",
+      "body": [
+        "O lookbehind funciona como o espelho do lookahead: em vez de olhar para a frente, verifica o que precede a posição atual, também sem consumir caracteres. O lookbehind positivo, (?<=...), só deixa a correspondência prosseguir se o texto imediatamente anterior corresponder ao padrão indicado; é a forma natural de capturar um valor que aparece a seguir a um marcador, como um símbolo de moeda, sem incluir esse marcador na correspondência devolvida.",
+        "O lookbehind negativo, (?<!...), exige o oposto: que o texto anterior não corresponda ao padrão. É útil, por exemplo, para distinguir números que representam um valor monetário de outros números soltos no mesmo texto, ou para excluir correspondências precedidas por um sinal de menos, evitando tratar um valor negativo como se fosse positivo. O suporte para lookbehind chegou ao JavaScript mais tarde do que o lookahead, mas está hoje disponível em todos os motores modernos (V8/Node e todos os browsers atuais)."
+      ],
+      "code": "// Lookbehind positivo: obter o valor logo a seguir a um símbolo de euro\nconst preco = \"Preço: €45,90\";\nconst valor = preco.match(/(?<=€)[\\d,]+/);\nconsole.log(valor[0]); // \"45,90\"\n\n// Lookbehind negativo: ignorar números já marcados com o símbolo de euro\nconst transacoes = \"saldo: €1200, unidades: 30, ajuste: €50\";\nconst semEuro = transacoes.match(/(?<!€)\\b\\d+\\b/g);\nconsole.log(semEuro); // [\"30\"]",
+      "callout_kind": "NOTA",
+      "callout_text": "Se o código tiver de correr num motor muito antigo, sem suporte a lookbehind, uma alternativa prática é capturar o valor com um grupo de captura normal e remover depois, em JavaScript, a parte do texto que não interessa (por exemplo, com replace ou slice).",
+      "table_headers": [
+        "Assercão",
+        "Sintaxe",
+        "Exige que..."
+      ],
+      "table_rows": [
+        [
+          "Lookahead positivo",
+          "(?=...)",
+          "o padrão exista logo a seguir"
+        ],
+        [
+          "Lookahead negativo",
+          "(?!...)",
+          "o padrão não exista logo a seguir"
+        ],
+        [
+          "Lookbehind positivo",
+          "(?<=...)",
+          "o padrão exista logo antes"
+        ],
+        [
+          "Lookbehind negativo",
+          "(?<!...)",
+          "o padrão não exista logo antes"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "⏪",
+          "text": "(?<=...) exige algo antes da posição atual"
+        },
+        {
+          "icon": "🚫",
+          "text": "(?<!...) exige que isso NÃO exista antes"
+        },
+        {
+          "icon": "✂️",
+          "text": "O texto do lookbehind não entra na correspondência"
+        }
+      ]
+    },
+    {
+      "heading": "Backreferences: repetir o que já foi capturado",
+      "body": [
+        "Uma referência inversa, ou backreference, permite exigir dentro do próprio padrão que uma parte do texto seja exatamente igual ao que um grupo já capturou antes, na mesma correspondência. A sintaxe \\1, \\2, etc. refere-se ao grupo de captura numerado correspondente; com grupos nomeados, usa-se \\k<nome>. Isto é diferente de $1 ou $<nome> usados na string de substituição do replace(): o backreference é avaliado durante a própria correspondência do padrão, enquanto $1 é usado depois, só para construir o texto de saída.",
+        "O caso de uso mais comum é detetar palavras ou sequências repetidas consecutivamente, um erro de digitação frequente. Outro uso típico é verificar estruturas simétricas, como uma tag de abertura e de fecho com o mesmo nome: captura-se o nome da tag uma vez e exige-se, mais à frente no padrão, que a tag de fecho use exatamente esse mesmo nome, através de um backreference nomeado. Vale notar que \\w cobre apenas letras sem acento, dígitos e underscore; para captar corretamente palavras com acentos ou cedilha em português, seria necessário recorrer a outra classe de caracteres."
+      ],
+      "code": "// Backreference numerada: detetar palavras repetidas consecutivamente\nconst frase = \"ela foi foi ao mercado e comprou comprou pão\";\nconst repetidas = frase.match(/\\b(\\w+)\\s+\\1\\b/gi);\nconsole.log(repetidas); // [\"foi foi\", \"comprou comprou\"]\n\n// Backreference nomeada: validar que a tag de fecho corresponde à de abertura\nconst regexTag = /^<(?<tag>\\w+)>.*<\\/\\k<tag>>$/;\nconsole.log(regexTag.test(\"<b>texto</b>\")); // true\nconsole.log(regexTag.test(\"<b>texto</i>\")); // false",
+      "callout_kind": "DICA",
+      "callout_text": "Não confundir \\1 dentro do padrão (exige o mesmo texto capturado, durante a correspondência) com $1 dentro da string de substituição de replace() (insere o texto capturado no resultado final). São mecanismos diferentes, embora relacionados.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔁",
+          "text": "\\1 exige o mesmo texto que o grupo 1 capturou"
+        },
+        {
+          "icon": "🏷️",
+          "text": "\\k<nome> faz o mesmo com grupos nomeados"
+        },
+        {
+          "icon": "🆚",
+          "text": "Diferente de $1 usado no replace()"
+        }
+      ]
+    },
+    {
+      "heading": "Padrões práticos: email, telefone e data (e os seus limites)",
+      "body": [
+        "É tentador tratar regex como a solução definitiva para validar dados de formulários, mas vale a pena perceber onde ficam os seus limites reais. Um endereço de email, segundo a especificação RFC 5322, permite uma quantidade de casos-limite tão grande que uma regex completa e correta seria impraticável de escrever e de manter; na prática, usa-se uma versão simplificada, que cobre bem a esmagadora maioria dos endereços reais mas rejeita ou aceita alguns casos incomuns. Um número de telefone tem um problema semelhante à escala do país: cada país tem os seus próprios formatos e indicativos, e uma regex pensada para números portugueses não serve para validar números de outros países.",
+        "Uma data no formato DD/MM/AAAA pode ser validada quanto ao formato com uma regex que restrinja o dia a 01-31 e o mês a 01-12, mas isso não garante que a data exista de facto: a regex não sabe que fevereiro tem 28 ou 29 dias, nem que abril, junho, setembro e novembro têm apenas 30. Validar a forma do texto e validar o significado dos dados são problemas diferentes; a regex resolve bem o primeiro, mas o segundo exige lógica adicional em JavaScript, por exemplo construindo um objeto Date e confirmando que os valores devolvidos coincidem com os que foram introduzidos."
+      ],
+      "code": "// Email: cobre a esmagadora maioria dos casos reais, mas não é a especificação completa (RFC 5322)\nconst regexEmail = /^[\\w.+-]+@[\\w-]+\\.[a-zA-Z]{2,}$/;\nconsole.log(regexEmail.test(\"ana.silva@exemplo.pt\")); // true\nconsole.log(regexEmail.test(\"nome@dominio\"));              // false — falta o domínio de topo\n\n// Telefone português: fixo ou móvel, com indicativo internacional opcional\nconst regexTelefonePT = /^(?:\\+351\\s?)?[29]\\d{8}$/;\nconsole.log(regexTelefonePT.test(\"+351 912345678\")); // true\nconsole.log(regexTelefonePT.test(\"212345678\"));       // true\n\n// Data DD/MM/AAAA: valida o FORMATO, não valida o calendário\nconst regexDataPT = /^(?<dia>0[1-9]|[12]\\d|3[01])\\/(?<mes>0[1-9]|1[0-2])\\/(?<ano>\\d{4})$/;\nconsole.log(regexDataPT.test(\"31/02/2026\")); // true — mas 31 de fevereiro não existe!",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Nenhuma destas regex substitui uma validação séria: para email, o mais fiável é aceitar um formato razoável e depois confirmar por envio de mensagem; para telefone, os formatos variam por país; para datas, valide sempre o calendário à parte (por exemplo, com o objeto Date), porque a regex não sabe que fevereiro não tem 31 dias.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📧",
+          "text": "Regex de email só valida a forma, não a existência"
+        },
+        {
+          "icon": "📅",
+          "text": "Datas: regex valida formato, não o calendário"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Complementar sempre com verificação real"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Extrair uma data com grupos nomeados",
+      "difficulty": "Iniciante",
+      "statement": "Escreva uma expressão regular com grupos nomeados dia, mes e ano que corresponda a datas no formato DD/MM/AAAA (por exemplo, \"16/09/2026\"). Use-a para extrair os três valores da string \"16/09/2026\" e construa, com uma template literal, uma nova string no formato \"ano-mes-dia\" (ou seja, \"2026-09-16\").",
+      "hint": "Os grupos nomeados usam a sintaxe (?<nome>...) e, depois de uma correspondência bem-sucedida, ficam acessíveis em match.groups.nome.",
+      "solution_code": "const regexData = /^(?<dia>\\d{2})\\/(?<mes>\\d{2})\\/(?<ano>\\d{4})$/;\nconst match = \"16/09/2026\".match(regexData);\nconst { dia, mes, ano } = match.groups;\nconst resultado = `${ano}-${mes}-${dia}`;\nconsole.log(resultado); // \"2026-09-16\"",
+      "solution_explanation": "A regex usa três grupos nomeados para isolar cada componente da data dentro de um único padrão. Depois de obter a correspondência, os valores são desestruturados diretamente de match.groups e recombinados numa template literal no formato pedido, sem depender de índices numéricos."
+    },
+    {
+      "title": "Validar uma password com lookaheads",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função validarPassword(password) que devolva true apenas se a password tiver pelo menos 8 caracteres, pelo menos uma letra minúscula, pelo menos uma letra maiúscula e pelo menos um dígito. A validação tem de ser feita com uma única expressão regular, usando lookaheads, sem recorrer a várias expressões regulares separadas nem a ciclos manuais sobre os caracteres.",
+      "hint": "Coloque vários lookaheads seguidos logo no início do padrão, todos a avaliar a partir da mesma posição (posição 0), e só depois exija o comprimento mínimo com .{8,}$.",
+      "solution_code": "function validarPassword(password) {\n  const regra = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}$/;\n  return regra.test(password);\n}\n\nconsole.log(validarPassword(\"Abcdef12\")); // true\nconsole.log(validarPassword(\"abcdef12\")); // false (sem maiúscula)\nconsole.log(validarPassword(\"Abc123\"));   // false (menos de 8 caracteres)",
+      "solution_explanation": "Cada lookahead é avaliado a partir do início da string, sem consumir caracteres, o que permite impor três condições independentes em qualquer ordem no texto. Só depois de todas as condições serem satisfeitas é que .{8,}$ garante o comprimento mínimo de 8 caracteres."
+    },
+    {
+      "title": "Isolar valores positivos com lookbehind",
+      "difficulty": "Avancado",
+      "statement": "Tem o seguinte texto de transações: \"Saldo: 1200€, despesa: -350€, depósito: 900€, ajuste: -75€\". Escreva uma expressão regular que capture apenas os valores positivos (ou seja, sequências de dígitos seguidas de € que NÃO estejam precedidas por um sinal de menos) e use-a com match() e a flag g para obter um array com esses valores como strings.",
+      "hint": "Utilize um lookbehind negativo (?<!-) juntamente com uma fronteira de palavra \\b antes do grupo que captura os dígitos, para garantir que a correspondência começa mesmo no início da sequência de dígitos (e não a meio de um número negativo). A seguir aos dígitos, acrescente um lookahead (?=€) que exija o símbolo de euro sem o incluir na correspondência.",
+      "solution_code": "const texto = \"Saldo: 1200€, despesa: -350€, depósito: 900€, ajuste: -75€\";\nconst positivos = texto.match(/(?<!-)\\b\\d+(?=€)/g);\nconsole.log(positivos); // [\"1200\", \"900\"]",
+      "solution_explanation": "A fronteira de palavra \\b garante que a correspondência só pode começar no início de uma sequência de dígitos; sem ela, o motor de regex conseguiria começar a corresponder a meio de um número negativo (por exemplo, \"50\" dentro de \"-350\"), produzindo um resultado errado. Combinada com o lookbehind negativo (?<!-), essa fronteira garante que só os números não precedidos por um sinal de menos são considerados. O lookahead (?=€) garante ainda que só se capturam sequências de dígitos imediatamente seguidas do símbolo de euro, sem incluir esse símbolo no resultado."
+    },
+    {
+      "title": "Detetar palavras repetidas consecutivamente",
+      "difficulty": "Avancado",
+      "statement": "Escreva uma função temPalavraRepetida(texto) que devolva true se existir alguma palavra imediatamente repetida no texto (por exemplo, \"foi foi\" ou \"O o\"), ignorando maiúsculas/minúsculas e permitindo um ou mais espaços em branco entre as duas ocorrências. A função deve devolver false se não houver nenhuma repetição consecutiva. Resolva usando uma expressão regular com backreference.",
+      "hint": "Capture a palavra num grupo (nomeado ou numerado) e exija, mais à frente no padrão, através de \\1 ou \\k<nome>, que apareça exatamente o mesmo texto outra vez; use a flag i para ignorar maiúsculas/minúsculas.",
+      "solution_code": "function temPalavraRepetida(texto) {\n  const regex = /\\b(?<palavra>\\w+)\\s+\\k<palavra>\\b/i;\n  return regex.test(texto);\n}\n\nconsole.log(temPalavraRepetida(\"ela foi foi ao mercado\")); // true\nconsole.log(temPalavraRepetida(\"O o carro é novo\"));       // true (case-insensitive)\nconsole.log(temPalavraRepetida(\"isto é um teste simples\")); // false",
+      "solution_explanation": "O grupo nomeado palavra captura a primeira ocorrência da palavra, e \\k<palavra> exige que, depois de um ou mais espaços, apareça exatamente o mesmo texto capturado. A flag i faz com que essa comparação entre o texto capturado e o backreference ignore diferenças de maiúsculas/minúsculas."
+    }
+  ],
+  "summary": [
+    "Grupos de captura (...) guardam texto correspondido; grupos não-capturantes (?:...) apenas agrupam sem gerar entradas no resultado",
+    "Grupos nomeados (?<nome>...) tornam os padrões mais legíveis, acessíveis via match.groups ou no replace com $<nome>",
+    "Lookahead ((?=...) e (?!...)) e lookbehind ((?<=...) e (?<!...)) impõem condições sem consumir caracteres, permitindo combinar várias exigências na mesma posição",
+    "Backreferences (\\1, \\k<nome>) exigem que uma parte do texto se repita exatamente como foi capturada antes, dentro da própria correspondência",
+    "Padrões práticos como email, telefone e data validam o formato, não o significado real dos dados — é preciso complementar com outras verificações",
+    "Regex é uma ferramenta poderosa mas deve usar-se com critério: padrões complexos merecem comentários que expliquem a intenção"
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para o Módulo 07",
+  "next_label": "Aula 01 → Event Loop, Call Stack e Filas de Tarefas",
+  "_stage": "revisao"
+}

@@ -1,0 +1,223 @@
+{
+  "module_num": "03",
+  "module_title": "Funções",
+  "module_dir": "03-Funcoes",
+  "lesson_num": "02",
+  "lesson_slug": "Parametros-Default-Rest-e-Arguments",
+  "kind": "aula",
+  "title": "Parâmetros Default, Rest e o objeto arguments",
+  "filename_base": "02-Parametros-Default-Rest-e-Arguments",
+  "subtitle": "Parâmetros default, rest e arguments: como lidar com número variável de argumentos.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Definir parâmetros com valor por omissão e saber exatamente quando são aplicados.",
+    "Usar rest parameters para aceitar um número variável de argumentos como array verdadeiro.",
+    "Perceber o objeto arguments em funções tradicionais e porque não existe nas arrow functions.",
+    "Usar spread ao chamar funções para expandir arrays (ou outros iteráveis) em argumentos separados.",
+    "Combinar corretamente parâmetros obrigatórios, com default e rest na mesma assinatura de função."
+  ],
+  "sections": [
+    {
+      "heading": "Parâmetros com valor por omissão",
+      "body": [
+        "Desde o ES2015, uma função pode declarar um valor por omissão para qualquer parâmetro escrevendo o sinal de igual seguido de uma expressão logo na assinatura, como em function saudar(nome, saudacao = \"Olá\"). Isto substitui o padrão antigo de escrever saudacao = saudacao || \"Olá\" dentro do corpo da função, que tinha o problema de tratar qualquer valor falso como se fosse ausente.",
+        "O valor por omissão só entra em ação quando o argumento correspondente é rigorosamente undefined, quer porque não foi passado nenhum argumento nessa posição, quer porque foi passado explicitamente undefined. Qualquer outro valor, incluindo null, 0, uma string vazia ou false, é considerado um valor válido e o default não é usado.",
+        "O valor por omissão pode ser qualquer expressão, não apenas um literal, incluindo chamadas a funções ou referências a parâmetros anteriores na mesma lista, já que estes já estão em scope quando os seguintes são avaliados. Essa expressão é recalculada em cada chamada da função, nunca apenas uma vez."
+      ],
+      "code": "function criarConvite(nome, mensagem = `Olá, ${nome}! Bem-vindo(a).`) {\n  return mensagem;\n}\n\nconsole.log(criarConvite(\"Sofia\"));\nconsole.log(criarConvite(\"Sofia\", \"Já cá estás outra vez?\"));\n\nfunction calcularTotal(preco, quantidade = 1, total = preco * quantidade) {\n  return total;\n}\n\nconsole.log(calcularTotal(10)); // 10\nconsole.log(calcularTotal(10, 3)); // 30\n\nfunction multiplicar(a, b = 2) {\n  return a * b;\n}\n\nconsole.log(multiplicar(5, undefined)); // 10, usa o default\nconsole.log(multiplicar(5, null)); // 0, null conta como valor válido",
+      "callout_kind": "ATENCAO",
+      "callout_text": "O valor por omissão só é usado quando o argumento é undefined. Passar null, 0 ou uma string vazia conta como um valor deliberado e o default nunca é aplicado nesses casos.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔧",
+          "text": "b = valor substitui b || valor"
+        },
+        {
+          "icon": "🎯",
+          "text": "Só ativa com undefined, nunca com null"
+        },
+        {
+          "icon": "🔁",
+          "text": "Expressão reavaliada em cada chamada"
+        }
+      ]
+    },
+    {
+      "heading": "Rest parameters: capturar argumentos extra",
+      "body": [
+        "A sintaxe de três pontos antes do último parâmetro, como em function somar(...numeros), recolhe todos os argumentos que sobram depois dos parâmetros nomeados e junta-os num autêntico array. Ao contrário do antigo objeto arguments, um rest parameter é um Array real, pelo que todos os métodos de Array (indexação, length, iteração com for-of, entre outros) estão disponíveis diretamente, sem qualquer conversão prévia.",
+        "Uma função pode combinar parâmetros nomeados normais com um rest parameter no final, como em function registarLog(nivel, ...mensagens), em que nivel recebe sempre o primeiro argumento e mensagens recolhe todos os restantes. Só pode existir um rest parameter por função, e este tem obrigatoriamente de ser o último da lista; se não houver argumentos a mais, o rest parameter fica simplesmente como um array vazio, nunca undefined."
+      ],
+      "code": "function somarTudo(...numeros) {\n  let total = 0;\n  for (const numero of numeros) {\n    total += numero;\n  }\n  return total;\n}\n\nconsole.log(somarTudo(1, 2, 3, 4)); // 10\nconsole.log(somarTudo()); // 0, o array fica vazio\n\nfunction registarLog(nivel, ...mensagens) {\n  console.log(`[${nivel}]`, ...mensagens);\n}\n\nregistarLog(\"erro\", \"Falha ao ligar à base de dados\", \"tentativa 3\");",
+      "callout_kind": "NOTA",
+      "callout_text": "Só pode existir um rest parameter por função, e tem de ser sempre o último da lista de parâmetros.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "...args vira um array verdadeiro"
+        },
+        {
+          "icon": "🧮",
+          "text": "Usa-se logo com for-of ou métodos de array"
+        },
+        {
+          "icon": "⛔",
+          "text": "Tem de ser o último parâmetro"
+        }
+      ]
+    },
+    {
+      "heading": "O objeto arguments e as arrow functions",
+      "body": [
+        "Dentro de qualquer função declarada com a palavra-chave function, existe automaticamente um objeto especial chamado arguments, que dá acesso a todos os argumentos realmente passados na chamada, independentemente do número de parâmetros nomeados na assinatura. O arguments é indexável como um array (arguments[0], arguments.length), mas é apenas array-like: não é uma instância de Array, pelo que não tem diretamente métodos como map, filter ou reduce, sendo necessário convertê-lo primeiro, por exemplo com Array.from(arguments) ou com o spread [...arguments].",
+        "As arrow functions, ao contrário das funções tradicionais, não criam o seu próprio objeto arguments. Se se escrever arguments dentro de uma arrow function, o motor de JavaScript procura esse identificador no scope léxico envolvente, ou seja, na função tradicional mais próxima que a contenha, o que quase nunca é o que se pretende, e lança ReferenceError caso não exista nenhuma função tradicional à volta. Por esta razão, rest parameters são hoje a forma recomendada de aceitar um número variável de argumentos em qualquer função, arrow ou tradicional."
+      ],
+      "code": "function antiga(a, b) {\n  console.log(arguments.length, arguments[0], arguments[1]);\n  console.log(Array.isArray(arguments)); // false, é array-like, não um array\n\n  const comoArray = [...arguments];\n  console.log(Array.isArray(comoArray)); // true, agora já é um array real\n}\n\nantiga(3, 4, 5); // arguments contém os 3 valores, mesmo só havendo 2 parâmetros\n\nfunction envolvente() {\n  const seta = () => {\n    console.log(arguments); // não é o arguments da seta; é o de envolvente\n  };\n  seta();\n}\n\nenvolvente(10, 20);",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Dentro de uma arrow function, arguments nunca é próprio: refere-se ao da função tradicional mais próxima que a envolve, ou lança ReferenceError se não existir nenhuma. Use sempre rest parameters em arrow functions.",
+      "table_headers": [
+        "Característica",
+        "arguments",
+        "Rest parameters (...args)"
+      ],
+      "table_rows": [
+        [
+          "Tipo do valor",
+          "Objeto array-like",
+          "Array verdadeiro"
+        ],
+        [
+          "Métodos como map ou filter",
+          "Só depois de converter",
+          "Disponíveis diretamente"
+        ],
+        [
+          "Existe em arrow functions",
+          "Não (usa o da função envolvente)",
+          "Sim"
+        ],
+        [
+          "Contém só os argumentos extra",
+          "Não, contém todos os argumentos",
+          "Sim, apenas os que sobram"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🗃️",
+          "text": "arguments só existe em funções tradicionais"
+        },
+        {
+          "icon": "🚫",
+          "text": "Arrow functions não têm arguments próprio"
+        },
+        {
+          "icon": "🔄",
+          "text": "Prefira sempre rest parameters"
+        }
+      ]
+    },
+    {
+      "heading": "Spread ao chamar funções",
+      "body": [
+        "O spread usa a mesma sintaxe de três pontos do rest, mas com o efeito inverso: em vez de recolher vários argumentos num array dentro dos parâmetros, expande um array (ou qualquer outro iterável, como uma string ou um Set) em argumentos individuais no local da chamada. Por isso, ...numeros significa coisas diferentes consoante apareça na lista de parâmetros de uma função ou na lista de argumentos de uma chamada.",
+        "Isto é particularmente útil para passar o conteúdo de um array a funções que esperam argumentos separados, como Math.max ou Math.min, para encaminhar dados já guardados num array para uma função com parâmetros nomeados, ou para reencaminhar um rest parameter recebido numa função para outra chamada. O spread também pode ser combinado livremente com argumentos normais na mesma chamada."
+      ],
+      "code": "const precos = [19.9, 45, 12.5, 8];\nconsole.log(Math.max(...precos)); // 45\n\nfunction apresentar(nome, idade, cidade) {\n  return `${nome}, ${idade} anos, ${cidade}`;\n}\n\nconst dadosPessoa = [\"Rita\", 34, \"Porto\"];\nconsole.log(apresentar(...dadosPessoa)); // \"Rita, 34 anos, Porto\"\n\nfunction multiplicarTres(a, b, c) {\n  return a * b * c;\n}\n\nconsole.log(multiplicarTres(...[2, 3], 5)); // 30, spread combinado com argumento normal\n\nfunction logComPrefixo(prefixo, ...resto) {\n  console.log(prefixo, ...resto); // reencaminha o rest recolhido, com spread\n}\n\nlogComPrefixo(\"INFO\", \"Utilizador autenticado\", \"sessão iniciada\");",
+      "callout_kind": "DICA",
+      "callout_text": "Rest e spread partilham a sintaxe de três pontos, mas em direções opostas: rest recolhe argumentos num array dentro dos parâmetros, spread expande um array em argumentos separados na chamada.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "➡️",
+          "text": "...array expande em argumentos separados"
+        },
+        {
+          "icon": "🔃",
+          "text": "Oposto do rest, mesma sintaxe"
+        },
+        {
+          "icon": "🧩",
+          "text": "Combina-se com argumentos normais"
+        }
+      ]
+    },
+    {
+      "heading": "Ordem de parâmetros: obrigatórios, default e rest",
+      "body": [
+        "O rest parameter tem sempre de ser o último elemento na lista de parâmetros de uma função; colocá-lo antes de outro parâmetro é um erro de sintaxe detetado já na análise do código, antes mesmo de a função ser executada. Os parâmetros com valor por omissão, por outro lado, podem tecnicamente aparecer em qualquer posição, mas isso não significa que seja boa prática.",
+        "Colocar um parâmetro com default antes de um parâmetro obrigatório obriga quem chama a função a passar undefined explicitamente nessa posição sempre que quiser fornecer os parâmetros seguintes mantendo o default, o que torna as chamadas confusas. A ordem idiomática, e mais fácil de ler e de usar, é sempre: primeiro os parâmetros obrigatórios, depois os parâmetros com valor por omissão, e por fim, se existir, um único rest parameter."
+      ],
+      "code": "// ordem recomendada: obrigatórios, depois default, depois rest\nfunction criarProduto(nome, preco = 0, ...etiquetas) {\n  return { nome, preco, etiquetas };\n}\n\nconsole.log(criarProduto(\"Caderno\", 3.5, \"escritório\", \"papelaria\"));\n\n// ordem pouco prática: default antes de um parâmetro obrigatório\nfunction exemploConfuso(unidade = \"un\", quantidade) {\n  return `${quantidade} ${unidade}`;\n}\n\nconsole.log(exemploConfuso(undefined, 5)); // é preciso passar undefined à força\n\n// isto dá SyntaxError: o rest parameter tem de ser sempre o último\n// function invalido(...resto, ultimo) {}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Um rest parameter antes de outro parâmetro é sempre SyntaxError. A ordem correta é: parâmetros obrigatórios, depois os com valor por omissão, e o rest, se existir, no fim.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "1️⃣",
+          "text": "Obrigatórios primeiro"
+        },
+        {
+          "icon": "2️⃣",
+          "text": "Default a seguir"
+        },
+        {
+          "icon": "🏁",
+          "text": "Rest sempre por último"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Saudação personalizada",
+      "difficulty": "Iniciante",
+      "statement": "Escreva uma função chamada criarSaudacao que recebe dois parâmetros: nome (obrigatório) e saudacao (que deve valer \"Olá\" quando não for indicado). A função deve devolver a string resultante de juntar saudacao, uma vírgula, um espaço, nome e um ponto de exclamação (por exemplo: \"Olá, Marta!\"). Teste-a chamando-a uma vez só com o nome, e outra vez com nome e uma saudação diferente, por exemplo \"Bom dia\".",
+      "hint": "Dê ao segundo parâmetro um valor diretamente na assinatura da função, usando o sinal de igual (=), em vez de o verificar manualmente dentro do corpo da função.",
+      "solution_code": "function criarSaudacao(nome, saudacao = \"Olá\") {\n  return `${saudacao}, ${nome}!`;\n}\n\nconsole.log(criarSaudacao(\"Marta\")); // \"Olá, Marta!\"\nconsole.log(criarSaudacao(\"Marta\", \"Bom dia\")); // \"Bom dia, Marta!\"",
+      "solution_explanation": "O valor por omissão \"Olá\" só é usado quando saudacao não é passado, ou seja, fica undefined. Ao indicar um segundo argumento na chamada, este substitui completamente o default, e o template literal junta os dois parâmetros na frase final."
+    },
+    {
+      "title": "Média com número variável de notas",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função calcularMedia que aceita um número qualquer de notas (zero ou mais) através de rest parameters, e devolve a média aritmética arredondada a duas casas decimais. Se a função for chamada sem qualquer nota, deve devolver 0 em vez de gerar NaN ou lançar um erro.",
+      "hint": "Comece por tratar o caso de o array de notas estar vazio antes de calcular qualquer divisão, para não acabar com uma divisão por zero.",
+      "solution_code": "function calcularMedia(...notas) {\n  if (notas.length === 0) return 0;\n\n  let soma = 0;\n  for (const nota of notas) {\n    soma += nota;\n  }\n\n  return Number((soma / notas.length).toFixed(2));\n}\n\nconsole.log(calcularMedia(14, 16, 12)); // 14\nconsole.log(calcularMedia(18, 15)); // 16.5\nconsole.log(calcularMedia()); // 0",
+      "solution_explanation": "O rest parameter ...notas recolhe todas as notas passadas num array verdadeiro, sobre o qual se pode iterar com for-of. A verificação do comprimento antes da divisão evita o NaN que resultaria de dividir zero por zero quando a função é chamada sem argumentos."
+    },
+    {
+      "title": "Da função arguments para rest parameters",
+      "difficulty": "Intermedio",
+      "statement": "Tem a seguinte função tradicional:\n\nfunction somarTudo() {\n  let total = 0;\n  for (let i = 0; i < arguments.length; i++) {\n    total += arguments[i];\n  }\n  return total;\n}\n\nReescreva-a como uma arrow function com o mesmo nome (somarTudo) e o mesmo comportamento, mas usando rest parameters em vez do objeto arguments. Depois, num comentário no código, explique porque é que não seria possível manter o uso de arguments dentro dessa arrow function.",
+      "hint": "Lembre-se que uma arrow function não tem o seu próprio objeto arguments; pense no que a lista de parâmetros lhe permite fazer diretamente.",
+      "solution_code": "const somarTudo = (...numeros) => {\n  let total = 0;\n  for (const numero of numeros) {\n    total += numero;\n  }\n  return total;\n};\n\nconsole.log(somarTudo(1, 2, 3)); // 6\n\n// Porque não dava para usar \"arguments\" dentro desta arrow function:\n// arrow functions não criam o seu próprio arguments; se tentássemos usá-lo aqui,\n// o motor iria procurar o arguments da função tradicional mais próxima que a\n// envolvesse (ou lançaria ReferenceError, caso a arrow estivesse no topo do\n// ficheiro, fora de qualquer função). Por isso, rest parameters são a única\n// forma correta de aceitar um número variável de argumentos numa arrow function.",
+      "solution_explanation": "A arrow function usa ...numeros para recolher os argumentos num array real e um for-of para os somar, substituindo por completo o objeto arguments. Isto funciona porque as arrow functions não têm arguments próprio, herdando o da função envolvente ou lançando erro, pelo que rest parameters são a alternativa moderna obrigatória neste caso."
+    },
+    {
+      "title": "Fatura com desconto por omissão e itens de várias origens",
+      "difficulty": "Avancado",
+      "statement": "Escreva uma função criarFatura(cliente, taxaIva = 0.23, ...itens) que recebe o nome de um cliente, uma taxa de IVA (0.23 por omissão) e um número variável de itens, cada um deles um objeto no formato { nome, preco }. A função deve devolver um objeto { cliente, subtotal, totalComIva, itens }, em que subtotal é a soma dos preços de todos os itens e totalComIva é esse subtotal com a taxa de IVA aplicada, arredondado a duas casas decimais. Tendo dois arrays já existentes, itensLoja1 e itensLoja2, use spread para os juntar numa única chamada a criarFatura, mantendo a taxa de IVA por omissão (0.23).",
+      "hint": "Pense na ordem correta dos parâmetros (obrigatório, depois default, depois rest); como taxaIva vem antes do rest, pode ter de passar algo explícito nessa posição para chegar aos itens sem perder o default.",
+      "solution_code": "function criarFatura(cliente, taxaIva = 0.23, ...itens) {\n  let subtotal = 0;\n  for (const item of itens) {\n    subtotal += item.preco;\n  }\n\n  const totalComIva = subtotal * (1 + taxaIva);\n\n  return {\n    cliente,\n    subtotal,\n    totalComIva: Number(totalComIva.toFixed(2)),\n    itens\n  };\n}\n\nconst itensLoja1 = [\n  { nome: \"Teclado\", preco: 45 },\n  { nome: \"Rato\", preco: 20 }\n];\nconst itensLoja2 = [{ nome: \"Monitor\", preco: 150 }];\n\n// undefined mantém o valor por omissão de taxaIva (0.23) enquanto se chega ao rest\nconst fatura = criarFatura(\"Cliente Final\", undefined, ...itensLoja1, ...itensLoja2);\n\nconsole.log(fatura);\n// { cliente: \"Cliente Final\", subtotal: 215, totalComIva: 264.45, itens: [...] }",
+      "solution_explanation": "A função combina um parâmetro obrigatório (cliente), um default (taxaIva) e um rest (...itens) na ordem idiomática. Como taxaIva está antes do rest, é preciso passar undefined explicitamente para conservar o default ao mesmo tempo que se fornecem itens, e o spread (...itensLoja1, ...itensLoja2) expande os dois arrays numa única lista de argumentos que o rest volta a recolher."
+    }
+  ],
+  "summary": [
+    "Um parâmetro com valor por omissão só é ativado quando o argumento correspondente é undefined; null, 0 ou string vazia contam como valores válidos.",
+    "O valor por omissão pode ser qualquer expressão, incluindo referências a parâmetros anteriores na mesma lista, e é recalculado em cada chamada.",
+    "Rest parameters (...nome) recolhem os argumentos restantes num array verdadeiro, com todos os métodos de Array disponíveis de imediato.",
+    "O objeto arguments só existe em funções tradicionais; arrow functions não têm o seu próprio, usando o da função envolvente ou lançando erro.",
+    "Spread (...) numa chamada expande um array, ou outro iterável, em argumentos separados; é o inverso do rest, com a mesma sintaxe.",
+    "O rest parameter tem de ser sempre o último parâmetro da função; a ordem idiomática é obrigatórios, depois default, depois rest."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 03",
+  "next_label": "Aula 03 → Escopo, Hoisting e Closures",
+  "_stage": "revisao"
+}

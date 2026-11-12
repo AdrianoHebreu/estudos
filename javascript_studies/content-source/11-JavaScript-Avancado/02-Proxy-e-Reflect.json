@@ -1,0 +1,253 @@
+{
+  "module_num": "11",
+  "module_title": "JavaScript Avançado",
+  "module_dir": "11-JavaScript-Avancado",
+  "lesson_num": "02",
+  "lesson_slug": "Proxy-e-Reflect",
+  "kind": "aula",
+  "title": "Proxy e Reflect",
+  "filename_base": "02-Proxy-e-Reflect",
+  "subtitle": "Intercete acessos a objetos com Proxy e mantenha o comportamento correto com Reflect",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Compreender o que é um Proxy e como criar um com new Proxy(alvo, handler)",
+    "Implementar as traps get, set, has e deleteProperty",
+    "Aplicar Proxy a casos reais: validação automática, logging de acessos e propriedades virtuais/computadas",
+    "Perceber o papel do Reflect como o par funcional das operações internas da linguagem",
+    "Saber porque (e como) usar Reflect dentro das traps de um Proxy para preservar o comportamento correto"
+  ],
+  "sections": [
+    {
+      "heading": "O que é um Proxy",
+      "body": [
+        "Um Proxy é um objeto que envolve outro objeto, chamado alvo, e permite intercetar e redefinir operações fundamentais realizadas sobre esse objeto, como ler uma propriedade, escrever nela, testar a sua existência com o operador in ou removê-la com delete. O construtor recebe dois argumentos: o alvo, que é o objeto real, e o handler, um objeto com funções chamadas traps, uma para cada operação que se quer intercetar. Se uma trap não estiver definida no handler, a operação segue simplesmente o comportamento padrão do alvo, sem qualquer interferência.",
+        "O Proxy não modifica o objeto original; cria um objeto intermediário que o código externo passa a usar em vez do alvo diretamente. É esta capacidade de intercetar operações básicas, de forma transparente para quem usa o objeto, que torna o Proxy a base de mecanismos como reatividade em frameworks, validação automática de dados e criação de APIs mais expressivas sem alterar as estruturas subjacentes."
+      ],
+      "code": "const pessoa = { nome: 'Ana', idade: 30 };\n\nconst handler = {\n  get(alvo, propriedade) {\n    console.log(`A ler a propriedade \"${String(propriedade)}\"`);\n    return alvo[propriedade];\n  }\n};\n\nconst pessoaVigiada = new Proxy(pessoa, handler);\n\nconsole.log(pessoaVigiada.nome);  // regista o acesso e devolve 'Ana'\nconsole.log(pessoaVigiada.idade); // regista o acesso e devolve 30",
+      "callout_kind": "NOTA",
+      "callout_text": "O parâmetro propriedade recebido pelas traps pode ser uma string ou um Symbol. Usar String(propriedade) antes de o inserir numa mensagem evita erros de conversão quando a propriedade é um Symbol.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎭",
+          "text": "Proxy envolve um objeto alvo"
+        },
+        {
+          "icon": "🪤",
+          "text": "Handler define \"traps\" por operação"
+        },
+        {
+          "icon": "🔄",
+          "text": "Sem trap definida, comportamento é o padrão"
+        }
+      ]
+    },
+    {
+      "heading": "Validação automática com a trap set",
+      "body": [
+        "A trap set intercepta qualquer atribuição feita a uma propriedade do objeto, incluindo através de =, de Object.assign ou de outras formas de escrita. É o local ideal para validar dados antes de os aceitar, rejeitando ou lançando um erro quando o valor não cumpre as regras do domínio, sem que o código que usa o objeto precise de chamar funções de validação manualmente em cada atribuição.",
+        "A trap recebe o alvo, o nome da propriedade, o novo valor e o recetor (receiver), e deve devolver um valor booleano: true indica sucesso, enquanto false sinaliza falha na atribuição. Em modo estrito, que é o padrão em módulos ES e em classes, devolver false sem lançar um erro explícito faz com que o motor de JavaScript lance automaticamente um TypeError."
+      ],
+      "code": "function criarContaValidada(saldoInicial) {\n  const estado = { saldo: saldoInicial };\n\n  return new Proxy(estado, {\n    set(alvo, propriedade, valor) {\n      if (propriedade === 'saldo') {\n        if (typeof valor !== 'number' || Number.isNaN(valor)) {\n          throw new TypeError('O saldo tem de ser um número válido.');\n        }\n        if (valor < 0) {\n          throw new RangeError('O saldo não pode ser negativo.');\n        }\n      }\n      alvo[propriedade] = valor;\n      return true;\n    }\n  });\n}\n\nconst conta = criarContaValidada(100);\nconta.saldo = 250; // aceite\n// conta.saldo = -50; // lança RangeError automaticamente",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Se a trap set não devolver true (ou outro valor truthy), atribuições em modo estrito lançam um TypeError automaticamente, mesmo que a trap não lance nenhum erro explícito.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "✅",
+          "text": "trap set valida antes de gravar"
+        },
+        {
+          "icon": "🚫",
+          "text": "Rejeita valores inválidos automaticamente"
+        },
+        {
+          "icon": "🔒",
+          "text": "Aplica-se a toda a atribuição, sem código extra"
+        }
+      ]
+    },
+    {
+      "heading": "Controlar o in e o delete: has e deleteProperty",
+      "body": [
+        "A trap has intercepta o operador in, permitindo controlar quais propriedades parecem existir num objeto, incluindo ocultar propriedades internas ou simular propriedades que não estão fisicamente definidas no alvo. A trap deleteProperty intercepta o operador delete, permitindo impedir a remoção de propriedades protegidas ou executar lógica adicional, como registo ou limpeza, sempre que uma propriedade é removida.",
+        "Tal como a trap set, ambas devolvem um valor booleano que indica o sucesso da operação, embora nestes casos lançar um erro explícito seja normalmente mais útil do que devolver false, porque dá uma mensagem clara sobre o motivo da rejeição. Usadas em conjunto, permitem esconder por completo certos campos de um objeto do ponto de vista do código que o consome, mesmo que esses campos existam de facto no alvo."
+      ],
+      "code": "const dadosInternos = { id: 1, nome: 'Catálogo', _tokenInterno: 'abc123' };\n\nconst catalogo = new Proxy(dadosInternos, {\n  has(alvo, propriedade) {\n    if (String(propriedade).startsWith('_')) return false; // esconde campos privados\n    return propriedade in alvo;\n  },\n  deleteProperty(alvo, propriedade) {\n    if (propriedade === 'id') {\n      throw new Error('A propriedade \"id\" não pode ser removida.');\n    }\n    delete alvo[propriedade];\n    return true;\n  }\n});\n\nconsole.log('_tokenInterno' in catalogo); // false, mesmo existindo no alvo\nconsole.log('nome' in catalogo);           // true\ndelete catalogo.nome; // permitido\n// delete catalogo.id; // lança erro",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🕵️",
+          "text": "has controla o operador in"
+        },
+        {
+          "icon": "🗑️",
+          "text": "deleteProperty controla o delete"
+        },
+        {
+          "icon": "🙈",
+          "text": "Permite esconder campos internos"
+        }
+      ]
+    },
+    {
+      "heading": "Propriedades virtuais e computadas",
+      "body": [
+        "Uma das aplicações mais úteis do Proxy é criar propriedades que não existem fisicamente no alvo, mas são calculadas dinamicamente na trap get a partir de outros dados existentes. Isto evita ter de manter campos derivados sincronizados manualmente, como um nomeCompleto calculado a partir de primeiroNome e ultimoNome, porque o valor é sempre recalculado no momento exato do acesso, a partir da fonte de verdade.",
+        "A trap get é também o local ideal para definir valores por omissão inteligentes, devolvendo uma resposta específica quando a propriedade pedida não existe no alvo, em vez do undefined habitual."
+      ],
+      "code": "const utilizadorBase = { primeiroNome: 'Maria', ultimoNome: 'Santos' };\n\nconst utilizador = new Proxy(utilizadorBase, {\n  get(alvo, propriedade, receiver) {\n    if (propriedade === 'nomeCompleto') {\n      return `${alvo.primeiroNome} ${alvo.ultimoNome}`;\n    }\n    if (typeof propriedade === 'string' && !(propriedade in alvo)) {\n      return `(propriedade \"${propriedade}\" não definida)`;\n    }\n    return Reflect.get(alvo, propriedade, receiver);\n  }\n});\n\nconsole.log(utilizador.nomeCompleto); // 'Maria Santos', calculado na hora\nutilizadorBase.ultimoNome = 'Costa';\nconsole.log(utilizador.nomeCompleto); // 'Maria Costa', já reflete a mudança\nconsole.log(utilizador.morada);       // '(propriedade \"morada\" não definida)'",
+      "callout_kind": "DICA",
+      "callout_text": "Propriedades virtuais evitam bugs de sincronização: em vez de guardar um valor derivado e lembrar de o atualizar sempre que a origem muda, calcula-se sempre a partir dos dados reais no momento do acesso.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧮",
+          "text": "Propriedades calculadas em tempo real"
+        },
+        {
+          "icon": "🔗",
+          "text": "Sem necessidade de sincronizar manualmente"
+        },
+        {
+          "icon": "📦",
+          "text": "Valores por omissão para campos inexistentes"
+        }
+      ]
+    },
+    {
+      "heading": "Caso de uso real: logging transparente de acessos",
+      "body": [
+        "Um caso de uso comum e prático do Proxy é a auditoria transparente de um objeto: registar cada leitura ou escrita sem alterar uma única linha do código que já usa esse objeto. Isto é especialmente útil em depuração, quando não se percebe onde ou quando uma propriedade está a ser alterada de forma inesperada, ou em contextos onde é preciso manter um registo de auditoria sobre alterações a dados sensíveis.",
+        "A técnica combina as traps get e set num único handler reutilizável, que pode ser aplicado a qualquer objeto sem que este saiba, de todo, que está a ser vigiado."
+      ],
+      "code": "function comLogging(alvo, nomeObjeto = 'objeto') {\n  return new Proxy(alvo, {\n    get(alvoReal, propriedade, receiver) {\n      const valor = Reflect.get(alvoReal, propriedade, receiver);\n      console.log(`[${nomeObjeto}] leitura de \"${String(propriedade)}\" ->`, valor);\n      return valor;\n    },\n    set(alvoReal, propriedade, valor, receiver) {\n      console.log(`[${nomeObjeto}] escrita em \"${String(propriedade)}\": ${alvoReal[propriedade]} -> ${valor}`);\n      return Reflect.set(alvoReal, propriedade, valor, receiver);\n    }\n  });\n}\n\nconst config = comLogging({ tema: 'claro', idioma: 'pt-PT' }, 'config');\nconfig.idioma;        // regista leitura\nconfig.tema = 'escuro'; // regista escrita: 'claro' -> 'escuro'",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Experimente adicionar uma trap deleteProperty à função comLogging que também regista remoções, reaproveitando o mesmo padrão de log usado em get e set.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📋",
+          "text": "Regista leituras e escritas automaticamente"
+        },
+        {
+          "icon": "🔍",
+          "text": "Útil para depuração e auditoria"
+        },
+        {
+          "icon": "♻️",
+          "text": "Handler reutilizável para qualquer objeto"
+        }
+      ]
+    },
+    {
+      "heading": "Reflect: o par funcional das operações internas",
+      "body": [
+        "Reflect é um objeto incorporado que expõe, como funções normais, as mesmas operações internas que a linguagem executa nos bastidores ao ler uma propriedade, atribuir um valor, testar in ou apagar uma propriedade. Onde antes só existiam operadores e sintaxe, como obj.prop, prop in obj ou delete obj.prop, o Reflect oferece o equivalente em forma de chamada de função: Reflect.get(obj, 'prop'), Reflect.has(obj, 'prop'), Reflect.deleteProperty(obj, 'prop'), entre outras. Cada método do Reflect corresponde exatamente a uma trap possível de um handler de Proxy, e isso não é coincidência.",
+        "Dentro de uma trap, a razão para usar Reflect em vez de aceder diretamente ao alvo, como em alvo[propriedade] = valor, é preservar o comportamento por omissão correto, incluindo casos subtis como o valor de this em getters e setters herdados, e o encadeamento correto quando um proxy envolve outro proxy. O parâmetro receiver, passado às traps get e set e reencaminhado para Reflect.get e Reflect.set, garante que, se o alvo tiver um getter ou setter definido num protótipo, o this dentro desse getter continua a ser o proxy e não o alvo, mantendo o comportamento consistente em cadeias de herança e de proxies aninhados."
+      ],
+      "code": "const alvo = {\n  _valor: 10,\n  get valor() {\n    return this._valor;\n  },\n  set valor(novo) {\n    this._valor = novo;\n  }\n};\n\nconst handlerCorreto = {\n  get(alvoReal, propriedade, receiver) {\n    console.log(`get: ${String(propriedade)}`);\n    return Reflect.get(alvoReal, propriedade, receiver); // preserva o \"this\" correto\n  },\n  set(alvoReal, propriedade, valor, receiver) {\n    console.log(`set: ${String(propriedade)} = ${valor}`);\n    return Reflect.set(alvoReal, propriedade, valor, receiver);\n  }\n};\n\nconst proxyCorreto = new Proxy(alvo, handlerCorreto);\nproxyCorreto.valor = 99; // \"this\" no setter é o proxy, não o alvo\nconsole.log(proxyCorreto.valor);",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Usar alvo[propriedade] = valor diretamente numa trap set, em vez de Reflect.set(alvo, propriedade, valor, receiver), pode quebrar getters e setters herdados e o comportamento correto de proxies aninhados. Reflect é a forma robusta e recomendada de reencaminhar a operação.",
+      "table_headers": [
+        "Operação da linguagem",
+        "Equivalente em Reflect",
+        "Trap correspondente no Proxy"
+      ],
+      "table_rows": [
+        [
+          "obj.prop / obj[prop]",
+          "Reflect.get(obj, prop, receiver)",
+          "get"
+        ],
+        [
+          "obj.prop = valor",
+          "Reflect.set(obj, prop, valor, receiver)",
+          "set"
+        ],
+        [
+          "prop in obj",
+          "Reflect.has(obj, prop)",
+          "has"
+        ],
+        [
+          "delete obj.prop",
+          "Reflect.deleteProperty(obj, prop)",
+          "deleteProperty"
+        ],
+        [
+          "Object.keys(obj) / for...in",
+          "Reflect.ownKeys(obj)",
+          "ownKeys"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🪞",
+          "text": "Reflect espelha as operações internas da linguagem"
+        },
+        {
+          "icon": "🤝",
+          "text": "Cada método corresponde a uma trap"
+        },
+        {
+          "icon": "🧵",
+          "text": "Garante o \"this\" e o encadeamento corretos"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Vigiar leituras com uma trap get",
+      "difficulty": "Iniciante",
+      "statement": "Crie um objeto simples chamado livro com as propriedades titulo e autor. De seguida, crie um Proxy à volta de livro cujo handler tenha uma trap get que, antes de devolver o valor, escreva no console uma mensagem no formato Acesso a \"propriedade\" e só depois devolva o valor original dessa propriedade. Teste acedendo a livro.titulo e livro.autor através do proxy e confirme que os valores devolvidos estão corretos e que a mensagem de log aparece para cada acesso.",
+      "hint": "Lembre-se que a trap get recebe (alvo, propriedade) e deve terminar por devolver alvo[propriedade]; não é preciso Reflect neste exercício simples porque não há herança envolvida.",
+      "solution_code": "const livro = { titulo: 'Duna', autor: 'Frank Herbert' };\n\nconst livroVigiado = new Proxy(livro, {\n  get(alvo, propriedade) {\n    console.log(`Acesso a \"${String(propriedade)}\"`);\n    return alvo[propriedade];\n  }\n});\n\nconsole.log(livroVigiado.titulo); // Acesso a \"titulo\" / Duna\nconsole.log(livroVigiado.autor);  // Acesso a \"autor\" / Frank Herbert",
+      "solution_explanation": "A trap get intercepta qualquer leitura de propriedade feita através do proxy, permitindo executar uma ação extra (o log) antes de devolver o valor original vindo do alvo. Como o objeto alvo não é alterado, o comportamento normal do objeto mantém-se intacto para quem usa livroVigiado."
+    },
+    {
+      "title": "Validação automática de um produto",
+      "difficulty": "Intermedio",
+      "statement": "Crie um objeto produto com as propriedades nome (string), preco (number) e stock (number, inteiro). Envolva-o num Proxy cuja trap set valide as atribuições: ao atribuir preco, o valor tem de ser um número maior que zero, caso contrário deve lançar um RangeError; ao atribuir stock, o valor tem de ser um número (senão lança TypeError) e tem de ser um inteiro maior ou igual a zero (senão lança RangeError). Atribuições a nome devem ser sempre aceites sem validação. A trap tem de devolver true para todas as atribuições válidas.",
+      "hint": "Use Number.isInteger para validar que stock é inteiro, e trate cada propriedade num bloco if separado dentro da mesma função set, terminando sempre com alvo[propriedade] = valor e return true.",
+      "solution_code": "const produto = { nome: 'Teclado', preco: 50, stock: 10 };\n\nconst produtoValidado = new Proxy(produto, {\n  set(alvo, propriedade, valor) {\n    if (propriedade === 'preco') {\n      if (typeof valor !== 'number' || Number.isNaN(valor)) {\n        throw new TypeError('O preço tem de ser um número.');\n      }\n      if (valor <= 0) {\n        throw new RangeError('O preço tem de ser maior que zero.');\n      }\n    }\n\n    if (propriedade === 'stock') {\n      if (typeof valor !== 'number' || Number.isNaN(valor)) {\n        throw new TypeError('O stock tem de ser um número.');\n      }\n      if (!Number.isInteger(valor) || valor < 0) {\n        throw new RangeError('O stock tem de ser um inteiro maior ou igual a zero.');\n      }\n    }\n\n    alvo[propriedade] = valor;\n    return true;\n  }\n});\n\nprodutoValidado.preco = 75; // aceite\nprodutoValidado.nome = 'Teclado mecânico'; // aceite, sem validação\n// produtoValidado.stock = -3; // lançaria RangeError\n// produtoValidado.preco = 'grátis'; // lançaria TypeError",
+      "solution_explanation": "A trap set corre para toda e qualquer atribuição feita através do proxy, e permite decidir por propriedade que regras aplicar antes de gravar o valor no alvo. Lançar o erro específico (TypeError para tipo errado, RangeError para valor fora do intervalo permitido) distingue claramente cada falha, e o caso de sucesso termina sempre com return true."
+    },
+    {
+      "title": "Esconder campos internos e proteger uma remoção",
+      "difficulty": "Intermedio",
+      "statement": "Tem um objeto sessaoUtilizador com as propriedades id, nome e _tokenSessao (um campo interno que não deve ser visível para código externo). Crie um Proxy chamado sessaoPublica à volta deste objeto cujo handler: (a) na trap has, devolva false para qualquer propriedade cujo nome (convertido a string) comece por sublinhado, mesmo que essa propriedade exista de facto no objeto, e devolva o resultado normal do operador in para as restantes propriedades; (b) na trap deleteProperty, impeça a remoção da propriedade id lançando um Error com a mensagem Não é possível remover o id., e permita a remoção normal de qualquer outra propriedade. Teste com o operador in e com delete.",
+      "hint": "A trap has recebe (alvo, propriedade); para o comportamento por omissão nas restantes propriedades, pode usar o próprio operador propriedade in alvo dentro da função.",
+      "solution_code": "const sessaoUtilizador = { id: 42, nome: 'Rita', _tokenSessao: 'xyz987' };\n\nconst sessaoPublica = new Proxy(sessaoUtilizador, {\n  has(alvo, propriedade) {\n    if (String(propriedade).startsWith('_')) {\n      return false;\n    }\n    return propriedade in alvo;\n  },\n  deleteProperty(alvo, propriedade) {\n    if (propriedade === 'id') {\n      throw new Error('Não é possível remover o id.');\n    }\n    delete alvo[propriedade];\n    return true;\n  }\n});\n\nconsole.log('_tokenSessao' in sessaoPublica); // false, mesmo existindo no alvo\nconsole.log('nome' in sessaoPublica); // true\n\ndelete sessaoPublica.nome; // permitido\n// delete sessaoPublica.id; // lançaria Error",
+      "solution_explanation": "A trap has substitui o resultado do operador in apenas para propriedades que começam por sublinhado, ocultando-as do código que consulta o proxy sem apagar nem alterar o campo real no alvo. A trap deleteProperty intercepta o delete e aplica uma regra de negócio (proteger o id), lançando um erro em vez de simplesmente devolver false, o que dá uma mensagem mais clara ao chamador."
+    },
+    {
+      "title": "Fábrica de proxies só de leitura com Reflect",
+      "difficulty": "Avancado",
+      "statement": "Escreva uma função tornarSomenteLeitura(objeto, excecoes = []) que devolve um Proxy à volta de objeto onde: (1) qualquer tentativa de atribuir uma propriedade que não esteja na lista excecoes lança um TypeError com a mensagem A propriedade \"X\" é só de leitura. (substituindo X pelo nome real); (2) propriedades cujo nome esteja em excecoes podem ser atribuídas normalmente; (3) qualquer tentativa de delete sobre qualquer propriedade lança um TypeError com a mensagem Não é permitido remover propriedades.; (4) a leitura de propriedades continua a funcionar normalmente, incluindo o comportamento correto de um getter herdado do protótipo, usando Reflect nas traps para garantir isso. Teste com um objeto cujo protótipo tenha um getter que lê um campo interno do próprio objeto.",
+      "hint": "Nas traps set e deleteProperty que decidirem rejeitar a operação, lance o erro diretamente (não basta devolver false, porque o objetivo é dar uma mensagem clara); na trap get, use Reflect.get(alvo, propriedade, receiver) para preservar o this correto perante o getter herdado.",
+      "solution_code": "function tornarSomenteLeitura(objeto, excecoes = []) {\n  return new Proxy(objeto, {\n    get(alvo, propriedade, receiver) {\n      return Reflect.get(alvo, propriedade, receiver);\n    },\n    set(alvo, propriedade, valor, receiver) {\n      if (!excecoes.includes(propriedade)) {\n        throw new TypeError(`A propriedade \"${String(propriedade)}\" é só de leitura.`);\n      }\n      return Reflect.set(alvo, propriedade, valor, receiver);\n    },\n    deleteProperty() {\n      throw new TypeError('Não é permitido remover propriedades.');\n    }\n  });\n}\n\nconst baseConfig = {\n  _tema: 'claro',\n  get tema() {\n    return this._tema;\n  }\n};\n\nconst config = tornarSomenteLeitura(baseConfig, ['_tema']);\n\nconsole.log(config.tema); // 'claro', o getter herdado funciona através do Reflect.get\nconfig._tema = 'escuro';  // permitido, está nas exceções\nconsole.log(config.tema); // 'escuro'\n\n// config.tema = 'azul'; // lançaria TypeError, \"tema\" não está nas exceções\n// delete config._tema;  // lançaria TypeError",
+      "solution_explanation": "A trap get usa Reflect.get com o receiver correto para que o getter tema, ao aceder a this._tema, veja this como o proxy e não como o alvo, garantindo consistência mesmo havendo herança de protótipo. As traps set e deleteProperty implementam a política de acesso lançando erros descritivos, exceto para as propriedades explicitamente listadas em excecoes, que são reencaminhadas para o alvo através de Reflect.set."
+    }
+  ],
+  "summary": [
+    "Um Proxy envolve um objeto alvo e intercepta operações fundamentais através de traps definidas num handler.",
+    "As traps get, set, has e deleteProperty controlam, respetivamente, a leitura, a escrita, o operador in e o delete.",
+    "Casos de uso reais incluem validação automática de atribuições, logging e auditoria de acessos, e propriedades virtuais calculadas dinamicamente.",
+    "Reflect expõe como funções as mesmas operações internas da linguagem, com um método correspondente a cada trap possível de um Proxy.",
+    "Dentro de uma trap, usar Reflect em vez de aceder diretamente ao alvo preserva o comportamento correto de getters/setters herdados e de proxies encadeados, através do parâmetro receiver.",
+    "Uma trap ausente do handler não bloqueia nada: a operação segue simplesmente o comportamento padrão do alvo."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 03",
+  "next_label": "Aula 03 → WeakMap, WeakSet e Gestão de Memória",
+  "_stage": "autoria"
+}

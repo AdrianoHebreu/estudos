@@ -1,0 +1,324 @@
+{
+  "module_num": "09",
+  "module_title": "Módulos, tsconfig e Declarações",
+  "module_dir": "09-Modulos-tsconfig-e-Declaracoes",
+  "lesson_num": "01",
+  "lesson_slug": "Modulos-em-TypeScript",
+  "kind": "aula",
+  "title": "Módulos em TypeScript",
+  "filename_base": "01-Modulos-em-TypeScript",
+  "subtitle": "import type, reexportação e módulos ambiente: o que o TypeScript acrescenta aos módulos",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Perceber que import e export movem tipos exatamente como movem valores, sem sintaxe nova",
+    "Usar import type e export type para marcar uma importação ou exportação como só-tipo",
+    "Medir, no JavaScript compilado, quando um import desaparece sozinho e quando só desaparece por ir marcado como type",
+    "Distinguir as três formas de reexportação entre módulos: nomeada, com asterisco e só-tipo",
+    "Descrever a forma de um módulo ambiente com declare module, e saber onde essa declaração é válida",
+    "Explicar porque um ficheiro sem import nem export partilha o âmbito global com outros ficheiros do mesmo programa"
+  ],
+  "sections": [
+    {
+      "heading": "Tipos também atravessam a fronteira de um módulo",
+      "body": [
+        "Em JavaScript, export e import só movem valores entre ficheiros. Em TypeScript, a mesma sintaxe também move tipos: uma interface ou um type alias exportam-se e importam-se exatamente como uma função ou uma constante, sem nenhuma palavra nova para aprender.",
+        "O exemplo abaixo exporta uma interface, um type alias e uma função do mesmo ficheiro, todos com a palavra export à frente, como se fossem três exports comuns de JavaScript. Esta fronteira de módulo funciona de forma idêntica para tipos e para valores; o que muda ao longo desta aula é o que acontece a cada um deles depois de compilado, já que um tipo não tem nada para correr em runtime."
+      ],
+      "code": "// Um tipo exporta-se e importa-se com a mesma sintaxe que qualquer valor: e essa a\n// novidade que o TypeScript acrescenta ao sistema de modulos que ja se conhece.\nexport interface Utilizador {\n  nome: string;\n  ativo: boolean;\n}\n\nexport type Papel = 'admin' | 'editor' | 'leitor';\n\nexport function criarUtilizador(nome: string, papel: Papel): Utilizador {\n  return { nome, ativo: papel !== 'leitor' };\n}\n\nconst u = criarUtilizador('Rita', 'admin');\nconsole.log(u); // { nome: 'Rita', ativo: true }",
+      "callout_kind": "DICA",
+      "callout_text": "É comum reunir os tipos partilhados de um módulo no topo do ficheiro, antes das funções e classes que os usam: quem lê fica logo a saber que forma de dados aquele módulo manipula.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🌉",
+          "text": "export e import servem tanto para tipos como para valores"
+        },
+        {
+          "icon": "🧩",
+          "text": "Uma interface exporta-se com a mesma palavra export"
+        },
+        {
+          "icon": "🏷️",
+          "text": "type também é uma declaração exportável normal"
+        },
+        {
+          "icon": "🔍",
+          "text": "A diferença aparece só depois de compilar"
+        }
+      ]
+    },
+    {
+      "heading": "import type e export type: fora do JavaScript emitido",
+      "body": [
+        "import type e export type marcam explicitamente que uma importação ou exportação só interessa ao verificador de tipos e deve desaparecer por completo do JavaScript gerado. Uma interface ou um type alias já não existem em runtime de qualquer forma; esta marca importa sobretudo quando o nome importado podia ser um valor (uma classe, uma função) mas, naquele ficheiro em concreto, só é usado como tipo.",
+        "Este comportamento foi medido diretamente no JavaScript emitido, fora dos exemplos desta aula porque exige dois ficheiros reais em disco: com a configuração usada ao longo deste curso (sem isolatedModules nem verbatimModuleSyntax), um import comum usado só como tipo já é removido automaticamente do JavaScript, com ou sem a palavra type. A marca só se torna obrigatória, e não apenas estilística, quando uma dessas duas opções está ligada — medido com verbatimModuleSyntax: importar normalmente uma interface usada só como tipo, sem a marcar, deixa de compilar (um erro real, TS1484, não um comportamento silencioso).",
+        "O código abaixo mostra as duas formas do lado de quem exporta: export type { Config } para um export inteiramente só-tipo de algo já declarado, e o modificador type dentro de uma lista de export comum, export { type Metadata, obterVersao }, para misturar um tipo e um valor na mesma instrução. Do lado de quem importa, as formas equivalentes são import type { X } from './modulo' e import { type X, valor } from './modulo' — ambas apagadas do JavaScript emitido."
+      ],
+      "code": "interface Config {\n  nome: string;\n}\n\nfunction criarConfig(nome: string): Config {\n  return { nome };\n}\n\ninterface Metadata {\n  versao: number;\n}\n\nfunction obterVersao(): Metadata {\n  return { versao: 2 };\n}\n\n// export type marca este export como so-tipo: nao produz nada no JavaScript emitido.\nexport type { Config };\n\n// Modificador \"type\" por especificador: mistura um tipo e um valor na mesma linha.\nexport { type Metadata, obterVersao };\n\nexport { criarConfig };\n\nconsole.log(criarConfig('producao')); // { nome: 'producao' }\nconsole.log(obterVersao()); // { versao: 2 }\n\n// Config foi exportado como so-tipo porque nunca existiu como valor: uma interface\n// nao gera nenhum construtor nem nenhuma funcao em runtime. O erro abaixo e so de\n// compilacao, mas o try/catch protege a demonstracao caso o exemplo corra mesmo assim.\ntry {\n  // @ts-expect-error Config e so um tipo: nao existe nenhum valor com este nome em runtime\n  new Config();\n} catch (erro) {\n  console.log('nem chega a compilar; se corresse, falharia em runtime:', (erro as Error).message);\n}",
+      "callout_kind": "NOTA",
+      "callout_text": "Duas opções do tsconfig afinam esta fronteira: isolatedModules, pensada para bundlers que compilam cada ficheiro sem ver os outros, e verbatimModuleSyntax, que torna import type obrigatório sempre que um import só é usado como tipo. Ambas ficam para as próximas aulas deste módulo.",
+      "table_headers": [
+        "Forma",
+        "O que faz",
+        "Sobrevive à compilação?"
+      ],
+      "table_rows": [
+        [
+          "import { X } from './m'",
+          "Importa X; o compilador decide sozinho se X é só tipo",
+          "Só se X for usado como valor"
+        ],
+        [
+          "import type { X } from './m'",
+          "Declara explicitamente que X só interessa ao tipo",
+          "Nunca"
+        ],
+        [
+          "export type { X }",
+          "Expõe ou reexporta X só como tipo",
+          "Nunca"
+        ],
+        [
+          "export { type X, valor }",
+          "Mistura um tipo e um valor no mesmo export",
+          "Só a parte valor"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "import type / export type: nada disto chega ao JS"
+        },
+        {
+          "icon": "🤖",
+          "text": "O compilador já elimina tipos sozinho, sem a palavra type"
+        },
+        {
+          "icon": "🚧",
+          "text": "verbatimModuleSyntax torna a marca obrigatória"
+        },
+        {
+          "icon": "🔀",
+          "text": "type por especificador mistura tipo e valor num export"
+        }
+      ]
+    },
+    {
+      "heading": "Reexportação: juntar módulos sem trazer tudo para o âmbito",
+      "body": [
+        "Um ficheiro barril costuma só reunir peças de outros módulos, sem precisar de as usar localmente. O TypeScript suporta as três formas já conhecidas de ES modules, mais uma pensada para tipos. export { nome } from './modulo' escolhe nomes concretos. export * from './modulo' reexporta tudo o que esse módulo exporta publicamente. export type { X } from './modulo' reexporta só o tipo X, sem deixar rasto nenhum do módulo de origem no JavaScript emitido pelo ficheiro que reexporta.",
+        "As três formas foram validadas num pequeno projeto à parte: um ficheiro a exportar uma interface, uma função e uma constante, três ficheiros diferentes a reexportar cada um por uma das três formas, e um quinto ficheiro a consumir os três. Todos compilaram e correram sem problemas com o TypeScript 5.9.3 em modo strict. Como a reexportação só faz sentido a atravessar pelo menos dois ficheiros, fica descrita aqui em prosa e na tabela, em vez de forçada a um único bloco de código que não representaria a mesma coisa.",
+        "Também se confirmou, no mesmo projeto, que export * from './modulo' nunca reexporta um export default desse módulo — só os exports nomeados. Uma tentativa de importar um valor por omissão através do ficheiro barril falha a compilar, mesmo que o módulo de origem tenha mesmo um export default."
+      ],
+      "code": "",
+      "callout_kind": "ATENCAO",
+      "callout_text": "export * from './modulo' nunca reexporta o export default desse módulo, só os exports nomeados. Um export default tem de ser reexportado à parte, com um nome explícito.",
+      "table_headers": [
+        "Sintaxe",
+        "O que reexporta",
+        "Aparece no JavaScript emitido?"
+      ],
+      "table_rows": [
+        [
+          "export { funcao } from './modulo'",
+          "Só o nome funcao, sem o importar para uso local",
+          "Sim, se funcao for um valor"
+        ],
+        [
+          "export * from './modulo'",
+          "Tudo o que ./modulo exporta publicamente (exceto default)",
+          "Só a parte que forem valores"
+        ],
+        [
+          "export type { Config } from './modulo'",
+          "Só o tipo Config, nunca um valor",
+          "Nunca"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🪣",
+          "text": "export {x} from escolhe nomes específicos"
+        },
+        {
+          "icon": "🌊",
+          "text": "export * from reexporta tudo o que for nomeado"
+        },
+        {
+          "icon": "🏷️",
+          "text": "export type {x} from reexporta só o tipo"
+        },
+        {
+          "icon": "🚫",
+          "text": "export * nunca inclui um export default"
+        }
+      ]
+    },
+    {
+      "heading": "Módulos ambiente: descrever a forma de um módulo sem ficheiro real",
+      "body": [
+        "declare module, seguido do nome de um pacote entre aspas e de um bloco de chavetas, descreve a forma de um módulo sem existir nenhum ficheiro real por trás — nem um .ts, nem (por agora, antes da Aula 04) um .d.ts. Dentro das chavetas usam-se as mesmas declarações de sempre, como export function, export interface ou export const: por exemplo, um módulo fictício leitor-csv podia declarar lá dentro uma função exportada ler, que recebe um caminho de ficheiro e devolve um array de linhas. É exatamente o que alguém que importasse desse pacote receberia, sem uma única linha de implementação.",
+        "Testar este mecanismo mostrou uma regra de colocação que não é óbvia: esta declaração só funciona como declaração nova quando o ficheiro que a contém não tem nenhum import nem export próprio — ou seja, quando esse ficheiro é, para o TypeScript, um script no âmbito global, não um módulo. Assim que o mesmo ficheiro ganha um import ou um export, ainda que para outra coisa qualquer, o compilador passa a interpretar declare module 'nome' { ... } como uma tentativa de aumentar um módulo já existente com esse nome — e, como esse módulo não existe em mais lado nenhum do programa compilado, falha com um erro explícito.",
+        "É por isto que, num projeto real, esta declaração costuma viver num ficheiro dedicado, normalmente com a extensão .d.ts e sem imports nem exports próprios: sendo um script, as suas declarações ambiente ficam visíveis a partir de qualquer outro ficheiro do projeto, sem que ninguém precise de o importar. Esse padrão de ficheiro dedicado, e o ecossistema de pacotes de tipos construído à volta dele, é o assunto da Aula 04 deste módulo."
+      ],
+      "code": "",
+      "callout_kind": "ATENCAO",
+      "callout_text": "declare module só funciona como declaração nova dentro de um ficheiro sem nenhum import ou export. Com qualquer um dos dois já presente no mesmo ficheiro, o compilador passa a tratá-lo como aumento de um módulo já existente e recusa-o com o erro TS2664, porque esse módulo não existe em mais lado nenhum do programa.",
+      "table_headers": [
+        "Situação do ficheiro",
+        "O que declare module faz nesse ficheiro"
+      ],
+      "table_rows": [
+        [
+          "Sem nenhum import ou export (um script)",
+          "Declara um módulo ambiente novo, visível no resto do programa"
+        ],
+        [
+          "Com pelo menos um import ou export (um módulo)",
+          "Tenta aumentar um módulo já existente; falha se esse módulo não existir"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🫥",
+          "text": "declare module descreve um módulo sem código real"
+        },
+        {
+          "icon": "📄",
+          "text": "Só funciona sozinho num ficheiro sem import/export"
+        },
+        {
+          "icon": "💥",
+          "text": "Com import/export no mesmo ficheiro, vira TS2664"
+        },
+        {
+          "icon": "📁",
+          "text": "Na prática vive num .d.ts próprio, sem imports (Aula 04)"
+        }
+      ]
+    },
+    {
+      "heading": "Script ou módulo: o que decide o âmbito de um ficheiro",
+      "body": [
+        "Um ficheiro TypeScript sem nenhum import nem export não é tratado como módulo nenhum: é um script. Cada const, function ou class declarada no topo desse ficheiro entra no único âmbito global do programa inteiro — o mesmo âmbito global que qualquer outro ficheiro em modo script, no mesmo programa, também partilha.",
+        "A consequência prática: dois ficheiros em modo script que declarem, por acaso, um identificador de topo com o mesmo nome colidem, tal como se tivessem sido colados no mesmo ficheiro — o compilador acusa uma redeclaração, apesar de nenhum dos dois importar nada do outro. Basta um ficheiro ganhar um único import ou export, mesmo o export {} vazio de propósito do exemplo abaixo, para passar a módulo, com âmbito próprio, e a colisão desaparece.",
+        "Isto foi medido diretamente: dois ficheiros, cada um só com const resultado = ...; sem nenhum import nem export, deram os dois o erro TS2451 (redeclaração de uma variável de âmbito de bloco) ao compilarem juntos. Bastou dar a um dos dois um export {} no início para os dois compilarem sem qualquer erro. Como essa colisão só aparece a atravessar dois ficheiros, fica descrita aqui em texto; o bloco de código abaixo mostra, num único ficheiro, a transição de script para módulo, sem que o comportamento observável desse ficheiro sozinho mude nada."
+      ],
+      "code": "// Ate aqui, sem import nem export, este ficheiro e um script: as suas declaracoes de\n// topo entram no ambito global do programa.\nfunction saudar(nome: string): string {\n  return `Ola, ${nome}`;\n}\nconsole.log(saudar('Ana')); // Ola, Ana\n\n// A partir daqui o ficheiro passa a ter um export (mesmo vazio): torna-se um modulo,\n// com o seu proprio ambito. As declaracoes de topo deixam de ir para o ambito global\n// partilhado com outros ficheiros do mesmo programa.\nexport {};",
+      "callout_kind": "NOTA",
+      "callout_text": "É por isto que um ficheiro pensado para declarar tipos partilhados por todo o projeto (Aula 04) tem de evitar imports e exports: só assim as suas declarações ficam visíveis em qualquer ficheiro do programa, sem que ninguém precise de as importar.",
+      "table_headers": [
+        "",
+        "Script (sem import/export)",
+        "Módulo (com import ou export)"
+      ],
+      "table_rows": [
+        [
+          "Âmbito das declarações de topo",
+          "Global, partilhado entre ficheiros",
+          "Privado a esse ficheiro"
+        ],
+        [
+          "Pode colidir com outro ficheiro do programa?",
+          "Sim, por nome duplicado",
+          "Não"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🌍",
+          "text": "Sem import/export, um ficheiro é um script global"
+        },
+        {
+          "icon": "💥",
+          "text": "Dois scripts com o mesmo nome de topo colidem"
+        },
+        {
+          "icon": "🔒",
+          "text": "export {} torna o ficheiro num módulo com âmbito próprio"
+        },
+        {
+          "icon": "🧭",
+          "text": "Zero comportamento visível muda dentro do próprio ficheiro"
+        }
+      ]
+    },
+    {
+      "heading": "Juntar tudo: tipos, valores e a fronteira do módulo",
+      "body": [
+        "Ao escrever um módulo vale a pena decidir logo quais das suas declarações se destinam a sobreviver à compilação (funções, classes, constantes de runtime) e quais só existem para descrever formas (interfaces, type aliases). Marcar as segundas com export type, ou com o modificador type por especificador, deixa essa decisão escrita no próprio código, em vez de implícita.",
+        "O exemplo abaixo junta várias peças desta aula num módulo pequeno e realista: um tipo e uma interface locais, exportados só como tipo, e uma função, exportada como valor normal.",
+        "O resto deste módulo do curso continua exatamente esta fronteira: a Aula 02 mostra as opções do tsconfig.json que decidem target, module e outras escolhas do projeto; a Aula 03 abre o modo strict opção a opção; a Aula 04 volta aos módulos ambiente para pacotes sem tipos próprios e ao ecossistema @types; a Aula 05 fecha com isolatedModules e a integração com bundlers e outras ferramentas."
+      ],
+      "code": "interface Pedido {\n  id: number;\n  total: number;\n}\n\nfunction calcularTotalComIva(pedido: Pedido, taxa: number): number {\n  return pedido.total * (1 + taxa);\n}\n\nexport type { Pedido };\nexport { calcularTotalComIva };\n\nconst pedido: Pedido = { id: 1, total: 100 };\nconsole.log(calcularTotalComIva(pedido, 0.2)); // 120",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Pegue num ficheiro já escrito num módulo anterior deste curso e identifique quais das suas declarações exportadas são só tipos. Reescreva os exports separando-os com export type ou o modificador type por especificador, e confirme que o comportamento em runtime não muda.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧱",
+          "text": "Tipos e valores no mesmo módulo, cada um com o seu export"
+        },
+        {
+          "icon": "✅",
+          "text": "export type documenta a intenção no próprio código"
+        },
+        {
+          "icon": "🔮",
+          "text": "A seguir: tsconfig.json e as opções que decidem tudo isto"
+        },
+        {
+          "icon": "🗂️",
+          "text": "Reexports reais, módulos ambiente e strict ainda vêm aí"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Tipo e valor no mesmo ficheiro",
+      "difficulty": "Iniciante",
+      "statement": "Crie uma interface Produto com nome (string) e preco (number). Escreva uma função formatarProduto(p: Produto): string que devolva algo como \"Caneca - 8.5€\". Exporte a interface como só-tipo e a função como valor normal. Crie um produto e mostre o resultado da função com console.log.",
+      "hint": "Uma interface nunca existe em runtime, por isso convém marcar a sua exportação com export type; a função continua a exportar-se normalmente, sem essa marca.",
+      "solution_code": "interface Produto {\n  nome: string;\n  preco: number;\n}\n\nfunction formatarProduto(p: Produto): string {\n  return `${p.nome} - ${p.preco}€`;\n}\n\nexport type { Produto };\nexport { formatarProduto };\n\nconst caneca: Produto = { nome: 'Caneca', preco: 8.5 };\nconsole.log(formatarProduto(caneca)); // Caneca - 8.5€",
+      "solution_explanation": "Produto é exportado com export type porque uma interface nunca gera código em runtime; formatarProduto é exportada normalmente, porque é ela quem sobrevive à compilação e é chamada de facto. O console.log confirma que a função funciona sem depender de nada do tipo em tempo de execução."
+    },
+    {
+      "title": "Um só export para tipo e valor",
+      "difficulty": "Intermedio",
+      "statement": "Declare um type Estado com os literais 'ativo' e 'inativo'. Escreva uma função verificarEstado(e: Estado): boolean que devolva true só quando e for 'ativo'. Exporte os dois numa única instrução export, usando o modificador type só à frente de Estado. Chame a função com os dois valores possíveis e mostre os resultados.",
+      "hint": "O modificador type aplica-se a um nome dentro das chavetas do export, não à instrução toda: export { type Nome1, nome2 }.",
+      "solution_code": "type Estado = 'ativo' | 'inativo';\n\nfunction verificarEstado(e: Estado): boolean {\n  return e === 'ativo';\n}\n\nexport { type Estado, verificarEstado };\n\nconsole.log(verificarEstado('ativo')); // true\nconsole.log(verificarEstado('inativo')); // false",
+      "solution_explanation": "O modificador type marca só Estado como só-tipo dentro da mesma instrução de export que exporta verificarEstado como valor normal; no JavaScript emitido, só verificarEstado sobrevive. Os dois console.log confirmam os dois ramos da comparação e === 'ativo'."
+    },
+    {
+      "title": "Script vira módulo",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função dobrar(n: number): number sem qualquer import nem export no ficheiro, chame-a e mostre o resultado com console.log. Depois, sem alterar o resto do código, acrescente ao fim do ficheiro um export {} vazio. Num comentário, explique por que essa linha evita uma colisão de nomes caso outro ficheiro do mesmo programa também declare, sem import nem export, um identificador de topo igual a um deste ficheiro.",
+      "hint": "Um ficheiro sem import nem export partilha o âmbito global com qualquer outro ficheiro nas mesmas condições; export {} força o ficheiro a ser um módulo, com âmbito próprio.",
+      "solution_code": "// Ate aqui, sem import nem export, este ficheiro e um script: as suas declaracoes de\n// topo entrariam no ambito global partilhado com qualquer outro ficheiro do mesmo\n// programa que tambem nao tivesse import nem export.\nfunction dobrar(n: number): number {\n  return n * 2;\n}\nconst resultado = dobrar(21);\nconsole.log(resultado); // 42\n\n// Se outro ficheiro do mesmo programa declarasse tambem \"const resultado\" sem\n// nenhum import/export, o compilador recusaria por redeclaracao no ambito global.\n// A linha seguinte resolve isso: torna este ficheiro um modulo, com ambito proprio,\n// sem mudar nada no comportamento observavel deste ficheiro sozinho.\nexport {};",
+      "solution_explanation": "Sem import nem export, dobrar e resultado entrariam no âmbito global do programa, podendo colidir com um identificador de mesmo nome noutro ficheiro também em modo script. O export {} no fim não muda o comportamento deste ficheiro sozinho, mas torna-o um módulo com âmbito próprio, eliminando esse risco de colisão."
+    },
+    {
+      "title": "Só os valores sobrevivem à compilação",
+      "difficulty": "Avancado",
+      "statement": "Declare uma interface Ponto (x, y: number), um type Distancia = number e uma interface Etiqueta (texto: string). Escreva calcularDistancia(a: Ponto, b: Ponto): Distancia (a distância euclidiana entre os dois pontos) e criarEtiqueta(texto: string): Etiqueta. Exporte os três tipos como só-tipo numa única instrução e as duas funções noutra. Chame as duas funções e mostre os resultados. Termine com um comentário a listar exatamente que identificadores ficariam visíveis no JavaScript compilado.",
+      "hint": "A distância euclidiana entre dois pontos é a raiz quadrada da soma dos quadrados das diferenças em x e em y; Math.sqrt e o operador ** ajudam.",
+      "solution_code": "interface Ponto {\n  x: number;\n  y: number;\n}\n\ntype Distancia = number;\n\ninterface Etiqueta {\n  texto: string;\n}\n\nfunction calcularDistancia(a: Ponto, b: Ponto): Distancia {\n  return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);\n}\n\nfunction criarEtiqueta(texto: string): Etiqueta {\n  return { texto };\n}\n\n// Os tres tipos ficam so-tipo: nenhum deles produz codigo no JavaScript emitido.\nexport type { Ponto, Distancia, Etiqueta };\n\n// Os dois valores mantem-se normais: sao os unicos que sobrevivem a compilacao.\nexport { calcularDistancia, criarEtiqueta };\n\nconsole.log(calcularDistancia({ x: 0, y: 0 }, { x: 3, y: 4 })); // 5\nconsole.log(criarEtiqueta('novo').texto); // novo\n\n// No JavaScript compilado so restam calcularDistancia e criarEtiqueta: Ponto,\n// Distancia e Etiqueta desaparecem por completo, tal como qualquer export type.",
+      "solution_explanation": "Ponto, Distancia e Etiqueta são exportados numa única instrução export type, por isso nenhum dos três deixa rasto no JavaScript emitido; calcularDistancia e criarEtiqueta são exportados como valores normais, porque são as únicas partes chamadas em runtime. O resultado 5 vem do triângulo 3-4-5 clássico."
+    }
+  ],
+  "summary": [
+    "import e export movem tipos com a mesma sintaxe que movem valores; a novidade do TypeScript é só essa.",
+    "import type e export type marcam uma importação ou exportação como só-tipo; sem isolatedModules nem verbatimModuleSyntax, o compilador já costuma eliminar sozinho um import usado só como tipo, com ou sem a marca.",
+    "export { x } from, export * from e export type { x } from reexportam entre módulos de formas diferentes; export * nunca inclui um export default.",
+    "declare module 'nome' descreve a forma de um módulo sem ficheiro real, mas só funciona como declaração nova num ficheiro sem import nem export — com qualquer um dos dois, vira uma tentativa de aumento que falha (TS2664).",
+    "Um ficheiro sem import nem export é um script: as suas declarações de topo entram no âmbito global, partilhado com outros ficheiros do mesmo programa, e podem colidir com eles.",
+    "A seguir: as opções do tsconfig.json que decidem target, module e outras escolhas globais do projeto."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 02",
+  "next_label": "Aula 02 → tsconfig.json: as opções que interessam"
+}

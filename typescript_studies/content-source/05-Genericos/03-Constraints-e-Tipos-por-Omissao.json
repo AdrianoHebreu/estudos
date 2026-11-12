@@ -1,0 +1,278 @@
+{
+  "module_num": "05",
+  "module_title": "Genéricos",
+  "module_dir": "05-Genericos",
+  "lesson_num": "03",
+  "lesson_slug": "Constraints-e-Tipos-por-Omissao",
+  "kind": "aula",
+  "title": "Constraints e Tipos por Omissão",
+  "filename_base": "03-Constraints-e-Tipos-por-Omissao",
+  "subtitle": "Restringir o que T pode ser, e dar-lhe um tipo por omissão quando ninguém o indica",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Explicar porque um parâmetro de tipo sem restrição não dá acesso a nada",
+    "Escrever constraints estruturais, por interface e por união de literais",
+    "Perceber que uma constraint limita o que entra sem colapsar o tipo que sai",
+    "Relacionar dois parâmetros de tipo com K extends keyof T",
+    "Declarar tipos por omissão e respeitar a ordem dos parâmetros de tipo",
+    "Escolher a constraint na medida certa, nem estreita de mais nem inútil"
+  ],
+  "sections": [
+    {
+      "heading": "Um T sem restrição não promete nada",
+      "body": [
+        "Um parâmetro de tipo sem restrição representa qualquer tipo possível. Como o compilador tem de garantir que o corpo da função funciona para todos eles, não deixa aceder a propriedade nenhuma: não há propriedade que exista em todos os tipos do universo. Dentro da função, um valor de tipo T só pode ser passado adiante, guardado ou devolvido.",
+        "Uma constraint escreve-se com extends a seguir ao nome do parâmetro de tipo e resolve exatamente isso. Passa a haver um contrato mínimo: quem chama tem de fornecer um valor que o satisfaça e, em troca, o corpo da função pode contar com ele. A constraint é uma promessa nos dois sentidos, e não há maneira de ter uma metade sem a outra."
+      ],
+      "code": "function tamanhoIngenuo<T>(valor: T): number {\n  // @ts-expect-error T sem restrição pode ser qualquer coisa, incluindo number, e nada garante length\n  return valor.length;\n}\n\nfunction tamanho<T extends { length: number }>(valor: T): number {\n  return valor.length;\n}\n\nconsole.log(tamanho(\"constraints\"));            // 11\nconsole.log(tamanho([1, 2, 3]));                // 3\nconsole.log(tamanho({ length: 7, unidade: \"cm\" })); // 7\n\n// @ts-expect-error number não tem length, por isso não satisfaz a constraint\ntamanho(42);",
+      "callout_kind": "NOTA",
+      "callout_text": "O extends de uma constraint não é herança de classes. Lê-se como é atribuível a, a mesma relação estrutural do Módulo 02.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔒",
+          "text": "Sem constraint, T não dá acesso a propriedade nenhuma"
+        },
+        {
+          "icon": "🤝",
+          "text": "A constraint é um contrato entre chamador e função"
+        },
+        {
+          "icon": "📝",
+          "text": "Escreve-se T extends Algo, logo a seguir ao nome de T"
+        }
+      ]
+    },
+    {
+      "heading": "A constraint estrutural clássica",
+      "body": [
+        "A forma mais comum é restringir a um tipo de objeto, como T extends ComTamanho. Não é preciso que o valor seja de uma classe ou de uma interface concreta: basta ter a forma exigida, e por isso uma string, um array e um objeto qualquer com length passam todos.",
+        "O que a constraint concede é exatamente o que promete, nem mais. Dentro da função, um valor de tipo T restringido a ComTamanho dá acesso a length e a mais nada, mesmo que na chamada concreta tenha sido uma string. Isso é deliberado: o corpo tem de compilar para todos os tipos que satisfaçam a constraint, não apenas para aquele com que hoje é chamado."
+      ],
+      "code": "interface ComTamanho {\n  length: number;\n}\n\nfunction maisLongo<T extends ComTamanho>(a: T, b: T): T {\n  return a.length >= b.length ? a : b;\n}\n\nconst texto = maisLongo(\"europeu\", \"pt\");\nconsole.log(texto.toUpperCase()); // EUROPEU\n\nconst lista = maisLongo([1, 2], [1, 2, 3]);\nconsole.log(lista.length); // 3\n\nfunction descrever<T extends ComTamanho>(valor: T): string {\n  // @ts-expect-error a constraint só promete length; não promete métodos de string\n  valor.toUpperCase();\n  return `tem ${valor.length}`;\n}",
+      "callout_kind": "DICA",
+      "callout_text": "Restrinja pela forma de que a função precisa, não pelo tipo concreto que tem em mente. Menos exigência significa mais chamadores válidos.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📏",
+          "text": "T extends { length: number } aceita string, array e objeto"
+        },
+        {
+          "icon": "🎯",
+          "text": "O corpo só vê aquilo que a constraint promete"
+        },
+        {
+          "icon": "🔁",
+          "text": "Devolver T mantém o tipo exato do argumento"
+        }
+      ]
+    },
+    {
+      "heading": "Constraints por interface e por união de literais",
+      "body": [
+        "A constraint pode apontar para qualquer tipo já existente. Restringir a uma interface como Identificavel garante a presença das propriedades dela sem fechar a porta a tipos que tragam mais: um Utilizador satisfaz Identificavel porque tem id, e leva consigo nome e idade.",
+        "Restringir a uma união de literais é o outro caso frequente. Com D extends Direcao, o argumento só pode ser uma das cadeias permitidas e qualquer outra é recusada na chamada. A diferença face a escrever simplesmente direcao do tipo Direcao é que o parâmetro de tipo guarda qual dos literais foi passado, informação que uma assinatura não genérica perderia."
+      ],
+      "code": "interface Identificavel {\n  id: string;\n}\n\ninterface Utilizador extends Identificavel {\n  nome: string;\n  idade: number;\n}\n\nfunction indexarPorId<T extends Identificavel>(itens: readonly T[]): Map<string, T> {\n  const mapa = new Map<string, T>();\n  for (const item of itens) {\n    mapa.set(item.id, item);\n  }\n  return mapa;\n}\n\nconst utilizadores: Utilizador[] = [\n  { id: \"u1\", nome: \"Ana\", idade: 34 },\n  { id: \"u2\", nome: \"Rui\", idade: 41 },\n];\n\nconsole.log(indexarPorId(utilizadores).get(\"u2\")?.nome); // Rui\n\ntype Direcao = \"asc\" | \"desc\";\n\nfunction ordenar<D extends Direcao>(valores: readonly number[], direcao: D): number[] {\n  const copia = [...valores];\n  copia.sort((a, b) => (direcao === \"asc\" ? a - b : b - a));\n  return copia;\n}\n\nconsole.log(ordenar([3, 1, 2], \"desc\")); // [ 3, 2, 1 ]\n\n// @ts-expect-error \"crescente\" não pertence à união imposta pela constraint\nordenar([3, 1, 2], \"crescente\");",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧩",
+          "text": "T extends Identificavel aceita qualquer subtipo estrutural"
+        },
+        {
+          "icon": "🔤",
+          "text": "D extends asc | desc limita a valores concretos"
+        },
+        {
+          "icon": "🧷",
+          "text": "O parâmetro de tipo lembra-se do literal que foi usado"
+        }
+      ]
+    },
+    {
+      "heading": "A constraint limita a entrada, não converte o valor",
+      "body": [
+        "É fácil ler T extends Animal como se o valor passasse a ser um Animal. Não passa. A constraint é apenas um filtro aplicado na chamada: verifica que o argumento é compatível com Animal e depois deixa T ser o tipo concreto que foi passado, que neste caso é Cao.",
+        "É essa a diferença prática face a um parâmetro escrito animal do tipo Animal. Com o parâmetro normal, o valor entra e sai como Animal e tudo o que era específico do Cao desaparece da vista do compilador. Com o parâmetro genérico restringido, o tipo devolvido continua a ser Cao e ladrar continua acessível a seguir à chamada."
+      ],
+      "code": "interface Animal {\n  nome: string;\n}\n\ninterface Cao extends Animal {\n  raca: string;\n  ladrar(): string;\n}\n\nfunction registarGenerico<T extends Animal>(animal: T): T {\n  console.log(`registado: ${animal.nome}`);\n  return animal;\n}\n\nfunction registarSimples(animal: Animal): Animal {\n  console.log(`registado: ${animal.nome}`);\n  return animal;\n}\n\nconst bobi: Cao = { nome: \"Bobi\", raca: \"serra da estrela\", ladrar: () => \"au\" };\n\nconst comGenerico = registarGenerico(bobi); // o tipo devolvido é Cao\nconsole.log(comGenerico.ladrar()); // au\n\nconst semGenerico = registarSimples(bobi); // o tipo devolvido é Animal\n// @ts-expect-error o parâmetro não genérico colapsou o valor em Animal e perdeu ladrar\nsemGenerico.ladrar();",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Se uma função recebe e devolve o mesmo valor, devolver a constraint em vez de T deita fora informação que o chamador já tinha.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🚪",
+          "text": "A constraint filtra quem entra, não altera o tipo"
+        },
+        {
+          "icon": "🐕",
+          "text": "Dentro de T extends Animal, T continua a ser Cao"
+        },
+        {
+          "icon": "📤",
+          "text": "Devolver T preserva o subtipo; devolver Animal apaga-o"
+        }
+      ]
+    },
+    {
+      "heading": "Relacionar dois parâmetros de tipo",
+      "body": [
+        "Uma constraint não tem de apontar para um tipo fixo: pode apontar para outro parâmetro de tipo da mesma assinatura. É assim que se liga uma chave ao objeto de onde ela vem, garantindo que a chave pedida existe mesmo e que o valor devolvido tem o tipo certo para essa chave.",
+        "Aqui entra um operador que só será desenvolvido no Módulo 06: keyof T é a união dos nomes das propriedades de T. Para esta aula basta essa leitura. Com K extends keyof T, o compilador recusa chaves inexistentes na chamada e sabe que o retorno é T[K], ou seja, o tipo da propriedade concreta que foi pedida, e não a união dos tipos de todos os valores do objeto."
+      ],
+      "code": "function obterPropriedade<T extends object, K extends keyof T>(objeto: T, chave: K): T[K] {\n  return objeto[chave];\n}\n\nconst livro = { titulo: \"Contos\", paginas: 210, esgotado: false };\n\nconst titulo = obterPropriedade(livro, \"titulo\");   // string\nconst paginas = obterPropriedade(livro, \"paginas\"); // number\nconsole.log(titulo.toUpperCase(), paginas + 1); // CONTOS 211\n\n// @ts-expect-error \"autor\" não é chave de livro, logo não satisfaz K extends keyof T\nobterPropriedade(livro, \"autor\");",
+      "callout_kind": "NOTA",
+      "callout_text": "A ordem na lista importa para a leitura: K extends keyof T só se escreve depois de T, porque T tem de estar declarado antes de ser referido.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔗",
+          "text": "Uma constraint pode referir outro parâmetro de tipo"
+        },
+        {
+          "icon": "🗝",
+          "text": "keyof T é a união dos nomes das propriedades de T"
+        },
+        {
+          "icon": "🎯",
+          "text": "O retorno T[K] é o tipo da chave pedida, só dessa"
+        }
+      ]
+    },
+    {
+      "heading": "Tipos por omissão",
+      "body": [
+        "Um parâmetro de tipo pode ter um valor por omissão, com a mesma sintaxe de um parâmetro por omissão de uma função. Quem escreve Caixa sem argumento de tipo fica com uma caixa de string; quem precisa de outra coisa indica-a explicitamente. Isto é útil sobretudo em interfaces, type aliases e classes, onde muitas vezes não há argumento nenhum a partir do qual inferir o tipo.",
+        "Numa função, a omissão só atua quando a inferência não tem por onde se guiar: havendo argumentos, o tipo inferido a partir deles ganha sempre. A regra de ordenação é a mesma das funções: assim que um parâmetro de tipo tem valor por omissão, todos os seguintes também precisam de ter."
+      ],
+      "code": "interface Caixa<T = string> {\n  conteudo: T;\n  etiqueta: string;\n}\n\nconst caixaTexto: Caixa = { conteudo: \"manual\", etiqueta: \"docs\" };\nconst caixaMedidas: Caixa<number[]> = { conteudo: [1, 2, 3], etiqueta: \"medidas\" };\n\nconsole.log(caixaTexto.conteudo.toUpperCase()); // MANUAL\nconsole.log(caixaMedidas.conteudo.length);      // 3\n\nfunction criarLista<T = number>(...itens: T[]): T[] {\n  return itens;\n}\n\nconst vazia = criarLista();          // number[], vindo do tipo por omissão\nconst letras = criarLista(\"a\", \"b\"); // string[], a inferência ganha à omissão\nconsole.log(vazia.length, letras.join(\"-\")); // 0 a-b\n\n// @ts-expect-error um parâmetro de tipo obrigatório não pode vir depois de um com omissão\ninterface ParOrdenado<A = string, B> {\n  primeiro: A;\n  segundo: B;\n}",
+      "callout_kind": "DICA",
+      "callout_text": "Um tipo por omissão poupa escrita ao caso comum. Se não existe um caso claramente mais comum, é melhor obrigar a indicar o tipo.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⚙️",
+          "text": "T = string dá um tipo a quem não indica nenhum"
+        },
+        {
+          "icon": "🧭",
+          "text": "A inferência a partir dos argumentos ganha à omissão"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Depois de uma omissão não pode vir um obrigatório"
+        }
+      ]
+    },
+    {
+      "heading": "As duas coisas juntas, e a medida certa",
+      "body": [
+        "Constraint e omissão combinam-se no mesmo parâmetro de tipo, pela ordem T extends Constraint = Omissao. O tipo por omissão tem de satisfazer a própria constraint, e a constraint continua a ser verificada quando o tipo é indicado explicitamente. Numa classe sem argumentos de construtor isto é particularmente útil, porque não há nada de onde inferir e sem omissão o parâmetro ficaria por resolver.",
+        "Falta escolher a medida. Uma constraint estreita de mais obriga o chamador a construir objetos completos para uma função que só lê um campo, e acaba por torná-la inutilizável fora do caso para que foi escrita. No extremo oposto, escrever T extends any não restringe coisa nenhuma nem concede acesso a nada: é ruído que aparenta rigor. A pergunta certa é sempre a mesma, de que propriedades precisa este corpo de função, e só essas entram na constraint."
+      ],
+      "code": "interface Evento {\n  tipo: string;\n}\n\ninterface Clique extends Evento {\n  tipo: \"clique\";\n  x: number;\n  y: number;\n}\n\nclass Registo<T extends Evento = Evento> {\n  private readonly itens: T[] = [];\n\n  adicionar(evento: T): void {\n    this.itens.push(evento);\n  }\n\n  tipos(): string[] {\n    return this.itens.map((item) => item.tipo);\n  }\n}\n\nconst generico = new Registo();\ngenerico.adicionar({ tipo: \"arranque\" });\nconsole.log(generico.tipos()); // [ 'arranque' ]\n\nconst cliques = new Registo<Clique>();\ncliques.adicionar({ tipo: \"clique\", x: 10, y: 4 });\nconsole.log(cliques.tipos()); // [ 'clique' ]\n\n// @ts-expect-error string não satisfaz a constraint, mesmo havendo tipo por omissão\nconst invalido = new Registo<string>();\n\nfunction exigenteDemais<T extends { id: string; nome: string; email: string }>(\n  itens: readonly T[],\n): T | undefined {\n  return itens[0];\n}\n\n// @ts-expect-error a constraint exige campos que a função nem sequer chega a usar\nexigenteDemais([{ id: \"a\" }]);\n\nfunction naMedida<T extends { id: string }>(itens: readonly T[]): T | undefined {\n  return itens[0];\n}\n\nconsole.log(naMedida([{ id: \"a\" }, { id: \"b\" }])); // { id: 'a' }",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Pegue numa função genérica já escrita, apague a constraint e veja o que deixa de compilar. Aquilo de que o compilador se queixar é a constraint mínima de que ela precisa.",
+      "table_headers": [
+        "Assinatura",
+        "O que o corpo pode fazer",
+        "Quem consegue chamar"
+      ],
+      "table_rows": [
+        [
+          "T sem constraint",
+          "Passar o valor adiante e devolvê-lo",
+          "Toda a gente"
+        ],
+        [
+          "T extends any",
+          "O mesmo que sem constraint: nada",
+          "Toda a gente, sem ganho nenhum"
+        ],
+        [
+          "T extends { id: string }",
+          "Ler id, que é o que a função usa",
+          "Qualquer objeto que tenha id"
+        ],
+        [
+          "T extends objeto completo",
+          "Ler campos que nem chega a usar",
+          "Só quem tenha o objeto inteiro"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧱",
+          "text": "A ordem é T extends Constraint = Omissao"
+        },
+        {
+          "icon": "✅",
+          "text": "O tipo por omissão tem de satisfazer a constraint"
+        },
+        {
+          "icon": "⚖️",
+          "text": "Exigir só as propriedades que o corpo usa"
+        },
+        {
+          "icon": "🚫",
+          "text": "T extends any não restringe nem concede nada"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Iniciais com uma constraint estrutural",
+      "difficulty": "Iniciante",
+      "statement": "Escreva a função iniciais, genérica em T, que recebe um array apenas de leitura de itens e devolve um array de strings com a primeira letra do nome de cada item, em maiúscula. A constraint deve exigir exatamente uma propriedade nome do tipo string, e nada mais, de modo que funcione tanto com objetos que tenham nome e cargo como com objetos que tenham nome e habitantes. Demonstre depois, com um comentário ts-expect-error, que um array de objetos sem nome é recusado na chamada.",
+      "hint": "A constraint pode ser escrita diretamente entre chavetas na assinatura, sem declarar uma interface. Para o array apenas de leitura use readonly T[].",
+      "solution_code": "function iniciais<T extends { nome: string }>(itens: readonly T[]): string[] {\n  return itens.map((item) => item.nome.charAt(0).toUpperCase());\n}\n\nconst equipa = [\n  { nome: \"ana\", cargo: \"design\" },\n  { nome: \"rui\", cargo: \"backend\" },\n];\n\nconsole.log(iniciais(equipa)); // [ 'A', 'R' ]\n\nconst cidades = [{ nome: \"Braga\", habitantes: 193333 }];\nconsole.log(iniciais(cidades)); // [ 'B' ]\n\ntry {\n  // @ts-expect-error os objetos não têm a propriedade nome exigida pela constraint\n  console.log(iniciais([{ titulo: \"sem nome\" }]));\n} catch {\n  console.log(\"sem nome para ler\"); // sem nome para ler\n}",
+      "solution_explanation": "A constraint exige apenas a forma de que o corpo precisa, por isso qualquer objeto com nome do tipo string serve, independentemente das outras propriedades que traga. A chamada com objetos sem nome falha logo na verificação da constraint. Essa chamada vai dentro de um try porque, apesar de o compilador a recusar, o código emitido continua a correr e rebentaria ao ler nome."
+    },
+    {
+      "title": "Uma pilha com tipo por omissão",
+      "difficulty": "Iniciante",
+      "statement": "Escreva a classe Pilha, genérica em T com string como tipo por omissão, com o método empilhar que recebe um item, o método desempilhar que devolve o último item ou undefined se a pilha estiver vazia, e um getter tamanho que devolve o número de itens. Crie uma pilha sem indicar argumento de tipo e confirme que os itens são tratados como strings; crie outra com number indicado explicitamente. Mostre com ts-expect-error que empilhar um número na pilha por omissão é recusado.",
+      "hint": "Guarde os itens num array privado tipado como T[] e lembre-se de que pop devolve T ou undefined.",
+      "solution_code": "class Pilha<T = string> {\n  private readonly itens: T[] = [];\n\n  empilhar(item: T): void {\n    this.itens.push(item);\n  }\n\n  desempilhar(): T | undefined {\n    return this.itens.pop();\n  }\n\n  get tamanho(): number {\n    return this.itens.length;\n  }\n}\n\nconst textos = new Pilha();\ntextos.empilhar(\"primeiro\");\ntextos.empilhar(\"segundo\");\nconsole.log(textos.desempilhar()?.toUpperCase()); // SEGUNDO\nconsole.log(textos.tamanho); // 1\n\nconst numeros = new Pilha<number>();\nnumeros.empilhar(7);\nconsole.log(numeros.desempilhar()); // 7\n\n// @ts-expect-error a pilha por omissão é de string, e 42 não é string\ntextos.empilhar(42);",
+      "solution_explanation": "Como a classe não recebe argumentos no construtor, não há nada de onde inferir T, e sem tipo por omissão o parâmetro ficaria por resolver. Com string por omissão, uma pilha criada sem argumento de tipo é logo uma pilha de strings e o encadeamento opcional depois de desempilhar dá acesso aos métodos de string. Indicar number explicitamente substitui a omissão sem alterar nada na classe."
+    },
+    {
+      "title": "Extrair uma coluna de uma lista de objetos",
+      "difficulty": "Intermedio",
+      "statement": "Escreva a função extrairColuna, genérica em T restringido a object e em K restringido às chaves de T, que recebe um array apenas de leitura de itens e uma chave, e devolve um array com o valor dessa chave em cada item. O tipo devolvido tem de ser exatamente um array dos valores dessa chave, de modo que somar os preços compile sem asserções e juntar as referências com join também. Acrescente uma chamada com uma chave inexistente marcada com ts-expect-error.",
+      "hint": "O tipo de retorno escreve-se a partir do acesso indexado T[K]. Repare que a constraint de K refere o parâmetro de tipo T declarado imediatamente antes.",
+      "solution_code": "function extrairColuna<T extends object, K extends keyof T>(\n  itens: readonly T[],\n  chave: K,\n): T[K][] {\n  return itens.map((item) => item[chave]);\n}\n\nconst produtos = [\n  { referencia: \"A1\", preco: 12.5, stock: 4 },\n  { referencia: \"B2\", preco: 30, stock: 0 },\n];\n\nconst precos = extrairColuna(produtos, \"preco\");\nconsole.log(precos.reduce((total, preco) => total + preco, 0)); // 42.5\n\nconst referencias = extrairColuna(produtos, \"referencia\");\nconsole.log(referencias.join(\", \")); // A1, B2\n\n// @ts-expect-error \"iva\" não é chave dos produtos, logo não satisfaz K extends keyof T\nextrairColuna(produtos, \"iva\");",
+      "solution_explanation": "Ligar K a T pela constraint faz com que a chave seja validada na chamada e com que o retorno acompanhe o tipo da propriedade pedida. Com a chave preco o resultado é um array de números e reduce compila sem anotações extra; com referencia é um array de strings e join está disponível. Uma chave que não pertença ao objeto não satisfaz a constraint e a chamada é recusada."
+    },
+    {
+      "title": "Repositório com constraint e omissão",
+      "difficulty": "Avancado",
+      "statement": "Defina a interface Identificavel com uma propriedade id do tipo string e a interface Tarefa que a estende com titulo e concluida. Escreva a classe Repositorio, genérica em T restringido a Identificavel e com Identificavel como tipo por omissão, guardando os registos num Map indexado pelo id. Inclua guardar, que devolve o próprio item com o tipo com que entrou, obter, que devolve o item ou undefined, e quantidade. Mostre que um repositório de Tarefa devolve Tarefa em guardar, que um repositório sem argumento de tipo só conhece id, e que indicar number como argumento de tipo é recusado. Marque os dois últimos casos com ts-expect-error.",
+      "hint": "Faça guardar devolver T e não Identificavel, senão o titulo perde-se logo à saída. O Map interno deve ser tipado de string para T.",
+      "solution_code": "interface Identificavel {\n  id: string;\n}\n\ninterface Tarefa extends Identificavel {\n  titulo: string;\n  concluida: boolean;\n}\n\nclass Repositorio<T extends Identificavel = Identificavel> {\n  private readonly registos = new Map<string, T>();\n\n  guardar(item: T): T {\n    this.registos.set(item.id, item);\n    return item;\n  }\n\n  obter(id: string): T | undefined {\n    return this.registos.get(id);\n  }\n\n  quantidade(): number {\n    return this.registos.size;\n  }\n}\n\nconst tarefas = new Repositorio<Tarefa>();\nconst guardada = tarefas.guardar({ id: \"t1\", titulo: \"Rever o PR\", concluida: false });\nconsole.log(guardada.titulo); // Rever o PR\nconsole.log(tarefas.obter(\"t1\")?.concluida); // false\n\nconst generico = new Repositorio();\ngenerico.guardar({ id: \"x1\" });\nconsole.log(generico.quantidade()); // 1\n\n// @ts-expect-error o tipo por omissão só promete id, e titulo não existe em Identificavel\ngenerico.obter(\"x1\")?.titulo;\n\n// @ts-expect-error number não satisfaz a constraint T extends Identificavel\nconst invalido = new Repositorio<number>();",
+      "solution_explanation": "A constraint garante que qualquer T tem id, que é o que a classe precisa de ler para indexar o Map, e o tipo por omissão torna utilizável um repositório criado sem argumento de tipo. Como guardar devolve T e não a constraint, o item devolvido continua a ser uma Tarefa completa. No repositório por omissão só id está disponível, e number é recusado por não satisfazer a constraint, mesmo existindo uma omissão declarada."
+    }
+  ],
+  "summary": [
+    "Sem constraint, um parâmetro de tipo não dá acesso a nenhuma propriedade; a constraint é o contrato que o permite.",
+    "Escreve-se T extends Algo, e esse Algo pode ser uma forma estrutural, uma interface, uma união de literais ou outro parâmetro de tipo.",
+    "A constraint filtra o que entra sem colapsar o tipo: devolver T preserva o subtipo concreto que o chamador passou.",
+    "Com K extends keyof T liga-se uma chave ao objeto de onde vem e o retorno acompanha a propriedade pedida.",
+    "Um tipo por omissão serve os casos sem inferência possível, e a partir do primeiro parâmetro com omissão todos os seguintes precisam de uma.",
+    "A boa constraint exige as propriedades que o corpo usa: nem um objeto completo de que não precisa, nem T extends any, que não restringe nada."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 04",
+  "next_label": "Aula 04 → Inferência em Genéricos"
+}

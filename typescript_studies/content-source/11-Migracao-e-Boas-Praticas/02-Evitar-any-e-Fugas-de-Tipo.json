@@ -1,0 +1,456 @@
+{
+  "module_num": "11",
+  "module_title": "Migração e Boas Práticas",
+  "module_dir": "11-Migracao-e-Boas-Praticas",
+  "lesson_num": "02",
+  "lesson_slug": "Evitar-any-e-Fugas-de-Tipo",
+  "kind": "aula",
+  "title": "Evitar any e Fugas de Tipo",
+  "filename_base": "02-Evitar-any-e-Fugas-de-Tipo",
+  "subtitle": "As formas de o sistema de tipos mentir e as alternativas que dizem a verdade",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Reconhecer como um any se propaga e de onde vem quando o strict não o apanha",
+    "Distinguir quando as é aceite, quando dá TS2352 e porque as unknown as T é sinal vermelho",
+    "Preferir satisfies e as const a asserções que escondem erros",
+    "Substituir o ! por narrowing, ??, ?. ou uma assertion function",
+    "Medir o efeito de noUncheckedIndexedAccess nos acessos por índice",
+    "Evitar @ts-ignore, Function, Object, {} e callbacks declarados como métodos"
+  ],
+  "sections": [
+    {
+      "heading": "O contágio do any",
+      "body": [
+        "Um any não fica onde entrou. Qualquer propriedade lida, qualquer desestruturação e qualquer função que o devolva produzem outro any, e o compilador não emite um único aviso pelo caminho. Um só JSON.parse sem cuidado pode deixar meia aplicação sem verificação.",
+        "O contágio só para quando o valor passa por uma fronteira tipada, como o parâmetro x: number da função dobro. Mas parar não é verificar: o any é aceite em qualquer posição, por isso dobro(bruto.nome) compila e devolve NaN.",
+        "Os comentários do bloco mostram o tipo que o compilador infere em cada linha, medido com o próprio TypeScript."
+      ],
+      "code": "const bruto = JSON.parse('{\"nome\":\"Ana\",\"idade\":30}'); // any\n\nconst nome = bruto.nome;                   // any\nconst { idade } = bruto;                   // any\nconst inicial = bruto.nome.toUpperCase();  // any: nem se sabe se o método existe\n\nfunction eco(v: any) { return v; }\nconst devolvido = eco(42);                 // any, apesar de receber um number\n\nfunction dobro(x: number): number { return x * 2; }\nconst d = dobro(bruto.idade);              // number: o contágio para aqui...\nconsole.log(dobro(bruto.nome));            // NaN — ...mas nada foi verificado\n\ntry {\n  console.log(bruto.morada.rua);           // compila sem aviso\n} catch (e) {\n  if (e instanceof TypeError) console.log(e.message);\n  // Cannot read properties of undefined (reading 'rua')\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "O perigo do any não está na linha onde é escrito, mas em todas as linhas que dependem dele. Ao passar o rato por cima de uma variável no editor e ver any, vale a pena perguntar de onde veio.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🦠",
+          "text": "Um any entra e todos os valores derivados ficam any"
+        },
+        {
+          "icon": "🔇",
+          "text": "Propriedades, desestruturação e retornos: zero avisos"
+        },
+        {
+          "icon": "🚧",
+          "text": "Uma função tipada trava o contágio, mas não verifica nada"
+        },
+        {
+          "icon": "💥",
+          "text": "O erro só aparece em runtime, longe da origem"
+        }
+      ]
+    },
+    {
+      "heading": "Fontes de any que o strict não apanha",
+      "body": [
+        "O strict liga o noImplicitAny, que apanha parâmetros sem anotação. Mas há APIs cujo tipo declarado é any, e aí o compilador não tem nada de implícito a assinalar: o any é explícito, só que escrito por outra pessoa, nos ficheiros de declaração da biblioteca padrão ou de uma dependência.",
+        "O Módulo 10 já mostrou o caso do JSON.parse e do Response.json, e o do genérico de conveniência obterJson<T>() que promete um T sem o verificar. A tabela junta essas fontes às menos conhecidas, como o Array.isArray aplicado a um unknown, que estreita para any[] e não para unknown[].",
+        "A alternativa é sempre a mesma ideia: receber como unknown logo na fronteira e estreitar a partir daí."
+      ],
+      "code": "function somaItens(valor: unknown): number {\n  if (!Array.isArray(valor)) return 0;\n  // Aqui valor é any[] e valor[0] é any: o unknown perdeu-se\n  const itens: unknown[] = valor;          // voltar logo a unknown[]\n  let total = 0;\n  for (const item of itens) {\n    if (typeof item === \"number\") total += item;\n  }\n  return total;\n}\nconsole.log(somaItens([1, 2, \"3\"]));       // 3\n\nconst calcular = new Function(\"a\", \"b\", \"return a + b\");\nconst soma = calcular(1, 2);               // any: chamar um Function devolve any\n\nPromise.reject(new Error(\"falhou\")).catch((e: unknown) => {\n  // sem a anotação, e seria any\n  console.log(e instanceof Error ? e.message : \"erro desconhecido\"); // falhou\n});",
+      "callout_kind": "DICA",
+      "callout_text": "Nas regras do typescript-eslint, que a Aula 04 apresenta, este tipo de fuga é assinalado por no-unsafe-assignment, no-unsafe-member-access, no-unsafe-call e no-unsafe-return: detetam any que chega de fora, mesmo sem nunca se escrever a palavra any.",
+      "table_headers": [
+        "Fonte de any",
+        "Como se nota",
+        "Alternativa"
+      ],
+      "table_rows": [
+        [
+          "JSON.parse(texto)",
+          "O resultado é any e aceita qualquer cadeia de propriedades",
+          "const dados: unknown = JSON.parse(texto) e validar (Módulo 10, Aula 03)"
+        ],
+        [
+          "resposta.json()",
+          "Devolve Promise<any>",
+          "const dados: unknown = await resposta.json()"
+        ],
+        [
+          "promessa.catch((e) => ...)",
+          "e é any, ao contrário do catch de um try, que no strict é unknown",
+          "Anotar .catch((e: unknown) => ...)"
+        ],
+        [
+          "Array.isArray(v) com v: unknown",
+          "Dentro do if, v passa a any[]",
+          "Atribuir de imediato a const itens: unknown[] = v"
+        ],
+        [
+          "Biblioteca sem tipos ou declare module sem corpo",
+          "Tudo o que se importa é any",
+          "Instalar @types ou escrever um .d.ts mínimo com os tipos usados"
+        ],
+        [
+          "eval e new Function",
+          "O retorno é any; chamar um Function também devolve any",
+          "Evitar; se inevitável, guardar o resultado como unknown"
+        ],
+        [
+          "Genérico que só converte, como obterJson<T>()",
+          "O T é aceite sem qualquer verificação",
+          "Devolver unknown ou receber um validador"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📥",
+          "text": "JSON.parse e Response.json devolvem any"
+        },
+        {
+          "icon": "🎣",
+          "text": ".catch((e) => ...) dá e: any; anotar como unknown"
+        },
+        {
+          "icon": "📦",
+          "text": "Array.isArray em unknown estreita para any[]"
+        },
+        {
+          "icon": "🧱",
+          "text": "Regra geral: unknown na fronteira, estreitar depois"
+        }
+      ]
+    },
+    {
+      "heading": "Asserções: as, as const e satisfies",
+      "body": [
+        "Uma asserção com as não converte nada: só diz ao compilador que tipo deve assumir. É aceite sempre que um dos tipos é atribuível ao outro, o que inclui o caso perigoso de afirmar que um objeto incompleto é um Utilizador. Só é rejeitada com TS2352 quando os tipos não se sobrepõem de todo, como string e number.",
+        "Contornar o TS2352 com as unknown as T é o sinal mais claro de que algo está errado: é uma instrução explícita para desligar a verificação. Fora de testes e de código de baixo nível muito localizado, deve ser tratada como defeito.",
+        "Há duas alternativas que não mentem. O as const só estreita, tornando literais e readonly o que já lá está. O satisfies verifica o valor contra um tipo sem o alargar: apanha a propriedade texto em falta, que o as deixa passar, e mantém o tipo literal \"verde\" em vez do Cor que uma anotação daria."
+      ],
+      "code": "interface Utilizador { nome: string; idade: number }\n\nconst parcial = { nome: \"Ana\" } as Utilizador; // aceite: os tipos sobrepõem-se\nconst anos = parcial.idade;                    // number, mas em runtime é undefined\n\n// @ts-expect-error TS2352: string e number não se sobrepõem\nconst n1 = \"42\" as number;\n\nconst n2 = \"42\" as unknown as number;          // compila: dupla asserção, sinal vermelho\n\ntype Cor = \"vermelho\" | \"verde\";\ntype Tema = Record<\"fundo\" | \"texto\", Cor>;\n\nconst temaAs = { fundo: \"vermelho\" } as Tema;  // compila, e falta texto\n// @ts-expect-error TS1360: a propriedade texto está em falta\nconst temaIncompleto = { fundo: \"vermelho\" } satisfies Tema;\n\nconst tema = { fundo: \"vermelho\", texto: \"verde\" } satisfies Tema;\nconst t1 = tema.texto;                         // \"verde\": verificou sem alargar\nconst anotado: Tema = { fundo: \"vermelho\", texto: \"verde\" };\nconst t2 = anotado.texto;                      // Cor: a anotação alarga\n\nconst direcoes = [\"norte\", \"sul\"] as const;    // readonly [\"norte\", \"sul\"]",
+      "callout_kind": "NOTA",
+      "callout_text": "Regra de bolso: se o objetivo é verificar, usar satisfies ou uma anotação; se é estreitar literais, usar as const. O as fica reservado para quando se sabe algo que o compilador não consegue saber, e mesmo aí convém preferir um type guard.",
+      "table_headers": [
+        "Forma",
+        "Verifica o valor?",
+        "Tipo resultante"
+      ],
+      "table_rows": [
+        [
+          "{ fundo: \"vermelho\" } as Tema",
+          "Só a sobreposição; a falta de texto passa",
+          "Tema"
+        ],
+        [
+          "\"42\" as number",
+          "Rejeitado com TS2352",
+          "Não compila"
+        ],
+        [
+          "\"42\" as unknown as number",
+          "Nada",
+          "number, falso"
+        ],
+        [
+          "valor satisfies Tema",
+          "Sim, completo, incluindo propriedades a mais",
+          "O tipo literal do próprio valor"
+        ],
+        [
+          "const t: Tema = valor",
+          "Sim",
+          "Tema, alargado"
+        ],
+        [
+          "[\"norte\", \"sul\"] as const",
+          "Não precisa: só estreita",
+          "readonly [\"norte\", \"sul\"]"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🎭",
+          "text": "as não converte: só afirma um tipo ao compilador"
+        },
+        {
+          "icon": "🚫",
+          "text": "TS2352 só quando os tipos não se sobrepõem"
+        },
+        {
+          "icon": "🚨",
+          "text": "as unknown as T desliga a verificação: sinal vermelho"
+        },
+        {
+          "icon": "✅",
+          "text": "satisfies verifica sem alargar; as const só estreita"
+        }
+      ]
+    },
+    {
+      "heading": "O operador ! e o definite assignment",
+      "body": [
+        "O ! depois de uma expressão retira null e undefined do tipo sem qualquer verificação. Num campo de classe ou numa variável, url!: string diz que o valor será atribuído antes de ser lido, calando o strictPropertyInitialization visto no Módulo 08. Nos dois casos o JavaScript gerado não tem o !, e o undefined continua lá.",
+        "As alternativas dependem do que deve acontecer quando o valor falta. Se há um valor sensato por omissão, o operador ??. Se a operação pode simplesmente não acontecer, o encadeamento opcional ?. . Se a ausência é um erro de programação, falhar cedo com uma assertion function, que lança uma mensagem clara no sítio certo em vez de um TypeError genérico três chamadas depois."
+      ],
+      "code": "const precos = new Map<string, number>([[\"cafe\", 0.8]]);\n\ntry {\n  const p = precos.get(\"cha\")!;                // number, segundo o compilador\n  console.log(p.toFixed(2));\n} catch (e) {\n  if (e instanceof TypeError) console.log(e.message);\n  // Cannot read properties of undefined (reading 'toFixed')\n}\n\nclass Ligacao {\n  url!: string;                                // \"alguém há de preencher\"\n  descrever() { return this.url.toUpperCase(); }\n}\ntry {\n  new Ligacao().descrever();\n} catch (e) {\n  if (e instanceof TypeError) console.log(e.message);\n  // Cannot read properties of undefined (reading 'toUpperCase')\n}\n\n// Alternativas que não mentem\nconsole.log(precos.get(\"cha\") ?? 0);           // 0\nconsole.log(precos.get(\"cha\")?.toFixed(2));    // undefined, sem rebentar\n\nfunction garantir<T>(valor: T, msg: string): asserts valor is NonNullable<T> {\n  if (valor === undefined || valor === null) throw new Error(msg);\n}\nconst cafe = precos.get(\"cafe\");               // number | undefined\ngarantir(cafe, \"preço do café em falta\");\nconsole.log(cafe.toFixed(2));                  // 0.80",
+      "callout_kind": "ATENCAO",
+      "callout_text": "O ! transforma um erro de compilação, que aponta a linha exata, num TypeError em runtime com uma mensagem vaga. Num campo de classe, é preferível inicializar no construtor ou declarar o tipo como string | undefined.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "❗",
+          "text": "valor! retira null e undefined sem verificar nada"
+        },
+        {
+          "icon": "🏷️",
+          "text": "campo!: T cala o strictPropertyInitialization"
+        },
+        {
+          "icon": "🔁",
+          "text": "Alternativas: ?? para omissão, ?. para operação opcional"
+        },
+        {
+          "icon": "🛑",
+          "text": "Falhar cedo: uma assertion function com mensagem clara"
+        }
+      ]
+    },
+    {
+      "heading": "Índices e noUncheckedIndexedAccess",
+      "body": [
+        "Por omissão, mesmo com strict, ler notas[5] num number[] ou stock[\"cha\"] num Record<string, number> dá o tipo do elemento e não T | undefined. O compilador assume que o índice existe. A flag noUncheckedIndexedAccess, que não faz parte do strict, acrescenta o undefined a esses acessos e obriga a tratá-lo.",
+        "A tabela mostra o tipo inferido, medido nos mesmos acessos compilados sem e com a flag. Tuplos com posição conhecida, registos com chaves literais e a iteração com for...of não mudam: só os acessos por índice arbitrário ou por index signature, incluindo a notação com ponto e a desestruturação.",
+        "Sem a flag ligada, obtém-se a mesma segurança pontualmente anotando o resultado como T | undefined, como faz o bloco, ou usando métodos que já o devolvem, como at() e Map.get()."
+      ],
+      "code": "const notas: number[] = [12, 15];\nconst n = notas[5];                    // number (sem a flag), mas vale undefined\nconst stock: Record<string, number> = { cafe: 3 };\nconst s = stock[\"cha\"];                // number (sem a flag), mas vale undefined\n\ntry {\n  console.log(n.toFixed(1));\n} catch (e) {\n  if (e instanceof TypeError) console.log(e.message);\n  // Cannot read properties of undefined (reading 'toFixed')\n}\n\n// Sem depender da flag: anotar o que o acesso pode realmente dar\nconst talvez: number | undefined = notas[5];\nconsole.log(talvez?.toFixed(1) ?? \"sem nota\"); // sem nota\n\nconst qtd: number | undefined = stock[\"cha\"];\nconsole.log(qtd === undefined ? \"esgotado\" : qtd); // esgotado\n\nconsole.log(notas.at(-1));             // 15 — at() já devolve number | undefined",
+      "callout_kind": "DICA",
+      "callout_text": "Em projetos novos, vale a pena ligar noUncheckedIndexedAccess no tsconfig ao lado do strict. Num projeto existente, costuma revelar dezenas de acessos a tratar: é trabalho para fazer por fases, como a migração da Aula 01.",
+      "table_headers": [
+        "Acesso",
+        "Sem a flag",
+        "Com noUncheckedIndexedAccess"
+      ],
+      "table_rows": [
+        [
+          "notas[5], com notas: number[]",
+          "number",
+          "number | undefined"
+        ],
+        [
+          "stock[\"cha\"], com Record<string, number>",
+          "number",
+          "number | undefined"
+        ],
+        [
+          "stock.cafe, no mesmo registo",
+          "number",
+          "number | undefined"
+        ],
+        [
+          "const [primeiro] = notas",
+          "number",
+          "number | undefined"
+        ],
+        [
+          "tuplo[0], com [string, number]",
+          "string",
+          "string"
+        ],
+        [
+          "fixo.a, com Record<\"a\" | \"b\", number>",
+          "number",
+          "number"
+        ],
+        [
+          "for (const v of notas)",
+          "number",
+          "number"
+        ],
+        [
+          "notas.at(-1) e mapa.get(k)",
+          "number | undefined",
+          "number | undefined"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔢",
+          "text": "arr[i] e registo[chave] dão T, não T | undefined"
+        },
+        {
+          "icon": "🚩",
+          "text": "noUncheckedIndexedAccess junta o undefined; não vem no strict"
+        },
+        {
+          "icon": "🧮",
+          "text": "Tuplos, chaves literais e for...of não mudam"
+        },
+        {
+          "icon": "✍️",
+          "text": "Sem a flag: anotar T | undefined ou usar at() e get()"
+        }
+      ]
+    },
+    {
+      "heading": "Outras fugas: diretivas, tipos largos e métodos",
+      "body": [
+        "O @ts-ignore cala qualquer erro na linha seguinte e continua calado para sempre, mesmo que o erro mude de natureza ou desapareça. O @ts-expect-error faz o mesmo, mas exige que o erro exista: quando a linha deixa de ter erro, o próprio comentário passa a ser o erro TS2578, Unused '@ts-expect-error' directive. Por isso é o único dos dois aceitável, e sempre com uma justificação ao lado.",
+        "Function, Object e {} são tipos que aceitam quase tudo. Chamar um Function devolve any; Object e {} aceitam números e strings mas não deixam ler propriedade nenhuma. Quase sempre o que se quer é uma assinatura concreta, object (que exclui os primitivos) ou Record<string, unknown>.",
+        "Por fim, os parâmetros de métodos declarados com a sintaxe tratar(e: Evento) são bivariantes: o strictFunctionTypes do Módulo 09 só se aplica a propriedades com tipo função. E um predicado v is T que não verifica o que promete mente tanto como um as, como se viu nos Módulos 04 e 10."
+      ],
+      "code": "// @ts-ignore  cala qualquer erro na linha seguinte, para sempre\nconst porta: number = \"8080\";\n\n// @ts-expect-error  cala o erro, mas exige que ele exista (senão TS2578)\nconst limite: number = \"10\";\n\nfunction correr(fn: Function) { return fn(1, 2); }\nconst r1 = correr(() => \"olá\");        // any: chamar um Function devolve any\nfunction correrTipado(fn: (a: number, b: number) => number) { return fn(1, 2); }\nconst r2 = correrTipado(Math.max);     // number\n\nfunction guardar(v: Object) { return v; }\nguardar(42);                           // aceite: Object e {} aceitam quase tudo\n// @ts-expect-error TS2339: em Object não há propriedade a\nguardar({ a: 1 }).a;\nfunction soObjetos(v: object) { return v; }\n// @ts-expect-error TS2345: object exclui os primitivos\nsoObjetos(42);\n\ninterface Evento { tipo: string }\ninterface Clique extends Evento { x: number }\ninterface ComMetodo { tratar(e: Evento): void }\ninterface ComPropriedade { tratar: (e: Evento) => void }\n\nconst m1: ComMetodo = { tratar(e: Clique) { console.log(e.x); } }; // aceite: método bivariante\n// @ts-expect-error TS2322: numa propriedade-função o parâmetro é verificado\nconst m2: ComPropriedade = { tratar: (e: Clique) => { console.log(e.x); } };",
+      "callout_kind": "NOTA",
+      "callout_text": "Para contratos de callbacks em interfaces próprias, preferir a forma de propriedade, tratar: (e: Evento) => void, que recebe a verificação completa do strictFunctionTypes.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🙈",
+          "text": "@ts-ignore cala para sempre; @ts-expect-error avisa (TS2578)"
+        },
+        {
+          "icon": "🧩",
+          "text": "Function devolve any; Object e {} aceitam quase tudo"
+        },
+        {
+          "icon": "🔀",
+          "text": "Métodos são bivariantes; propriedades-função não"
+        },
+        {
+          "icon": "🤥",
+          "text": "Um predicado v is T sem verificação também mente"
+        }
+      ]
+    },
+    {
+      "heading": "Lista de verificação final",
+      "body": [
+        "A tabela resume as fugas vistas na aula, com a alternativa que não mente e a regra do typescript-eslint que as costuma assinalar. Serve como lista de revisão antes de aceitar alterações ao código."
+      ],
+      "code": "",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Num projeto próprio, procurar no código por as unknown as, por @ts-ignore e por ! seguido de ponto: cada ocorrência é candidata a ser substituída por uma das alternativas da tabela.",
+      "table_headers": [
+        "Evitar",
+        "Preferir",
+        "Regra que assinala"
+      ],
+      "table_rows": [
+        [
+          "any explícito",
+          "unknown e narrowing",
+          "no-explicit-any"
+        ],
+        [
+          "Usar direto o resultado de JSON.parse ou json()",
+          "Guardar como unknown e validar",
+          "no-unsafe-assignment, no-unsafe-member-access"
+        ],
+        [
+          ".catch((e) => ...)",
+          ".catch((e: unknown) => ...)",
+          "use-unknown-in-catch-callback-variable"
+        ],
+        [
+          "valor as T para verificar",
+          "satisfies T ou anotação",
+          "consistent-type-assertions"
+        ],
+        [
+          "as unknown as T",
+          "Type guard ou validação em runtime",
+          "Revisão humana"
+        ],
+        [
+          "valor! e campo!: T",
+          "??, ?., inicialização ou assertion function",
+          "no-non-null-assertion"
+        ],
+        [
+          "arr[i] tratado como sempre definido",
+          "noUncheckedIndexedAccess ou T | undefined",
+          "Opção do compilador"
+        ],
+        [
+          "@ts-ignore",
+          "@ts-expect-error com justificação",
+          "ban-ts-comment"
+        ],
+        [
+          "Function, Object, {}",
+          "Assinatura concreta, object, Record<string, unknown>",
+          "no-unsafe-function-type, no-wrapper-object-types"
+        ],
+        [
+          "Callback declarado como método",
+          "Propriedade com tipo função",
+          "method-signature-style"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📋",
+          "text": "Uma tabela para rever código antes de o aceitar"
+        },
+        {
+          "icon": "🔍",
+          "text": "Procurar as unknown as, @ts-ignore e !."
+        },
+        {
+          "icon": "🧰",
+          "text": "Cada fuga tem uma alternativa e uma regra de lint"
+        },
+        {
+          "icon": "🎯",
+          "text": "Objetivo: o tipo diz a verdade sobre o valor em runtime"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Travar o contágio do JSON.parse",
+      "difficulty": "Iniciante",
+      "statement": "A função seguinte devolve any, porque o resultado de JSON.parse é any: function lerPorta(texto: string) { const cfg = JSON.parse(texto); return cfg.porta; }. Reescrever lerPorta para devolver number, sem any nem as: se o texto tiver uma propriedade porta numérica, devolvê-la; em qualquer outro caso, devolver 3000. Testar com '{\"porta\":8080}', '{\"porta\":\"8080\"}' e \"[]\".",
+      "hint": "Guardar o resultado numa variável anotada como unknown e estreitar com typeof, a comparação com null e o operador in.",
+      "solution_code": "function lerPorta(texto: string): number {\n  const cfg: unknown = JSON.parse(texto);\n  if (\n    typeof cfg === \"object\" &&\n    cfg !== null &&\n    \"porta\" in cfg &&\n    typeof cfg.porta === \"number\"\n  ) {\n    return cfg.porta;\n  }\n  return 3000;\n}\n\nconsole.log(lerPorta('{\"porta\":8080}'));   // 8080\nconsole.log(lerPorta('{\"porta\":\"8080\"}')); // 3000\nconsole.log(lerPorta(\"[]\"));               // 3000",
+      "solution_explanation": "Anotar o resultado como unknown obriga a provar a forma do valor antes de o usar. Depois de \"porta\" in cfg, o compilador sabe que cfg.porta existe (como unknown) e o typeof estreita-o para number, por isso o retorno fica tipado sem qualquer asserção."
+    },
+    {
+      "title": "Trocar as por satisfies",
+      "difficulty": "Iniciante",
+      "statement": "Dado type Nivel = \"info\" | \"aviso\" | \"erro\", o código const cores = { info: \"azul\", aviso: \"amarelo\" } as Record<Nivel, string> compila apesar de faltar a cor de erro. Reescrever cores para que o compilador exija as três chaves, rejeite chaves a mais e mantenha os valores como tipos literais (cores.erro deve ter o tipo \"vermelho\"). Escrever ainda uma função pintar(nivel: Nivel, texto: string) que devolva o texto precedido da cor entre parênteses retos.",
+      "hint": "O satisfies verifica sem alargar o tipo do objeto, mas contra um Record de string os valores ficam string; há um modificador que se pode combinar com ele.",
+      "solution_code": "type Nivel = \"info\" | \"aviso\" | \"erro\";\n\nconst cores = {\n  info: \"azul\",\n  aviso: \"amarelo\",\n  erro: \"vermelho\",\n} as const satisfies Record<Nivel, string>;\n\nconst corErro = cores.erro; // \"vermelho\"\n\nfunction pintar(nivel: Nivel, texto: string): string {\n  return `[${cores[nivel]}] ${texto}`;\n}\n\nconsole.log(pintar(\"erro\", \"disco cheio\")); // [vermelho] disco cheio\nconsole.log(corErro.length);                // 8",
+      "solution_explanation": "O satisfies Record<Nivel, string> verifica que todas as chaves existem e que não há chaves a mais, coisa que o as não fazia. O as const à frente impede o alargamento dos valores para string, por isso cores.erro fica com o tipo literal \"vermelho\"."
+    },
+    {
+      "title": "Eliminar o ! de uma consulta a um Map",
+      "difficulty": "Intermedio",
+      "statement": "Com const stock = new Map<string, number>([[\"cafe\", 3]]), a função function retirar(produto: string, qtd: number): number { const atual = stock.get(produto)!; stock.set(produto, atual - qtd); return atual - qtd; } devolve NaN e grava NaN no mapa quando o produto não existe. Reescrevê-la sem ! e sem as, escrevendo uma assertion function genérica garantir que lança um Error com a mensagem \"produto desconhecido: \" seguida do nome do produto. Mostrar retirar(\"cafe\", 1) e uma chamada com \"cha\" dentro de try/catch que imprima só a mensagem do erro.",
+      "hint": "A assinatura de uma assertion function usa asserts valor is ...; o tipo utilitário NonNullable<T> retira null e undefined.",
+      "solution_code": "function garantir<T>(valor: T, msg: string): asserts valor is NonNullable<T> {\n  if (valor === undefined || valor === null) throw new Error(msg);\n}\n\nconst stock = new Map<string, number>([[\"cafe\", 3]]);\n\nfunction retirar(produto: string, qtd: number): number {\n  const atual = stock.get(produto);\n  garantir(atual, `produto desconhecido: ${produto}`);\n  const restante = atual - qtd;\n  stock.set(produto, restante);\n  return restante;\n}\n\nconsole.log(retirar(\"cafe\", 1)); // 2\ntry {\n  retirar(\"cha\", 1);\n} catch (e) {\n  if (e instanceof Error) console.log(e.message); // produto desconhecido: cha\n}",
+      "solution_explanation": "Depois da chamada a garantir, o compilador estreita atual de number | undefined para number, exatamente como o ! fazia, mas agora com uma verificação real. O caso em falta passa a ser um erro claro no sítio certo, em vez de um NaN silencioso guardado no mapa."
+    },
+    {
+      "title": "Limpar um excerto com várias fugas",
+      "difficulty": "Avancado",
+      "statement": "O excerto seguinte compila no strict mas mente em quase todas as linhas: function totalEncomenda(json: string) { const dados: any = JSON.parse(json); const linhas = dados.linhas as { preco: number; qtd: number }[]; let total = 0; for (let i = 0; i < linhas.length; i++) total += linhas[i]!.preco * linhas[i]!.qtd; return total; }. Reescrevê-lo sem any, sem as e sem !, com retorno number | null: devolver null se o JSON não tiver uma propriedade linhas que seja um array, ou se alguma linha não tiver preco e qtd numéricos. Testar com uma encomenda válida de total 8, uma com um preço em texto e uma sem linhas.",
+      "hint": "Escrever um type guard para uma linha, lembrar que Array.isArray sobre unknown dá any[] e percorrer o array com for...of para dispensar os índices.",
+      "solution_code": "interface Linha { preco: number; qtd: number }\n\nfunction eLinha(v: unknown): v is Linha {\n  return (\n    typeof v === \"object\" &&\n    v !== null &&\n    \"preco\" in v &&\n    typeof v.preco === \"number\" &&\n    \"qtd\" in v &&\n    typeof v.qtd === \"number\"\n  );\n}\n\nfunction totalEncomenda(json: string): number | null {\n  const dados: unknown = JSON.parse(json);\n  if (typeof dados !== \"object\" || dados === null || !(\"linhas\" in dados)) return null;\n  const bruto = dados.linhas;               // unknown\n  if (!Array.isArray(bruto)) return null;\n  const linhas: unknown[] = bruto;          // travar o any[] do Array.isArray\n  let total = 0;\n  for (const linha of linhas) {\n    if (!eLinha(linha)) return null;\n    total += linha.preco * linha.qtd;\n  }\n  return total;\n}\n\nconsole.log(totalEncomenda('{\"linhas\":[{\"preco\":2.5,\"qtd\":2},{\"preco\":1,\"qtd\":3}]}')); // 8\nconsole.log(totalEncomenda('{\"linhas\":[{\"preco\":\"2.5\",\"qtd\":2}]}'));                  // null\nconsole.log(totalEncomenda('{\"itens\":[]}'));                                          // null",
+      "solution_explanation": "O unknown na fronteira e o type guard eLinha substituem o any e o as por verificações reais. Atribuir o resultado do Array.isArray a unknown[] impede que o any[] volte a contagiar o resto, e o for...of elimina os acessos por índice e, com eles, a necessidade do !."
+    }
+  ],
+  "summary": [
+    "Um any contagia tudo o que dele deriva; receber como unknown na fronteira trava o contágio.",
+    "JSON.parse, Response.json, .catch(e), Array.isArray em unknown e bibliotecas sem tipos trazem any que o strict não assinala.",
+    "O as só é rejeitado sem sobreposição (TS2352); satisfies verifica sem alargar e as const só estreita.",
+    "O ! e o campo!: T compilam e rebentam em runtime; ??, ?. e assertion functions dizem a verdade.",
+    "Sem noUncheckedIndexedAccess, arr[i] e registo[chave] têm tipo T e não T | undefined.",
+    "O @ts-expect-error avisa quando deixa de ser preciso (TS2578); o @ts-ignore cala para sempre."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 03",
+  "next_label": "Aula 03 → Ler e Resolver Erros do Compilador"
+}

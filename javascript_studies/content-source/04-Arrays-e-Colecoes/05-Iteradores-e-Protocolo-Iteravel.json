@@ -1,0 +1,236 @@
+{
+  "module_num": "04",
+  "module_title": "Arrays e Coleções",
+  "module_dir": "04-Arrays-e-Colecoes",
+  "lesson_num": "05",
+  "lesson_slug": "Iteradores-e-Protocolo-Iteravel",
+  "kind": "aula",
+  "title": "Iteradores e o Protocolo Iterável",
+  "filename_base": "05-Iteradores-e-Protocolo-Iteravel",
+  "subtitle": "Por dentro do for...of: como criar as suas próprias coleções iteráveis.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Compreender o protocolo iterável (Symbol.iterator) e o protocolo iterador (next(), value, done).",
+    "Explicar por que for...of funciona em arrays, strings, Map e Set, mas não em objetos simples.",
+    "Construir objetos iteráveis personalizados implementando Symbol.iterator manualmente.",
+    "Distinguir um iterável de um iterador e evitar bugs de estado partilhado entre iterações.",
+    "Usar objetos iteráveis personalizados com o spread, destructuring e Array.from()."
+  ],
+  "sections": [
+    {
+      "heading": "O protocolo iterável e o protocolo iterador",
+      "body": [
+        "O JavaScript define dois protocolos distintos, mas que trabalham sempre em conjunto. Um objeto é iterável quando implementa um método cuja chave é o símbolo especial Symbol.iterator; ao ser invocado sem argumentos, esse método tem de devolver um iterador. Um iterador é, por sua vez, qualquer objeto com um método next() que, a cada chamada, devolve um novo objeto simples com exatamente duas propriedades: value, o valor produzido nessa passagem, e done, um booleano que indica se a sequência já terminou.",
+        "Enquanto done for false, o valor em value é considerado válido e deve ser consumido; assim que done passa a true, a iteração para e value é normalmente undefined. Um mesmo objeto pode desempenhar os dois papéis ao mesmo tempo — ser iterável e ser o seu próprio iterador —, o que é exatamente como estão desenhados os iteradores devolvidos pelas coleções nativas do JavaScript, como se vê já a seguir."
+      ],
+      "code": "// Um iterador \"manual\", construído sem usar for...of\nfunction criarIteradorDeContagem(limite) {\n  let atual = 0;\n  return {\n    next() {\n      if (atual < limite) {\n        return { value: atual++, done: false };\n      }\n      return { value: undefined, done: true };\n    },\n  };\n}\n\nconst iterador = criarIteradorDeContagem(3);\nconsole.log(iterador.next()); // { value: 0, done: false }\nconsole.log(iterador.next()); // { value: 1, done: false }\nconsole.log(iterador.next()); // { value: 2, done: false }\nconsole.log(iterador.next()); // { value: undefined, done: true }",
+      "callout_kind": "NOTA",
+      "callout_text": "Symbol.iterator é um símbolo bem conhecido (well-known symbol) já embutido na linguagem — funciona como um nome de método reservado, reconhecido automaticamente por for...of, pelo spread e por outras funcionalidades. O tipo Symbol em geral, incluindo símbolos personalizados, é estudado em detalhe no módulo 11 (JavaScript Avançado); aqui basta saber usá-lo como chave computada.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔑",
+          "text": "Symbol.iterator devolve um iterador"
+        },
+        {
+          "icon": "🔁",
+          "text": "next() devolve sempre {value, done}"
+        },
+        {
+          "icon": "🧩",
+          "text": "Dois protocolos: iterável e iterador"
+        }
+      ]
+    },
+    {
+      "heading": "Porque é que o for...of funciona em arrays, strings, Map e Set",
+      "body": [
+        "O ciclo for...of não é magia: por baixo, o motor de JavaScript chama obj[Symbol.iterator]() uma única vez para obter um iterador e depois chama next() repetidamente, atribuindo value à variável do ciclo em cada passagem, até done ser true. É por isso que for...of funciona de forma idêntica em arrays, strings, Map e Set — todos estes tipos implementam Symbol.iterator — e não funciona em objetos literais simples, que não o implementam.",
+        "Vale notar que cada tipo de coleção produz valores diferentes através do seu iterador: um array produz os seus elementos, uma Map produz pares [chave, valor], um Set produz os seus valores únicos e uma string produz os seus carateres percorridos por ponto de código Unicode, e não por unidade UTF-16. Esta uniformidade é o que permite escrever um único ciclo for...of que funciona sobre qualquer coleção iterável, sem conhecer os detalhes internos de cada uma."
+      ],
+      "code": "const cores = [\"vermelho\", \"verde\", \"azul\"];\n\n// O que o motor faz por baixo quando escrevemos for...of\nconst it = cores[Symbol.iterator]();\nlet resultado = it.next();\nwhile (!resultado.done) {\n  console.log(resultado.value);\n  resultado = it.next();\n}\n\n// Exatamente o mesmo resultado, de forma legível\nfor (const cor of cores) {\n  console.log(cor);\n}\n\nconst mapa = new Map([[\"a\", 1], [\"b\", 2]]);\nfor (const [chave, valor] of mapa) {\n  console.log(chave, valor); // itera pares [chave, valor]\n}\n\nfor (const caractere of \"olá 👋\") {\n  console.log(caractere); // itera por ponto de código Unicode (o emoji conta como um único caractere)\n}",
+      "callout_kind": "DICA",
+      "callout_text": "Por iterar por ponto de código Unicode, for...of lida corretamente com carateres fora do plano básico (como muitos emojis), ao contrário de aceder a string[indice], que pode partir esse carater em duas unidades UTF-16.",
+      "table_headers": [
+        "Característica",
+        "for...of",
+        "for...in"
+      ],
+      "table_rows": [
+        [
+          "O que percorre",
+          "Valores produzidos pelo iterador (Symbol.iterator)",
+          "Chaves enumeráveis (incluindo herdadas)"
+        ],
+        [
+          "Arrays, strings, Map, Set",
+          "Sim",
+          "Sim, mas só os índices/chaves como string"
+        ],
+        [
+          "Objetos simples {}",
+          "Não — lança TypeError",
+          "Sim"
+        ],
+        [
+          "Uso recomendado",
+          "Percorrer valores de coleções",
+          "Raramente; preferir Object.keys/values/entries"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "⚙️",
+          "text": "for...of chama Symbol.iterator por baixo"
+        },
+        {
+          "icon": "🗺️",
+          "text": "Funciona em arrays, strings, Map e Set"
+        },
+        {
+          "icon": "🚫",
+          "text": "Objetos simples não são iteráveis"
+        }
+      ]
+    },
+    {
+      "heading": "Construir um objeto iterável personalizado",
+      "body": [
+        "Qualquer objeto ou classe pode tornar-se iterável adicionando um método com a chave computada [Symbol.iterator](). Esse método não recebe argumentos e tem de devolver um objeto que respeite o protocolo iterador, ou seja, com um método next() que devolve {value, done}. A partir do momento em que essa implementação existe, o objeto passa a funcionar com for...of, com o operador de espalhamento e com destructuring, exatamente como um array nativo.",
+        "Uma boa prática é manter o estado da iteração dentro do iterador devolvido — tipicamente através de variáveis capturadas por closure — e não em propriedades do próprio objeto iterável. Isso mantém o objeto iterável reutilizável, como se explora em detalhe na secção seguinte."
+      ],
+      "code": "class IntervaloNumerico {\n  constructor(inicio, fim, passo = 1) {\n    this.inicio = inicio;\n    this.fim = fim;\n    this.passo = passo;\n  }\n\n  [Symbol.iterator]() {\n    let atual = this.inicio;\n    const fim = this.fim;\n    const passo = this.passo;\n\n    return {\n      next() {\n        if (atual < fim) {\n          const valor = atual;\n          atual += passo;\n          return { value: valor, done: false };\n        }\n        return { value: undefined, done: true };\n      },\n    };\n  }\n}\n\nconst intervalo = new IntervaloNumerico(0, 10, 2);\n\nfor (const numero of intervalo) {\n  console.log(numero); // 0, 2, 4, 6, 8\n}\n\nconsole.log([...intervalo]); // [0, 2, 4, 6, 8]\nconst [primeiro, segundo] = intervalo;\nconsole.log(primeiro, segundo); // 0 2",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Modifique a classe IntervaloNumerico para aceitar um passo negativo e percorrer do valor mais alto para o mais baixo, por exemplo new IntervaloNumerico(10, 0, -2).",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏗️",
+          "text": "Implemente [Symbol.iterator]() na classe"
+        },
+        {
+          "icon": "📦",
+          "text": "Devolva um objeto com next()"
+        },
+        {
+          "icon": "✨",
+          "text": "Funciona com for...of, spread e destructuring"
+        }
+      ]
+    },
+    {
+      "heading": "Iterável não é iterador: estado independente em cada passagem",
+      "body": [
+        "É essencial distinguir iterável de iterador. Um iterável é qualquer objeto com um método Symbol.iterator capaz de produzir um iterador; um iterador é o objeto com estado que efetivamente avança a sequência a cada chamada de next(). Um erro comum é fazer com que [Symbol.iterator]() devolva this, quando o próprio objeto iterável guarda o estado de progresso (por exemplo, um índice numa propriedade). Isso funciona na primeira iteração, mas na segunda o estado já está esgotado, porque o mesmo objeto — e o mesmo estado — é partilhado entre todas as chamadas.",
+        "A correção passa por criar o estado de novo, dentro de [Symbol.iterator](), sempre que este é invocado, de forma que cada nova iteração comece do zero e duas iterações em simultâneo (por exemplo, dois for...of ativos ao mesmo tempo sobre o mesmo objeto) não interfiram uma com a outra."
+      ],
+      "code": "// Objeto mal desenhado: o iterador partilha o estado com o iterável\nconst contadorComBug = {\n  atual: 0,\n  limite: 3,\n  [Symbol.iterator]() {\n    return this; // devolve o próprio objeto como iterador\n  },\n  next() {\n    if (this.atual < this.limite) {\n      return { value: this.atual++, done: false };\n    }\n    return { value: undefined, done: true };\n  },\n};\n\nconsole.log([...contadorComBug]); // [0, 1, 2]\nconsole.log([...contadorComBug]); // [] -- o estado já foi consumido!\n\n// Versão correta: cada chamada a Symbol.iterator cria estado novo\nconst contadorCorreto = {\n  limite: 3,\n  [Symbol.iterator]() {\n    let atual = 0;\n    const limite = this.limite;\n    return {\n      next() {\n        return atual < limite\n          ? { value: atual++, done: false }\n          : { value: undefined, done: true };\n      },\n    };\n  },\n};\n\nconsole.log([...contadorCorreto]); // [0, 1, 2]\nconsole.log([...contadorCorreto]); // [0, 1, 2] -- funciona sempre",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Regra prática: nunca devolva this a partir de [Symbol.iterator]() se this for o objeto iterável e guardar o estado da progressão. Crie o estado (índice, cursor, etc.) dentro do próprio método [Symbol.iterator](), por closure, para que o iterável possa ser percorrido tantas vezes quantas forem necessárias.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⚠️",
+          "text": "Symbol.iterator deve devolver estado novo"
+        },
+        {
+          "icon": "♻️",
+          "text": "Iterável reutilizável, iterador de uso único"
+        }
+      ]
+    },
+    {
+      "heading": "O mesmo protocolo alimenta spread, destructuring e Array.from",
+      "body": [
+        "O protocolo iterável não serve apenas para for...of. O operador de espalhamento, a atribuição por destructuring, Array.from(), e os construtores new Map(iteravel) e new Set(iteravel) aceitam qualquer objeto que implemente Symbol.iterator corretamente. Isto significa que, ao implementar o protocolo uma única vez numa classe ou objeto personalizado, esse objeto passa automaticamente a funcionar com todas estas funcionalidades da linguagem, sem qualquer código adicional.",
+        "Esta é, na prática, a grande vantagem do protocolo: em vez de cada função da linguagem definir a sua própria forma de percorrer coleções, todas partilham a mesma interface. Um objeto iterável bem implementado interopera de imediato com o ecossistema inteiro da linguagem."
+      ],
+      "code": "// Continua o exemplo da secção anterior: reutiliza a classe\n// IntervaloNumerico, que implementa Symbol.iterator.\nconst intervalo = new IntervaloNumerico(1, 4);\n\nconsole.log(Array.from(intervalo)); // [1, 2, 3]\nconsole.log(new Set(intervalo));    // Set(3) {1, 2, 3}\nconsole.log(Math.max(...intervalo)); // 3",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🌐",
+          "text": "Spread, Array.from e Set usam o mesmo protocolo"
+        },
+        {
+          "icon": "🔌",
+          "text": "Implemente uma vez, funcione em toda a linguagem"
+        }
+      ]
+    },
+    {
+      "heading": "Erros comuns ao trabalhar com iteráveis",
+      "body": [
+        "Um erro frequente é tentar usar for...of diretamente sobre um objeto literal simples: como {} não implementa Symbol.iterator, o motor lança um TypeError explícito a informar que o valor não é iterável, em vez de silenciosamente não fazer nada. Isto é intencional — distingue claramente objetos pensados para serem percorridos (iteráveis) de objetos pensados apenas para agrupar propriedades nomeadas, que se percorrem antes através de Object.keys(), Object.values() ou Object.entries().",
+        "Outro erro é escrever um iterador cujo next() nunca devolve done: true quando devia — por exemplo, esquecer a condição de paragem numa sequência que deveria ser finita. Isso não gera um erro imediato, mas transforma qualquer for...of ou espalhamento sobre esse iterável num ciclo infinito, muitas vezes só detetado quando a aplicação bloqueia ou a memória se esgota."
+      ],
+      "code": "const pessoa = { nome: \"Inês\", idade: 34 };\n\ntry {\n  for (const valor of pessoa) {\n    console.log(valor);\n  }\n} catch (erro) {\n  console.log(erro instanceof TypeError, erro.message);\n}\n\n// Objetos simples não são iteráveis por omissão;\n// percorremos as suas entradas através de um array intermédio\nfor (const [chave, valor] of Object.entries(pessoa)) {\n  console.log(chave, valor);\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Se o iterador representar deliberadamente uma sequência infinita (como o exemplo de Fibonacci mais à frente), o próprio código consumidor tem de garantir uma condição de paragem, normalmente com break dentro de um for...of.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "❌",
+          "text": "for...of em {} lança TypeError"
+        },
+        {
+          "icon": "♾️",
+          "text": "done nunca true = ciclo infinito"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Consumir um iterador manualmente",
+      "difficulty": "Iniciante",
+      "statement": "Dado o array const nomes = ['Ana', 'Bruno', 'Carla'], obtenha manualmente o seu iterador através de nomes[Symbol.iterator](). De seguida, usando apenas um ciclo while (sem for...of e sem for clássico), chame next() repetidamente para imprimir cada nome na consola, parando assim que a propriedade done vier a true.",
+      "hint": "O objeto devolvido por next() tem sempre duas propriedades, value e done; use done como condição de paragem do ciclo while.",
+      "solution_code": "const nomes = [\"Ana\", \"Bruno\", \"Carla\"];\nconst it = nomes[Symbol.iterator]();\n\nlet resultado = it.next();\nwhile (!resultado.done) {\n  console.log(resultado.value);\n  resultado = it.next();\n}",
+      "solution_explanation": "O array já implementa o protocolo iterável, por isso nomes[Symbol.iterator]() devolve um iterador válido. O ciclo while chama next() a cada passagem e usa a propriedade done para saber quando parar, exatamente como for...of faz internamente."
+    },
+    {
+      "title": "Detetar se um valor é iterável",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função ehIteravel(valor) que devolve true se valor implementar o protocolo iterável (ou seja, se não for null nem undefined, e valor[Symbol.iterator] for uma função) e false caso contrário. Teste a função com um array, uma string, um número e um objeto literal {}.",
+      "hint": "Aceda à propriedade com colchetes, valor[Symbol.iterator], e verifique o resultado com typeof; tenha cuidado, porque aceder a uma propriedade de null ou de undefined lança um erro.",
+      "solution_code": "function ehIteravel(valor) {\n  return valor != null && typeof valor[Symbol.iterator] === \"function\";\n}\n\nconsole.log(ehIteravel([1, 2, 3])); // true\nconsole.log(ehIteravel(\"texto\"));   // true\nconsole.log(ehIteravel(42));        // false\nconsole.log(ehIteravel({}));        // false",
+      "solution_explanation": "A verificação valor != null exclui null e undefined antes de qualquer acesso a propriedades, evitando um TypeError. Depois, testar typeof valor[Symbol.iterator] === 'function' confirma que o valor tem, de facto, um método capaz de produzir um iterador."
+    },
+    {
+      "title": "Objeto iterável com estado próprio",
+      "difficulty": "Intermedio",
+      "statement": "Crie um objeto iterável chamado diasUteis que, quando percorrido com for...of, produza as strings 'Segunda', 'Terça', 'Quarta', 'Quinta' e 'Sexta', por esta ordem. Implemente o método Symbol.iterator manualmente: o iterador devolvido deve controlar o seu próprio estado (por exemplo, um índice guardado por closure) e não pode delegar diretamente para o iterador nativo de um array (ou seja, o código não pode conter algo como return this.nomes[Symbol.iterator]()).",
+      "hint": "Dentro do método [Symbol.iterator](), declare uma variável local (por exemplo, indice = 0) e use-a dentro do next() devolvido para saber que nome mostrar a seguir e quando done deve passar a true.",
+      "solution_code": "const diasUteis = {\n  nomes: [\"Segunda\", \"Terça\", \"Quarta\", \"Quinta\", \"Sexta\"],\n  [Symbol.iterator]() {\n    let indice = 0;\n    const nomes = this.nomes;\n    return {\n      next() {\n        if (indice < nomes.length) {\n          return { value: nomes[indice++], done: false };\n        }\n        return { value: undefined, done: true };\n      },\n    };\n  },\n};\n\nfor (const dia of diasUteis) {\n  console.log(dia);\n}",
+      "solution_explanation": "O método [Symbol.iterator]() cria, a cada chamada, um novo iterador com a sua própria variável indice capturada por closure. O next() devolvido consulta e avança esse índice sobre o array nomes, que é usado apenas como fonte de consulta, nunca percorrido diretamente pelo seu próprio iterador."
+    },
+    {
+      "title": "Sequência infinita e paragem controlada",
+      "difficulty": "Avancado",
+      "statement": "Crie um objeto iterável chamado fibonacci que, sempre que for percorrido com for...of, produza a sequência de Fibonacci (0, 1, 1, 2, 3, 5, 8, ...) indefinidamente, sem nunca terminar por si só. Depois: (1) use for...of com break para imprimir apenas os primeiros 8 números da sequência; (2) confirme que fibonacci pode ser percorrido uma segunda vez, começando novamente do zero, executando um segundo for...of independente que soma os números até a soma ultrapassar 20.",
+      "hint": "O método [Symbol.iterator]() deve devolver um novo iterador de cada vez que é chamado, guardando os dois últimos valores da sequência em variáveis locais por closure; o next() nunca deve devolver done: true.",
+      "solution_code": "const fibonacci = {\n  [Symbol.iterator]() {\n    let anterior = 0;\n    let atual = 1;\n    return {\n      next() {\n        const valor = anterior;\n        [anterior, atual] = [atual, anterior + atual];\n        return { value: valor, done: false }; // nunca termina por iniciativa própria\n      },\n    };\n  },\n};\n\nlet contador = 0;\nfor (const numero of fibonacci) {\n  console.log(numero);\n  contador++;\n  if (contador === 8) break;\n}\n\nlet soma = 0;\nfor (const numero of fibonacci) {\n  soma += numero;\n  if (soma > 20) break;\n}\nconsole.log(soma);",
+      "solution_explanation": "Como [Symbol.iterator]() cria variáveis anterior e atual novas a cada chamada, cada for...of arranca sempre do início da sequência, de forma completamente independente do anterior. O next() nunca devolve done: true porque a sequência é deliberadamente infinita; cabe ao código consumidor decidir quando parar, através de break."
+    }
+  ],
+  "summary": [
+    "Um objeto é iterável quando implementa Symbol.iterator; um iterador é qualquer objeto com um método next() que devolve {value, done}.",
+    "for...of chama obj[Symbol.iterator]() uma vez e depois next() repetidamente até done ser true — é por isso que funciona de forma uniforme em arrays, strings, Map e Set.",
+    "Objetos literais simples não são iteráveis por omissão; usar for...of sobre eles lança TypeError, ao contrário de for...in, que percorre chaves enumeráveis.",
+    "Symbol.iterator deve devolver sempre um iterador novo, com o seu próprio estado guardado por closure, para que o mesmo iterável possa ser percorrido várias vezes de forma independente.",
+    "O mesmo protocolo alimenta o spread, o destructuring, Array.from(), new Map() e new Set() — implementar Symbol.iterator uma vez dá acesso a todas estas funcionalidades.",
+    "Iteradores personalizados permitem representar sequências calculadas sob demanda, inclusive infinitas; a próxima aula introduz os generators, que simplificam a sua escrita."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 06",
+  "next_label": "Aula 06 → Generators",
+  "_stage": "revisao"
+}

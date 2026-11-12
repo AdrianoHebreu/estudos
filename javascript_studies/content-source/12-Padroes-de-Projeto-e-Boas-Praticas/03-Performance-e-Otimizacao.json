@@ -1,0 +1,272 @@
+{
+  "module_num": "12",
+  "module_title": "Padrões de Projeto e Boas Práticas",
+  "module_dir": "12-Padroes-de-Projeto-e-Boas-Praticas",
+  "lesson_num": "03",
+  "lesson_slug": "Performance-e-Otimizacao",
+  "kind": "aula",
+  "title": "Performance e Otimização",
+  "filename_base": "03-Performance-e-Otimizacao",
+  "subtitle": "Memoização, debounce, throttle e intuição de Big-O para escrever código mais rápido",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Aplicar memoização para evitar recalcular funções puras cujo resultado já foi obtido antes.",
+    "Distinguir debounce de throttle e escolher a técnica certa consoante o tipo de evento (pesquisa vs scroll).",
+    "Desenvolver intuição sobre a complexidade (Big-O) de operações comuns em arrays, objetos, Set e Map.",
+    "Identificar e eliminar cálculos redundantes dentro de loops, movendo-os para fora quando não dependem da iteração.",
+    "Medir o impacto real de uma otimização com console.time e console.timeEnd, em vez de assumi-lo."
+  ],
+  "sections": [
+    {
+      "heading": "Memoização de funções puras dispendiosas",
+      "body": [
+        "Memoização é a técnica de guardar em cache o resultado de uma função em função dos argumentos com que foi chamada, para evitar recalculá-lo em chamadas futuras com os mesmos argumentos. Só faz sentido aplicá-la a funções puras: funções que, para os mesmos argumentos, devolvem sempre o mesmo resultado e não têm efeitos secundários nem dependem de estado externo que possa mudar entre chamadas. Se a função depender de algo que varia (a hora atual, uma variável global, o conteúdo de uma base de dados), a memoização vai devolver resultados desatualizados.",
+        "Na prática, memoizar é escrever uma função de ordem superior que recebe a função original e devolve uma nova função fechada sobre uma cache, normalmente um Map. Antes de executar o cálculo, verifica-se se já existe uma entrada para os argumentos recebidos; se existir, devolve-se de imediato, poupando todo o trabalho da função original. Isto compensa sobretudo quando o cálculo é caro (recursão profunda, processamento de grandes coleções, expressões regulares complexas) e é repetido com os mesmos argumentos."
+      ],
+      "code": "function memoize(fn) {\n  const cache = new Map();\n  return function (...args) {\n    const chave = JSON.stringify(args);\n    if (cache.has(chave)) {\n      return cache.get(chave);\n    }\n    const resultado = fn(...args);\n    cache.set(chave, resultado);\n    return resultado;\n  };\n}\n\nfunction calcularFatorial(n) {\n  console.log(`A calcular fatorial de ${n}...`);\n  let resultado = 1;\n  for (let i = 2; i <= n; i++) {\n    resultado *= i;\n  }\n  return resultado;\n}\n\nconst fatorialMemo = memoize(calcularFatorial);\n\nfatorialMemo(20); // executa o cálculo e imprime \"A calcular fatorial de 20...\"\nfatorialMemo(20); // devolve o valor da cache, sem imprimir nada",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Uma cache que cresce sem limite é uma fuga de memória disfarçada. Se o conjunto de argumentos possíveis for muito grande ou ilimitado, considere limitar o tamanho da cache (por exemplo, removendo a entrada mais antiga) ou usar um WeakMap quando a chave for um objeto, para permitir que o recolector de lixo liberte entradas já não referenciadas.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧠",
+          "text": "Guarda resultados para evitar recalcular"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Só funciona bem com funções puras"
+        },
+        {
+          "icon": "🗄️",
+          "text": "Cache normalmente implementada com Map"
+        }
+      ]
+    },
+    {
+      "heading": "Debounce: adiar até haver uma pausa",
+      "body": [
+        "Debounce adia a execução de uma função até que passe um determinado período de tempo sem que ela volte a ser chamada. Cada nova chamada cancela o temporizador da chamada anterior e agenda um novo; só quando as chamadas param é que a função original é finalmente executada, uma única vez. É a técnica indicada para eventos disparados em rajada onde só interessa o resultado final, como o evento input de uma caixa de pesquisa: não faz sentido consultar uma API a cada tecla premida, apenas quando o utilizador faz uma pausa a escrever.",
+        "A implementação assenta numa closure que guarda a referência do temporizador entre chamadas: a cada invocação, cancela-se o temporizador pendente com clearTimeout e agenda-se um novo com setTimeout. Só quando o temporizador chega ao fim sem ser cancelado é que a função original executa, recebendo os argumentos da última chamada feita."
+      ],
+      "code": "function debounce(fn, atraso = 300) {\n  let temporizador;\n  return function (...args) {\n    clearTimeout(temporizador);\n    temporizador = setTimeout(() => fn.apply(this, args), atraso);\n  };\n}\n\nconst campoPesquisa = document.querySelector('#pesquisa');\n\nconst pesquisarNaAPI = debounce((termo) => {\n  console.log(`A pesquisar por: ${termo}`);\n}, 400);\n\ncampoPesquisa.addEventListener('input', (evento) => {\n  pesquisarNaAPI(evento.target.value);\n});",
+      "callout_kind": "DICA",
+      "callout_text": "Um atraso típico para pesquisa fica entre 300 e 500 ms: suficiente para não disparar a cada tecla, mas ainda percebido como resposta imediata pelo utilizador. Valores muito altos fazem a interface parecer lenta.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⏳",
+          "text": "Espera por uma pausa antes de executar"
+        },
+        {
+          "icon": "🔍",
+          "text": "Ideal para inputs de pesquisa"
+        },
+        {
+          "icon": "🧹",
+          "text": "Cada chamada cancela o temporizador anterior"
+        }
+      ]
+    },
+    {
+      "heading": "Throttle: limitar a frequência de execução",
+      "body": [
+        "Throttle garante que uma função executa, no máximo, uma vez a cada intervalo fixo, independentemente de quantas vezes for chamada durante esse intervalo. Ao contrário do debounce, que pode adiar indefinidamente a execução enquanto os eventos continuarem a chegar, o throttle nunca deixa passar mais tempo do que o intervalo definido sem executar pelo menos uma vez; nas implementações mais simples, a primeira chamada de cada janela executa de imediato e as restantes dentro da mesma janela são ignoradas.",
+        "É a técnica adequada para eventos que disparam de forma contínua e onde interessa reagir regularmente ao longo do tempo, não só no fim: o evento scroll de uma página (para atualizar uma barra de progresso de leitura, por exemplo), o resize da janela, ou o mousemove durante um arrastar. Chamar a função de resposta a cada pixel de scroll seria caro e desnecessário; throttle limita essa frequência a algo que a interface consegue acompanhar sem perder a sensação de continuidade."
+      ],
+      "code": "function throttle(fn, intervalo = 200) {\n  let bloqueado = false;\n  return function (...args) {\n    if (bloqueado) return;\n    bloqueado = true;\n    fn.apply(this, args);\n    setTimeout(() => {\n      bloqueado = false;\n    }, intervalo);\n  };\n}\n\nconst aoFazerScroll = throttle(() => {\n  console.log('Posição atual do scroll:', window.scrollY);\n}, 200);\n\nwindow.addEventListener('scroll', aoFazerScroll);",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🚦",
+          "text": "Garante um intervalo mínimo entre execuções"
+        },
+        {
+          "icon": "📜",
+          "text": "Ideal para scroll, resize e arrastar"
+        }
+      ]
+    },
+    {
+      "heading": "Debounce vs throttle: qual escolher",
+      "body": [
+        "Debounce e throttle resolvem o mesmo problema geral, reduzir quantas vezes uma função corre em resposta a eventos frequentes, mas com estratégias opostas. Debounce pergunta parou de acontecer? e só executa quando a resposta é sim; throttle pergunta já passou tempo suficiente desde a última execução? e executa a intervalos regulares mesmo que os eventos nunca parem.",
+        "A escolha certa depende do que interessa capturar: se só o valor final importa (o texto final de uma pesquisa, o valor final de um campo antes de validar), debounce evita trabalho a mais e produz um único resultado relevante. Se for necessário reagir continuamente enquanto o evento decorre (posição de scroll, coordenadas do rato), throttle garante atualizações regulares sem sobrecarregar a interface."
+      ],
+      "code": "",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [
+        "Aspeto",
+        "Debounce",
+        "Throttle"
+      ],
+      "table_rows": [
+        [
+          "Quando executa a função",
+          "Só depois de passar um período sem novos eventos",
+          "A intervalos regulares, mesmo com eventos contínuos"
+        ],
+        [
+          "Efeito de eventos muito frequentes",
+          "Adia continuamente a execução enquanto os eventos não param",
+          "Ignora eventos extra dentro da janela de bloqueio, mas nunca deixa passar mais do que uma janela sem executar"
+        ],
+        [
+          "Exemplo típico",
+          "Campo de pesquisa, validação de formulário enquanto o utilizador escreve",
+          "Scroll, resize da janela, arrastar o rato"
+        ],
+        [
+          "Risco de usar a técnica errada",
+          "Usar throttle numa pesquisa dispara pedidos a intervalos, mesmo a meio da escrita",
+          "Usar debounce num scroll contínuo pode nunca disparar enquanto o utilizador não parar"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "⚖️",
+          "text": "Debounce espera silêncio; throttle regula o ritmo"
+        },
+        {
+          "icon": "🔎",
+          "text": "Pesquisa: debounce. Scroll: throttle."
+        }
+      ]
+    },
+    {
+      "heading": "Intuição de Big-O: arrays, objetos, Set e Map",
+      "body": [
+        "Big-O descreve, de forma aproximada, como o custo de uma operação cresce à medida que o tamanho dos dados (n) aumenta, e é a ferramenta certa para prever quando uma otimização vai importar de facto. Não é preciso fazer análise matemática formal para tirar proveito da ideia: basta perguntar, para cada operação dentro de um ciclo ou chamada muitas vezes, se o trabalho que ela faz cresce com o tamanho da coleção ou é sempre o mesmo.",
+        "O exemplo mais prático em JavaScript é a diferença entre procurar um valor num array e procurar num Set (ou uma chave num Map). Array.prototype.includes e indexOf percorrem o array elemento a elemento até encontrarem, ou não, o valor, o que é O(n): num array com um milhão de elementos, o pior caso são um milhão de comparações. Set.prototype.has e Map.prototype.get usam internamente uma tabela de dispersão e resolvem a mesma pergunta em tempo praticamente constante, O(1) em média, seja qual for o tamanho da coleção.",
+        "Isto tem uma consequência prática direta: se uma função vai fazer muitas verificações de pertença sobre a mesma coleção, compensa quase sempre construir um Set a partir dela uma única vez antes do ciclo. Esse custo é O(n), pago uma só vez, e cada pesquisa seguinte passa a ser O(1) em vez de O(n), o que transforma um algoritmo O(n²), um ciclo dentro de outro, cada um a percorrer n elementos, num algoritmo O(n)."
+      ],
+      "code": "const lista = Array.from({ length: 100000 }, (_, i) => i);\nconst conjunto = new Set(lista);\nconst alvos = [10, 5000, 99999, -1, 50000];\n\nconsole.time('array.includes');\nlet encontradosArray = 0;\nfor (const alvo of alvos) {\n  if (lista.includes(alvo)) encontradosArray++;\n}\nconsole.timeEnd('array.includes'); // cresce com o tamanho de \"lista\": O(n) por verificação\n\nconsole.time('set.has');\nlet encontradosSet = 0;\nfor (const alvo of alvos) {\n  if (conjunto.has(alvo)) encontradosSet++;\n}\nconsole.timeEnd('set.has'); // praticamente constante: O(1) por verificação\n\nconsole.log(encontradosArray, encontradosSet); // 4 4",
+      "callout_kind": "NOTA",
+      "callout_text": "console.time('etiqueta') e console.timeEnd('etiqueta') medem o tempo real decorrido entre as duas chamadas e são a forma mais simples de confirmar, no browser ou no Node.js, que uma otimização teórica se traduz em ganho real.",
+      "table_headers": [
+        "Operação",
+        "Complexidade típica",
+        "Nota"
+      ],
+      "table_rows": [
+        [
+          "array.push(valor) / array.pop()",
+          "O(1)",
+          "Adiciona ou remove no fim, sem deslocar elementos"
+        ],
+        [
+          "array.unshift(valor) / array.shift()",
+          "O(n)",
+          "Todos os elementos têm de ser deslocados um índice"
+        ],
+        [
+          "array.includes(valor) / array.indexOf(valor)",
+          "O(n)",
+          "Percorre o array elemento a elemento até encontrar, ou não, o valor"
+        ],
+        [
+          "array.sort()",
+          "O(n log n)",
+          "Os motores modernos usam algoritmos como Timsort"
+        ],
+        [
+          "set.has(valor) / map.get(chave)",
+          "O(1) em média",
+          "Acesso por tabela de dispersão (hash), não por percurso"
+        ],
+        [
+          "objeto.propriedade",
+          "O(1) em média",
+          "Acesso direto por chave, tal como num Map"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📈",
+          "text": "Big-O mede como o custo cresce com n"
+        },
+        {
+          "icon": "🐌",
+          "text": "Array.includes percorre tudo: O(n)"
+        },
+        {
+          "icon": "⚡",
+          "text": "Set.has e Map.get são O(1) em média"
+        }
+      ]
+    },
+    {
+      "heading": "Evitar trabalho redundante em loops",
+      "body": [
+        "Um ciclo é executado o mesmo número de vezes quer o seu corpo faça pouco ou muito trabalho, por isso qualquer cálculo repetido dentro dele é multiplicado pelo número de iterações. Se um valor não depende da iteração atual, isto é, não usa o índice nem o elemento corrente, calculá-lo de novo em cada volta do ciclo é trabalho desperdiçado: deve ser calculado uma única vez, antes do ciclo começar, e reutilizado.",
+        "Casos comuns deste desperdício incluem criar a mesma expressão regular dentro do corpo do ciclo (compilar um regex tem custo, e o resultado é sempre igual), recalcular uma constante derivada de parâmetros que não mudam durante o ciclo, ou repetir uma consulta ao DOM que devolveria sempre o mesmo elemento. A correção é sempre a mesma: mover para fora do ciclo tudo o que não depende da variável de iteração."
+      ],
+      "code": "// Versão pouco eficiente: recria a regex e recalcula o sufixo em cada iteração\nfunction contarEmailsValidos(emails, dominioPermitido) {\n  let total = 0;\n  for (let i = 0; i < emails.length; i++) {\n    const regexEmail = /^[\\w.+-]+@[\\w-]+\\.[a-z]{2,}$/i;\n    const sufixo = `@${dominioPermitido}`;\n    if (regexEmail.test(emails[i]) && emails[i].endsWith(sufixo)) {\n      total++;\n    }\n  }\n  return total;\n}\n\n// Versão otimizada: o que não depende do email atual sai do ciclo\nfunction contarEmailsValidosOtimizado(emails, dominioPermitido) {\n  const regexEmail = /^[\\w.+-]+@[\\w-]+\\.[a-z]{2,}$/i; // criada uma única vez\n  const sufixo = `@${dominioPermitido}`; // não depende do email atual\n\n  let total = 0;\n  for (const email of emails) {\n    if (regexEmail.test(email) && email.endsWith(sufixo)) {\n      total++;\n    }\n  }\n  return total;\n}",
+      "callout_kind": "NOTA",
+      "callout_text": "Nos motores atuais (V8, por exemplo), aceder a array.length na condição de um for já é otimizado e não implica recalcular o comprimento do zero em cada iteração. O ganho real de tirar código do ciclo vem de evitar trabalho verdadeiramente repetido, como criar objetos, compilar regex ou fazer chamadas a funções, e não de micro-otimizações que o motor já trata sozinho.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔁",
+          "text": "Não recalcules o que é igual em cada iteração"
+        },
+        {
+          "icon": "🚀",
+          "text": "Move constantes e regex para fora do loop"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Memoizar uma função pura",
+      "difficulty": "Iniciante",
+      "statement": "Implemente uma função genérica memoize(fn) que recebe uma função de um único argumento e devolve uma nova função que guarda os resultados já calculados numa cache (por exemplo, um Map), devolvendo o valor da cache quando o mesmo argumento é pedido de novo. Depois, aplique memoize à função seguinte, que verifica de forma propositadamente lenta se um número é primo (testa a divisibilidade por todos os inteiros entre 2 e a raiz quadrada de n):\n\nfunction ehPrimo(n) {\n  if (n < 2) return false;\n  for (let i = 2; i <= Math.sqrt(n); i++) {\n    if (n % i === 0) return false;\n  }\n  return true;\n}\n\nConfirme que, ao chamar a versão memoizada duas vezes com o mesmo valor de n, o corpo de ehPrimo só é executado na primeira chamada (pode confirmar isto colocando um console.log dentro de ehPrimo).",
+      "hint": "Use um Map fechado sobre a função devolvida (closure) para guardar pares argumento-resultado; verifique se a chave já existe na cache antes de chamar a função original.",
+      "solution_code": "function memoize(fn) {\n  const cache = new Map();\n  return function (n) {\n    if (cache.has(n)) {\n      return cache.get(n);\n    }\n    const resultado = fn(n);\n    cache.set(n, resultado);\n    return resultado;\n  };\n}\n\nfunction ehPrimo(n) {\n  console.log(`A verificar ${n}...`);\n  if (n < 2) return false;\n  for (let i = 2; i <= Math.sqrt(n); i++) {\n    if (n % i === 0) return false;\n  }\n  return true;\n}\n\nconst ehPrimoMemo = memoize(ehPrimo);\n\nconsole.log(ehPrimoMemo(97919)); // imprime \"A verificar 97919...\" e depois o resultado\nconsole.log(ehPrimoMemo(97919)); // resultado direto da cache, sem novo log",
+      "solution_explanation": "A função memoize cria, através de uma closure, um Map que persiste entre chamadas e associa cada argumento ao resultado já calculado. Na primeira chamada com um dado n, ehPrimo executa e o resultado fica guardado; nas chamadas seguintes com o mesmo n, o resultado é devolvido diretamente da cache, sem repetir o trabalho custoso da verificação."
+    },
+    {
+      "title": "Implementar e validar um throttle",
+      "difficulty": "Intermedio",
+      "statement": "Implemente uma função genérica throttle(fn, intervalo) que devolve uma versão de fn que, quando chamada repetidamente, executa fn no máximo uma vez a cada intervalo milissegundos (chamadas feitas durante o período de bloqueio são ignoradas). Para validar, crie uma variável chamadas inicializada a 0 e uma função registarEvento que a incrementa. Aplique throttle(registarEvento, 100) e chame a função resultante 10 vezes seguidas dentro de um ciclo for, sem esperar entre chamadas. Imprima o valor de chamadas imediatamente a seguir ao ciclo e explique o resultado obtido.",
+      "hint": "Use uma flag booleana (por exemplo bloqueado) fechada na closure; ao ser chamada, se bloqueado for false, executa fn e marca bloqueado como true, agendando com setTimeout a reposição de bloqueado a false passado o intervalo.",
+      "solution_code": "function throttle(fn, intervalo) {\n  let bloqueado = false;\n  return function (...args) {\n    if (bloqueado) return;\n    bloqueado = true;\n    fn.apply(this, args);\n    setTimeout(() => {\n      bloqueado = false;\n    }, intervalo);\n  };\n}\n\nlet chamadas = 0;\n\nfunction registarEvento() {\n  chamadas++;\n}\n\nconst registarComThrottle = throttle(registarEvento, 100);\n\nfor (let i = 0; i < 10; i++) {\n  registarComThrottle();\n}\n\nconsole.log(chamadas); // 1",
+      "solution_explanation": "O ciclo executa as 10 chamadas de forma síncrona e imediata, por isso todas caem dentro da mesma janela de bloqueio de 100ms; apenas a primeira chamada executa registarEvento e as restantes nove são ignoradas. Isto ilustra a diferença fundamental para debounce: throttle impõe um limite superior à frequência de execução, sem nunca adiar indefinidamente a primeira execução."
+    },
+    {
+      "title": "Eliminar trabalho redundante de um ciclo",
+      "difficulty": "Intermedio",
+      "statement": "A função seguinte percorre uma lista de produtos e devolve apenas os que têm um código válido (duas letras maiúsculas seguidas de quatro dígitos) e cujo preço, depois de aplicado um imposto, não ultrapassa um limite máximo:\n\nfunction filtrarProdutosValidos(produtos, taxaImposto, limiteMaximo) {\n  const validos = [];\n  for (let i = 0; i < produtos.length; i++) {\n    const regexCodigo = /^[A-Z]{2}\\d{4}$/;\n    const multiplicador = 1 + taxaImposto;\n    const precoComImposto = produtos[i].preco * multiplicador;\n    if (regexCodigo.test(produtos[i].codigo) && precoComImposto <= limiteMaximo) {\n      validos.push(produtos[i]);\n    }\n  }\n  return validos;\n}\n\nIdentifique quais dos valores calculados dentro do ciclo não dependem do produto da iteração atual e reescreva a função de forma mais eficiente, sem alterar o resultado.",
+      "hint": "Pergunte-se, para cada linha dentro do ciclo, se o seu valor seria diferente em iterações diferentes; tudo o que não depende de produtos[i] pode ser calculado uma única vez antes do for.",
+      "solution_code": "function filtrarProdutosValidos(produtos, taxaImposto, limiteMaximo) {\n  const regexCodigo = /^[A-Z]{2}\\d{4}$/; // não depende de i: criar uma só vez\n  const multiplicador = 1 + taxaImposto;  // idem: é o mesmo em todas as iterações\n  const validos = [];\n\n  for (const produto of produtos) {\n    const precoComImposto = produto.preco * multiplicador; // este sim depende do produto\n    if (regexCodigo.test(produto.codigo) && precoComImposto <= limiteMaximo) {\n      validos.push(produto);\n    }\n  }\n\n  return validos;\n}\n\nconst produtos = [\n  { codigo: 'AB1234', preco: 100 },\n  { codigo: 'xy9999', preco: 50 },\n  { codigo: 'CD5678', preco: 200 },\n];\n\nconsole.log(filtrarProdutosValidos(produtos, 0.23, 150));\n// [{ codigo: 'AB1234', preco: 100 }]",
+      "solution_explanation": "A expressão regular e o multiplicador não dependem do índice i, pelo que recriá-los ou recalculá-los a cada iteração é trabalho repetido sem qualquer benefício; ao movê-los para antes do ciclo, calculam-se uma única vez e cada iteração passa a fazer só o trabalho que realmente varia (o preço do produto atual). Ganho que se torna significativo quanto maior for produtos.length ou mais pesado for o cálculo movido para fora."
+    },
+    {
+      "title": "De O(n²) para O(n) com um Set",
+      "difficulty": "Avancado",
+      "statement": "A função seguinte recebe duas listas de identificadores (arrays de strings) e devolve os identificadores que aparecem em ambas, usando includes dentro de um ciclo:\n\nfunction encontrarComuns(listaA, listaB) {\n  const comuns = [];\n  for (const id of listaA) {\n    if (listaB.includes(id)) {\n      comuns.push(id);\n    }\n  }\n  return comuns;\n}\n\nPara listas grandes (por exemplo, 50000 elementos cada), esta função é lenta. Reescreva encontrarComuns para ter complexidade aproximadamente O(n + m) em vez de O(n × m), produzindo exatamente o mesmo resultado que a versão original produziria, e explique num comentário no código porque é que a nova versão é mais rápida.",
+      "hint": "Converta uma das listas num Set antes do ciclo, para que a pesquisa de cada elemento passe a ser O(1) em média em vez de percorrer a lista inteira a cada verificação.",
+      "solution_code": "function encontrarComuns(listaA, listaB) {\n  // Converter listaB num Set uma única vez: custo O(m).\n  // A partir daqui, cada verificação \"has\" é O(1) em média,\n  // em vez de percorrer listaB inteira (O(m)) para cada elemento de listaA.\n  const conjuntoB = new Set(listaB);\n  const comuns = [];\n\n  for (const id of listaA) {\n    if (conjuntoB.has(id)) {\n      comuns.push(id);\n    }\n  }\n\n  return comuns; // custo total aproximado: O(n + m), em vez de O(n × m)\n}\n\nconst listaA = ['a1', 'a2', 'a3', 'a4'];\nconst listaB = ['a3', 'a4', 'a5'];\n\nconsole.log(encontrarComuns(listaA, listaB)); // ['a3', 'a4']",
+      "solution_explanation": "A versão original chama listaB.includes(id) dentro do ciclo, e cada includes percorre listaB desde o início, o que dá uma complexidade O(n × m). Construindo um Set a partir de listaB antes do ciclo (custo único O(m)), cada pesquisa has passa a ser O(1) em média, reduzindo o custo total para O(n + m), uma diferença enorme quando as listas têm dezenas de milhares de elementos."
+    }
+  ],
+  "summary": [
+    "Memoize só funções puras, guardando resultados num Map (ou WeakMap para chaves-objeto) e vigie o crescimento da cache.",
+    "Debounce adia a execução até uma pausa nos eventos; use-o quando só o valor final interessa, como num campo de pesquisa.",
+    "Throttle limita a execução a intervalos regulares; use-o quando é preciso reagir continuamente, como no scroll ou no resize.",
+    "Array.includes e indexOf são O(n); Set.has e Map.get são O(1) em média, muitas vezes a maior otimização possível é trocar a estrutura de dados.",
+    "Tire cálculos, regex e consultas que não dependem da iteração atual para fora do corpo do loop.",
+    "Meça sempre com console.time e console.timeEnd antes de assumir que uma otimização trouxe ganho real."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 04",
+  "next_label": "Aula 04 → Testes e Depuração",
+  "_stage": "autoria"
+}

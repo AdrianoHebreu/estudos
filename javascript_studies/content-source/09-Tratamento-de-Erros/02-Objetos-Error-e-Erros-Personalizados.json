@@ -1,0 +1,245 @@
+{
+  "module_num": "09",
+  "module_title": "Tratamento de Erros",
+  "module_dir": "09-Tratamento-de-Erros",
+  "lesson_num": "02",
+  "lesson_slug": "Objetos-Error-e-Erros-Personalizados",
+  "kind": "aula",
+  "title": "Objetos Error e Erros Personalizados",
+  "filename_base": "02-Objetos-Error-e-Erros-Personalizados",
+  "subtitle": "Domine o objeto Error, os subtipos nativos e crie hierarquias de erros personalizados",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Conhecer as propriedades do objeto Error (message, name e stack) e saber para que serve cada uma.",
+    "Identificar as situações em que o motor lança automaticamente TypeError, RangeError, SyntaxError e ReferenceError.",
+    "Criar classes de erro personalizadas com extends Error, respeitando a ordem correta de super() e this.",
+    "Construir hierarquias de erros com uma classe base e subclasses para distinguir categorias de falha.",
+    "Usar a opção cause para encadear um erro novo ao erro original sem perder informação de depuração.",
+    "Perceber por que motivo um Error não serializa diretamente com JSON.stringify e como resolver isso."
+  ],
+  "sections": [
+    {
+      "heading": "O objeto Error e as suas propriedades",
+      "body": [
+        "O construtor Error cria objetos com três propriedades essenciais: message, que guarda a descrição textual do problema; name, que identifica o tipo de erro (por omissão, a string \"Error\"); e stack, uma string com o rasto de chamadas que levou ao erro, extremamente útil durante a depuração. Estas três propriedades existem em todas as instâncias de Error e também nas suas subclasses, nativas ou personalizadas.",
+        "A propriedade stack não faz parte da especificação ECMAScript, mas é suportada por todos os motores modernos (V8, SpiderMonkey, JavaScriptCore). O seu conteúdo e formato variam de motor para motor, por isso deve ser usada apenas para leitura humana em ferramentas de depuração ou registos, nunca para extrair informação por parsing de texto, já que isso tornaria o código dependente de um detalhe de implementação."
+      ],
+      "code": "const erro = new Error(\"Falha ao ligar à base de dados\");\n\nconsole.log(erro.message); // \"Falha ao ligar à base de dados\"\nconsole.log(erro.name);    // \"Error\"\nconsole.log(typeof erro.stack); // \"string\"\nconsole.log(erro.toString()); // \"Error: Falha ao ligar à base de dados\"",
+      "callout_kind": "NOTA",
+      "callout_text": "erro.stack não é standard: o seu formato pode mudar entre motores e entre versões. Use-o para diagnóstico, nunca para lógica de negócio.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧩",
+          "text": "Error tem message, name e stack"
+        },
+        {
+          "icon": "🪵",
+          "text": "stack ajuda a depurar, mas não é standard"
+        },
+        {
+          "icon": "🔤",
+          "text": "toString() junta name e message"
+        }
+      ]
+    },
+    {
+      "heading": "Subtipos nativos: quando o motor os lança",
+      "body": [
+        "Além do construtor genérico Error, o JavaScript define vários subtipos que o próprio motor lança automaticamente perante situações específicas. Um TypeError surge quando uma operação é aplicada a um valor de tipo incompatível, por exemplo ao aceder a uma propriedade de null ou undefined, ou ao chamar como função algo que não o é. Um RangeError surge quando um valor numérico está fora do intervalo aceite por uma operação, como um comprimento de array negativo, um número de casas decimais inválido em toFixed, ou mesmo quando a pilha de chamadas é excedida numa recursão sem caso base.",
+        "Um SyntaxError ocorre quando código ou texto é interpretado como JavaScript ou JSON e a sua estrutura não é válida, tanto ao carregar um script mal escrito como ao invocar JSON.parse com uma string malformada. Já um ReferenceError surge ao tentar aceder a uma variável que não existe em nenhum âmbito acessível. Todos estes subtipos herdam de Error, por isso partilham as mesmas propriedades e podem ser distinguidos com instanceof."
+      ],
+      "code": "try {\n  null.propriedade;\n} catch (erro) {\n  console.log(erro instanceof TypeError); // true\n}\n\ntry {\n  new Array(-1);\n} catch (erro) {\n  console.log(erro instanceof RangeError); // true\n}\n\ntry {\n  JSON.parse(\"{ chave: sem aspas }\");\n} catch (erro) {\n  console.log(erro instanceof SyntaxError); // true\n}\n\ntry {\n  console.log(variavelNuncaDeclarada);\n} catch (erro) {\n  console.log(erro instanceof ReferenceError); // true\n}",
+      "callout_kind": "DICA",
+      "callout_text": "Para diferenciar o tipo de falha, use instanceof (por exemplo, erro instanceof TypeError); nunca compare erro.message, essa string pode mudar entre motores e versões.",
+      "table_headers": [
+        "Subtipo",
+        "Quando ocorre",
+        "Exemplo"
+      ],
+      "table_rows": [
+        [
+          "TypeError",
+          "Operação aplicada a um valor do tipo errado",
+          "null.propriedade ou chamar algo que não é função"
+        ],
+        [
+          "RangeError",
+          "Valor numérico fora do intervalo permitido",
+          "new Array(-1) ou recursão que excede a pilha"
+        ],
+        [
+          "SyntaxError",
+          "Código ou texto mal formado é interpretado",
+          "JSON.parse(\"{ invalido }\")"
+        ],
+        [
+          "ReferenceError",
+          "Acesso a uma variável não declarada",
+          "console.log(variavelInexistente)"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🚫",
+          "text": "TypeError: operação no tipo errado"
+        },
+        {
+          "icon": "📏",
+          "text": "RangeError: valor fora do intervalo"
+        },
+        {
+          "icon": "✂️",
+          "text": "SyntaxError: texto mal formado"
+        },
+        {
+          "icon": "❓",
+          "text": "ReferenceError: variável não declarada"
+        }
+      ]
+    },
+    {
+      "heading": "Erros personalizados com extends Error",
+      "body": [
+        "Quando os erros nativos não chegam para descrever um problema específico do domínio da aplicação, cria-se uma classe personalizada que estende Error. O construtor da subclasse deve chamar super(mensagem) para inicializar corretamente as propriedades herdadas, incluindo message e stack, e só depois pode definir this.name com o nome da nova classe; caso contrário, name continuaria a valer \"Error\" em todas as instâncias.",
+        "Uma classe de erro personalizada pode ainda guardar dados adicionais relevantes para o problema, como o campo que falhou numa validação, o identificador do recurso em falta ou um código de estado associado. Essa informação fica disponível em qualquer bloco catch que capture a instância, permitindo reagir de forma mais precisa do que apenas lendo uma mensagem de texto."
+      ],
+      "code": "class ErroValidacao extends Error {\n  constructor(mensagem, campo) {\n    super(mensagem);\n    this.name = \"ErroValidacao\";\n    this.campo = campo;\n  }\n}\n\nfunction validarIdade(idade) {\n  if (typeof idade !== \"number\" || idade < 0) {\n    throw new ErroValidacao(\"A idade tem de ser um número positivo\", \"idade\");\n  }\n  return idade;\n}\n\ntry {\n  validarIdade(-5);\n} catch (erro) {\n  if (erro instanceof ErroValidacao) {\n    console.log(`Campo inválido: ${erro.campo} - ${erro.message}`);\n  }\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Numa classe que estende Error, this só fica disponível depois de chamar super(...). Usar this antes disso lança um ReferenceError: super() tem sempre de ser a primeira instrução do construtor.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏗️",
+          "text": "extends Error + super(mensagem)"
+        },
+        {
+          "icon": "🏷️",
+          "text": "Defina this.name na subclasse"
+        },
+        {
+          "icon": "📦",
+          "text": "Acrescente propriedades próprias ao erro"
+        }
+      ]
+    },
+    {
+      "heading": "Hierarquias de erros para categorizar falhas",
+      "body": [
+        "Numa aplicação real existem várias categorias de falha, como erros de validação, de autorização, de recursos inexistentes ou de conflitos de estado, e tratá-las todas da mesma forma dificulta uma resposta adequada a cada uma. A solução é construir uma hierarquia: uma classe base (por exemplo, AppError) que estende Error e concentra o comportamento comum, e várias subclasses que estendem essa base, cada uma representando uma categoria específica de falha.",
+        "Esta estrutura permite tratar uma família inteira de erros com um único instanceof na classe base, sem perder a possibilidade de distinguir subtipos quando necessário. Usar this.constructor.name no construtor da classe base é uma forma prática de garantir que o name reflete sempre a subclasse concreta instanciada, sem repetir essa linha em cada subclasse."
+      ],
+      "code": "class AppError extends Error {\n  constructor(mensagem, codigoHttp = 500) {\n    super(mensagem);\n    this.name = this.constructor.name;\n    this.codigoHttp = codigoHttp;\n  }\n}\n\nclass ErroNaoEncontrado extends AppError {\n  constructor(recurso) {\n    super(`${recurso} não encontrado`, 404);\n  }\n}\n\nclass ErroNaoAutorizado extends AppError {\n  constructor(mensagem = \"Acesso não autorizado\") {\n    super(mensagem, 401);\n  }\n}\n\nfunction tratarErro(erro) {\n  if (erro instanceof AppError) {\n    console.log(`[${erro.codigoHttp}] ${erro.name}: ${erro.message}`);\n  } else {\n    console.log(\"Erro inesperado:\", erro);\n  }\n}\n\ntratarErro(new ErroNaoEncontrado(\"Utilizador\"));\ntratarErro(new ErroNaoAutorizado());",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Antes de escrever código, escreva as categorias de falha do seu domínio (validação, autenticação, rede, conflito...) e só depois desenhe as classes. Isso evita hierarquias de erro artificiais.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🌳",
+          "text": "Classe base + subclasses especializadas"
+        },
+        {
+          "icon": "🔍",
+          "text": "instanceof apanha categorias inteiras"
+        },
+        {
+          "icon": "🧬",
+          "text": "this.constructor.name evita repetição"
+        }
+      ]
+    },
+    {
+      "heading": "Encadear erros com a opção cause",
+      "body": [
+        "Desde o ES2022, o construtor Error aceita um segundo argumento opcional, um objeto com a propriedade cause, que fica disponível como erro.cause na instância criada. Este mecanismo serve para encadear erros: quando se apanha um erro de baixo nível, por exemplo uma falha ao interpretar uma resposta, e se lança um novo erro mais descritivo para quem chama a função, cause preserva o erro original em vez de o descartar.",
+        "Sem cause, a prática comum era concatenar a mensagem do erro original na nova mensagem, perdendo o stack e o tipo exato da falha. Com cause, o erro novo mantém uma mensagem clara para quem o recebe, e quem precisar de investigar mais a fundo pode sempre inspecionar erro.cause para chegar à causa raiz."
+      ],
+      "code": "async function carregarPerfil(id) {\n  try {\n    const resposta = await fetch(`/api/utilizadores/${id}`);\n    if (!resposta.ok) {\n      throw new Error(`Pedido falhou com estado ${resposta.status}`);\n    }\n    return await resposta.json();\n  } catch (erroOriginal) {\n    throw new Error(\"Não foi possível carregar o perfil\", { cause: erroOriginal });\n  }\n}\n\n(async () => {\n  try {\n    await carregarPerfil(42);\n  } catch (erro) {\n    console.log(erro.message);        // \"Não foi possível carregar o perfil\"\n    console.log(erro.cause?.message); // mensagem do erro original\n  }\n})();",
+      "callout_kind": "NOTA",
+      "callout_text": "cause é suportado a partir do Node.js 16.9 e em todos os browsers modernos. Em ambientes mais antigos, guarde o erro original numa propriedade própria, como this.erroOriginal.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔗",
+          "text": "{ cause } encadeia o erro original"
+        },
+        {
+          "icon": "🕵️",
+          "text": "Não perde informação ao envolver erros"
+        }
+      ]
+    },
+    {
+      "heading": "Serializar erros em JSON",
+      "body": [
+        "Uma limitação pouco conhecida do objeto Error é que as suas propriedades message, stack e name não são enumeráveis, definidas assim na especificação para não aparecerem em ciclos for...in. Uma consequência direta é que JSON.stringify(erro) devolve \"{}\" para um Error simples, o que surpreende quem tenta enviar um erro para um serviço de registo ou para uma resposta de API assumindo que ele se comporta como um objeto normal.",
+        "Para contornar isto, uma classe de erro personalizada pode definir o seu próprio método toJSON, que o JSON.stringify chama automaticamente quando existe. Dentro desse método expõem-se explicitamente os campos que interessa serializar, normalmente name, message e quaisquer propriedades adicionais específicas do erro, como campo, codigoHttp ou detalhes."
+      ],
+      "code": "const erro = new Error(\"Algo correu mal\");\nconsole.log(JSON.stringify(erro)); // \"{}\"\n\nclass ErroSerializavel extends Error {\n  constructor(mensagem, detalhes) {\n    super(mensagem);\n    this.name = \"ErroSerializavel\";\n    this.detalhes = detalhes;\n  }\n\n  toJSON() {\n    return {\n      nome: this.name,\n      mensagem: this.message,\n      detalhes: this.detalhes,\n    };\n  }\n}\n\nconst erroPersonalizado = new ErroSerializavel(\"Pagamento recusado\", { codigo: \"CARTAO_INVALIDO\" });\nconsole.log(JSON.stringify(erroPersonalizado));\n// {\"nome\":\"ErroSerializavel\",\"mensagem\":\"Pagamento recusado\",\"detalhes\":{\"codigo\":\"CARTAO_INVALIDO\"}}",
+      "callout_kind": "DICA",
+      "callout_text": "Ao integrar com serviços de monitorização ou registos estruturados em JSON, defina sempre toJSON nas suas classes de erro; caso contrário só vai ver {} nos registos.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📭",
+          "text": "JSON.stringify(erro) devolve {}"
+        },
+        {
+          "icon": "🛠️",
+          "text": "Defina toJSON() para serializar"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Validar tipo com TypeError",
+      "difficulty": "Iniciante",
+      "statement": "Escreva uma função converterParaMaiusculas(valor) que lança um TypeError com a mensagem \"Esperava uma string\" caso valor não seja do tipo string. Caso seja, a função deve devolver a string em maiúsculas. Teste a função com dois valores dentro de um try/catch (um válido, como \"ola\", e outro inválido, como 123) e, quando ocorrer erro, imprima erro.name e erro.message.",
+      "hint": "Use typeof para verificar o tipo do valor recebido; não precisa de criar nenhuma classe, o construtor nativo TypeError já é suficiente.",
+      "solution_code": "function converterParaMaiusculas(valor) {\n  if (typeof valor !== \"string\") {\n    throw new TypeError(\"Esperava uma string\");\n  }\n  return valor.toUpperCase();\n}\n\ntry {\n  console.log(converterParaMaiusculas(\"ola\"));\n  console.log(converterParaMaiusculas(123));\n} catch (erro) {\n  console.log(erro.name, \"-\", erro.message);\n}",
+      "solution_explanation": "A função valida o tipo do argumento com typeof e lança um TypeError nativo sempre que a validação falha. O bloco try/catch chama a função duas vezes seguidas; a primeira chamada imprime o resultado em maiúsculas, e a segunda, ao receber um número, é interrompida pelo throw e apanhada no catch, onde se acede a name e message do erro."
+    },
+    {
+      "title": "Erro personalizado com dados próprios",
+      "difficulty": "Intermedio",
+      "statement": "Crie uma classe ErroSaldoInsuficiente que estenda Error e receba no construtor saldoAtual e valorPedido, guardando ambos como propriedades da instância e definindo corretamente o name da classe. Depois, escreva uma função levantar(saldo, valor) que devolve saldo - valor quando o valor pedido não excede o saldo, e lança um ErroSaldoInsuficiente caso contrário. Teste a função dentro de um try/catch: verifique com instanceof se o erro apanhado é um ErroSaldoInsuficiente e, nesse caso, imprima uma mensagem que use erro.saldoAtual e erro.valorPedido.",
+      "hint": "No construtor da subclasse, chame sempre super(mensagem) antes de definir this.name e as restantes propriedades - this só está disponível depois do super().",
+      "solution_code": "class ErroSaldoInsuficiente extends Error {\n  constructor(saldoAtual, valorPedido) {\n    super(`Saldo insuficiente: disponível ${saldoAtual}, pedido ${valorPedido}`);\n    this.name = \"ErroSaldoInsuficiente\";\n    this.saldoAtual = saldoAtual;\n    this.valorPedido = valorPedido;\n  }\n}\n\nfunction levantar(saldo, valor) {\n  if (valor > saldo) {\n    throw new ErroSaldoInsuficiente(saldo, valor);\n  }\n  return saldo - valor;\n}\n\ntry {\n  console.log(levantar(100, 250));\n} catch (erro) {\n  if (erro instanceof ErroSaldoInsuficiente) {\n    console.log(\n      `Não é possível levantar ${erro.valorPedido}: só há ${erro.saldoAtual} disponível`\n    );\n  } else {\n    throw erro;\n  }\n}",
+      "solution_explanation": "A classe ErroSaldoInsuficiente chama super(mensagem) para inicializar corretamente a cadeia de protótipos herdada de Error, guardando depois saldoAtual e valorPedido como propriedades próprias da instância. A função levantar lança essa instância sempre que o valor excede o saldo, e o catch usa instanceof para confirmar o tipo do erro antes de aceder às suas propriedades específicas."
+    },
+    {
+      "title": "Encadear erros com cause",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função lerConfiguracao(json) que recebe uma string, tenta fazer JSON.parse(json) e, se este falhar (lançando um SyntaxError), apanha esse erro e lança um novo Error com a mensagem \"Configuração inválida\", usando a opção cause para preservar o erro original. Depois, chame a função com uma string JSON inválida (por exemplo, \"{ chave: sem aspas }\") dentro de um try/catch e imprima erro.message e erro.cause.message.",
+      "hint": "O segundo argumento do construtor Error aceita um objeto { cause: erroOriginal }; erro.cause dá acesso ao erro que foi apanhado no catch interno.",
+      "solution_code": "function lerConfiguracao(json) {\n  try {\n    return JSON.parse(json);\n  } catch (erroOriginal) {\n    throw new Error(\"Configuração inválida\", { cause: erroOriginal });\n  }\n}\n\ntry {\n  lerConfiguracao(\"{ chave: sem aspas }\");\n} catch (erro) {\n  console.log(erro.message);\n  console.log(erro.cause instanceof SyntaxError);\n  console.log(erro.cause.message);\n}",
+      "solution_explanation": "JSON.parse lança um SyntaxError nativo quando o texto não é JSON válido; a função apanha esse erro e lança um novo Error mais descritivo para quem a chama, passando o erro original através da opção cause. Isto preserva toda a informação de depuração (incluindo o tipo exato da falha) sem esconder a causa raiz do problema."
+    },
+    {
+      "title": "Hierarquia de erros num sistema de pedidos",
+      "difficulty": "Avancado",
+      "statement": "Modele uma pequena hierarquia de erros para um sistema de pedidos: uma classe base ErroApp, que estende Error e guarda um codigoHttp, e três subclasses - ErroValidacao (400), ErroNaoEncontrado (404) e ErroConflito (409). De seguida, escreva a função processarPedido({ utilizadorId, itens }), que deve: lançar ErroNaoEncontrado se o utilizadorId não constar de um conjunto de utilizadores válidos definido por si (por exemplo, um Set com os valores 1, 2 e 3); lançar ErroValidacao se itens não for um array não vazio; lançar ErroConflito se o mesmo utilizadorId já tiver um pedido aceite anteriormente (guarde os utilizadores com pedido aceite noutro Set); e, caso nenhuma destas condições se verifique, registar o pedido como aceite e devolver um objeto de confirmação. Escreva ainda a função tratarPedido(pedido), que chama processarPedido dentro de um try/catch, trata de forma genérica qualquer ErroApp (imprimindo codigoHttp, name e message) e relança qualquer erro que não pertença a essa hierarquia. Teste com pelo menos quatro pedidos diferentes, cobrindo os três tipos de erro e um caso de sucesso.",
+      "hint": "Defina this.name = this.constructor.name na classe base ErroApp - assim cada subclasse mostra automaticamente o seu próprio nome sem repetir essa linha em todas elas.",
+      "solution_code": "class ErroApp extends Error {\n  constructor(mensagem, codigoHttp) {\n    super(mensagem);\n    this.name = this.constructor.name;\n    this.codigoHttp = codigoHttp;\n  }\n}\n\nclass ErroValidacao extends ErroApp {\n  constructor(mensagem) {\n    super(mensagem, 400);\n  }\n}\n\nclass ErroNaoEncontrado extends ErroApp {\n  constructor(mensagem) {\n    super(mensagem, 404);\n  }\n}\n\nclass ErroConflito extends ErroApp {\n  constructor(mensagem) {\n    super(mensagem, 409);\n  }\n}\n\nconst utilizadoresValidos = new Set([1, 2, 3]);\nconst utilizadoresComPedido = new Set();\n\nfunction processarPedido({ utilizadorId, itens }) {\n  if (!utilizadoresValidos.has(utilizadorId)) {\n    throw new ErroNaoEncontrado(`Utilizador ${utilizadorId} não encontrado`);\n  }\n  if (!Array.isArray(itens) || itens.length === 0) {\n    throw new ErroValidacao(\"O pedido tem de conter pelo menos um item\");\n  }\n  if (utilizadoresComPedido.has(utilizadorId)) {\n    throw new ErroConflito(`Utilizador ${utilizadorId} já tem um pedido em curso`);\n  }\n  utilizadoresComPedido.add(utilizadorId);\n  return { estado: \"aceite\", utilizadorId, totalItens: itens.length };\n}\n\nfunction tratarPedido(pedido) {\n  try {\n    const resultado = processarPedido(pedido);\n    console.log(\"Sucesso:\", resultado);\n  } catch (erro) {\n    if (erro instanceof ErroApp) {\n      console.log(`[${erro.codigoHttp}] ${erro.name}: ${erro.message}`);\n    } else {\n      console.log(\"Erro interno inesperado:\", erro.message);\n      throw erro;\n    }\n  }\n}\n\ntratarPedido({ utilizadorId: 1, itens: [\"livro\"] });\ntratarPedido({ utilizadorId: 1, itens: [\"caneta\"] });\ntratarPedido({ utilizadorId: 9, itens: [\"livro\"] });\ntratarPedido({ utilizadorId: 2, itens: [] });",
+      "solution_explanation": "A classe base ErroApp centraliza o codigoHttp e usa this.constructor.name para que cada subclasse reporte automaticamente o seu próprio nome. A função processarPedido valida as três condições pela ordem pedida e lança a subclasse adequada em cada caso, enquanto tratarPedido usa um único instanceof ErroApp para tratar genericamente toda a família de erros, relançando qualquer erro que não pertença a essa hierarquia."
+    }
+  ],
+  "summary": [
+    "Error tem message, name e stack; o stack ajuda a depurar mas o seu formato não é standard.",
+    "O motor lança automaticamente TypeError, RangeError, SyntaxError ou ReferenceError consoante a natureza da falha.",
+    "Uma classe de erro personalizada estende Error, chama super(mensagem) e só depois define this.name.",
+    "Hierarquias de erros, com uma classe base e subclasses, permitem tratar categorias de falha com um único instanceof.",
+    "A opção { cause } encadeia um erro novo ao erro original sem perder informação de depuração.",
+    "Um Error não serializa em JSON.stringify por defeito, porque as suas propriedades não são enumeráveis; defina toJSON quando precisar de o fazer."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 03",
+  "next_label": "Aula 03 → Padrões de Tratamento de Erros Assíncronos",
+  "_stage": "autoria"
+}

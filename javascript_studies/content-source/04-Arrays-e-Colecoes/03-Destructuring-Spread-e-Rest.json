@@ -1,0 +1,257 @@
+{
+  "module_num": "04",
+  "module_title": "Arrays e Coleções",
+  "module_dir": "04-Arrays-e-Colecoes",
+  "lesson_num": "03",
+  "lesson_slug": "Destructuring-Spread-e-Rest",
+  "kind": "aula",
+  "title": "Destructuring, Spread e Rest",
+  "filename_base": "03-Destructuring-Spread-e-Rest",
+  "subtitle": "Domine destructuring, spread e rest para extrair, combinar e copiar dados em JavaScript.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Desestruturar arrays e objetos, incluindo padrões aninhados, para extrair valores diretamente para variáveis.",
+    "Renomear variáveis e definir valores por omissão durante o destructuring de objetos.",
+    "Usar o operador rest para recolher, num array ou objeto novo, tudo o que não foi extraído explicitamente.",
+    "Usar o operador spread para copiar e combinar arrays, objetos e argumentos de chamadas de funções.",
+    "Distinguir cópia superficial de cópia profunda e escolher a técnica certa consoante os dados envolvidos."
+  ],
+  "sections": [
+    {
+      "heading": "Destructuring de Arrays",
+      "body": [
+        "O destructuring de arrays permite extrair valores de um array e atribuí-los a variáveis distintas numa única instrução, usando uma sintaxe que espelha a estrutura do array do lado esquerdo da atribuição. A correspondência é feita por posição: a primeira variável recebe o elemento no índice 0, a segunda o elemento no índice 1, e assim sucessivamente. É possível ignorar posições que não interessam deixando um espaço vazio entre vírgulas.",
+        "Esta técnica é particularmente útil para trocar o valor de duas variáveis sem recorrer a uma variável auxiliar, e para extrair valores devolvidos por funções ou métodos que retornam arrays, como Object.entries ou funções que devolvem vários resultados de uma só vez."
+      ],
+      "code": "const cores = ['vermelho', 'verde', 'azul', 'amarelo'];\n\nconst [primeira, segunda] = cores;\nconsole.log(primeira, segunda); // vermelho verde\n\n// Ignorar posições\nconst [, , terceira] = cores;\nconsole.log(terceira); // azul\n\n// Trocar valores sem variável auxiliar\nlet a = 1;\nlet b = 2;\n[a, b] = [b, a];\nconsole.log(a, b); // 2 1",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔀",
+          "text": "Extrai valores de arrays por posição"
+        },
+        {
+          "icon": "⏭️",
+          "text": "Ignora posições com vírgulas vazias"
+        },
+        {
+          "icon": "🔁",
+          "text": "Troca variáveis sem auxiliar"
+        }
+      ]
+    },
+    {
+      "heading": "Destructuring de Objetos: Renomear e Valores por Omissão",
+      "body": [
+        "O destructuring de objetos extrai valores com base no nome da propriedade, não na posição, pelo que a ordem das variáveis do lado esquerdo é irrelevante. Quando o nome da propriedade não é conveniente como nome de variável, ou já existe uma variável com esse nome no âmbito, pode renomear-se durante a extração com a sintaxe propriedade: novoNome. Sempre que uma propriedade pode não existir no objeto, é possível definir um valor por omissão com o operador =, que só é usado quando o valor extraído é undefined.",
+        "Estas duas capacidades combinam-se com frequência na definição de parâmetros de funções, permitindo receber um objeto de configuração e já extrair, renomear e atribuir valores por omissão às opções relevantes diretamente na assinatura da função."
+      ],
+      "code": "const utilizador = { id: 7, nome: 'Marta', morada: undefined };\n\nconst { nome, morada: cidade = 'Lisboa', ativo = true } = utilizador;\nconsole.log(nome, cidade, ativo); // Marta Lisboa true\n\nfunction criarPedido({ id, nome: cliente, quantidade = 1 }) {\n  return `Pedido de ${cliente} (cliente ${id}): ${quantidade} unidade(s)`;\n}\n\nconsole.log(criarPedido({ id: 7, nome: 'Marta' }));\n// Pedido de Marta (cliente 7): 1 unidade(s)",
+      "callout_kind": "ATENCAO",
+      "callout_text": "O valor por omissão só entra em ação quando a propriedade é undefined - uma propriedade com o valor null mantém-se null.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏷️",
+          "text": "Extrai por nome, não por posição"
+        },
+        {
+          "icon": "✏️",
+          "text": "Renomeia com propriedade: novoNome"
+        },
+        {
+          "icon": "🎯",
+          "text": "Valores por omissão só agem em undefined"
+        }
+      ]
+    },
+    {
+      "heading": "Destructuring Aninhado",
+      "body": [
+        "Quando um array ou objeto contém outros arrays ou objetos, o padrão de destructuring pode replicar essa estrutura em profundidade, extraindo diretamente valores que estão vários níveis abaixo sem passar por variáveis intermédias. O padrão do lado esquerdo tem de corresponder à forma real dos dados: um nível de chavetas ou parênteses retos a mais ou a menos resulta em undefined, ou num erro, caso se tente desestruturar um valor que não é objeto nem array.",
+        "É comum combinar destructuring aninhado com renomear e valores por omissão em simultâneo, o que é especialmente útil ao trabalhar com respostas de APIs, que normalmente têm estruturas de dados aninhadas em vários níveis."
+      ],
+      "code": "const resposta = {\n  estado: 'sucesso',\n  dados: {\n    utilizador: { nome: 'Rui', contactos: { email: 'rui@exemplo.pt' } },\n    permissoes: ['leitura', 'escrita'],\n  },\n};\n\nconst {\n  dados: {\n    utilizador: { nome, contactos: { email, telefone = 'não definido' } },\n    permissoes: [primeiraPermissao],\n  },\n} = resposta;\n\nconsole.log(nome, email, telefone, primeiraPermissao);\n// Rui rui@exemplo.pt não definido leitura",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🪆",
+          "text": "Reflete a estrutura real dos dados aninhados"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Um nível a mais ou a menos falha"
+        }
+      ]
+    },
+    {
+      "heading": "Rest em Destructuring",
+      "body": [
+        "O operador rest, escrito com três pontos antes do último identificador de um padrão de destructuring, recolhe num novo array ou objeto todos os elementos ou propriedades que não foram explicitamente capturados pelas variáveis anteriores. Em arrays, o rest tem de ser sempre o último elemento do padrão e recolhe um array; em objetos, recolhe um novo objeto só com as propriedades restantes, sendo irrelevante a ordem das propriedades extraídas antes dele.",
+        "É a ferramenta certa para separar uma parte fixa e conhecida de dados de um resto variável, como separar a cabeça de uma lista da sua cauda, ou isolar algumas propriedades de configuração mantendo as restantes agrupadas para repassar a outra função."
+      ],
+      "code": "const [primeiro, ...restantes] = [10, 20, 30, 40];\nconsole.log(primeiro, restantes); // 10 [20, 30, 40]\n\nconst configuracao = { tema: 'escuro', idioma: 'pt-PT', fonte: 16, animacoes: true };\nconst { tema, ...outrasOpcoes } = configuracao;\nconsole.log(tema); // escuro\nconsole.log(outrasOpcoes); // { idioma: 'pt-PT', fonte: 16, animacoes: true }",
+      "callout_kind": "ATENCAO",
+      "callout_text": "O rest tem sempre de ser o último elemento do padrão de destructuring - const [...resto, ultimo] é um erro de sintaxe.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "Recolhe o que sobra num array/objeto novo"
+        },
+        {
+          "icon": "🚫",
+          "text": "Tem de ser sempre o último no padrão"
+        }
+      ]
+    },
+    {
+      "heading": "Spread em Arrays e Chamadas de Função",
+      "body": [
+        "O operador spread usa a mesma sintaxe de três pontos, mas com o efeito oposto ao rest: expande os elementos de um iterável, como um array, uma string ou um Set, no lugar onde é escrito. Dentro de um literal de array, o spread permite copiar um array para um novo, combinar vários arrays numa só instrução e inserir elementos adicionais em qualquer posição, sem recorrer a métodos como concat ou push.",
+        "Numa chamada de função, o spread expande um array nos argumentos posicionais correspondentes, o que é útil para passar uma lista de valores a funções que aceitam múltiplos argumentos, como Math.max ou Math.min, ou para invocar uma função com argumentos vindos de fontes diferentes."
+      ],
+      "code": "const pares = [2, 4, 6];\nconst impares = [1, 3, 5];\n\nconst combinados = [...impares, ...pares].sort((x, y) => x - y);\nconsole.log(combinados); // [1, 2, 3, 4, 5, 6]\n\nconst copiaPares = [...pares];\ncopiaPares.push(8);\nconsole.log(pares, copiaPares); // [2, 4, 6] [2, 4, 6, 8]\n\nconsole.log(Math.max(...combinados)); // 6",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📤",
+          "text": "Expande arrays em novos arrays/argumentos"
+        },
+        {
+          "icon": "🔗",
+          "text": "Combina vários arrays numa instrução"
+        }
+      ]
+    },
+    {
+      "heading": "Spread em Objetos",
+      "body": [
+        "Aplicado a um literal de objeto, o spread copia todas as propriedades enumeráveis próprias de um objeto para outro, sendo a forma habitual, desde o ES2018, de clonar e combinar objetos sem recorrer a Object.assign. Quando várias fontes definem a mesma propriedade, prevalece o último valor escrito no literal, o que permite usar o spread para aplicar valores por omissão seguidos de substituições, ou para criar uma nova versão de um objeto com algumas propriedades alteradas.",
+        "Tal como acontece com arrays, esta cópia feita pelo spread é sempre superficial: um objeto ou array aninhado dentro das propriedades copiadas não é duplicado. Este comportamento, e como evitá-lo quando é preciso independência total, é explorado em detalhe na secção seguinte."
+      ],
+      "code": "const definicoesBase = { tema: 'claro', idioma: 'pt-PT', notificacoes: true };\nconst preferenciasUtilizador = { tema: 'escuro' };\n\nconst definicoesFinais = { ...definicoesBase, ...preferenciasUtilizador };\nconsole.log(definicoesFinais);\n// { tema: 'escuro', idioma: 'pt-PT', notificacoes: true }\n\nconst produto = { nome: 'Teclado', preco: 45 };\nconst produtoComDesconto = { ...produto, preco: produto.preco * 0.9 };\nconsole.log(produto.preco, produtoComDesconto.preco); // 45 40.5",
+      "callout_kind": "DICA",
+      "callout_text": "A ordem importa: {...base, ...utilizador} deixa as escolhas do utilizador prevalecer; a ordem inversa faria a base prevalecer sempre.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧩",
+          "text": "Clona e combina objetos sem Object.assign"
+        },
+        {
+          "icon": "🏆",
+          "text": "A última fonte escrita vence em conflitos"
+        }
+      ]
+    },
+    {
+      "heading": "Cópias Superficiais vs Cópias Profundas",
+      "body": [
+        "Tanto o destructuring como o spread criam apenas cópias superficiais: um novo array ou objeto é de facto criado, mas qualquer propriedade cujo valor seja outro objeto ou array não é duplicada, é apenas referenciada. Isto significa que alterar uma propriedade aninhada através da cópia altera também o original, porque ambos apontam para a mesma estrutura de dados em memória, sendo uma fonte comum de erros subtis quando se assume, incorretamente, que a cópia é totalmente independente.",
+        "Quando é necessário duplicar também todos os níveis aninhados, chama-se a isso uma cópia profunda. A forma nativa e recomendada atualmente é a função global structuredClone, disponível em navegadores modernos e no Node.js, que duplica corretamente objetos, arrays, datas e outros tipos estruturados. Uma alternativa mais antiga, JSON.parse(JSON.stringify(objeto)), funciona para dados simples, mas perde funções, valores undefined e datas, e não suporta referências circulares."
+      ],
+      "code": "const encomenda = { id: 1, cliente: 'Ana', itens: ['caneta', 'caderno'] };\n\nconst copiaSuperficial = { ...encomenda };\ncopiaSuperficial.itens.push('borracha');\nconsole.log(encomenda.itens); // ['caneta', 'caderno', 'borracha'] -- afetado!\n\nconst copiaProfunda = structuredClone(encomenda);\ncopiaProfunda.itens.push('lápis');\nconsole.log(encomenda.itens); // ['caneta', 'caderno', 'borracha'] -- inalterado\nconsole.log(copiaProfunda.itens); // ['caneta', 'caderno', 'borracha', 'lápis']",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Nunca assuma que {...original} ou [...original] protege dados aninhados de mutações - só o primeiro nível é realmente novo.",
+      "table_headers": [
+        "Técnica",
+        "Tipo de cópia",
+        "Limitações principais"
+      ],
+      "table_rows": [
+        [
+          "Destructuring / spread ({...obj}, [...arr])",
+          "Superficial",
+          "Objetos e arrays aninhados continuam partilhados"
+        ],
+        [
+          "JSON.parse(JSON.stringify(obj))",
+          "Profunda",
+          "Perde funções, undefined e datas (viram texto); falha com referências circulares"
+        ],
+        [
+          "structuredClone(obj)",
+          "Profunda",
+          "Não copia funções nem métodos; não suporta todos os tipos exóticos (ex.: elementos DOM)"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🌊",
+          "text": "Spread/destructuring só copiam o 1º nível"
+        },
+        {
+          "icon": "🔗",
+          "text": "Objetos aninhados continuam partilhados"
+        },
+        {
+          "icon": "🧬",
+          "text": "structuredClone faz cópia profunda nativa"
+        },
+        {
+          "icon": "⚠️",
+          "text": "JSON stringify/parse perde funções e datas"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Trocar e Extrair",
+      "difficulty": "Iniciante",
+      "statement": "Tem um array com as notas de um aluno em três testes: const notas = [14, 16, 12]. Usando destructuring numa única instrução, crie as variáveis teste1, teste2 e teste3 com os respetivos valores. De seguida, escreva código que troque os valores de teste1 e teste3 sem usar uma variável auxiliar, e imprima na consola o array [teste1, teste2, teste3] resultante.",
+      "hint": "O destructuring de arrays corresponde por posição, e pode fazer-se uma atribuição por destructuring a variáveis já existentes (declaradas com let), sem as declarar de novo.",
+      "solution_code": "const notas = [14, 16, 12];\nlet [teste1, teste2, teste3] = notas;\n\n[teste1, teste3] = [teste3, teste1];\n\nconsole.log([teste1, teste2, teste3]); // [12, 16, 14]",
+      "solution_explanation": "O destructuring inicial atribui cada posição do array a uma variável correspondente. A troca [teste1, teste3] = [teste3, teste1] funciona porque o lado direito, um novo array literal com os valores antigos, é totalmente calculado antes de as atribuições serem feitas, pelo que não é preciso recorrer a uma variável temporária."
+    },
+    {
+      "title": "Perfil de Utilizador",
+      "difficulty": "Intermedio",
+      "statement": "Dado o objeto: const perfil = { idUtilizador: 42, nomeCompleto: 'Sofia Amaral', morada: { cidade: 'Porto' } }; escreva uma única instrução de destructuring que: (1) extraia idUtilizador para uma variável chamada id; (2) extraia nomeCompleto para uma variável chamada nome; (3) extraia a propriedade cidade de dentro de morada diretamente para uma variável cidade; (4) extraia uma propriedade pais, que não existe no objeto, com o valor por omissão 'Portugal'. Imprima as quatro variáveis.",
+      "hint": "Combine renomear (propriedade: novoNome) com destructuring aninhado (morada: { cidade }) e um valor por omissão (pais = 'Portugal') no mesmo padrão.",
+      "solution_code": "const perfil = {\n  idUtilizador: 42,\n  nomeCompleto: 'Sofia Amaral',\n  morada: { cidade: 'Porto' },\n};\n\nconst {\n  idUtilizador: id,\n  nomeCompleto: nome,\n  morada: { cidade },\n  pais = 'Portugal',\n} = perfil;\n\nconsole.log(id, nome, cidade, pais); // 42 Sofia Amaral Porto Portugal",
+      "solution_explanation": "Cada parte do padrão trata de uma capacidade diferente do destructuring: idUtilizador: id e nomeCompleto: nome renomeiam propriedades do primeiro nível, morada: { cidade } entra um nível de profundidade para extrair cidade diretamente, e pais = 'Portugal' fornece um valor por omissão porque essa propriedade não existe em perfil."
+    },
+    {
+      "title": "Função de Atualização de Configurações",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função atualizarConfig(configAtual, novasOpcoes) que recebe um objeto de configuração e um objeto com novas opções, e devolve um novo objeto onde as propriedades de novasOpcoes substituem as de configAtual quando existem em ambos, as restantes propriedades de configAtual são mantidas, e configAtual nunca é alterado. De seguida, escreva uma função extrairEssenciais(config) que recebe um objeto com pelo menos as propriedades tema e idioma, e devolve um array [tema, idioma, resto], em que resto é um objeto com todas as outras propriedades de config. Teste as duas funções com const configOriginal = { tema: 'claro', idioma: 'pt-PT', fonte: 14, animacoes: true };",
+      "hint": "atualizarConfig resolve-se com spread de objetos (a ordem das fontes no literal decide qual prevalece); extrairEssenciais resolve-se com destructuring de objeto com rest, seguido da construção de um array de retorno.",
+      "solution_code": "function atualizarConfig(configAtual, novasOpcoes) {\n  return { ...configAtual, ...novasOpcoes };\n}\n\nfunction extrairEssenciais(config) {\n  const { tema, idioma, ...resto } = config;\n  return [tema, idioma, resto];\n}\n\nconst configOriginal = { tema: 'claro', idioma: 'pt-PT', fonte: 14, animacoes: true };\n\nconst configNova = atualizarConfig(configOriginal, { tema: 'escuro', fonte: 16 });\nconsole.log(configNova);\n// { tema: 'escuro', idioma: 'pt-PT', fonte: 16, animacoes: true }\nconsole.log(configOriginal);\n// { tema: 'claro', idioma: 'pt-PT', fonte: 14, animacoes: true } (inalterado)\n\nconsole.log(extrairEssenciais(configOriginal));\n// ['claro', 'pt-PT', { fonte: 14, animacoes: true }]",
+      "solution_explanation": "atualizarConfig usa spread de objetos, colocando novasOpcoes depois de configAtual para que as suas propriedades prevaleçam em caso de conflito, criando sempre um objeto novo em vez de modificar os argumentos. extrairEssenciais usa destructuring com rest para separar tema e idioma do resto das propriedades, devolvendo tudo organizado num array."
+    },
+    {
+      "title": "Corrigir a Cópia Partida",
+      "difficulty": "Avancado",
+      "statement": "O seguinte código tenta duplicar um carrinho de compras antes de o alterar, mas tem um erro: const carrinho = { cliente: 'João', itens: [{ nome: 'Livro', quantidade: 1 }] }; const carrinhoBackup = { ...carrinho }; carrinhoBackup.itens[0].quantidade = 5; console.log(carrinho.itens[0].quantidade); seria de esperar 1, mas o valor de carrinho também muda para 5. Escreva um comentário no código a explicar porque é que carrinho.itens[0].quantidade também muda, e depois reescreva o código para que carrinhoBackup seja uma cópia verdadeiramente independente de carrinho, de modo que alterar carrinhoBackup nunca afete carrinho.",
+      "hint": "O spread {...carrinho} só copia o primeiro nível de propriedades; pense numa função global pensada precisamente para duplicar estruturas aninhadas por completo.",
+      "solution_code": "// O spread {...carrinho} cria um objeto novo, mas a propriedade \"itens\"\n// continua a apontar para o MESMO array (e os mesmos objetos dentro dele)\n// que existia em \"carrinho\". É uma cópia superficial: só o primeiro\n// nível é duplicado, por isso alterar itens[0] através do backup\n// altera a mesma estrutura partilhada e reflete-se em \"carrinho\".\n\nconst carrinho = { cliente: 'João', itens: [{ nome: 'Livro', quantidade: 1 }] };\n\nconst carrinhoBackup = structuredClone(carrinho);\ncarrinhoBackup.itens[0].quantidade = 5;\n\nconsole.log(carrinho.itens[0].quantidade); // 1 (inalterado)\nconsole.log(carrinhoBackup.itens[0].quantidade); // 5",
+      "solution_explanation": "Como o spread só faz cópia superficial, o array itens (e os objetos que contém) permanece partilhado entre carrinho e carrinhoBackup, pelo que uma mutação num deles é visível no outro. Substituir {...carrinho} por structuredClone(carrinho) resolve o problema porque essa função duplica recursivamente todos os níveis da estrutura, tornando carrinhoBackup completamente independente do original."
+    }
+  ],
+  "summary": [
+    "Destructuring extrai valores de arrays por posição e de objetos por nome de propriedade, e pode ser aninhado para chegar a dados vários níveis abaixo.",
+    "É possível renomear variáveis (propriedade: novoNome) e definir valores por omissão (= valor) diretamente no padrão de destructuring.",
+    "O rest (...resto) recolhe, no fim de um destructuring, tudo o que não foi capturado explicitamente, num novo array ou objeto, e tem de ser sempre o último elemento do padrão.",
+    "O spread (...) expande arrays e objetos em novos literais ou em argumentos de funções, sendo a forma padrão de copiar e combinar estruturas de dados.",
+    "Tanto o destructuring como o spread produzem sempre cópias superficiais: valores aninhados (objetos ou arrays dentro de objetos ou arrays) continuam partilhados entre o original e a cópia.",
+    "Para cópias verdadeiramente independentes em profundidade, use structuredClone(); JSON.parse(JSON.stringify()) é uma alternativa mais antiga e limitada, que perde funções, datas e undefined, e falha com referências circulares."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 04",
+  "next_label": "Aula 04 → Set, Map, WeakSet e WeakMap",
+  "_stage": "revisao"
+}

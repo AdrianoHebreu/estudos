@@ -1,0 +1,337 @@
+{
+  "module_num": "01",
+  "module_title": "Fundamentos da Linguagem",
+  "module_dir": "01-Fundamentos-da-Linguagem",
+  "lesson_num": "03",
+  "lesson_slug": "Tipos-de-Dados-e-Tipagem-Dinamica",
+  "kind": "aula",
+  "title": "Tipos de Dados e Tipagem Dinâmica",
+  "filename_base": "03-Tipos-de-Dados-e-Tipagem-Dinamica",
+  "subtitle": "Os tipos primitivos, o typeof, tipagem dinâmica e a diferença entre valor e referência.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Reconhecer e distinguir os sete tipos primitivos de JavaScript e o tipo object.",
+    "Usar o operador typeof para inspecionar tipos em tempo de execução, incluindo as suas particularidades.",
+    "Compreender a diferença entre tipagem dinâmica e tipagem estática.",
+    "Perceber por que os valores primitivos são imutáveis e o que isso implica na prática.",
+    "Distinguir a cópia por valor dos primitivos da cópia por referência dos objetos.",
+    "Diferenciar null de undefined e saber quando usar cada um."
+  ],
+  "sections": [
+    {
+      "heading": "Os Tipos Primitivos e o Tipo Object",
+      "body": [
+        "JavaScript reconhece sete tipos primitivos: string, number, boolean, undefined, null, symbol e bigint. Um primitivo é um valor simples que, na prática, não tem métodos nem propriedades próprias — quando se chama um método sobre uma string ou um number, o motor de JavaScript cria temporariamente um objeto invólucro para disponibilizar esse método, e descarta-o logo de seguida. Tudo o que não é primitivo pertence ao tipo object: objetos literais, arrays, funções, datas ou expressões regulares são, por baixo, casos particulares de objetos, com propriedades e comportamento adicional.",
+        "O tipo number representa tanto inteiros como números decimais num único formato de vírgula flutuante de 64 bits, o que implica limites de precisão para inteiros muito grandes: o valor inteiro seguro máximo é Number.MAX_SAFE_INTEGER, ou seja, 2 elevado a 53 menos 1. Para trabalhar com inteiros maiores sem perder precisão existe o bigint, introduzido no ES2020, cujos literais terminam em n. O symbol, introduzido no ES2015, cria valores únicos e imutáveis, tipicamente usados como chaves de propriedades que nunca colidem, mesmo que partilhem a mesma descrição textual."
+      ],
+      "code": "const nome = \"Ana\"; // string\nconst idade = 34; // number\nconst ativo = true; // boolean\nlet aindaNaoDefinido; // undefined\nconst semValor = null; // null\nconst numeroGrande = 9007199254740993n; // bigint\nconst identificador = Symbol(\"id\"); // symbol\nconst pessoa = { nome, idade }; // object\n\nconsole.log(nome.toUpperCase()); // \"ANA\" - wrapper temporário criado e descartado\nconsole.log(typeof nome); // \"string\" - continua primitivo, apesar do método\nconsole.log(typeof pessoa); // \"object\"",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧱",
+          "text": "Sete tipos primitivos + object"
+        },
+        {
+          "icon": "🔢",
+          "text": "number é sempre 64 bits (IEEE 754)"
+        },
+        {
+          "icon": "🆔",
+          "text": "symbol cria identificadores únicos"
+        },
+        {
+          "icon": "🧮",
+          "text": "bigint para inteiros sem limite de precisão"
+        }
+      ]
+    },
+    {
+      "heading": "O Operador typeof",
+      "body": [
+        "typeof é um operador unário que devolve, como string, o tipo do valor à sua direita. É a ferramenta mais direta para inspecionar em tempo de execução que tipo de dado se está a manipular, o que é especialmente útil numa linguagem com tipagem dinâmica, em que o tipo de uma variável só se conhece com certeza a correr o código. Aplica-se tanto a variáveis como diretamente a valores literais, e pode usar-se com ou sem parênteses: typeof x e typeof(x) são equivalentes.",
+        "typeof tem duas particularidades importantes a memorizar. A primeira é que typeof null devolve \"object\", um erro histórico da primeira implementação de JavaScript em 1995 que nunca foi corrigido, porque corrigi-lo quebraria código já existente na Web. A segunda é que funções, apesar de serem tecnicamente objetos, têm resultado próprio: typeof de uma função é sempre \"function\", nunca \"object\". Para distinguir arrays de objetos comuns, typeof não ajuda, porque ambos devolvem \"object\"; usa-se antes Array.isArray()."
+      ],
+      "code": "console.log(typeof \"texto\"); // \"string\"\nconsole.log(typeof 42); // \"number\"\nconsole.log(typeof 42n); // \"bigint\"\nconsole.log(typeof true); // \"boolean\"\nconsole.log(typeof undefined); // \"undefined\"\nconsole.log(typeof null); // \"object\" - particularidade histórica\nconsole.log(typeof Symbol(\"x\")); // \"symbol\"\nconsole.log(typeof {}); // \"object\"\nconsole.log(typeof []); // \"object\"\nconsole.log(typeof function () {}); // \"function\"\nconsole.log(Array.isArray([])); // true - forma correta de testar arrays",
+      "callout_kind": "ATENCAO",
+      "callout_text": "typeof null devolve \"object\" - um erro histórico da linguagem que nunca foi corrigido. Nunca use typeof para testar se algo é null; compare diretamente com === null.",
+      "table_headers": [
+        "Valor",
+        "typeof"
+      ],
+      "table_rows": [
+        [
+          "\"texto\"",
+          "\"string\""
+        ],
+        [
+          "42",
+          "\"number\""
+        ],
+        [
+          "42n",
+          "\"bigint\""
+        ],
+        [
+          "true",
+          "\"boolean\""
+        ],
+        [
+          "undefined",
+          "\"undefined\""
+        ],
+        [
+          "null",
+          "\"object\""
+        ],
+        [
+          "Symbol()",
+          "\"symbol\""
+        ],
+        [
+          "{}",
+          "\"object\""
+        ],
+        [
+          "[]",
+          "\"object\""
+        ],
+        [
+          "function(){}",
+          "\"function\""
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔍",
+          "text": "typeof devolve o tipo como string"
+        },
+        {
+          "icon": "⚠️",
+          "text": "typeof null é \"object\" (bug histórico)"
+        },
+        {
+          "icon": "🧩",
+          "text": "funções devolvem sempre \"function\""
+        },
+        {
+          "icon": "📦",
+          "text": "arrays usam Array.isArray, não typeof"
+        }
+      ]
+    },
+    {
+      "heading": "Tipagem Dinâmica vs Tipagem Estática",
+      "body": [
+        "JavaScript é uma linguagem de tipagem dinâmica: o tipo está associado ao valor, não à variável, e é verificado em tempo de execução. Isto significa que a mesma variável pode guardar um number num momento e uma string no momento seguinte, sem que o motor de JavaScript se queixe em nenhum ponto do processo, porque a variável é apenas uma referência a um valor, e é o valor que carrega o tipo. Em linguagens de tipagem estática, como Java, C# ou TypeScript, o tipo é declarado ou inferido em tempo de compilação e fica fixo: atribuir um valor de tipo diferente a uma variável já tipada é um erro detetado antes mesmo de o programa correr.",
+        "A tipagem dinâmica dá flexibilidade e reduz código repetitivo, porque não é preciso declarar tipos, mas desloca para tempo de execução, ou para disciplina de testes, erros que uma linguagem estática apanharia mais cedo, no momento da compilação. É por isso que ferramentas de análise de tipos e baterias de testes automatizados são tão populares em projetos JavaScript de maior dimensão: compensam, em fase de desenvolvimento, a ausência de verificação estática de tipos."
+      ],
+      "code": "let valor = \"Olá\"; // valor é string\nconsole.log(typeof valor); // \"string\"\n\nvalor = 42; // a mesma variável passa a guardar um number\nconsole.log(typeof valor); // \"number\"\n\nvalor = [1, 2, 3]; // agora guarda um array (object)\nconsole.log(typeof valor); // \"object\"",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔀",
+          "text": "Tipo pertence ao valor, não à variável"
+        },
+        {
+          "icon": "⏱️",
+          "text": "Verificação de tipos em tempo de execução"
+        },
+        {
+          "icon": "🏗️",
+          "text": "Estática (Java, TS): tipo fixo em compilação"
+        },
+        {
+          "icon": "🧠",
+          "text": "Flexibilidade tem custo: mais testes necessários"
+        }
+      ]
+    },
+    {
+      "heading": "Imutabilidade dos Valores Primitivos",
+      "body": [
+        "Todos os valores primitivos em JavaScript são imutáveis: uma vez criado, o próprio valor nunca é alterado. É fácil confundir isto com a possibilidade de reatribuir uma variável, mas são coisas distintas — reatribuir uma variável declarada com let faz com que ela passe a apontar para um valor novo, sem modificar o valor anterior, que continua exatamente igual onde quer que ainda esteja referenciado. Métodos de string como toUpperCase() ou slice() nunca alteram a string original: devolvem sempre uma string nova, deixando a original intacta.",
+        "Esta imutabilidade é o que torna os primitivos seguros para comparar por valor com === e para partilhar livremente entre partes diferentes do código, sem receio de que uma função altere, sem se saber, um valor usado noutro lado. É uma distinção importante face aos objetos, tratados na secção seguinte, cujas propriedades podem ser alteradas depois de criados, mesmo que a variável que os referencia seja const."
+      ],
+      "code": "let frase = \"javascript\";\nconst maiusculas = frase.toUpperCase();\n\nconsole.log(frase); // \"javascript\" - original inalterada\nconsole.log(maiusculas); // \"JAVASCRIPT\" - string nova e independente\n\nfrase = frase + \"!\"; // reatribuição: a variável passa a apontar para uma string nova\nconsole.log(frase); // \"javascript!\"\n\nconst a = 10;\nlet b = a; // b recebe uma cópia independente do valor 10\nb = b + 5;\nconsole.log(a, b); // 10 15 - a não foi afetado",
+      "callout_kind": "NOTA",
+      "callout_text": "const impede reatribuir a variável a um valor diferente, mas não é isso que torna um primitivo imutável - um primitivo já é imutável por natureza, mesmo declarado com let.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔒",
+          "text": "Primitivos nunca mudam depois de criados"
+        },
+        {
+          "icon": "♻️",
+          "text": "Métodos de string devolvem sempre valor novo"
+        },
+        {
+          "icon": "📌",
+          "text": "Reatribuir variável ≠ alterar o valor"
+        },
+        {
+          "icon": "🆚",
+          "text": "const trava a variável, não o valor"
+        }
+      ]
+    },
+    {
+      "heading": "Primitivos vs Referências a Objetos",
+      "body": [
+        "A diferença mais prática entre primitivos e objetos está na forma como são guardados e copiados. Um primitivo é guardado por valor: ao atribuir uma variável a outra, ou ao passá-la como argumento a uma função, é copiado o próprio valor, e as duas variáveis ficam totalmente independentes uma da outra. Um objeto, incluindo arrays e funções, é guardado por referência: a variável não contém o objeto propriamente dito, mas um endereço que aponta para ele na memória; copiar essa variável copia apenas o endereço, e ambas as variáveis passam a apontar para o mesmo objeto.",
+        "Isto explica um comportamento que surpreende muitos principiantes: alterar uma propriedade de um objeto através de uma variável é visível também através de outra variável que aponte para o mesmo objeto, mesmo que uma delas tenha sido declarada com const, porque const impede reatribuir a variável a um objeto diferente, mas não impede alterar as propriedades do objeto para o qual ela aponta. Comparar dois objetos com === compara as referências, não o conteúdo: dois objetos com propriedades idênticas, mas criados separadamente, são considerados diferentes."
+      ],
+      "code": "// Primitivos: cópia por valor\nlet x = 5;\nlet y = x;\ny = 10;\nconsole.log(x, y); // 5 10 - independentes\n\n// Objetos: cópia por referência\nconst pessoa1 = { nome: \"Rui\" };\nconst pessoa2 = pessoa1; // mesma referência\npessoa2.nome = \"Sofia\";\nconsole.log(pessoa1.nome); // \"Sofia\" - o mesmo objeto foi alterado\n\n// const impede reatribuir a variável, não alterar o objeto\nconst config = { tema: \"escuro\" };\nconfig.tema = \"claro\"; // permitido\n// config = {}; // erro: Assignment to constant variable.\n\nconsole.log({ a: 1 } === { a: 1 }); // false - referências diferentes",
+      "callout_kind": "ATENCAO",
+      "callout_text": "const num objeto impede reatribuir a variável, mas não impede alterar as suas propriedades. Para bloquear alterações a sério é preciso Object.freeze, tema aprofundado no módulo 05.",
+      "table_headers": [
+        "",
+        "Primitivos",
+        "Objetos"
+      ],
+      "table_rows": [
+        [
+          "Guardados como",
+          "valor",
+          "referência (endereço)"
+        ],
+        [
+          "Cópia (=)",
+          "cria valor independente",
+          "copia a referência, mesmo objeto"
+        ],
+        [
+          "Comparação (===)",
+          "compara o valor",
+          "compara a referência"
+        ],
+        [
+          "Alterável depois de criado",
+          "não (imutável)",
+          "sim (propriedades mutáveis)"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📋",
+          "text": "Primitivos copiam-se por valor"
+        },
+        {
+          "icon": "🔗",
+          "text": "Objetos copiam-se por referência"
+        },
+        {
+          "icon": "⚖️",
+          "text": "=== em objetos compara referências"
+        },
+        {
+          "icon": "🔓",
+          "text": "const não torna um objeto imutável"
+        }
+      ]
+    },
+    {
+      "heading": "null vs undefined",
+      "body": [
+        "undefined é o valor que o próprio motor de JavaScript atribui automaticamente quando não há valor definido: uma variável declarada mas ainda não inicializada, um parâmetro de função que não recebeu argumento, uma propriedade inexistente lida de um objeto, ou uma função sem instrução return explícita produzem todos undefined. null, pelo contrário, só aparece porque alguém o escreveu deliberadamente no código, para representar de forma explícita a ausência intencional de um valor.",
+        "Os dois representam ausência de valor, mas com origens e intenções diferentes, e isso reflete-se nas comparações: null === undefined é false, porque são tipos diferentes, mas null == undefined é true, porque a comparação solta trata os dois como equivalentes por regra especial, sem converter mais nenhum outro valor a eles. Na prática, é boa norma deixar undefined ser o valor implícito que o próprio JavaScript gere, e usar null apenas quando se quer sinalizar explicitamente, no código, que uma variável ou propriedade não tem valor de propósito."
+      ],
+      "code": "let variavel;\nconsole.log(variavel); // undefined - declarada, nunca inicializada\n\nfunction saudacao(nome) {\n  console.log(nome); // undefined, se a função for chamada sem argumento\n}\nsaudacao();\n\nconst pessoa = { nome: \"Marta\" };\nconsole.log(pessoa.idade); // undefined - propriedade que não existe\n\nlet resultado = null; // ausência de valor definida deliberadamente\n\nconsole.log(null === undefined); // false - tipos diferentes\nconsole.log(null == undefined); // true - comparação solta trata-os como equivalentes\nconsole.log(typeof null); // \"object\"\nconsole.log(typeof undefined); // \"undefined\"",
+      "callout_kind": "DICA",
+      "callout_text": "Use null quando quiser inicializar algo como \"ainda sem valor, de propósito\" (por exemplo, antes de uma resposta assíncrona chegar); deixe undefined para os casos que o próprio JavaScript já atribui automaticamente.",
+      "table_headers": [
+        "",
+        "undefined",
+        "null"
+      ],
+      "table_rows": [
+        [
+          "Origem",
+          "atribuído automaticamente pelo motor",
+          "atribuído deliberadamente no código"
+        ],
+        [
+          "typeof",
+          "\"undefined\"",
+          "\"object\""
+        ],
+        [
+          "Significado típico",
+          "valor ainda não definido",
+          "ausência intencional de valor"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🤖",
+          "text": "undefined: o motor atribui automaticamente"
+        },
+        {
+          "icon": "✍️",
+          "text": "null: escrito deliberadamente no código"
+        },
+        {
+          "icon": "🆚",
+          "text": "null === undefined é false"
+        },
+        {
+          "icon": "🟰",
+          "text": "null == undefined é true"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Identificar tipos com typeof",
+      "difficulty": "Iniciante",
+      "statement": "Declare as seguintes variáveis com os valores indicados: uma string com um nome, um number com uma idade, um boolean, uma variável declarada mas sem valor atribuído, uma variável com valor null, e um bigint com o valor 100. De seguida, escreva console.log(typeof ...) para cada uma delas e confirme o resultado. Preste especial atenção ao resultado de typeof null.",
+      "hint": "Lembre-se de que typeof null tem um resultado que não corresponde ao tipo real do valor - é uma exceção histórica da linguagem.",
+      "solution_code": "const nome = \"Adriano\";\nconst idade = 30;\nconst ativo = true;\nlet semValor;\nconst nulo = null;\nconst numeroGrande = 100n;\n\nconsole.log(typeof nome); // \"string\"\nconsole.log(typeof idade); // \"number\"\nconsole.log(typeof ativo); // \"boolean\"\nconsole.log(typeof semValor); // \"undefined\"\nconsole.log(typeof nulo); // \"object\"\nconsole.log(typeof numeroGrande); // \"bigint\"",
+      "solution_explanation": "Cada variável reflete um tipo primitivo diferente, e typeof devolve-o como string. O único caso que foge à intuição é null, que devolve \"object\" por causa de um erro histórico da implementação original do JavaScript, e não porque null seja de facto um objeto."
+    },
+    {
+      "title": "Strings são imutáveis, objetos não",
+      "difficulty": "Intermedio",
+      "statement": "Escreva código que: primeiro, declare uma string e tente alterar diretamente o seu primeiro carácter através de atribuição por índice (por exemplo, texto[0] = \"X\"), confirmando com console.log que a string não muda; segundo, crie uma nova string a partir da original usando um método de string à sua escolha (por exemplo, toUpperCase ou slice), confirmando que passa a existir uma string nova sem que a original seja alterada; terceiro, declare um objeto simples (por exemplo { cor: \"azul\" }) e altere diretamente uma das suas propriedades, confirmando com console.log que, ao contrário da string, o objeto original foi mesmo alterado.",
+      "hint": "Atribuir a um índice de uma string (texto[0] = ...) não gera erro, mas também não tem qualquer efeito - strings não têm posições editáveis.",
+      "solution_code": "const original = \"abacate\";\n\noriginal[0] = \"X\"; // não gera erro, mas também não tem qualquer efeito\nconsole.log(original); // \"abacate\" - inalterada, porque strings são imutáveis\n\nconst maiuscula = original.toUpperCase(); // cria uma string nova\nconsole.log(original); // \"abacate\" - continua igual\nconsole.log(maiuscula); // \"ABACATE\" - string nova e independente\n\nconst objeto = { cor: \"azul\" };\nobjeto.cor = \"verde\"; // altera diretamente a propriedade do mesmo objeto\nconsole.log(objeto); // { cor: \"verde\" } - o próprio objeto foi alterado",
+      "solution_explanation": "Tentar alterar um índice de uma string não produz erro nem efeito, porque strings são primitivos imutáveis - qualquer método que pareça transformar uma string devolve sempre uma string nova. Já um objeto pode ser alterado diretamente através das suas propriedades, sem nunca deixar de ser o mesmo objeto na memória, o que evidencia a diferença fundamental entre primitivos e objetos."
+    },
+    {
+      "title": "Parâmetros de função: valor vs referência",
+      "difficulty": "Avancado",
+      "statement": "Escreva uma função chamada dobrarPrimeiro que recebe um array de numbers e um number avulso, dobra (multiplica por 2) o número avulso numa variável local e também dobra o primeiro elemento do array recebido, devolvendo o número avulso já dobrado. Depois de chamar a função com uma variável number e um array já existentes, escreva código que mostre, através de console.log, que a variável number original ficou inalterada mas o array original foi alterado. Explique nos comentários do código por que isso acontece.",
+      "hint": "Pense em como os argumentos são passados para uma função consoante sejam primitivos ou objetos: uns são copiados por valor, outros por referência.",
+      "solution_code": "function dobrarPrimeiro(numeros, valor) {\n  valor = valor * 2; // altera apenas a cópia local do primitivo\n  numeros[0] = numeros[0] * 2; // altera o array original, porque é passado por referência\n  return valor;\n}\n\nlet numeroOriginal = 5;\nconst listaOriginal = [10, 20, 30];\n\nconst resultado = dobrarPrimeiro(listaOriginal, numeroOriginal);\n\nconsole.log(numeroOriginal); // 5 - inalterado, era um primitivo copiado por valor\nconsole.log(resultado); // 10 - o dobro, devolvido pela função\nconsole.log(listaOriginal); // [20, 20, 30] - o primeiro elemento foi alterado, mesma referência",
+      "solution_explanation": "O parâmetro valor recebe uma cópia do primitivo, por isso alterá-lo dentro da função nunca afeta numeroOriginal fora dela. Já numeros recebe a mesma referência do array listaOriginal, por isso alterar uma posição dentro da função altera o array partilhado, visível também fora da função."
+    },
+    {
+      "title": "Distinguir ausência de valor de valores falsy",
+      "difficulty": "Avancado",
+      "statement": "Escreva uma função chamada valorOuPadrao que recebe dois parâmetros, valor e padrao, e devolve valor sempre que este não for nem null nem undefined, devolvendo padrao apenas nesses dois casos - sem usar o operador ??. Teste a função com pelo menos cinco chamadas diferentes, cobrindo os casos: valor igual a 0, valor igual a uma string vazia \"\", valor igual a false, valor igual a null e valor igual a undefined, confirmando com console.log que só os dois últimos casos devolvem o padrão. Explique por que é importante não confundir ausência de valor com valores como 0, \"\" ou false.",
+      "hint": "Uma comparação solta (==) entre valor e null é suficiente para apanhar simultaneamente null e undefined, sem afetar 0, \"\" ou false.",
+      "solution_code": "function valorOuPadrao(valor, padrao) {\n  if (valor == null) {\n    // == null apanha tanto null como undefined, e só esses dois casos\n    return padrao;\n  }\n  return valor;\n}\n\nconsole.log(valorOuPadrao(0, \"padrão\")); // 0 - 0 não é null nem undefined\nconsole.log(valorOuPadrao(\"\", \"padrão\")); // \"\" - string vazia não é null nem undefined\nconsole.log(valorOuPadrao(false, \"padrão\")); // false - idem\nconsole.log(valorOuPadrao(null, \"padrão\")); // \"padrão\" - null é substituído\nconsole.log(valorOuPadrao(undefined, \"padrão\")); // \"padrão\" - undefined é substituído",
+      "solution_explanation": "A condição valor == null usa comparação solta, que trata null e undefined como equivalentes entre si mas não converte mais nenhum outro valor a eles, incluindo 0, \"\" ou false. Por isso a função só substitui pelo padrão nos dois casos genuinamente ausentes de valor, distinguindo-os corretamente de valores falsy que são, ainda assim, valores válidos e intencionais."
+    }
+  ],
+  "summary": [
+    "JavaScript tem sete tipos primitivos (string, number, boolean, undefined, null, symbol, bigint); tudo o resto é object.",
+    "typeof identifica tipos em tempo de execução, mas tem duas exceções a decorar: typeof null é \"object\" e typeof de uma função é \"function\".",
+    "JavaScript é dinamicamente tipado: o tipo pertence ao valor, não à variável, e só é conhecido em tempo de execução.",
+    "Valores primitivos são sempre imutáveis; qualquer método que pareça transformar um valor devolve sempre um valor novo.",
+    "Primitivos copiam-se por valor; objetos copiam-se por referência - alterar um objeto partilhado afeta todas as variáveis que apontam para ele.",
+    "undefined é atribuído automaticamente pelo motor de JavaScript; null é escrito deliberadamente no código para sinalizar ausência intencional de valor."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 04",
+  "next_label": "Aula 04 → Operadores",
+  "_stage": "revisao"
+}

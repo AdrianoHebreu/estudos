@@ -1,0 +1,8 @@
+{
+  "name": "typescript-studies",
+  "private": true,
+  "description": "Ferramentas de geracao do Curso de TypeScript de A a Z",
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

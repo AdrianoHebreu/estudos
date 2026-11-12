@@ -1,0 +1,274 @@
+{
+  "module_num": "00",
+  "module_title": "Introdução",
+  "module_dir": "00-Introducao",
+  "lesson_num": "",
+  "lesson_slug": "",
+  "kind": "modulo",
+  "title": "Bem-vindo ao Curso de JavaScript",
+  "filename_base": "00-Introducao",
+  "subtitle": "Do primeiro console.log à programação assíncrona e avançada",
+  "objectives_label": "Neste módulo vai encontrar:",
+  "objectives": [
+    "O que é o JavaScript, a sua história e onde é usado hoje",
+    "Como preparar o ambiente de trabalho (Node.js e o browser)",
+    "Como está organizado todo o curso, módulo a módulo",
+    "As convenções usadas em todos os documentos (DICA, ATENÇÃO, NOTA, PRATICAR)"
+  ],
+  "sections": [
+    {
+      "heading": "O que é o JavaScript",
+      "body": [
+        "O JavaScript nasceu em 1995, criado por Brendan Eich, e tornou-se rapidamente a linguagem de programação da Web: é a única linguagem que corre nativamente em todos os browsers, sem necessidade de instalar nada. A sua especificação oficial chama-se ECMAScript, mantida por um comité chamado TC39 — na prática, \"JavaScript\" e \"ECMAScript\" são usados como sinónimos ao longo deste curso.",
+        "É uma linguagem dinamicamente tipada (os tipos são verificados durante a execução, não antes) e multi-paradigma: suporta um estilo imperativo, um estilo funcional (funções como valores de primeira classe) e orientação a objetos baseada em protótipos — todos os quais este curso explora em detalhe."
+      ],
+      "code": "console.log(\"Olá, Mundo!\");",
+      "callout_kind": "NOTA",
+      "callout_text": "ECMAScript é o nome da especificação oficial da linguagem; JavaScript é a implementação mais conhecida e divulgada. Este curso segue as versões modernas da especificação, geralmente designadas por ES2015 (ES6) em diante.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🌐",
+          "text": "A linguagem de programação da Web"
+        },
+        {
+          "icon": "📜",
+          "text": "ECMAScript = a especificação oficial"
+        },
+        {
+          "icon": "🧩",
+          "text": "Multi-paradigma: imperativo, funcional, OO"
+        }
+      ]
+    },
+    {
+      "heading": "Onde Corre o JavaScript",
+      "body": [
+        "Cada browser tem o seu próprio motor de JavaScript (JS engine) — um programa que lê o código e o executa. Fora do browser, o Node.js (e alternativas mais recentes como Deno e Bun) usam esses mesmos motores para correr JavaScript em servidores, scripts e ferramentas de linha de comandos."
+      ],
+      "code": "",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [
+        "Ambiente",
+        "Motor / Runtime",
+        "Uso típico"
+      ],
+      "table_rows": [
+        [
+          "Browser (Chrome, Edge, Firefox)",
+          "V8, SpiderMonkey, JavaScriptCore",
+          "Interatividade em páginas web, manipulação do DOM"
+        ],
+        [
+          "Node.js",
+          "V8 + APIs do sistema operativo",
+          "Servidores, scripts, ferramentas de linha de comandos"
+        ],
+        [
+          "Deno / Bun",
+          "V8 ou JavaScriptCore",
+          "Alternativas modernas ao Node.js, com foco em segurança e velocidade"
+        ]
+      ],
+      "slide_bullets": []
+    },
+    {
+      "heading": "Preparar o Ambiente",
+      "body": [
+        "Para acompanhar os exemplos de código deste curso, instale a versão LTS (Long Term Support) do Node.js a partir de nodejs.org. Um editor de código como o Visual Studio Code é a escolha mais comum para escrever e correr os exemplos.",
+        "Também pode experimentar a maior parte do código diretamente na consola do browser, sem instalar nada: basta abrir as ferramentas de programador (normalmente com a tecla F12) e escrever no separador Console."
+      ],
+      "code": "node --version\nnpm --version\n\nnode meu-script.js",
+      "callout_kind": "DICA",
+      "callout_text": "Se ainda não tem a certeza de qual ambiente usar, instale o Node.js — é o mais usado no mercado e é o que este curso assume por omissão nos exemplos que correm fora do browser.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⬇️",
+          "text": "Instalar o Node.js LTS (nodejs.org)"
+        },
+        {
+          "icon": "💻",
+          "text": "Editor recomendado: Visual Studio Code"
+        },
+        {
+          "icon": "⌨️",
+          "text": "F12 no browser também tem uma consola JS"
+        }
+      ]
+    },
+    {
+      "heading": "Como Está Organizado o Curso",
+      "body": [
+        "O curso está dividido em módulos numerados de 00 a 16, cada um numa pasta própria. Os módulos 01 a 13 são teóricos e estão divididos em aulas: cada aula tem um documento Word (.docx) com a teoria completa, exemplos e exercícios, e um PowerPoint (.pptx) companheiro — um resumo visual da mesma aula, pensado para rever rapidamente antes ou depois de ler o documento.",
+        "Os módulos finais têm um papel diferente: o Módulo 14 propõe um projeto final que integra tudo o que foi aprendido; o Módulo 15 é uma referência rápida (cheat sheet) com toda a sintaxe do curso; o Módulo 16 contém a resolução comentada de todos os exercícios propostos ao longo do curso."
+      ],
+      "code": "",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [
+        "Módulo",
+        "Conteúdo"
+      ],
+      "table_rows": [
+        [
+          "01 · Fundamentos da Linguagem",
+          "Sintaxe, variáveis, tipos, operadores, coerção"
+        ],
+        [
+          "02 · Estruturas de Controlo",
+          "Condicionais, loops, for-of/for-in, break/continue"
+        ],
+        [
+          "03 · Funções",
+          "Declarações/arrow, parâmetros, escopo/closures, this, recursão"
+        ],
+        [
+          "04 · Arrays e Coleções",
+          "Métodos de array, destructuring/spread, Set/Map, generators"
+        ],
+        [
+          "05 · Objetos e Orientação a Objetos",
+          "Literais, protótipos, classes, campos privados, mixins"
+        ],
+        [
+          "06 · Strings e Expressões Regulares",
+          "Métodos de string, template literals, regex"
+        ],
+        [
+          "07 · Assincronismo",
+          "Event loop, callbacks, promises, async/await, fetch"
+        ],
+        [
+          "08 · Módulos e Ecossistema",
+          "ES Modules, CommonJS, npm, bundlers"
+        ],
+        [
+          "09 · Tratamento de Erros",
+          "try/catch, Error personalizados, padrões assíncronos"
+        ],
+        [
+          "10 · DOM e APIs do Navegador",
+          "Manipulação do DOM, eventos, formulários, web storage"
+        ],
+        [
+          "11 · JavaScript Avançado",
+          "Symbols, Proxy/Reflect, WeakMap/WeakSet, ES2020+"
+        ],
+        [
+          "12 · Padrões de Projeto e Boas Práticas",
+          "Padrões de projeto, clean code, performance, testes"
+        ],
+        [
+          "13 · Objetos Nativos e Utilitários",
+          "Date e Temporal, JSON, Math e Number, Intl (internacionalização)"
+        ],
+        [
+          "14 · Projeto Final e Exercícios",
+          "Um projeto prático que integra todo o curso"
+        ],
+        [
+          "15 · Cheat Sheet",
+          "Referência rápida de toda a sintaxe do curso"
+        ],
+        [
+          "16 · Gabarito dos Exercícios",
+          "Soluções comentadas de todos os exercícios"
+        ]
+      ],
+      "slide_bullets": []
+    },
+    {
+      "heading": "Convenções Usadas nos Documentos",
+      "body": [
+        "Ao longo de todos os módulos vai encontrar quatro tipos de caixas destacadas, sempre com o mesmo significado."
+      ],
+      "code": "",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [
+        "Caixa",
+        "Significado"
+      ],
+      "table_rows": [
+        [
+          "DICA",
+          "Uma sugestão, atalho ou boa prática opcional"
+        ],
+        [
+          "ATENÇÃO",
+          "Um comportamento que pode confundir, ou uma operação arriscada"
+        ],
+        [
+          "NOTA",
+          "Contexto adicional ou detalhe técnico opcional, sem ser essencial"
+        ],
+        [
+          "PRATICAR",
+          "Uma indicação para consolidar o conceito com um exercício"
+        ]
+      ],
+      "slide_bullets": []
+    },
+    {
+      "heading": "Como Estudar Cada Aula",
+      "body": [
+        "Siga a ordem numérica dos módulos 01 a 12: cada um constrói-se sobre o anterior. Dentro de cada módulo, leia as aulas pela ordem indicada. Depois de ler a teoria e os exemplos de uma aula, resolva os exercícios no final do próprio documento antes de consultar a solução.",
+        "Use o PowerPoint de cada aula como revisão rápida — antes de começar, para ter uma ideia geral, ou depois de terminar, para confirmar que ficaram os pontos principais. Confirme o seu trabalho no Módulo 15 só depois de tentar resolver os exercícios sozinho: é nesse esforço que a aprendizagem acontece."
+      ],
+      "code": "",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Comece já: instale o Node.js, confirme a instalação com node --version, e avance para o Módulo 01 — Fundamentos da Linguagem.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📖",
+          "text": "Teoria e exemplos primeiro, no .docx"
+        },
+        {
+          "icon": "✍️",
+          "text": "Exercícios no final de cada aula"
+        },
+        {
+          "icon": "🔁",
+          "text": "Reveja com o .pptx antes ou depois"
+        },
+        {
+          "icon": "✅",
+          "text": "Gabarito (Módulo 15) só depois de tentar"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Preparar o Ambiente",
+      "difficulty": "Iniciante",
+      "statement": "Instale o Node.js (versão LTS) no seu computador. Depois, abra um terminal e confirme a instalação verificando a versão do Node e do npm.",
+      "hint": "Existe um único comando para cada verificação, ambos com a mesma flag de versão.",
+      "solution_code": "node --version\nnpm --version",
+      "solution_explanation": "Ambos os comandos devolvem um número de versão (ex.: v20.11.0); se aparecer um erro do tipo \"comando não encontrado\", a instalação do Node.js não ficou concluída ou o terminal precisa de ser reiniciado."
+    },
+    {
+      "title": "Primeiro Script",
+      "difficulty": "Iniciante",
+      "statement": "Crie um ficheiro chamado ola.js que escreva a sua própria saudação na consola, e execute-o com o Node.js a partir do terminal.",
+      "hint": "console.log() escreve texto na consola; para correr o ficheiro use node seguido do nome do ficheiro.",
+      "solution_code": "// ola.js\nconsole.log(\"Olá! Estou a aprender JavaScript.\");\n\n// no terminal:\n// node ola.js",
+      "solution_explanation": "O comando node ola.js pede ao Node.js para ler e executar o ficheiro; o texto passado a console.log() aparece imediatamente no terminal."
+    }
+  ],
+  "summary": [
+    "JavaScript (ECMAScript) é a linguagem da Web, hoje usada também fora do browser através do Node.js e alternativas como Deno/Bun",
+    "O ambiente recomendado para este curso é o Node.js com um editor como o VS Code; a consola do browser (F12) serve para experiências rápidas",
+    "O curso tem 17 módulos: 00 (este) de introdução, 01-13 de teoria progressiva por aulas, e 14-16 de projeto final, cheat sheet e gabarito",
+    "Cada aula tem um .docx (teoria completa) e um .pptx (resumo visual) — leia o Word, reveja com o PowerPoint, resolva os exercícios",
+    "As caixas DICA, ATENÇÃO, NOTA e PRATICAR têm sempre o mesmo significado em todos os módulos"
+  ],
+  "closing_message": "Vamos continuar para o Módulo 01",
+  "next_label": "Aula 01 → Sintaxe Básica e Comentários"
+}

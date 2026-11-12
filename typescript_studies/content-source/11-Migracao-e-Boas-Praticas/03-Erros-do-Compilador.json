@@ -1,0 +1,434 @@
+{
+  "module_num": "11",
+  "module_title": "Migração e Boas Práticas",
+  "module_dir": "11-Migracao-e-Boas-Praticas",
+  "lesson_num": "03",
+  "lesson_slug": "Erros-do-Compilador",
+  "kind": "aula",
+  "title": "Ler e Resolver Erros do Compilador",
+  "filename_base": "03-Erros-do-Compilador",
+  "subtitle": "Ler as mensagens do tsc de baixo para cima e chegar à causa verdadeira",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Decompor uma mensagem do tsc em localização, código, texto e elaboração",
+    "Reconhecer os códigos de erro mais frequentes e o que verificar primeiro",
+    "Distinguir o sítio onde o erro aparece do sítio onde está a causa",
+    "Isolar um erro com tipos intermédios, o truque do never e o caso mínimo",
+    "Interpretar erros de sobrecargas e de inferência de genéricos",
+    "Corrigir o código quando o erro está certo, em vez de o calar"
+  ],
+  "sections": [
+    {
+      "heading": "Anatomia de uma mensagem do tsc",
+      "body": [
+        "Com tsc --noEmit --pretty false, cada erro ocupa uma linha principal com ficheiro(linha,coluna), o código TSxxxx e o texto, seguida de uma cadeia de elaboração indentada. Cada nível de indentação desce um passo na comparação de tipos: do objeto inteiro até à propriedade que falhou.",
+        "A tabela mostra a mensagem real do tsc 5.9.3 para a atribuição cfg = lido do exemplo (capturada no ficheiro sem os comentários, onde a atribuição está na linha 8). Lê-se de baixo para cima: a última linha é a causa concreta, as de cima dizem como lá se chegou. Quando o caminho só atravessa propriedades, o 5.9 junta-o numa única linha, The types of 'servidor.tls.ativo' are incompatible between these types; se passar por um array, uma função ou uma união, aparece um passo Types of property 'x' are incompatible por cada nível.",
+        "Se o objeto literal for escrito diretamente no sítio anotado, o tsc não mostra a cadeia: aponta a linha e a coluna da propriedade aninhada e deixa só a última linha. Por isso, num erro destes, o @ts-expect-error tem de ficar antes da linha da propriedade, não antes do const."
+      ],
+      "code": "interface Config {\n  nome: string;\n  servidor: { porta: number; tls: { ativo: boolean } };\n}\n\n// O valor chega \"de fora\" e só depois é atribuído ao tipo.\nconst lido = { nome: \"api\", servidor: { porta: 8080, tls: { ativo: \"sim\" } } };\n\n// @ts-expect-error\nconst cfg: Config = lido;\n// TS2322: Type '{ nome: string; servidor: { porta: number; tls: { ativo: string; }; }; }'\n//   is not assignable to type 'Config'.\n//   The types of 'servidor.tls.ativo' are incompatible between these types.\n//     Type 'string' is not assignable to type 'boolean'.\n\n// Com o objeto literal escrito no próprio sítio, o erro desce até à propriedade:\nconst direto: Config = {\n  nome: \"api\",\n  servidor: {\n    porta: 8080,\n    // @ts-expect-error\n    tls: { ativo: \"sim\" }, // TS2322: Type 'string' is not assignable to type 'boolean'.\n  },\n};",
+      "callout_kind": "DICA",
+      "callout_text": "Comece pela última linha da elaboração: é quase sempre o par de tipos concreto que não bate certo. Só depois suba para perceber o caminho.",
+      "table_headers": [
+        "Parte",
+        "Texto real (tsc 5.9.3)",
+        "O que diz"
+      ],
+      "table_rows": [
+        [
+          "Localização",
+          "config.ts(8,7)",
+          "Ficheiro, linha 8, coluna 7: o nome cfg, onde a atribuição é verificada"
+        ],
+        [
+          "Código",
+          "error TS2322",
+          "Categoria do erro; é o que se pesquisa na documentação"
+        ],
+        [
+          "Texto principal",
+          "Type '{ nome: string; servidor: { porta: number; tls: { ativo: string; }; }; }' is not assignable to type 'Config'.",
+          "O tipo inteiro da origem contra o tipo inteiro do destino"
+        ],
+        [
+          "Elaboração 1",
+          "The types of 'servidor.tls.ativo' are incompatible between these types.",
+          "O caminho até à propriedade que falha, três níveis abaixo"
+        ],
+        [
+          "Elaboração 2 (última)",
+          "Type 'string' is not assignable to type 'boolean'.",
+          "A causa concreta: ativo é texto e devia ser booleano"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📍",
+          "text": "ficheiro(linha,coluna): error TSxxxx: texto principal"
+        },
+        {
+          "icon": "🪜",
+          "text": "Cada indentação desce um nível na comparação de tipos"
+        },
+        {
+          "icon": "⬆️",
+          "text": "Ler de baixo para cima: a última linha é a causa"
+        },
+        {
+          "icon": "🧭",
+          "text": "No 5.9, caminhos só de propriedades vêm numa linha: 'a.b.c'"
+        },
+        {
+          "icon": "🎯",
+          "text": "Objeto literal no sítio: erro na linha da propriedade"
+        }
+      ]
+    },
+    {
+      "heading": "Os códigos que aparecem todos os dias",
+      "body": [
+        "Uma dúzia de códigos cobre a grande maioria dos erros de um projeto. Os textos abaixo foram medidos no tsc 5.9.3; os nomes entre plicas são substituídos pelos do código em causa.",
+        "Repare na diferença entre TS18048 e TS2532: o primeiro aparece quando o valor possivelmente undefined tem nome (uma variável ou um caminho como u.email), o segundo quando é uma expressão sem nome, como o resultado de uma chamada. A causa é a mesma."
+      ],
+      "code": "function tamanho(texto: string | undefined): number {\n  // @ts-expect-error\n  return texto.length; // TS18048: 'texto' is possibly 'undefined'.\n}\n\nfunction ler(): string | undefined {\n  return undefined;\n}\n// @ts-expect-error\nconst n = ler().length; // TS2532: Object is possibly 'undefined'.\n\ntry {\n  JSON.parse(\"{\");\n} catch (e) {\n  // @ts-expect-error\n  console.log(e.message); // TS18046: 'e' is of type 'unknown'.\n}\n\nconst pessoa: { nome: string } = { nome: \"Rita\" };\n// @ts-expect-error\npessoa.idade; // TS2339: Property 'idade' does not exist on type '{ nome: string; }'.",
+      "callout_kind": "NOTA",
+      "callout_text": "O excess property check tem hoje o código TS2353. Versões antigas usavam TS2322 ou TS2345 com o mesmo texto; ao pesquisar, procure pelo texto e não só pelo número.",
+      "table_headers": [
+        "Código",
+        "Mensagem (como o tsc a escreve)",
+        "Causa típica",
+        "Primeira coisa a verificar"
+      ],
+      "table_rows": [
+        [
+          "TS2322",
+          "Type 'string' is not assignable to type 'number'.",
+          "Atribuição ou retorno com tipo incompatível",
+          "O tipo inferido da origem e a anotação do destino"
+        ],
+        [
+          "TS2345",
+          "Argument of type 'string' is not assignable to parameter of type 'Modo'.",
+          "Argumento incompatível com o parâmetro",
+          "Onde o argumento foi declarado e se foi alargado"
+        ],
+        [
+          "TS2339",
+          "Property 'idade' does not exist on type '{ nome: string; }'.",
+          "Propriedade que o tipo não declara",
+          "Erro de escrita, ou falta de narrowing numa união"
+        ],
+        [
+          "TS2304",
+          "Cannot find name 'naoExiste'.",
+          "Identificador não declarado",
+          "Import em falta ou nome mal escrito"
+        ],
+        [
+          "TS2307",
+          "Cannot find module './nao-existe' or its corresponding type declarations.",
+          "Caminho ou pacote que não resolve",
+          "O caminho, a extensão e moduleResolution"
+        ],
+        [
+          "TS7006",
+          "Parameter 'a' implicitly has an 'any' type.",
+          "Parâmetro sem anotação sob strict",
+          "Anotar o parâmetro ou dar contexto à função"
+        ],
+        [
+          "TS7016",
+          "Could not find a declaration file for module 'semtipos'. '.../index.js' implicitly has an 'any' type.",
+          "Pacote JavaScript sem tipos",
+          "Instalar @types/pacote ou escrever um .d.ts"
+        ],
+        [
+          "TS18048",
+          "'texto' is possibly 'undefined'.",
+          "Valor com nome que pode ser undefined",
+          "Falta um if, ?. ou ?? antes do uso"
+        ],
+        [
+          "TS2532",
+          "Object is possibly 'undefined'.",
+          "Expressão sem nome que pode ser undefined",
+          "Guardar o resultado numa variável e estreitar"
+        ],
+        [
+          "TS18046",
+          "'e' is of type 'unknown'.",
+          "Uso direto de um valor unknown (por exemplo no catch)",
+          "Estreitar com instanceof ou typeof"
+        ],
+        [
+          "TS2769",
+          "No overload matches this call.",
+          "Nenhuma sobrecarga aceita os argumentos",
+          "A lista de sobrecargas na elaboração"
+        ],
+        [
+          "TS2554",
+          "Expected 1 arguments, but got 2.",
+          "Número de argumentos errado",
+          "A assinatura e os parâmetros opcionais"
+        ],
+        [
+          "TS2741",
+          "Property 'b' is missing in type '{ a: number; }' but required in type '{ a: number; b: string; }'.",
+          "Falta uma propriedade obrigatória",
+          "Se a propriedade devia ser opcional"
+        ],
+        [
+          "TS2353",
+          "Object literal may only specify known properties, and 'zz' does not exist in type '{ a: number; }'.",
+          "Propriedade a mais num objeto literal",
+          "Erro de escrita no nome da propriedade"
+        ],
+        [
+          "TS2589",
+          "Type instantiation is excessively deep and possibly infinite.",
+          "Tipo recursivo sem fim ou demasiado profundo",
+          "O caso base da recursão"
+        ],
+        [
+          "TS2352",
+          "Conversion of type 'string' to type 'number' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.",
+          "as entre tipos sem sobreposição",
+          "Se a conversão faz sentido; quase nunca faz"
+        ],
+        [
+          "TS2578",
+          "Unused '@ts-expect-error' directive.",
+          "Diretiva sobre uma linha que já não tem erro",
+          "Se o erro foi corrigido e a diretiva pode sair"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔢",
+          "text": "Uma dúzia de códigos cobre quase todos os erros"
+        },
+        {
+          "icon": "🧩",
+          "text": "TS2322 atribuição, TS2345 argumento, TS2339 propriedade"
+        },
+        {
+          "icon": "❓",
+          "text": "TS18048 com nome, TS2532 sem nome: possibly undefined"
+        },
+        {
+          "icon": "📦",
+          "text": "TS2307 módulo não resolve, TS7016 pacote sem tipos"
+        },
+        {
+          "icon": "🔎",
+          "text": "Pesquisar pelo texto: alguns números mudaram entre versões"
+        }
+      ]
+    },
+    {
+      "heading": "O erro aparece no uso, a causa está na origem",
+      "body": [
+        "O tsc reporta o erro onde dois tipos se encontram e não batem certo, que é quase sempre um uso: uma chamada, um retorno, uma atribuição. Mas a decisão errada foi tomada antes, quando o tipo foi inferido. Um let alarga \"dev\" para string, um array com números e textos passa a (string | number)[] e a propriedade de um objeto literal também é alargada para string.",
+        "Anotar o tipo pretendido na origem transfere a verificação para lá. O erro passa a aparecer na linha e na coluna do valor que está mal, em vez de aparecer dez linhas depois numa chamada que está correta."
+      ],
+      "code": "type Modo = \"dev\" | \"prod\";\nfunction arrancar(modo: Modo): void {}\nfunction somar(ns: number[]): number {\n  return ns.reduce((a, b) => a + b, 0);\n}\n\n// O erro aparece no uso...\nlet modo = \"dev\"; // let alarga para string\n// @ts-expect-error\narrancar(modo); // TS2345: Argument of type 'string' is not assignable to parameter of type 'Modo'.\n\nconst valores = [10, \"20\", 30]; // inferido como (string | number)[]\n// @ts-expect-error\nsomar(valores);\n// TS2345: Argument of type '(string | number)[]' is not assignable to parameter of type 'number[]'.\n//   Type 'string | number' is not assignable to type 'number'.\n//     Type 'string' is not assignable to type 'number'.\n\nconst opcoes = { modo: \"dev\" }; // a propriedade alarga para string\n// @ts-expect-error\narrancar(opcoes.modo); // TS2345: o mesmo erro, longe da causa\n\n// ...anotar na origem move o erro para o sítio certo:\n// @ts-expect-error\nconst valores2: number[] = [10, \"20\", 30]; // TS2322: Type 'string' is not assignable to type 'number'. (coluna do \"20\")\n\nconst opcoes2: { modo: Modo } = { modo: \"dev\" };\narrancar(opcoes2.modo); // sem erro",
+      "callout_kind": "DICA",
+      "callout_text": "Se a correção natural de um erro for mexer na chamada, pergunte primeiro de onde veio o tipo do argumento. Muitas vezes a correção é uma anotação, um const ou um as const na declaração.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📍",
+          "text": "O tsc aponta onde os tipos se encontram, não onde nasceram"
+        },
+        {
+          "icon": "📏",
+          "text": "let, arrays mistos e objetos literais alargam os tipos"
+        },
+        {
+          "icon": "✍️",
+          "text": "Anotar na origem move o erro para o valor errado"
+        },
+        {
+          "icon": "🔁",
+          "text": "Perguntar sempre: de onde veio este tipo?"
+        }
+      ]
+    },
+    {
+      "heading": "Técnicas para isolar um erro",
+      "body": [
+        "Quando a cadeia é longa ou o tipo não é o esperado, há que fazer o compilador falar. Anotar os tipos intermédios de uma sequência de operações parte-a em passos verificáveis; extrair uma expressão para uma variável tipada faz o mesmo a um argumento complicado. Para saber o tipo real de um valor fora do editor, basta atribuí-lo a uma variável do tipo never: a mensagem TS2322 diz o tipo exato da origem. Aqui a diretiva existe só para o bloco compilar; na prática escreve-se a linha sem diretiva, lê-se a mensagem e apaga-se, porque sob @ts-expect-error a mensagem fica escondida.",
+        "Se nada disto chegar, reduz-se até ao caso mínimo: copiar o erro para um ficheiro à parte e cortar tudo o que não é necessário para ele continuar a aparecer. Na linha de comandos, tsc --noEmit --pretty false dá o formato de uma linha usado nesta aula. Para erros de módulos, --traceResolution mostra cada caminho tentado e --explainFiles diz porque é que cada ficheiro entrou na compilação. Para compilações lentas, --extendedDiagnostics mostra tempos e contagens de tipos."
+      ],
+      "code": "interface Venda { produto: string; valor: number }\nconst vendas: Venda[] = [\n  { produto: \"livro\", valor: 12 },\n  { produto: \"caneta\", valor: 2 },\n];\n\nconst porProduto = vendas.reduce((acc, v) => {\n  // @ts-expect-error\n  acc[v.produto] = (acc[v.produto] ?? 0) + v.valor;\n  // TS7053: Element implicitly has an 'any' type because expression of type 'string'\n  //   can't be used to index type '{}'.\n  return acc;\n}, {});\n\n// Perguntar ao compilador que tipo tem porProduto:\n// @ts-expect-error\nconst _t: never = porProduto; // TS2322: Type '{}' is not assignable to type 'never'.\n\n// A causa está no valor inicial {}: dizer o tipo do acumulador resolve.\nconst porProduto2 = vendas.reduce<Record<string, number>>((acc, v) => {\n  acc[v.produto] = (acc[v.produto] ?? 0) + v.valor;\n  return acc;\n}, {});",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Pegue num erro recente do seu projeto e troque a variável problemática por const _t: never = valor. Compare o tipo que o compilador diz com o que esperava.",
+      "table_headers": [
+        "Técnica",
+        "Quando usar"
+      ],
+      "table_rows": [
+        [
+          "Anotar tipos intermédios",
+          "Cadeias de map, filter, reduce ou chamadas encadeadas"
+        ],
+        [
+          "Extrair para variável tipada",
+          "Argumento longo ou objeto construído dentro da chamada"
+        ],
+        [
+          "const _t: never = valor",
+          "Descobrir o tipo real sem editor, ou numa mensagem de CI"
+        ],
+        [
+          "Caso mínimo",
+          "Erros que só se entendem depois de retirar o ruído"
+        ],
+        [
+          "--traceResolution, --explainFiles",
+          "TS2307, TS7016 e ficheiros inesperados na compilação"
+        ],
+        [
+          "--extendedDiagnostics",
+          "Compilação lenta ou suspeita de tipos demasiado pesados"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧱",
+          "text": "Anotar tipos intermédios parte o problema em passos"
+        },
+        {
+          "icon": "📤",
+          "text": "Extrair a expressão para uma variável tipada"
+        },
+        {
+          "icon": "🕳️",
+          "text": "const _t: never = valor revela o tipo real"
+        },
+        {
+          "icon": "✂️",
+          "text": "Cortar até ao caso mínimo que ainda dá erro"
+        },
+        {
+          "icon": "🛠️",
+          "text": "--traceResolution, --explainFiles, --extendedDiagnostics"
+        }
+      ]
+    },
+    {
+      "heading": "Erros de sobrecargas e de genéricos",
+      "body": [
+        "Numa chamada a uma função sobrecarregada, o tsc começa por descartar as sobrecargas com o número de argumentos errado. Se sobrar só uma, o erro é um TS2345 normal contra essa sobrecarga, o que pode confundir quem esperava a outra. Se sobrarem duas ou três, o TS2769 lista cada uma com o seu erro. A partir de quatro candidatas, a elaboração mostra apenas The last overload gave the following error, ou seja, só a última sobrecarga tentada.",
+        "Nos genéricos, o erro costuma cair no segundo argumento. Em par(1, \"dois\"), T é inferido como number a partir do primeiro candidato e o texto é depois comparado contra number. O argumento marcado não é necessariamente o errado: pode ser a assinatura que devia aceitar dois tipos, ou o tipo que devia ser explícito."
+      ],
+      "code": "function formatar(v: string): string;\nfunction formatar(v: number, casas: number): string;\nfunction formatar(v: string | number, casas?: number): string {\n  return typeof v === \"number\" ? v.toFixed(casas) : v;\n}\n// Só a primeira sobrecarga aceita 1 argumento, logo o erro é contra ela:\n// @ts-expect-error\nformatar(3.14159); // TS2345: Argument of type 'number' is not assignable to parameter of type 'string'.\n\nfunction rotulo(v: string): string;\nfunction rotulo(v: number): string;\nfunction rotulo(v: bigint): string;\nfunction rotulo(v: string | number | bigint): string {\n  return String(v);\n}\n// @ts-expect-error\nrotulo(true);\n// TS2769: No overload matches this call.\n//   Overload 1 of 3, '(v: string): string', gave the following error.\n//     Argument of type 'boolean' is not assignable to parameter of type 'string'.\n//   Overload 2 of 3, '(v: number): string', gave the following error.\n//     Argument of type 'boolean' is not assignable to parameter of type 'number'.\n//   Overload 3 of 3, '(v: bigint): string', gave the following error.\n//     Argument of type 'boolean' is not assignable to parameter of type 'bigint'.\n\nfunction par<T>(a: T, b: T): [T, T] {\n  return [a, b];\n}\n// T fica fixado em number pelo primeiro argumento; o erro cai no segundo.\n// @ts-expect-error\npar(1, \"dois\"); // TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.\nconst ok = par<number | string>(1, \"dois\"); // [string | number, string | number]",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Com quatro ou mais sobrecargas, a mensagem só mostra a última. Se ela não fizer sentido, vá ver as outras assinaturas antes de concluir que a chamada está errada.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔢",
+          "text": "Sobrecargas com aridade errada são descartadas primeiro"
+        },
+        {
+          "icon": "1️⃣",
+          "text": "Só uma candidata: TS2345 contra essa sobrecarga"
+        },
+        {
+          "icon": "📋",
+          "text": "Duas ou três: TS2769 lista cada uma com o seu erro"
+        },
+        {
+          "icon": "🔚",
+          "text": "Quatro ou mais: só a última sobrecarga tentada"
+        },
+        {
+          "icon": "🧬",
+          "text": "T fixado no 1.º argumento, erro no 2.º"
+        }
+      ]
+    },
+    {
+      "heading": "Quando o erro está certo e o código errado",
+      "body": [
+        "A tentação perante uma mensagem longa é calá-la com as, !, any ou @ts-ignore. Qualquer um deles faz o erro desaparecer do terminal, mas não do programa: dominioCalado compila e rebenta em execução no primeiro utilizador sem email. Na Aula 02 viu-se como estas fugas se espalham pelo código.",
+        "A ordem certa é a inversa: ler a mensagem até à última linha, encontrar a origem do tipo e só depois decidir. Na maioria dos casos o compilador apontou um caso real que o código não trata. Se, depois disso, o código estiver mesmo certo, prefira @ts-expect-error com um comentário, que avisa com TS2578 quando o erro deixar de existir."
+      ],
+      "code": "interface Utilizador { nome: string; email?: string }\n\nfunction dominio(u: Utilizador): string {\n  // @ts-expect-error\n  return u.email.split(\"@\")[1]; // TS18048: 'u.email' is possibly 'undefined'.\n}\n\n// Calar o erro: compila, mas rebenta em execução quando email falta.\nfunction dominioCalado(u: Utilizador): string {\n  return (u.email as string).split(\"@\")[1];\n}\n\n// Corrigir o código: tratar o caso que o compilador apontou.\nfunction dominioCorreto(u: Utilizador): string {\n  if (u.email === undefined) return \"(sem email)\";\n  return u.email.split(\"@\")[1] ?? \"(email inválido)\";\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "as, !, any e @ts-ignore nunca são a primeira reação. Primeiro ler e perceber; calar o compilador só com uma razão escrita ao lado.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🤐",
+          "text": "as, !, any e @ts-ignore calam o erro, não o corrigem"
+        },
+        {
+          "icon": "💥",
+          "text": "O erro calado volta em execução"
+        },
+        {
+          "icon": "🔍",
+          "text": "Primeiro ler até à última linha e achar a origem"
+        },
+        {
+          "icon": "✅",
+          "text": "Na maioria dos casos o compilador tem razão"
+        },
+        {
+          "icon": "📝",
+          "text": "Exceção justificada: @ts-expect-error com comentário"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Um tema que deixou de ser tema",
+      "difficulty": "Iniciante",
+      "statement": "O código seguinte dá o erro TS2345: Argument of type 'string' is not assignable to parameter of type 'Tema'. nas duas chamadas a aplicar. Código: type Tema = \"claro\" | \"escuro\"; function aplicar(t: Tema): string { return `tema ${t} aplicado`; } let tema = \"escuro\"; console.log(aplicar(tema)); tema = \"claro\"; console.log(aplicar(tema)); Diga onde está a causa e corrija-a sem tocar na função nem nas chamadas, mantendo a reatribuição.",
+      "hint": "Qual é o tipo inferido de tema na declaração? Porque é que um const não serve aqui?",
+      "solution_code": "type Tema = \"claro\" | \"escuro\";\n\nfunction aplicar(t: Tema): string {\n  return `tema ${t} aplicado`;\n}\n\nlet tema: Tema = \"escuro\"; // a anotação na origem impede o alargamento para string\nconsole.log(aplicar(tema)); // tema escuro aplicado\n\ntema = \"claro\";\nconsole.log(aplicar(tema)); // tema claro aplicado",
+      "solution_explanation": "O let alarga \"escuro\" para string, e é essa string que chega à chamada. Anotar let tema: Tema na origem mantém a variável reatribuível mas limitada aos dois valores; um const não permitiria a segunda atribuição."
+    },
+    {
+      "title": "Ler uma cadeia até ao fim",
+      "difficulty": "Intermedio",
+      "statement": "Dadas as interfaces Linha { produto: { nome: string; preco: number } } e Encomenda { id: number; linhas: Linha[] }, e o valor const vindoDoFormulario = { id: 7, linhas: [{ produto: { nome: \"caderno\", preco: \"3.50\" } }] }, a linha const enc: Encomenda = vindoDoFormulario; dá: TS2322: Type '{ id: number; linhas: { produto: { nome: string; preco: string; }; }[]; }' is not assignable to type 'Encomenda'. / Types of property 'linhas' are incompatible. / Type '{ produto: { nome: string; preco: string; }; }[]' is not assignable to type 'Linha[]'. / Type '{ produto: { nome: string; preco: string; }; }' is not assignable to type 'Linha'. / The types of 'produto.preco' are incompatible between these types. / Type 'string' is not assignable to type 'number'. Explique cada passo da cadeia e construa enc corretamente a partir de vindoDoFormulario, sem as nem alterar as interfaces.",
+      "hint": "Porque é que aqui aparece Types of property 'linhas' em vez de um caminho único? O que diz a última linha sobre os dados?",
+      "solution_code": "interface Linha { produto: { nome: string; preco: number } }\ninterface Encomenda { id: number; linhas: Linha[] }\n\nconst vindoDoFormulario = {\n  id: 7,\n  linhas: [{ produto: { nome: \"caderno\", preco: \"3.50\" } }],\n};\n\n// A causa está nos dados: o preço veio como texto. Converter na fronteira.\nconst enc: Encomenda = {\n  id: vindoDoFormulario.id,\n  linhas: vindoDoFormulario.linhas.map((l) => ({\n    produto: { nome: l.produto.nome, preco: Number(l.produto.preco) },\n  })),\n};\n\nconsole.log(enc.linhas[0]?.produto.preco); // 3.5",
+      "solution_explanation": "A cadeia desce de Encomenda para a propriedade linhas, depois do array para o elemento e daí para produto.preco; o array impede o 5.9 de juntar tudo num só caminho. A última linha diz que o preço veio como texto, por isso a correção é converter os dados na fronteira com Number, não mexer nos tipos."
+    },
+    {
+      "title": "O acumulador que ninguém tipou",
+      "difficulty": "Intermedio",
+      "statement": "Com interface Registo { nivel: \"info\" | \"erro\"; texto: string } e um array registos: Registo[], o código registos.reduce((acc, r) => { acc[r.nivel] += 1; return acc; }, {}) dá TS7053: Element implicitly has an 'any' type because expression of type '\"info\" | \"erro\"' can't be used to index type '{}'. Use o truque const _t: never = ... para confirmar o tipo que o compilador atribuiu ao resultado, explique de onde veio esse tipo e corrija para obter a contagem por nível, começando em zero para ambos.",
+      "hint": "O tipo do acumulador é inferido a partir de um dos argumentos do reduce. Qual? O reduce aceita um argumento de tipo explícito.",
+      "solution_code": "interface Registo { nivel: \"info\" | \"erro\"; texto: string }\n\nconst registos: Registo[] = [\n  { nivel: \"info\", texto: \"arranque\" },\n  { nivel: \"erro\", texto: \"disco cheio\" },\n  { nivel: \"info\", texto: \"pedido\" },\n];\n\n// O tipo do acumulador é dito explicitamente, em vez de ser inferido de {}.\nconst contagem = registos.reduce<Record<Registo[\"nivel\"], number>>(\n  (acc, r) => {\n    acc[r.nivel] += 1;\n    return acc;\n  },\n  { info: 0, erro: 0 },\n);\n\nconsole.log(contagem.info, contagem.erro); // 2 1",
+      "solution_explanation": "O acumulador é inferido do valor inicial {}, e o truque do never mostra Type '{}' is not assignable to type 'never'. Passar Record<Registo[\"nivel\"], number> como argumento de tipo do reduce, com um valor inicial completo, corrige a origem e dispensa qualquer as."
+    },
+    {
+      "title": "O genérico que só aceita um tipo",
+      "difficulty": "Avancado",
+      "statement": "A função function juntar<T>(a: T[], b: T[]): T[] { return [...a, ...b]; } chamada como juntar(nums, nomes), com const nums = [1, 2] e const nomes = [\"ana\"], dá TS2345: Argument of type 'string[]' is not assignable to parameter of type 'number[]'. / Type 'string' is not assignable to type 'number'. no segundo argumento. Chamada como juntar([1, 2], [\"ana\"]), o erro passa a TS2322: Type 'string' is not assignable to type 'number'. na coluna de \"ana\". Explique porque é que o erro cai no segundo argumento e porque é que muda de código, e reescreva juntar para aceitar listas de tipos diferentes devolvendo a união, mantendo uma versão que continue a exigir tipos iguais.",
+      "hint": "Quantos parâmetros de tipo tem a função e de onde é que T foi inferido? Num array literal, contra que tipo é verificado cada elemento?",
+      "solution_code": "// Dois parâmetros de tipo: cada lista é inferida por si e o resultado é a união.\nfunction juntar<A, B>(a: A[], b: B[]): (A | B)[] {\n  return [...a, ...b];\n}\n\nconst nums = [1, 2];\nconst nomes = [\"ana\"];\nconst tudo = juntar(nums, nomes); // (string | number)[]\n\nconsole.log(tudo); // [ 1, 2, 'ana' ]\n\n// Quando se quer mesmo um só tipo, a versão original continua a apanhar misturas.\nfunction juntarIguais<T>(a: T[], b: T[]): T[] {\n  return [...a, ...b];\n}\nconsole.log(juntarIguais(nums, [3])); // [ 1, 2, 3 ]",
+      "solution_explanation": "T é fixado em number pelo primeiro argumento e o segundo é então verificado contra number[]; com um array literal, o tsc desce até ao elemento e reporta TS2322 no próprio \"ana\". Com dois parâmetros de tipo, A e B são inferidos cada um da sua lista e o retorno (A | B)[] descreve o que a função realmente faz."
+    }
+  ],
+  "summary": [
+    "Uma mensagem do tsc tem localização, código, texto principal e cadeia de elaboração; lê-se de baixo para cima.",
+    "No 5.9, caminhos só de propriedades aparecem numa linha, e um objeto literal no sítio leva o erro à linha da propriedade.",
+    "O erro aparece no uso mas a causa costuma estar na origem; anotar na declaração move o erro para o sítio certo.",
+    "Tipos intermédios, const _t: never, o caso mínimo e as flags do tsc isolam erros difíceis.",
+    "Sobrecargas: aridade primeiro, até três listadas, a partir de quatro só a última; em genéricos o erro cai no segundo argumento.",
+    "Quando o erro está certo, corrige-se o código; as, any e @ts-ignore não são diagnóstico."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 04",
+  "next_label": "Aula 04 → Testes e Ferramentas em TypeScript"
+}

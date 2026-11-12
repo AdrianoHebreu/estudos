@@ -1,0 +1,282 @@
+{
+  "module_num": "02",
+  "module_title": "Estruturas de Controlo",
+  "module_dir": "02-Estruturas-de-Controlo",
+  "lesson_num": "02",
+  "lesson_slug": "Operador-Ternario-e-Curto-Circuito",
+  "kind": "aula",
+  "title": "Operador Ternário e Curto-Circuito",
+  "filename_base": "02-Operador-Ternario-e-Curto-Circuito",
+  "subtitle": "Ternário, && / || / ?? para omissões, e guard clauses para sair cedo de funções.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Usar o operador ternário como expressão para escolher entre dois valores",
+    "Reconhecer quando um ternário aninhado prejudica a legibilidade e preferir alternativas",
+    "Aplicar && e || no padrão pré-ES2020 de valores por omissão e acesso seguro a propriedades",
+    "Perceber a diferença entre || e ?? e escolher o operador certo consoante o valor em causa",
+    "Escrever guard clauses com curto-circuito para simplificar early returns e reduzir aninhamento"
+  ],
+  "sections": [
+    {
+      "heading": "O Operador Ternário: condição ? a : b",
+      "body": [
+        "O operador ternário é a única estrutura condicional do JavaScript que funciona como expressão em vez de instrução: não executa um bloco de código consoante uma condição, devolve um de dois valores. A sintaxe é condição ? valorSeVerdadeiro : valorSeFalso, e a condição é avaliada como booleano seguindo as mesmas regras de coerção usadas num if.",
+        "Por ser uma expressão, o ternário pode aparecer em qualquer sítio onde se espera um valor: dentro de um template literal, como argumento de uma função, ou diretamente numa atribuição a uma constante. Isto torna-o particularmente útil para escolher entre dois valores de forma concisa, evitando declarar uma variável com let só para a reatribuir depois dentro de um if/else."
+      ],
+      "code": "const idade = 20;\nconst estado = idade >= 18 ? \"adulto\" : \"menor\";\nconsole.log(estado); // \"adulto\"\n\n// Como é uma expressão, pode usar-se diretamente num template literal\nconst saudacao = (hora) => `Boa ${hora < 12 ? \"manhã\" : \"tarde\"}!`;\nconsole.log(saudacao(9));  // \"Boa manhã!\"\nconsole.log(saudacao(15)); // \"Boa tarde!\"",
+      "callout_kind": "DICA",
+      "callout_text": "Reserve o ternário para escolher entre dois valores simples. Se algum dos ramos precisar de executar várias instruções ou tiver efeitos secundários complexos, um if/else é mais claro.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "❓",
+          "text": "condição ? a : b devolve um valor"
+        },
+        {
+          "icon": "🧩",
+          "text": "É expressão, não instrução"
+        },
+        {
+          "icon": "✍️",
+          "text": "Ideal para escolhas simples de valor"
+        }
+      ]
+    },
+    {
+      "heading": "Ternários Aninhados: usar com moderação",
+      "body": [
+        "É possível encadear ternários para representar várias condições sucessivas, colocando um novo ternário no lugar do ramo falso do anterior. Sintaticamente é válido e aparece com frequência em código profissional, mas a legibilidade degrada-se depressa a partir de duas ou três condições, sobretudo quando tudo é escrito numa única linha.",
+        "Quando o aninhamento é mesmo necessário, vale a pena formatar cada condição na sua própria linha, alinhada verticalmente, para que a leitura se assemelhe a uma escada de casos. Ainda assim, a partir do momento em que a lógica cresce ou as condições deixam de ser simples comparações, torna-se mais claro usar if/else encadeado, um switch, ou um objeto que mapeia chaves para valores."
+      ],
+      "code": "const nota = 72;\n\n// Vários ternários encadeados, um por linha: ainda legível com boa formatação\nconst classificacao =\n  nota >= 90 ? \"Excelente\" :\n  nota >= 70 ? \"Bom\" :\n  nota >= 50 ? \"Suficiente\" :\n  \"Insuficiente\";\n\nconsole.log(classificacao); // \"Bom\"",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Ternários aninhados sem formatação cuidada são uma causa comum de código difícil de rever. A partir de mais de dois ou três níveis, ou se a condição já for complexa, prefira if/else encadeado ou uma estrutura de mapeamento.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🪜",
+          "text": "Aninhar é possível mas reduz legibilidade"
+        },
+        {
+          "icon": "📐",
+          "text": "Formate cada condição numa linha"
+        },
+        {
+          "icon": "🔀",
+          "text": "Muitos ramos? Prefira if/else ou mapa"
+        }
+      ]
+    },
+    {
+      "heading": "&& e || para Valores por Omissão (padrão pré-ES2020)",
+      "body": [
+        "Os operadores && e || não se limitam a produzir true ou false: avaliam os operandos da esquerda para a direita e devolvem o próprio valor onde a avaliação para, sem o converter para booleano. O operador || devolve o primeiro operando truthy que encontrar, ou o último operando se nenhum for truthy; por isso valorAtual || valorPorOmissao funciona como valor por omissão sempre que valorAtual for falsy (undefined, null, 0, string vazia, NaN ou false).",
+        "O operador && funciona de forma simétrica: devolve o primeiro operando falsy que encontrar, ou o último operando se todos forem truthy. Antes de existirem o encadeamento opcional (?.) e o operador ??, este comportamento era usado para aceder em segurança a propriedades de objetos que podiam não existir, encadeando várias condições com &&, e também para executar uma instrução apenas quando uma condição é verdadeira."
+      ],
+      "code": "function saudar(nome) {\n  const nomeFinal = nome || \"visitante\";\n  console.log(`Olá, ${nomeFinal}!`);\n}\n\nsaudar(\"Ana\"); // \"Olá, Ana!\"\nsaudar(\"\");    // \"Olá, visitante!\" (string vazia é falsy)\n\n// Antes de existir o optional chaining (?.), && encadeado evitava\n// erros ao aceder a propriedades de objetos que podiam não existir\nconst utilizador = { endereco: { cidade: \"Porto\" } };\nconst cidade = utilizador && utilizador.endereco && utilizador.endereco.cidade;\nconsole.log(cidade); // \"Porto\"\n\nconst semEndereco = { nome: \"Rui\" };\nconst cidade2 = semEndereco && semEndereco.endereco && semEndereco.endereco.cidade;\nconsole.log(cidade2); // undefined (não rebenta, mesmo sem endereco)",
+      "callout_kind": "NOTA",
+      "callout_text": "Este padrão é anterior aos parâmetros por omissão da função e ao operador ??, mas continua muito presente em código já existente, por isso é importante saber reconhecê-lo e não apenas escrevê-lo.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔗",
+          "text": "|| devolve o 1º valor truthy"
+        },
+        {
+          "icon": "🕸️",
+          "text": "&& encadeado evitava acessos undefined"
+        },
+        {
+          "icon": "🕰️",
+          "text": "Padrão anterior a ?? e ?."
+        }
+      ]
+    },
+    {
+      "heading": "?? (Nullish Coalescing): mais seguro que ||",
+      "body": [
+        "O problema do padrão valor || valorPorOmissao é que || trata como ausentes todos os valores falsy, mesmo quando esses valores são perfeitamente válidos no domínio da aplicação: uma quantidade 0, uma string vazia, ou um booleano false. Nesses casos, || substitui silenciosamente um valor legítimo pelo valor por omissão, o que é uma fonte comum de bugs subtis.",
+        "O operador ?? (nullish coalescing, introduzido no ES2020) resolve exatamente este problema: só recorre ao valor da direita quando o valor da esquerda é null ou undefined, mantendo qualquer outro valor, incluindo 0, string vazia ou false. É por isso a alternativa recomendada sempre que o valor por omissão só deve ser aplicado na ausência real de dados, e não sempre que um valor é falsy.",
+        "Por ter uma regra de precedência particular, o JavaScript não permite combinar ?? diretamente com && ou || na mesma expressão sem parênteses; essa combinação sem parênteses é um erro de sintaxe, precisamente para obrigar a deixar clara a ordem de avaliação pretendida."
+      ],
+      "code": "function criarConfig(opcoes = {}) {\n  return {\n    volume: opcoes.volume ?? 50,\n    tema: opcoes.tema ?? \"claro\",\n  };\n}\n\nconsole.log(criarConfig({ volume: 0 }));\n// { volume: 0, tema: \"claro\" } — o 0 é respeitado\n\nconst config = { limite: 0 };\nconsole.log(config.limite || 10); // 10 (errado: queríamos manter o 0)\nconsole.log(config.limite ?? 10); // 0 (correto)",
+      "callout_kind": "ATENCAO",
+      "callout_text": "a ?? b || c lança SyntaxError. Para combinar ?? com && ou ||, os parênteses são obrigatórios: (a ?? b) || c.",
+      "table_headers": [
+        "Valor da esquerda",
+        "com || (falsy é substituído)",
+        "com ?? (só null/undefined é substituído)"
+      ],
+      "table_rows": [
+        [
+          "0",
+          "substituído",
+          "mantido"
+        ],
+        [
+          "\"\" (string vazia)",
+          "substituído",
+          "mantido"
+        ],
+        [
+          "false",
+          "substituído",
+          "mantido"
+        ],
+        [
+          "null",
+          "substituído",
+          "substituído"
+        ],
+        [
+          "undefined",
+          "substituído",
+          "substituído"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🛡️",
+          "text": "?? só reage a null/undefined"
+        },
+        {
+          "icon": "0️⃣",
+          "text": "Mantém 0, \"\" e false válidos"
+        },
+        {
+          "icon": "⚠️",
+          "text": "?? com && ou || exige parênteses"
+        }
+      ]
+    },
+    {
+      "heading": "Guard Clauses com Curto-Circuito para Early Return",
+      "body": [
+        "Uma guard clause é uma verificação colocada no início de uma função que termina a execução imediatamente, normalmente com return, quando uma pré-condição não se verifica. Em vez de aninhar toda a lógica principal dentro de um if que testa se as condições são válidas, cada caso inválido é tratado numa linha isolada e a função sai logo, deixando o caminho principal sem indentação extra.",
+        "Combinar guard clauses com os operadores de curto-circuito, e com o encadeamento opcional (?.) e o operador ??, permite escrever validações compactas e legíveis: !valor, !objeto?.propriedade ou valor == null são condições comuns para decidir que a função deve terminar antes de continuar. O resultado é código mais plano, mais fácil de seguir e mais fácil de testar, porque cada guard clause isola uma única razão de saída."
+      ],
+      "code": "function processarPedido(pedido) {\n  if (!pedido) return null;               // guard clause: sem pedido, não continua\n  if (!pedido.itens?.length) return null;  // guard clause: sem itens, não continua\n\n  const total = pedido.itens.reduce((soma, item) => soma + item.preco, 0);\n  return { ...pedido, total };\n}\n\n// Combinar curto-circuito com early return evita \"pirâmides\" de ifs aninhados\nfunction calcularDesconto(cliente) {\n  if (!cliente?.ativo) return 0;\n  if (cliente.pontos < 100) return 0;\n\n  return cliente.pontos >= 500 ? 0.2 : 0.1;\n}",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Pegue numa função com if/else aninhados que já tenha escrito antes e reescreva-a substituindo cada ramo inválido por uma guard clause com return antecipado. Compare a profundidade de indentação antes e depois.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🚪",
+          "text": "Guard clause sai cedo com return"
+        },
+        {
+          "icon": "📉",
+          "text": "Reduz aninhamento e indentação"
+        },
+        {
+          "icon": "🧪",
+          "text": "Cada saída isola uma só razão"
+        }
+      ]
+    },
+    {
+      "heading": "Quando Usar Cada Ferramenta",
+      "body": [
+        "Cada uma destas ferramentas resolve um problema ligeiramente diferente, e escolher a errada tende a produzir código correto mas confuso de ler. O ternário serve para escolher entre dois valores como resultado de uma expressão; assim que aparecem três ou mais ramos, ou o corpo de cada ramo envolve várias instruções, torna-se preferível if/else, switch ou um objeto de mapeamento.",
+        "Os operadores || e ?? servem para preencher valores em falta, mas com critérios distintos: || trata como em falta qualquer valor falsy, enquanto ?? só reage a null ou undefined. O operador && serve tanto para aceder em segurança a propriedades encadeadas como para executar uma instrução condicionalmente. As guard clauses não substituem nenhum destes operadores; combinam-se com eles no topo de uma função para eliminar validações aninhadas antes da lógica principal."
+      ],
+      "code": "",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [
+        "Situação",
+        "Ferramenta recomendada"
+      ],
+      "table_rows": [
+        [
+          "Escolher entre dois valores/expressões simples",
+          "Ternário (condição ? a : b)"
+        ],
+        [
+          "Muitos ramos de decisão ou condições complexas",
+          "if/else encadeado ou objeto de mapeamento"
+        ],
+        [
+          "Valor por omissão quando 0, \"\" ou false são inválidos",
+          "||"
+        ],
+        [
+          "Valor por omissão quando 0, \"\" ou false são válidos",
+          "??"
+        ],
+        [
+          "Executar algo só se uma condição for verdadeira",
+          "&&"
+        ],
+        [
+          "Sair cedo de uma função por pré-condições inválidas",
+          "guard clauses (if + return)"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧭",
+          "text": "Ternário: 2 ramos, um só valor"
+        },
+        {
+          "icon": "🎯",
+          "text": "|| vs ??: depende do que é \"vazio\""
+        },
+        {
+          "icon": "🚦",
+          "text": "Guard clauses no topo da função"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Classificar Paridade com Ternário",
+      "difficulty": "Iniciante",
+      "statement": "Escreva uma função classificarParidade(numero) que devolve a string \"par\" se o número for par, ou \"ímpar\" caso contrário. A função deve usar exclusivamente o operador ternário, sem recorrer a if/else.",
+      "hint": "O operador resto (%) permite testar se o resto da divisão por 2 é zero.",
+      "solution_code": "function classificarParidade(numero) {\n  return numero % 2 === 0 ? \"par\" : \"ímpar\";\n}\n\nconsole.log(classificarParidade(7));  // \"ímpar\"\nconsole.log(classificarParidade(10)); // \"par\"",
+      "solution_explanation": "A condição numero % 2 === 0 é avaliada primeiro; se for verdadeira, o ternário devolve \"par\", caso contrário devolve \"ímpar\". Como o ternário é uma expressão, o seu resultado pode ser devolvido diretamente pela função, sem variáveis auxiliares."
+    },
+    {
+      "title": "Configuração com Valores por Omissão Seguros",
+      "difficulty": "Intermedio",
+      "statement": "Complete a função criarTemporizador(opcoes), que recebe um objeto com as propriedades duracao e avisoSonoro. Regras: se duracao não for fornecida (undefined ou null), deve assumir 60, mas duracao pode legitimamente valer 0 e esse valor tem de ser respeitado. Se avisoSonoro não for fornecido, deve assumir true. Escolha o operador correto para cada caso, evitando o erro clássico de tratar 0 como \"sem valor\".",
+      "hint": "Pense em qual operador, || ou ??, trata 0 e false como valores válidos e não os substitui pelo valor por omissão.",
+      "solution_code": "function criarTemporizador(opcoes = {}) {\n  const duracao = opcoes.duracao ?? 60;\n  const avisoSonoro = opcoes.avisoSonoro ?? true;\n\n  return { duracao, avisoSonoro };\n}\n\nconsole.log(criarTemporizador({ duracao: 0 }));\n// { duracao: 0, avisoSonoro: true }\nconsole.log(criarTemporizador({}));\n// { duracao: 60, avisoSonoro: true }\nconsole.log(criarTemporizador({ avisoSonoro: false }));\n// { duracao: 60, avisoSonoro: false }",
+      "solution_explanation": "Usar ?? em vez de || garante que valores legítimos como duracao 0 ou avisoSonoro false não são substituídos pelo valor por omissão, já que ?? só reage quando o valor da esquerda é null ou undefined."
+    },
+    {
+      "title": "Guard Clauses para Validar um Registo",
+      "difficulty": "Intermedio",
+      "statement": "Tem a seguinte função escrita com ifs aninhados:\n\nfunction registar(utilizador) {\n  if (utilizador) {\n    if (utilizador.email) {\n      if (utilizador.idade >= 18) {\n        return { sucesso: true, mensagem: \"Registo aceite\" };\n      } else {\n        return { sucesso: false, mensagem: \"Idade insuficiente\" };\n      }\n    } else {\n      return { sucesso: false, mensagem: \"Email em falta\" };\n    }\n  } else {\n    return { sucesso: false, mensagem: \"Utilizador em falta\" };\n  }\n}\n\nReescreva-a usando guard clauses (early return) para eliminar o aninhamento, mantendo exatamente o mesmo comportamento para os mesmos argumentos.",
+      "hint": "Cada guard clause deve tratar uma única condição de falha e terminar com return antes de se chegar ao caso de sucesso, que fica isolado no final. Para inverter uma condição como idade >= 18, use a negação lógica !(...) em vez de a trocar por <: só assim se garante exatamente o mesmo resultado em todos os casos, incluindo quando idade não é um número.",
+      "solution_code": "function registar(utilizador) {\n  if (!utilizador) return { sucesso: false, mensagem: \"Utilizador em falta\" };\n  if (!utilizador.email) return { sucesso: false, mensagem: \"Email em falta\" };\n  if (!(utilizador.idade >= 18)) return { sucesso: false, mensagem: \"Idade insuficiente\" };\n\n  return { sucesso: true, mensagem: \"Registo aceite\" };\n}",
+      "solution_explanation": "Cada guard clause trata uma condição de invalidação e sai imediatamente com return, eliminando os três níveis de aninhamento da versão original. A última guard clause usa a negação lógica !(utilizador.idade >= 18) em vez de utilizador.idade < 18: as duas formas coincidem quando idade é um número normal, mas só a negação garante exatamente o mesmo resultado da versão original em casos como idade undefined, onde a comparação com < também dá false e deixaria passar, por engano, um registo que deveria falhar. O caso de sucesso fica isolado no final da função, tornando o fluxo principal mais fácil de seguir."
+    },
+    {
+      "title": "Motor de Preços com Ternários e Curto-Circuito Combinados",
+      "difficulty": "Avancado",
+      "statement": "Escreva uma função calcularPreco(produto, cliente), em que produto tem a forma { preco, promocao } e cliente, que pode ser null ou undefined, tem a forma { vip, cupao }. Regras: (1) se produto não existir ou não tiver preco válido (número maior que 0), devolver null através de uma guard clause; (2) o preço base é produto.preco; (3) se produto.promocao for um número entre 0 e 1, aplicar esse desconto sobre o preço base, caso contrário não aplicar desconto de promoção; (4) se cliente existir e for vip, aplicar adicionalmente 10% de desconto sobre o preço já calculado; (5) se cliente não for vip mas tiver cupao (string não vazia), aplicar 5% de desconto; (6) devolver o preço final como número arredondado a 2 casas decimais. A lógica de descontos (fora das guard clauses) deve ser resolvida só com ternários e operadores de curto-circuito, sem if/else adicionais.",
+      "hint": "Trate primeiro as validações com guard clauses; depois construa o preço em passos sucessivos, cada um decidido por um ternário que compara com o resultado do passo anterior, usando ?. e ?? para o cliente opcional.",
+      "solution_code": "function calcularPreco(produto, cliente) {\n  if (!produto || !(produto.preco > 0)) return null;\n\n  const temPromocao = typeof produto.promocao === \"number\" && produto.promocao > 0 && produto.promocao < 1;\n  const precoComPromocao = temPromocao ? produto.preco * (1 - produto.promocao) : produto.preco;\n\n  const ehVip = cliente?.vip ?? false;\n  const temCupao = !ehVip && Boolean(cliente?.cupao);\n\n  const precoComDescontoCliente = ehVip\n    ? precoComPromocao * 0.9\n    : temCupao\n      ? precoComPromocao * 0.95\n      : precoComPromocao;\n\n  return Math.round(precoComDescontoCliente * 100) / 100;\n}\n\nconsole.log(calcularPreco({ preco: 100, promocao: 0.2 }, { vip: true }));\n// 72\nconsole.log(calcularPreco({ preco: 50 }, { cupao: \"PROMO5\" }));\n// 47.5\nconsole.log(calcularPreco(null, { vip: true }));\n// null",
+      "solution_explanation": "As guard clauses tratam os casos inválidos logo no início e saem com return null; o preço é depois calculado em dois passos sucessivos, cada um resolvido por um ternário que decide se um desconto se aplica, enquanto ?. e ?? tratam com segurança um cliente que pode não existir. Os ternários aninhados no último passo refletem a prioridade das regras, dando precedência ao estatuto vip sobre o cupão."
+    }
+  ],
+  "summary": [
+    "O ternário condição ? a : b é uma expressão que devolve um valor; usa-se sobretudo para escolhas simples entre dois valores.",
+    "Ternários aninhados são válidos mas devem ser usados com moderação; a partir de várias condições, prefira if/else ou um objeto de mapeamento.",
+    "|| devolve o primeiro valor truthy (ou o último), por isso valor || padrao é o padrão clássico, pré-ES2020, de valor por omissão.",
+    "?? só substitui null ou undefined, sendo por isso a escolha mais segura quando 0, string vazia ou false podem ser valores válidos.",
+    "&& devolve o primeiro valor falsy (ou o último); serve para acessos encadeados seguros e para execução condicional.",
+    "Guard clauses combinadas com curto-circuito (!valor, ?., ??) permitem early returns que eliminam aninhamento desnecessário."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 03",
+  "next_label": "Aula 03 → Loops: for, while e do...while",
+  "_stage": "revisao"
+}

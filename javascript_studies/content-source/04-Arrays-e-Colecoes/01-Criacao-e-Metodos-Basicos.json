@@ -1,0 +1,277 @@
+{
+  "module_num": "04",
+  "module_title": "Arrays e Coleções",
+  "module_dir": "04-Arrays-e-Colecoes",
+  "lesson_num": "01",
+  "lesson_slug": "Criacao-e-Metodos-Basicos",
+  "kind": "aula",
+  "title": "Criação de Arrays e Métodos Básicos",
+  "filename_base": "01-Criacao-e-Metodos-Basicos",
+  "subtitle": "Como criar, alterar, procurar e ordenar arrays em JavaScript moderno.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Criar arrays usando literais, Array.of e Array.from, escolhendo a forma mais adequada a cada situação.",
+    "Adicionar e remover elementos no início e no fim de um array com push, pop, shift e unshift.",
+    "Distinguir slice de splice e saber quando usar cada um sem mutar acidentalmente um array.",
+    "Combinar arrays e convertê-los em texto com concat e join.",
+    "Procurar valores com indexOf, lastIndexOf e includes, e aceder a posições com at() usando índices negativos.",
+    "Ordenar e inverter arrays com sort e reverse, evitando a armadilha da ordenação por defeito."
+  ],
+  "sections": [
+    {
+      "heading": "Criar arrays: literal, Array.of e Array.from",
+      "body": [
+        "A forma mais comum de criar um array em JavaScript é o literal, delimitado por parênteses retos, por exemplo const numeros = [1, 2, 3]. Esta sintaxe é direta e legível, e deve ser a escolha por defeito sempre que se conhecem os elementos antecipadamente. O construtor Array() também existe, mas tem um comportamento ambíguo que convém conhecer: new Array(3) não cria um array com o valor 3, cria antes um array com comprimento 3 e três posições vazias (empty slots), o que é uma fonte comum de confusão e de erros subtis.",
+        "Array.of resolve exatamente esse problema: cria sempre um array a partir dos argumentos recebidos, independentemente do número ou do tipo desses argumentos. Assim, Array.of(3) devolve [3], e Array.of(1, 2, 3) devolve [1, 2, 3], sem qualquer ambiguidade. Já Array.from cria um array a partir de um objeto iterável (como uma string, um Set ou um Map) ou de um objeto array-like com uma propriedade length, e aceita como segundo argumento uma função de mapeamento aplicada a cada elemento durante a conversão. Isto torna Array.from especialmente útil para converter estruturas que não são arrays e para gerar sequências numéricas sem escrever um ciclo manual, passando apenas um objeto com a propriedade length."
+      ],
+      "code": "const literal = [1, 2, 3];\n\nconst semAmbiguidade = Array.of(3);\nconsole.log(semAmbiguidade); // [3]\n\nconst comprimentoTres = new Array(3);\nconsole.log(comprimentoTres); // [ <3 empty items> ]\n\nconst aPartirDeString = Array.from(\"abc\");\nconsole.log(aPartirDeString); // [\"a\", \"b\", \"c\"]\n\nconst quadrados = Array.from({ length: 5 }, (_, indice) => indice ** 2);\nconsole.log(quadrados); // [0, 1, 4, 9, 16]",
+      "callout_kind": "ATENCAO",
+      "callout_text": "new Array(3) cria um array com comprimento 3 mas sem elementos reais (empty slots), o que pode originar comportamentos inesperados em métodos como map ou forEach. Prefira sempre o literal [] ou Array.of quando o valor 3 deve ser um elemento e não um comprimento.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "Literal [] é a forma mais comum e legível"
+        },
+        {
+          "icon": "🔢",
+          "text": "Array.of evita a ambiguidade do construtor Array()"
+        },
+        {
+          "icon": "🔄",
+          "text": "Array.from converte iteráveis e gera sequências"
+        }
+      ]
+    },
+    {
+      "heading": "Adicionar e remover elementos: push, pop, shift, unshift",
+      "body": [
+        "push e pop atuam sobre o fim do array. push adiciona um ou mais elementos e devolve o novo comprimento do array; pop remove o último elemento e devolve esse elemento removido, ou undefined se o array estiver vazio. Ambos alteram o array original (são métodos mutáveis) e são operações rápidas, porque não exigem reorganizar as restantes posições.",
+        "shift e unshift fazem o equivalente no início do array. unshift adiciona um ou mais elementos ao início e devolve o novo comprimento; shift remove o primeiro elemento e devolve-o. Ao contrário de push e pop, estas duas operações são mais custosas em arrays grandes, porque todos os elementos existentes têm de ser deslocados uma posição para abrir ou fechar espaço no início."
+      ],
+      "code": "const pilha = [1, 2];\nconst novoComprimento = pilha.push(3, 4);\nconsole.log(pilha, novoComprimento); // [1,2,3,4] 4\n\nconst removidoDoFim = pilha.pop();\nconsole.log(pilha, removidoDoFim); // [1,2,3] 4\n\nconst fila = [1, 2];\nfila.unshift(-1, 0);\nconsole.log(fila); // [-1, 0, 1, 2]\n\nconst removidoDoInicio = fila.shift();\nconsole.log(fila, removidoDoInicio); // [0, 1, 2] -1",
+      "callout_kind": "NOTA",
+      "callout_text": "shift e unshift têm um custo maior do que push e pop em arrays com muitos elementos, porque cada chamada obriga a reindexar as posições seguintes. Para grandes volumes de dados em que só se opera no fim do array, prefira push e pop.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔚",
+          "text": "push/pop trabalham no fim (rápidos)"
+        },
+        {
+          "icon": "🔝",
+          "text": "shift/unshift trabalham no início (mais lentos)"
+        },
+        {
+          "icon": "↩️",
+          "text": "Todos mutam o array original"
+        }
+      ]
+    },
+    {
+      "heading": "slice vs splice",
+      "body": [
+        "slice devolve uma cópia superficial de uma parte do array, sem alterar o array original. Recebe um índice inicial (incluído) e um índice final opcional (excluído); quando este é omitido, a cópia vai até ao fim do array. Aceita também índices negativos, que contam a partir do fim, por exemplo slice(-2) devolve os dois últimos elementos.",
+        "splice, apesar do nome parecido, tem um comportamento completamente diferente: altera o array original no próprio local. O primeiro argumento é o índice onde a operação começa, o segundo é quantos elementos remover a partir daí, e os argumentos seguintes, opcionais, são elementos a inserir nessa posição. splice devolve um array com os elementos removidos (vazio se nada foi removido), o que o torna a ferramenta certa para remover, inserir ou substituir elementos sem criar um array novo."
+      ],
+      "code": "const letras = [\"a\", \"b\", \"c\", \"d\", \"e\"];\n\nconst copiaParcial = letras.slice(1, 3);\nconsole.log(copiaParcial, letras);\n// [\"b\",\"c\"]  [\"a\",\"b\",\"c\",\"d\",\"e\"]  (original intacto)\n\nconst duasUltimas = letras.slice(-2);\nconsole.log(duasUltimas); // [\"d\", \"e\"]\n\nconst removidos = letras.splice(1, 2, \"x\", \"y\", \"z\");\nconsole.log(letras, removidos);\n// letras agora é [\"a\",\"x\",\"y\",\"z\",\"d\",\"e\"]\n// removidos é [\"b\",\"c\"]",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [
+        "Aspeto",
+        "slice",
+        "splice"
+      ],
+      "table_rows": [
+        [
+          "Altera o array original?",
+          "Não",
+          "Sim"
+        ],
+        [
+          "O que devolve?",
+          "Novo array com a parte copiada",
+          "Array com os elementos removidos"
+        ],
+        [
+          "Uso típico",
+          "Copiar ou extrair uma parte",
+          "Remover, inserir ou substituir elementos"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "✂️",
+          "text": "slice copia, nunca altera o original"
+        },
+        {
+          "icon": "🔧",
+          "text": "splice altera o array no próprio local"
+        },
+        {
+          "icon": "➕",
+          "text": "splice também insere e substitui elementos"
+        }
+      ]
+    },
+    {
+      "heading": "Combinar e converter: concat e join",
+      "body": [
+        "concat junta dois ou mais arrays, ou valores soltos, num array novo, sem alterar nenhum dos arrays originais; quando recebe um array como argumento, os seus elementos são incorporados diretamente no array resultante, e não inseridos como um array aninhado. join percorre o array e devolve uma única string, unindo os elementos com o separador indicado como argumento, sendo útil para gerar mensagens, relatórios ou identificadores compostos a partir dos dados de um array."
+      ],
+      "code": "const parte1 = [\"a\", \"b\"];\nconst parte2 = [\"c\", \"d\"];\n\nconst combinado = parte1.concat(parte2, \"e\");\nconsole.log(combinado); // [\"a\",\"b\",\"c\",\"d\",\"e\"]\nconsole.log(parte1, parte2); // ambos inalterados\n\nconst frase = combinado.join(\" - \");\nconsole.log(frase); // \"a - b - c - d - e\"",
+      "callout_kind": "NOTA",
+      "callout_text": "Se chamar join() sem argumentos, o separador por defeito é uma vírgula. É também esse o comportamento implícito quando um array é convertido para string, por exemplo com String(array).",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔗",
+          "text": "concat junta arrays sem mutar os originais"
+        },
+        {
+          "icon": "📝",
+          "text": "join transforma o array numa string"
+        },
+        {
+          "icon": "🔤",
+          "text": "Separador por defeito de join é a vírgula"
+        }
+      ]
+    },
+    {
+      "heading": "Procurar elementos: indexOf, lastIndexOf e includes",
+      "body": [
+        "indexOf devolve o índice da primeira ocorrência de um valor no array, ou -1 se o valor não existir; lastIndexOf faz a pesquisa a partir do fim e devolve o índice da última ocorrência. Ambos comparam os valores por igualdade estrita, o mesmo critério do operador ===, o que significa que, para objetos, só encontram a mesma referência, nunca um objeto diferente com conteúdo igual.",
+        "includes devolve diretamente um valor booleano a indicar se o array contém ou não determinado valor, tornando o código mais legível quando não interessa a posição exata. Há uma diferença importante entre includes e indexOf: como NaN não é igual a si próprio segundo ===, indexOf(NaN) devolve sempre -1, mesmo quando o array contém NaN; includes(NaN), em contrapartida, usa um algoritmo de igualdade diferente e devolve corretamente true."
+      ],
+      "code": "const valores = [10, 20, NaN, 30, 20];\n\nconsole.log(valores.indexOf(20)); // 1\nconsole.log(valores.lastIndexOf(20)); // 4\nconsole.log(valores.indexOf(99)); // -1\n\nconsole.log(valores.indexOf(NaN)); // -1 (armadilha)\nconsole.log(valores.includes(NaN)); // true (correto)",
+      "callout_kind": "ATENCAO",
+      "callout_text": "indexOf nunca encontra NaN num array, porque compara com ===, e NaN === NaN é false. Para verificar a presença de NaN, ou de qualquer valor em geral quando isso importa, use includes.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔍",
+          "text": "indexOf/lastIndexOf devolvem uma posição (ou -1)"
+        },
+        {
+          "icon": "✅",
+          "text": "includes devolve true ou false"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Só includes deteta NaN corretamente"
+        }
+      ]
+    },
+    {
+      "heading": "Aceder a elementos com at() e índices negativos",
+      "body": [
+        "O acesso tradicional a um elemento de um array usa a notação com parênteses retos, array[indice], que só aceita índices positivos a contar do início; para aceder ao último elemento desta forma é preciso escrever array[array.length - 1]. O método at(), já suportado por todos os motores modernos, aceita também índices negativos, que contam a partir do fim: at(-1) devolve o último elemento, at(-2) o penúltimo, e assim sucessivamente, sem ser necessário calcular o comprimento do array.",
+        "Quando o índice, positivo ou negativo, está fora dos limites do array, at() devolve undefined, tal como a notação com parênteses retos para índices positivos fora dos limites. A diferença é que array[-1] não produz nenhum erro, mas também não vai buscar o último elemento: simplesmente devolve undefined, porque -1 não é uma propriedade válida do array. at() elimina exatamente essa limitação."
+      ],
+      "code": "const numeros = [10, 20, 30, 40, 50];\n\nconsole.log(numeros[numeros.length - 1]); // 50 (forma tradicional)\nconsole.log(numeros.at(-1)); // 50 (forma moderna)\nconsole.log(numeros.at(-2)); // 40\n\nconsole.log(numeros[-1]); // undefined, NÃO é o último elemento\nconsole.log(numeros.at(10)); // undefined, índice fora dos limites",
+      "callout_kind": "DICA",
+      "callout_text": "Use at(-1) sempre que precisar do último elemento de um array; é mais curto, mais legível e evita o erro comum de esquecer o -1 em array.length - 1.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎯",
+          "text": "at(-1) devolve o último elemento"
+        },
+        {
+          "icon": "🚫",
+          "text": "array[-1] não funciona (dá undefined)"
+        },
+        {
+          "icon": "📏",
+          "text": "Não é preciso calcular o length"
+        }
+      ]
+    },
+    {
+      "heading": "reverse e sort: a armadilha da ordenação por defeito",
+      "body": [
+        "reverse inverte a ordem dos elementos do array no próprio local, alterando o array original, e devolve uma referência a esse mesmo array. sort também ordena no próprio local, mas o seu comportamento por defeito, sem função de comparação, é o que causa mais confusão: converte cada elemento para string e compara essas strings pela ordem dos respetivos pontos de código Unicode. Isto funciona bem para arrays de strings, mas produz resultados errados para números, porque a comparação de texto não corresponde à ordem numérica.",
+        "Por exemplo, [10, 1, 2].sort() não devolve [1, 2, 10]; devolve [1, 10, 2], porque, comparado como texto, \"10\" vem antes de \"2\". Para ordenar números corretamente é obrigatório passar uma função de comparação a sort: (a, b) => a - b para ordem crescente, ou (a, b) => b - a para ordem decrescente. Essa função deve devolver um número negativo se a deve vir antes de b, positivo se deve vir depois, e zero se são equivalentes para efeitos de ordenação; desde a especificação ES2019, sort é garantidamente estável, ou seja, elementos considerados iguais mantêm a sua ordem relativa original."
+      ],
+      "code": "const letras = [\"banana\", \"abacate\", \"cereja\"];\nletras.reverse();\nconsole.log(letras); // [\"cereja\", \"abacate\", \"banana\"]\n\nconst numeros = [10, 1, 2, 21];\n\nconsole.log(numeros.slice().sort());\n// [1, 10, 2, 21]  <- armadilha: ordenação como texto\n\nconsole.log(numeros.slice().sort((a, b) => a - b));\n// [1, 2, 10, 21]  <- correto, ordem crescente\n\nconsole.log(numeros.slice().sort((a, b) => b - a));\n// [21, 10, 2, 1]  <- ordem decrescente\n\nconsole.log(numeros); // [10, 1, 2, 21], original intacto (usámos slice() para copiar antes)",
+      "callout_kind": "ATENCAO",
+      "callout_text": "sort() sem função de comparação ordena sempre por representação em string, mesmo em arrays de números. Para ordenar números corretamente, use sort((a, b) => a - b), e lembre-se de que tanto sort como reverse alteram o array original.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔃",
+          "text": "reverse inverte o array no próprio local"
+        },
+        {
+          "icon": "🔠",
+          "text": "sort() sem função ordena como texto"
+        },
+        {
+          "icon": "🔢",
+          "text": "Use (a, b) => a - b para números"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Gestão de uma fila com push, pop, shift e unshift",
+      "difficulty": "Iniciante",
+      "statement": "Crie um array vazio chamado fila. Usando apenas os métodos push, unshift, pop e shift (nunca acedendo a índices diretamente), faça o seguinte, pela ordem indicada: 1) adicione \"Ana\" ao fim da fila; 2) adicione \"Bruno\" ao fim da fila; 3) adicione \"Carla\" ao início da fila; 4) remova o elemento do início da fila e guarde-o numa variável chamada removidoInicio; 5) remova o elemento do fim da fila e guarde-o numa variável chamada removidoFim. No final, escreva na consola o array fila e as duas variáveis removidoInicio e removidoFim.",
+      "hint": "Lembre-se de que shift e unshift atuam sobre o início do array, enquanto push e pop atuam sobre o fim; cada um destes métodos devolve algo diferente (o elemento removido ou o novo comprimento do array).",
+      "solution_code": "const fila = [];\n\nfila.push(\"Ana\");\nfila.push(\"Bruno\");\nfila.unshift(\"Carla\");\n\nconst removidoInicio = fila.shift();\nconst removidoFim = fila.pop();\n\nconsole.log(fila, removidoInicio, removidoFim);\n// [\"Ana\"] \"Carla\" \"Bruno\"",
+      "solution_explanation": "Depois das três adições, a fila fica [\"Carla\", \"Ana\", \"Bruno\"]. O shift() remove e devolve \"Carla\" (o primeiro elemento), e o pop() seguinte remove e devolve \"Bruno\" (o último elemento nesse momento), restando apenas \"Ana\" na fila."
+    },
+    {
+      "title": "Gerar e recortar uma sequência com Array.from e slice",
+      "difficulty": "Intermedio",
+      "statement": "Usando Array.from, crie um array chamado numeros com os primeiros 12 números pares, começando em 0 (ou seja, 0, 2, 4, ..., 22), sem escrever cada valor manualmente e sem usar um ciclo explícito — recorra à forma de Array.from que recebe um objeto com a propriedade length e uma função de mapeamento. De seguida, sem alterar numeros, use slice para criar um novo array chamado meio com os elementos entre os índices 4 e 8 (índice 4 incluído, índice 8 excluído). Confirme com console.log que numeros continua com os seus 12 elementos originais e mostre também o array meio.",
+      "hint": "Array.from({ length: n }, (valor, indice) => ...) gera uma sequência a partir apenas do comprimento pretendido; slice(inicio, fim) nunca modifica o array em que é chamado.",
+      "solution_code": "const numeros = Array.from({ length: 12 }, (_, indice) => indice * 2);\nconst meio = numeros.slice(4, 8);\n\nconsole.log(numeros); // [0,2,4,6,8,10,12,14,16,18,20,22]\nconsole.log(meio);    // [8,10,12,14]",
+      "solution_explanation": "A função de mapeamento passada a Array.from recebe o índice de cada posição e devolve o dobro desse índice, gerando diretamente a sequência de pares pretendida. slice(4, 8) devolve uma cópia com os elementos das posições 4, 5, 6 e 7, sem alterar o array numeros original."
+    },
+    {
+      "title": "Substituir elementos no lugar com splice e localizar valores com indexOf/includes",
+      "difficulty": "Intermedio",
+      "statement": "Dado o array let cores = [\"vermelho\", \"verde\", \"azul\", \"amarelo\"];, escreva código que: 1) encontre o índice de \"azul\" usando indexOf; 2) usando splice, substitua \"azul\" por dois novos elementos, \"roxo\" e \"rosa\", sem remover nem alterar mais nada no array; 3) verifique, com includes, se \"azul\" ainda existe no array (guarde o resultado em temAzul) e se \"roxo\" existe (guarde o resultado em temRoxo). Mostre na consola o array cores final e as variáveis temAzul e temRoxo.",
+      "hint": "splice aceita o índice inicial, quantos elementos remover a partir daí, e depois os elementos a inserir nessa mesma posição; o índice devolvido por indexOf pode ser usado diretamente como primeiro argumento de splice.",
+      "solution_code": "let cores = [\"vermelho\", \"verde\", \"azul\", \"amarelo\"];\n\nconst indiceAzul = cores.indexOf(\"azul\");\ncores.splice(indiceAzul, 1, \"roxo\", \"rosa\");\n\nconst temAzul = cores.includes(\"azul\");\nconst temRoxo = cores.includes(\"roxo\");\n\nconsole.log(cores, temAzul, temRoxo);\n// [\"vermelho\",\"verde\",\"roxo\",\"rosa\",\"amarelo\"] false true",
+      "solution_explanation": "indexOf localiza \"azul\" na posição 2; splice(2, 1, \"roxo\", \"rosa\") remove um elemento a partir dessa posição e insere os dois novos no mesmo lugar, produzindo [\"vermelho\",\"verde\",\"roxo\",\"rosa\",\"amarelo\"]. Como \"azul\" foi removido, temAzul é false, e como \"roxo\" foi inserido, temRoxo é true."
+    },
+    {
+      "title": "Corrigir uma ordenação numérica incorreta e obter os últimos valores com at()",
+      "difficulty": "Avancado",
+      "statement": "Considere o array const pontuacoes = [40, 5, 100, 25, 9];. Escreva uma função ordenarNumeros(array) que devolva uma nova cópia do array ordenada corretamente por ordem crescente de valor numérico, sem alterar o array original e sem cair na armadilha da ordenação por defeito de sort. De seguida, a partir do array ordenado devolvido por essa função, e usando o método at() (sem calcular o comprimento manualmente), obtenha o maior valor e o segundo maior valor, guardando-os respetivamente em maior e segundoMaior.",
+      "hint": "sort() sem função de comparação ordena os elementos como se fossem texto; para não mutar pontuacoes, faça uma cópia (por exemplo com slice()) antes de ordenar; at(-1) e at(-2) acedem às duas últimas posições a partir do fim.",
+      "solution_code": "const pontuacoes = [40, 5, 100, 25, 9];\n\nfunction ordenarNumeros(array) {\n  return array.slice().sort((a, b) => a - b);\n}\n\nconst ordenado = ordenarNumeros(pontuacoes);\nconst maior = ordenado.at(-1);\nconst segundoMaior = ordenado.at(-2);\n\nconsole.log(pontuacoes); // [40, 5, 100, 25, 9] (inalterado)\nconsole.log(ordenado, maior, segundoMaior); // [5,9,25,40,100] 100 40",
+      "solution_explanation": "array.slice() cria uma cópia superficial antes de ordenar, garantindo que pontuacoes não é alterado; o comparador (a, b) => a - b força uma ordenação numérica crescente em vez da ordenação por texto que sort() usaria por defeito. Com o array já ordenado, at(-1) devolve o maior valor (100) e at(-2) o segundo maior (40), sem ser preciso calcular ordenado.length."
+    },
+    {
+      "title": "Juntar arrays de participantes e gerar um relatório em texto",
+      "difficulty": "Avancado",
+      "statement": "Tem dois arrays: const equipaA = [\"Rui\", \"Sofia\"]; e const equipaB = [\"Marta\", \"Tiago\", \"Rui\"];. Escreva código que: 1) crie um novo array chamado todosParticipantes juntando os dois arrays com concat, sem alterar equipaA nem equipaB; 2) usando indexOf e lastIndexOf, guarde em primeiraPosicaoRui e ultimaPosicaoRui a primeira e a última posição em que \"Rui\" aparece em todosParticipantes; 3) usando join, construa uma string chamada relatorio igual a \"Participantes: Rui, Sofia, Marta, Tiago, Rui\".",
+      "hint": "concat aceita um ou mais arrays (ou valores individuais) e devolve sempre um array novo, sem tocar nos originais; join aceita o separador desejado como argumento e pode depois ser combinado com o operador + para montar a frase final.",
+      "solution_code": "const equipaA = [\"Rui\", \"Sofia\"];\nconst equipaB = [\"Marta\", \"Tiago\", \"Rui\"];\n\nconst todosParticipantes = equipaA.concat(equipaB);\n\nconst primeiraPosicaoRui = todosParticipantes.indexOf(\"Rui\");\nconst ultimaPosicaoRui = todosParticipantes.lastIndexOf(\"Rui\");\n\nconst relatorio = \"Participantes: \" + todosParticipantes.join(\", \");\n\nconsole.log(todosParticipantes, primeiraPosicaoRui, ultimaPosicaoRui, relatorio);\n// [\"Rui\",\"Sofia\",\"Marta\",\"Tiago\",\"Rui\"] 0 4 \"Participantes: Rui, Sofia, Marta, Tiago, Rui\"",
+      "solution_explanation": "concat combina equipaA e equipaB num array novo, sem mutar nenhum dos dois originais. indexOf encontra a primeira ocorrência de \"Rui\" na posição 0 e lastIndexOf encontra a última na posição 4; join(\", \") transforma o array final numa única string, que é depois concatenada com o texto fixo \"Participantes: \"."
+    }
+  ],
+  "summary": [
+    "Use o literal [] para o caso comum, Array.of para valores exatos e Array.from para converter iteráveis ou gerar sequências.",
+    "push e pop trabalham no fim do array e são rápidos; shift e unshift trabalham no início e são mais lentos, porque reindexam tudo.",
+    "slice copia sem alterar o array original; splice altera o array original e serve para remover, inserir ou substituir elementos.",
+    "concat junta arrays num array novo; join transforma um array numa string com um separador à escolha.",
+    "includes deteta corretamente NaN, ao contrário de indexOf; at() aceita índices negativos para aceder a partir do fim, sem calcular o length.",
+    "sort() sem função de comparação ordena por texto, não por valor numérico; para números, use sempre (a, b) => a - b."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 02",
+  "next_label": "Aula 02 → Métodos de Iteração: map, filter, reduce e mais",
+  "_stage": "revisao"
+}

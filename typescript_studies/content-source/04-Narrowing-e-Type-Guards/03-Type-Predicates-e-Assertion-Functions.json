@@ -1,0 +1,283 @@
+{
+  "module_num": "04",
+  "module_title": "Narrowing e Type Guards",
+  "module_dir": "04-Narrowing-e-Type-Guards",
+  "lesson_num": "03",
+  "lesson_slug": "Type-Predicates-e-Assertion-Functions",
+  "kind": "aula",
+  "title": "Type Predicates e Assertion Functions",
+  "filename_base": "03-Type-Predicates-e-Assertion-Functions",
+  "subtitle": "Ensinar o compilador a confiar nas verificações que o próprio código faz",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Perceber porque uma função booleana normal não estreita fora de si própria",
+    "Escrever type predicates com a sintaxe valor is Tipo",
+    "Verificar a forma de um unknown passo a passo com typeof e in",
+    "Usar um predicado no filter para limpar arrays com valores em falta",
+    "Escrever assertion functions com asserts valor is Tipo e com asserts valor",
+    "Distinguir as, type predicate e assertion function, e travar predicados que mentem"
+  ],
+  "sections": [
+    {
+      "heading": "Uma função booleana não estreita",
+      "body": [
+        "Mais cedo ou mais tarde a verificação deixa de caber numa linha e apetece-lhe extraí-la para uma função com nome. É aí que a surpresa aparece: a função devolve true, o programa corre bem, e o compilador continua a tratar o valor como se nada tivesse sido verificado.",
+        "A razão é simples. O tipo de retorno diz boolean, e boolean é só isso: um sim ou um não sobre coisa nenhuma. O compilador não tem forma de saber que aquele true significa é uma Estrela. A informação existiu dentro da função e ficou lá dentro."
+      ],
+      "code": "type Estrela = { nome: string; magnitude: number };\ntype Planeta = { nome: string; orbitaEm: number };\ntype Corpo = Estrela | Planeta;\n\n// Uma função booleana normal: o in estreita cá dentro, mas o retorno é só boolean\nfunction eEstrela(corpo: Corpo): boolean {\n  return \"magnitude\" in corpo;\n}\n\nfunction descrever(corpo: Corpo): string {\n  if (eEstrela(corpo)) {\n    // @ts-expect-error corpo continua Estrela | Planeta: um boolean não diz ao compilador o que foi verificado\n    return `magnitude ${corpo.magnitude}`;\n  }\n  return corpo.nome;\n}\n\n// escrito diretamente no if, o mesmo teste já estreita\nfunction descreverInline(corpo: Corpo): string {\n  if (\"magnitude\" in corpo) {\n    return `magnitude ${corpo.magnitude}`;\n  }\n  return corpo.nome;\n}\n\n// em execução as duas funções fazem o mesmo; a diferença é só o que o compilador sabe\nconsole.log(descrever({ nome: \"Vega\", magnitude: 0.03 }));       // \"magnitude 0.03\"\nconsole.log(descreverInline({ nome: \"Vega\", magnitude: 0.03 })); // \"magnitude 0.03\"",
+      "callout_kind": "NOTA",
+      "callout_text": "Não é um problema de execução: o código funciona. É um problema de descrição, tal como acontecia com as uniões de retorno antes das sobrecargas.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "Extrair a verificação para uma função perde o narrowing"
+        },
+        {
+          "icon": "🚫",
+          "text": "boolean não diz ao compilador o que foi verificado"
+        },
+        {
+          "icon": "✅",
+          "text": "O mesmo teste escrito no if estreita na mesma"
+        }
+      ]
+    },
+    {
+      "heading": "A sintaxe valor is Tipo",
+      "body": [
+        "Um type predicate é uma função cujo tipo de retorno, em vez de boolean, é uma afirmação sobre um dos parâmetros: corpo is Estrela. Em execução continua a devolver um booleano vulgar. O que muda é a leitura do compilador: se esta função devolver true, então o parâmetro que lhe passaram é uma Estrela.",
+        "O parâmetro nomeado na afirmação tem de ser um dos parâmetros da função, e o tipo afirmado tem de ser compatível com o tipo declarado desse parâmetro. Fora isso, o compilador aceita o que lá puser sem verificar o corpo. Basta devolver um booleano para a promessa passar.",
+        "Nos ramos, o narrowing funciona nos dois sentidos quando o parâmetro é uma união: no ramo verdadeiro fica o tipo afirmado, no ramo falso ficam os restantes membros da união."
+      ],
+      "code": "type Estrela = { nome: string; magnitude: number };\ntype Planeta = { nome: string; orbitaEm: number };\ntype Corpo = Estrela | Planeta;\n\n// o retorno deixa de ser boolean e passa a ser uma afirmação sobre o parâmetro\nfunction eEstrela(corpo: Corpo): corpo is Estrela {\n  return \"magnitude\" in corpo;\n}\n\nfunction descrever(corpo: Corpo): string {\n  if (eEstrela(corpo)) {\n    return `${corpo.nome} tem magnitude ${corpo.magnitude}`; // corpo: Estrela\n  }\n  return `${corpo.nome} orbita a ${corpo.orbitaEm} UA`; // corpo: Planeta\n}\n\nconsole.log(descrever({ nome: \"Vega\", magnitude: 0.03 }));  // \"Vega tem magnitude 0.03\"\nconsole.log(descrever({ nome: \"Marte\", orbitaEm: 1.52 }));  // \"Marte orbita a 1.52 UA\"\n\n// O corpo tem de devolver boolean, mas ninguém verifica se é o boolean certo:\nfunction eEstrelaMentiroso(corpo: Corpo): corpo is Estrela {\n  return true; // compila na mesma\n}\nconsole.log(eEstrelaMentiroso({ nome: \"Marte\", orbitaEm: 1.52 })); // true",
+      "callout_kind": "ATENCAO",
+      "callout_text": "O compilador não verifica se o corpo do predicado faz aquilo que promete. Um return true compila. A responsabilidade passa toda para quem escreve o predicado.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "✍️",
+          "text": "O retorno passa a ser corpo is Estrela"
+        },
+        {
+          "icon": "🤝",
+          "text": "Uma promessa que o compilador acredita sem conferir"
+        },
+        {
+          "icon": "↔️",
+          "text": "Estreita no ramo verdadeiro e no ramo falso"
+        }
+      ]
+    },
+    {
+      "heading": "Um predicado sobre unknown, passo a passo",
+      "body": [
+        "O caso mais útil é o predicado que parte de unknown e confirma a forma de um objeto. Em unknown nada está autorizado à partida, por isso a verificação faz-se por camadas e cada camada abre a seguinte.",
+        "Primeiro confirma-se que é um objeto e que não é null, porque typeof null também dá a string object. Depois confirma-se que as chaves existem, e o operador in estreita o próprio unknown ao ponto de as propriedades passarem a ser legíveis como unknown. Por fim verifica-se o tipo do conteúdo de cada uma."
+      ],
+      "code": "type Leitura = { sensor: string; valor: number };\n\nfunction eLeitura(dados: unknown): dados is Leitura {\n  // 1. tem de ser objeto e não null, porque typeof null também dá \"object\"\n  if (typeof dados !== \"object\" || dados === null) {\n    return false;\n  }\n  // 2. as chaves têm de existir; o in estreita o próprio dados\n  if (!(\"sensor\" in dados) || !(\"valor\" in dados)) {\n    return false;\n  }\n  // 3. e o conteúdo tem de ter o tipo certo\n  return typeof dados.sensor === \"string\" && typeof dados.valor === \"number\";\n}\n\nconst bruto: unknown = JSON.parse('{\"sensor\":\"T1\",\"valor\":21.5}');\n\nif (eLeitura(bruto)) {\n  console.log(bruto.sensor.toUpperCase()); // \"T1\"\n  console.log(bruto.valor.toFixed(1));     // \"21.5\"\n}\n\nconsole.log(eLeitura(null));                          // false\nconsole.log(eLeitura({ sensor: \"T1\" }));              // false\nconsole.log(eLeitura({ sensor: 1, valor: \"alto\" }));  // false",
+      "callout_kind": "DICA",
+      "callout_text": "Saídas antecipadas com return false leem-se muito melhor do que uma única expressão gigante com dezenas de operadores lógicos encadeados.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧅",
+          "text": "Verificar por camadas: objeto, chaves, tipos"
+        },
+        {
+          "icon": "🕳️",
+          "text": "typeof null dá object: testar null sempre"
+        },
+        {
+          "icon": "🔑",
+          "text": "O in abre as propriedades de um unknown"
+        }
+      ]
+    },
+    {
+      "heading": "Predicados a limpar arrays",
+      "body": [
+        "O filter é o sítio onde o predicado compensa mais depressa. Um array com buracos, do tipo string ou null, filtrado por uma função que devolve boolean, continua a ser um array de string ou null: o compilador viu passar uma função, não uma prova.",
+        "Com um predicado, o filter escolhe outra assinatura e o array que sai já é do tipo estreito. Deixa de ser preciso voltar a testar cada elemento no map seguinte."
+      ],
+      "code": "function naoENulo(valor: string | null): boolean {\n  return valor !== null;\n}\n\nfunction eTexto(valor: string | null): valor is string {\n  return valor !== null;\n}\n\nconst entradas: (string | null)[] = [\"ana\", null, \"rui\", null];\n\nconst antes = entradas.filter(naoENulo); // (string | null)[]\n// @ts-expect-error o filter com predicado booleano devolve o mesmo tipo de array: antes[0] ainda pode ser null\nconsole.log(antes[0].toUpperCase());\n\nconst depois = entradas.filter(eTexto); // string[]\nconsole.log(depois);                              // [\"ana\", \"rui\"]\nconsole.log(depois.map((n) => n.toUpperCase()));  // [\"ANA\", \"RUI\"]",
+      "callout_kind": "NOTA",
+      "callout_text": "Desde a versão 5.5 o TypeScript consegue inferir sozinho o predicado em funções curtas sem tipo de retorno escrito. Escrever o predicado à mão continua a ser mais claro e não depende da forma do corpo.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧹",
+          "text": "filter com boolean não limpa o tipo do array"
+        },
+        {
+          "icon": "🎯",
+          "text": "filter com predicado devolve o array estreito"
+        },
+        {
+          "icon": "♻️",
+          "text": "Um predicado com nome serve em vários sítios"
+        }
+      ]
+    },
+    {
+      "heading": "Assertion functions",
+      "body": [
+        "Há verificações que não têm dois caminhos: ou o valor está bem, ou não vale a pena continuar. Para essas existe a assertion function, declarada com asserts valor is string. Não devolve nada: ou lança, ou volta, e voltar significa que a partir dali o valor tem o tipo afirmado, sem if nenhum à volta.",
+        "Existe uma segunda forma, asserts condicao, sem tipo. Afirma apenas que a condição recebida é verdadeira, e serve para escrever um invariante reutilizável. O narrowing que dela resulta é o mesmo que a condição provocaria escrita num if.",
+        "Note que o tipo de retorno tem de estar escrito. Uma função com asserts no retorno é a única forma de o compilador saber que a chamada altera o que se sabe do valor daí para a frente."
+      ],
+      "code": "// Com tipo: promete que, se voltar, o valor é uma string\nfunction garantirString(valor: unknown): asserts valor is string {\n  if (typeof valor !== \"string\") {\n    throw new TypeError(\"Esperava uma string, recebi \" + typeof valor);\n  }\n}\n\n// Sem tipo: promete apenas que a condição é verdadeira\nfunction garantir(condicao: unknown, mensagem: string): asserts condicao {\n  if (!condicao) {\n    throw new Error(mensagem);\n  }\n}\n\nfunction formatarCodigo(bruto: unknown): string {\n  garantirString(bruto);\n  // daqui para baixo bruto é string, sem qualquer if\n  garantir(bruto.length > 0, \"código vazio\");\n  return bruto.padStart(4, \"0\");\n}\n\nconsole.log(formatarCodigo(\"42\")); // \"0042\"\n\ntry {\n  formatarCodigo(42);\n} catch (erro) {\n  console.log((erro as Error).message); // \"Esperava uma string, recebi number\"\n}",
+      "callout_kind": "DICA",
+      "callout_text": "Use predicado quando os dois casos interessam e assertion function quando o caso mau é um erro. Assim evita ifs com um ramo que só serve para lançar.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "💥",
+          "text": "asserts valor is string: ou lança, ou o tipo muda"
+        },
+        {
+          "icon": "🧾",
+          "text": "asserts condicao afirma só que a condição é verdadeira"
+        },
+        {
+          "icon": "➡️",
+          "text": "O narrowing vale daí para a frente, sem ramo"
+        }
+      ]
+    },
+    {
+      "heading": "A regra que apanha toda a gente",
+      "body": [
+        "Uma assertion function tem de ser chamada através de uma referência com tipo explícito. Uma function declaration serve, porque a declaração é o tipo. Uma const com o tipo anotado também serve. O que não serve é uma arrow atribuída a uma const sem anotação, ainda que essa arrow declare asserts no retorno.",
+        "O motivo é a ordem do trabalho do compilador: se o tipo da referência é inferido, ele teria de resolver a função para saber que a chamada afeta o fluxo, e resolver o fluxo para tipar a função. Em vez de tentar, recusa a chamada com uma mensagem a pedir a anotação explícita.",
+        "A solução é escrever um tipo de função com asserts e anotar a const com ele. É o mesmo corpo, agora chamável."
+      ],
+      "code": "// Uma arrow guardada numa const sem tipo escrito: declara-se, mas não pode ser usada\nconst garantirTexto = (valor: unknown): asserts valor is string => {\n  if (typeof valor !== \"string\") {\n    throw new TypeError(\"não é texto\");\n  }\n};\n\nfunction medirMal(valor: unknown): void {\n  // @ts-expect-error uma assertion function só pode ser chamada por uma referência com tipo explícito\n  garantirTexto(valor);\n}\n\n// A mesma arrow, agora com o tipo escrito na const: já serve\ntype GarantirTexto = (valor: unknown) => asserts valor is string;\n\nconst garantirTextoOk: GarantirTexto = (valor) => {\n  if (typeof valor !== \"string\") {\n    throw new TypeError(\"não é texto\");\n  }\n};\n\nfunction medirBem(valor: unknown): number {\n  garantirTextoOk(valor);\n  return valor.length;\n}\n\nconsole.log(medirBem(\"olá\")); // 3",
+      "callout_kind": "ATENCAO",
+      "callout_text": "O erro aparece na chamada, não na declaração da arrow. Quem só olha para a função não percebe o que está errado.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📌",
+          "text": "Function declaration ou const anotada: sempre"
+        },
+        {
+          "icon": "🚷",
+          "text": "Arrow sem anotação de tipo não é chamável"
+        },
+        {
+          "icon": "🩹",
+          "text": "Anotar a const com um tipo asserts resolve"
+        }
+      ]
+    },
+    {
+      "heading": "as, predicado ou assertion function",
+      "body": [
+        "Os três mecanismos servem para dizer ao compilador algo que ele não consegue deduzir sozinho, mas o preço é diferente. O as não gera verificação nenhuma: é uma afirmação sua, e se estiver errada só se sabe quando o programa rebenta. O predicado devolve um booleano e deixa o narrowing acontecer num ramo. A assertion function interrompe o caminho quando a verificação falha.",
+        "A diferença prática não é entre estreitar e não estreitar, é entre haver ou não haver uma verificação em execução por trás. Por isso um predicado que mente é mais perigoso do que um as: parece uma verificação, é lido como uma verificação, e não verifica.",
+        "Manter o predicado alinhado com o tipo é trabalho de manutenção. Sempre que uma propriedade entra no tipo, tem de entrar no predicado, e o compilador não avisa quando se esquece. Mantenha os dois no mesmo ficheiro, lado a lado, e escreva uma verificação por propriedade declarada."
+      ],
+      "code": "type Encomenda = { id: number; total: number };\n\n// Predicado mentiroso: só confirma que é um objeto, mas promete uma Encomenda\nfunction eEncomendaMentiroso(valor: unknown): valor is Encomenda {\n  return typeof valor === \"object\" && valor !== null;\n}\n\n// Predicado alinhado: verifica exatamente as propriedades que o tipo declara\nfunction eEncomenda(valor: unknown): valor is Encomenda {\n  if (typeof valor !== \"object\" || valor === null) return false;\n  if (!(\"id\" in valor) || !(\"total\" in valor)) return false;\n  return typeof valor.id === \"number\" && typeof valor.total === \"number\";\n}\n\nconst bruto: unknown = { id: 7 };\n\ntry {\n  if (eEncomendaMentiroso(bruto)) {\n    // o compilador garante um number; em execução total é undefined\n    console.log(bruto.total.toFixed(2));\n  }\n} catch (erro) {\n  console.log((erro as Error).name); // \"TypeError\"\n}\n\nconsole.log(eEncomenda(bruto)); // false",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Abra um predicado que já tenha escrito e conte as propriedades do tipo e as verificações do corpo. Se os números não baterem certo, o predicado já está a mentir.",
+      "table_headers": [
+        "Mecanismo",
+        "Verifica em execução",
+        "Como estreita",
+        "Quando falha"
+      ],
+      "table_rows": [
+        [
+          "valor as Tipo",
+          "Não",
+          "A partir da expressão convertida",
+          "Só quando o código rebenta mais à frente"
+        ],
+        [
+          "valor is Tipo",
+          "Sim, se o corpo verificar",
+          "No ramo verdadeiro e no ramo falso",
+          "Devolve false e o programa segue"
+        ],
+        [
+          "asserts valor is Tipo",
+          "Sim, se o corpo verificar",
+          "Daí para a frente, sem ramo",
+          "Lança a exceção que o corpo lançar"
+        ],
+        [
+          "asserts condicao",
+          "Sim, testa a condição",
+          "Como se a condição fosse um if",
+          "Lança a exceção que o corpo lançar"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🎭",
+          "text": "as afirma, predicado prova, assertion function trava"
+        },
+        {
+          "icon": "☠️",
+          "text": "Predicado mentiroso é pior do que nenhum"
+        },
+        {
+          "icon": "🧮",
+          "text": "Uma verificação por cada propriedade do tipo"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Um predicado para números utilizáveis",
+      "difficulty": "Iniciante",
+      "statement": "Escreva uma função chamada eNumeroFinito que receba um valor de tipo unknown e seja um type predicate para number, aceitando apenas números finitos (NaN e Infinity não passam). Depois escreva uma função formatar, que também recebe unknown, e devolve o valor com duas casas decimais quando o predicado passa e a string sem valor quando não passa. Teste com 3.14159, com a string 3.14 e com NaN.",
+      "hint": "Precisa de duas condições ligadas por E: uma sobre typeof e outra sobre Number.isFinite. O tipo de retorno da função não é boolean.",
+      "solution_code": "function eNumeroFinito(valor: unknown): valor is number {\n  return typeof valor === \"number\" && Number.isFinite(valor);\n}\n\nfunction formatar(valor: unknown): string {\n  if (eNumeroFinito(valor)) {\n    return valor.toFixed(2);\n  }\n  return \"sem valor\";\n}\n\nconsole.log(formatar(3.14159)); // \"3.14\"\nconsole.log(formatar(\"3.14\"));  // \"sem valor\"\nconsole.log(formatar(NaN));     // \"sem valor\"",
+      "solution_explanation": "O tipo de retorno valor is number é o que permite chamar toFixed dentro do if sem qualquer conversão. Number.isFinite exclui NaN e Infinity, que são number para o typeof mas inúteis para formatar. Fora do if, valor continua unknown, e é por isso que a função tem de devolver a alternativa."
+    },
+    {
+      "title": "Limpar um array de medições",
+      "difficulty": "Intermedio",
+      "statement": "Declare um tipo Medicao com sensor do tipo string e celsius do tipo number. Crie um array com quatro entradas do tipo Medicao ou null ou undefined, duas delas válidas com 21.5 e 19 graus. Escreva um predicado eMedicao que rejeite null e undefined e use-o no filter para obter um array só de Medicao. Sobre esse array calcule a média das temperaturas e imprima-a com duas casas decimais, sem nenhuma verificação adicional dentro do reduce.",
+      "hint": "O parâmetro do predicado não precisa de ser unknown: pode ser exatamente o tipo dos elementos do array. Basta afirmar o membro que sobra da união.",
+      "solution_code": "type Medicao = { sensor: string; celsius: number };\n\nfunction eMedicao(valor: Medicao | null | undefined): valor is Medicao {\n  return valor !== null && valor !== undefined;\n}\n\nconst registos: (Medicao | null | undefined)[] = [\n  { sensor: \"T1\", celsius: 21.5 },\n  null,\n  { sensor: \"T2\", celsius: 19 },\n  undefined,\n];\n\nconst validos = registos.filter(eMedicao); // Medicao[]\nconst media = validos.reduce((soma, m) => soma + m.celsius, 0) / validos.length;\n\nconsole.log(validos.length);   // 2\nconsole.log(media.toFixed(2)); // \"20.25\"",
+      "solution_explanation": "Como o predicado afirma valor is Medicao, o filter devolve Medicao[] e não o array original com buracos. Dentro do reduce, m é Medicao, por isso m.celsius é um number e a soma compila sem testes. A mesma função sem predicado obrigaria a verificar cada elemento outra vez."
+    },
+    {
+      "title": "Garantir uma configuração",
+      "difficulty": "Intermedio",
+      "statement": "Declare um tipo Config com host do tipo string e porta do tipo number. Escreva uma assertion function garantirConfig que receba unknown e lance um TypeError com mensagem diferente para cada falha: config em falta quando não é um objeto ou é null, host inválido e porta inválida. Depois escreva arrancar, que recebe unknown, chama a assertion function e devolve host e porta separados por dois pontos. Chame-a com uma configuração válida e, dentro de um try, com um objeto a que falta a porta.",
+      "hint": "O tipo de retorno é asserts valor is Config e a função não tem return. Verifique primeiro se é um objeto e não null, senão nem consegue perguntar pelas chaves.",
+      "solution_code": "type Config = { host: string; porta: number };\n\nfunction garantirConfig(valor: unknown): asserts valor is Config {\n  if (typeof valor !== \"object\" || valor === null) {\n    throw new TypeError(\"config em falta\");\n  }\n  if (!(\"host\" in valor) || typeof valor.host !== \"string\") {\n    throw new TypeError(\"host inválido\");\n  }\n  if (!(\"porta\" in valor) || typeof valor.porta !== \"number\") {\n    throw new TypeError(\"porta inválida\");\n  }\n}\n\nfunction arrancar(valor: unknown): string {\n  garantirConfig(valor);\n  return `${valor.host}:${valor.porta}`;\n}\n\nconsole.log(arrancar({ host: \"localhost\", porta: 8080 })); // \"localhost:8080\"\n\ntry {\n  console.log(arrancar({ host: \"localhost\" }));\n} catch (erro) {\n  console.log((erro as Error).message); // \"porta inválida\"\n}",
+      "solution_explanation": "Depois da chamada a garantirConfig, valor é Config no resto da função arrancar, sem if e sem conversão. Cada verificação junta o in com o typeof, porque saber que a chave existe não diz nada sobre o tipo do que lá está. As mensagens distintas dizem a quem chama qual foi exatamente a parte que falhou."
+    },
+    {
+      "title": "Corrigir um predicado que mente",
+      "difficulty": "Avancado",
+      "statement": "Declare um tipo Fatura com numero do tipo string, total do tipo number e paga do tipo boolean. Escreva um predicado eFatura sobre unknown que verifique as três propriedades, uma a uma, e não apenas que o valor é um objeto. A seguir escreva a assertion function garantirFatura como uma arrow guardada numa const, de forma a que possa ser chamada: para isso declare um tipo de função com asserts e anote a const com ele. Por fim escreva recibo, que recebe unknown, chama garantirFatura e devolve o número, o total com duas casas e a palavra paga ou por pagar. Teste com uma fatura válida e, dentro de um try, com uma em que o total vem como string.",
+      "hint": "A arrow só é chamável se o tipo estiver escrito na const, não na arrow. Escreva primeiro o type com a assinatura terminada em asserts valor is Fatura e só depois a const.",
+      "solution_code": "type Fatura = { numero: string; total: number; paga: boolean };\n\n// predicado alinhado: uma verificação por cada propriedade declarada no tipo\nfunction eFatura(valor: unknown): valor is Fatura {\n  if (typeof valor !== \"object\" || valor === null) return false;\n  if (!(\"numero\" in valor) || typeof valor.numero !== \"string\") return false;\n  if (!(\"total\" in valor) || typeof valor.total !== \"number\") return false;\n  return \"paga\" in valor && typeof valor.paga === \"boolean\";\n}\n\n// o tipo escrito na const é o que torna a arrow chamável como assertion function\ntype GarantirFatura = (valor: unknown) => asserts valor is Fatura;\n\nconst garantirFatura: GarantirFatura = (valor) => {\n  if (!eFatura(valor)) {\n    throw new TypeError(\"fatura inválida\");\n  }\n};\n\nfunction recibo(valor: unknown): string {\n  garantirFatura(valor);\n  return `${valor.numero}: ${valor.total.toFixed(2)} ${valor.paga ? \"paga\" : \"por pagar\"}`;\n}\n\nconsole.log(recibo({ numero: \"F1\", total: 10, paga: true })); // \"F1: 10.00 paga\"\n\ntry {\n  console.log(recibo({ numero: \"F1\", total: \"10\", paga: true }));\n} catch (erro) {\n  console.log((erro as Error).message); // \"fatura inválida\"\n}",
+      "solution_explanation": "O predicado tem uma verificação por cada propriedade declarada, que é a única forma de a promessa valor is Fatura ser verdadeira. A assertion function reaproveita o predicado, o que evita duas listas de verificações a divergirem com o tempo. O tipo GarantirFatura na const é o que satisfaz a regra da referência com tipo explícito e torna a chamada legal."
+    }
+  ],
+  "summary": [
+    "Uma função que devolve boolean estreita dentro de si, mas não no sítio onde é chamada",
+    "Um type predicate declara valor is Tipo e o compilador acredita nele sem verificar o corpo",
+    "Sobre unknown, verifique por camadas: objeto e não null, depois as chaves com in, depois os tipos",
+    "Um predicado passado ao filter transforma o tipo do array que sai, e não só os valores",
+    "Uma assertion function lança em vez de devolver, e tem de ser chamada por uma referência com tipo explícito",
+    "as não verifica nada e um predicado que mente é pior, porque parece uma verificação e não é"
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 04",
+  "next_label": "Aula 04 → Verificação de Exaustividade com never"
+}

@@ -1,0 +1,269 @@
+{
+  "module_num": "07",
+  "module_title": "Assincronismo",
+  "module_dir": "07-Assincronismo",
+  "lesson_num": "05",
+  "lesson_slug": "Fetch-API-e-Consumo-de-Dados",
+  "kind": "aula",
+  "title": "Fetch API e Consumo de Dados",
+  "filename_base": "05-Fetch-API-e-Consumo-de-Dados",
+  "subtitle": "Peça e envie dados a APIs com fetch(), tratando erros e cancelamentos de pedidos.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Fazer pedidos GET com fetch() e interpretar o objeto Response.",
+    "Converter respostas com response.json() e response.text().",
+    "Distinguir erros de rede de erros HTTP usando response.ok e response.status.",
+    "Enviar dados ao servidor configurando method, headers e body.",
+    "Cancelar pedidos em curso com AbortController.",
+    "Construir um tratamento de erros robusto para consumo de APIs."
+  ],
+  "sections": [
+    {
+      "heading": "fetch() básico: o primeiro pedido GET",
+      "body": [
+        "A Fetch API é a forma moderna e nativa de fazer pedidos HTTP em JavaScript, substituindo o antigo XMLHttpRequest. Está disponível diretamente no browser e, desde a versão 18, também no Node.js, sem necessidade de instalar qualquer biblioteca externa. A chamada fetch(url) faz, por omissão, um pedido GET e devolve uma Promise que resolve para um objeto Response assim que os cabeçalhos da resposta chegam - não é preciso esperar que todo o corpo da resposta seja transferido.",
+        "O objeto Response contém informação sobre o resultado do pedido, como ok, status, statusText e headers, mas o corpo da resposta (o conteúdo em si) é exposto como um stream que ainda não foi lido. Por isso, obter os dados reais implica um passo adicional, feito através de métodos específicos como json() ou text(), explicados na secção seguinte."
+      ],
+      "code": "// Pedido GET simples com async/await\nasync function obterUtilizadores() {\n  const response = await fetch(\"https://api.exemplo.com/utilizadores\");\n  console.log(response); // objeto Response: status, headers, corpo ainda por ler (stream)\n  return response;\n}\n\nobterUtilizadores();",
+      "callout_kind": "NOTA",
+      "callout_text": "fetch() está disponível nativamente no browser e no Node.js a partir da versão 18 - não é necessário instalar nenhuma biblioteca para fazer pedidos HTTP básicos.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🌐",
+          "text": "fetch(url) faz um pedido GET por omissão"
+        },
+        {
+          "icon": "📦",
+          "text": "Devolve uma Promise<Response>"
+        },
+        {
+          "icon": "🟢",
+          "text": "Nativo no browser e no Node.js 18+"
+        }
+      ]
+    },
+    {
+      "heading": "Interpretar a resposta: response.json() e response.text()",
+      "body": [
+        "Como o corpo da resposta é um stream, lê-lo é uma operação assíncrona: response.json() e response.text() devolvem, ambos, uma nova Promise, que só resolve quando o corpo estiver totalmente lido e, no caso do json(), convertido para um objeto ou array JavaScript. Existem ainda outros métodos para outros formatos, como response.blob() para ficheiros binários ou response.formData() para dados de formulários.",
+        "Se o conteúdo devolvido pelo servidor não for JSON válido, response.json() rejeita a Promise com um SyntaxError, mesmo que o pedido HTTP tenha sido bem-sucedido - por isso é importante usar o método correto consoante o tipo de conteúdo esperado. Note-se também que o corpo de uma Response só pode ser lido uma vez; se precisar de o ler duas vezes tem de chamar response.clone() antes da primeira leitura."
+      ],
+      "code": "async function exemploRespostas() {\n  const respostaJson = await fetch(\"https://api.exemplo.com/utilizadores\");\n  const dados = await respostaJson.json(); // conversão assíncrona para objeto/array JS\n  console.log(dados);\n\n  const respostaTexto = await fetch(\"https://api.exemplo.com/aviso.txt\");\n  const texto = await respostaTexto.text();\n  console.log(texto);\n\n  // Se precisar de ler o mesmo corpo duas vezes, tem de o clonar antes:\n  const respostaOriginal = await fetch(\"https://api.exemplo.com/relatorio\");\n  const copia = respostaOriginal.clone();\n  const comoTexto = await respostaOriginal.text();\n  const comoJson = await copia.json().catch(() => null);\n  console.log(comoTexto, comoJson);\n}",
+      "callout_kind": "DICA",
+      "callout_text": "Se tentar chamar response.json() ou response.text() uma segunda vez sobre a mesma resposta, obtém o erro TypeError: body stream already read. Use response.clone() se precisar de ler o mesmo corpo mais do que uma vez.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔄",
+          "text": "json() e text() também são assíncronos"
+        },
+        {
+          "icon": "⚠️",
+          "text": "O corpo só pode ser lido uma vez"
+        },
+        {
+          "icon": "📋",
+          "text": "clone() permite ler a resposta duas vezes"
+        }
+      ]
+    },
+    {
+      "heading": "response.ok e response.status: fetch não rejeita em erros HTTP",
+      "body": [
+        "Um dos aspetos mais surpreendentes da Fetch API para quem vem de outras bibliotecas é que a Promise devolvida por fetch() só rejeita perante falhas ao nível da rede - por exemplo, sem ligação à internet, falha na resolução de DNS ou bloqueio por política de CORS. Se o servidor responder, mesmo que com um estado de erro como 404 ou 500, a Promise resolve normalmente, porque, do ponto de vista do protocolo HTTP, houve de facto uma resposta.",
+        "Por isso, é obrigatório verificar manualmente se o pedido foi bem-sucedido antes de assumir que os dados são válidos. A propriedade response.ok é true apenas para estados entre 200 e 299; para os restantes casos, response.status permite identificar exatamente o tipo de erro devolvido e decidir como reagir, normalmente lançando um Error explícito para que o erro seja tratado como tal no resto do código."
+      ],
+      "code": "async function obterUtilizador(id) {\n  const response = await fetch(`https://api.exemplo.com/utilizadores/${id}`);\n\n  if (!response.ok) {\n    // 404, 500, etc. chegam aqui - a Promise NÃO rejeitou sozinha\n    throw new Error(`Erro HTTP ${response.status}: ${response.statusText}`);\n  }\n\n  return response.json();\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Nunca assuma que um pedido teve sucesso só porque a Promise do fetch() resolveu. Verifique sempre response.ok (ou response.status) antes de processar os dados - caso contrário, o código pode tentar interpretar uma página de erro do servidor como se fossem dados válidos.",
+      "table_headers": [
+        "Intervalo de status",
+        "Significado",
+        "response.ok"
+      ],
+      "table_rows": [
+        [
+          "200-299",
+          "Sucesso",
+          "true"
+        ],
+        [
+          "300-399",
+          "Redirecionamento",
+          "false"
+        ],
+        [
+          "400-499",
+          "Erro do cliente (ex.: pedido inválido, não autorizado, não encontrado)",
+          "false"
+        ],
+        [
+          "500-599",
+          "Erro do servidor",
+          "false"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🚫",
+          "text": "fetch não rejeita em erros 4xx/5xx"
+        },
+        {
+          "icon": "✅",
+          "text": "response.ok é true só para 200-299"
+        },
+        {
+          "icon": "🔍",
+          "text": "Verifique sempre response.status"
+        }
+      ]
+    },
+    {
+      "heading": "Enviar dados: method, headers e body",
+      "body": [
+        "Para enviar dados - por exemplo, para criar ou atualizar um recurso - fetch() aceita um segundo argumento: um objeto de configuração onde se define method (GET, POST, PUT, PATCH, DELETE, entre outros), headers (um objeto com os cabeçalhos do pedido, como Content-Type, que indica ao servidor o formato dos dados enviados) e body (o conteúdo a enviar).",
+        "O body tem de ser algo que o fetch saiba serializar - normalmente uma string, obtida com JSON.stringify() quando se envia um objeto JavaScript, ou uma instância de FormData quando se envia um formulário com ficheiros. Esquecer o cabeçalho Content-Type é um erro comum: sem ele, muitos servidores não conseguem interpretar corretamente o corpo do pedido, mesmo que os dados estejam bem formatados. Note-se também que pedidos GET e HEAD não podem ter body."
+      ],
+      "code": "async function criarUtilizador(dadosUtilizador) {\n  const response = await fetch(\"https://api.exemplo.com/utilizadores\", {\n    method: \"POST\",\n    headers: {\n      \"Content-Type\": \"application/json\",\n    },\n    body: JSON.stringify(dadosUtilizador),\n  });\n\n  const utilizadorCriado = await response.json();\n  return utilizadorCriado;\n}\n\ncriarUtilizador({ nome: \"Ana Silva\", idade: 28 }).then((utilizador) => {\n  console.log(utilizador);\n});",
+      "callout_kind": "NOTA",
+      "callout_text": "method, headers e body funcionam da mesma forma para POST, PUT, PATCH ou DELETE - o que muda entre eles é sobretudo a convenção semântica de cada verbo HTTP, não a sintaxe do fetch().",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📤",
+          "text": "method define o tipo de pedido"
+        },
+        {
+          "icon": "🏷️",
+          "text": "headers indica o formato dos dados"
+        },
+        {
+          "icon": "✍️",
+          "text": "body tem de ser string (JSON.stringify)"
+        }
+      ]
+    },
+    {
+      "heading": "Cancelar pedidos com AbortController",
+      "body": [
+        "AbortController é uma API nativa que permite cancelar operações assíncronas, incluindo pedidos fetch. Cria-se um controlador com new AbortController(), passa-se a sua propriedade signal nas opções do fetch, e, ao chamar controller.abort() em qualquer momento posterior, o pedido em curso é cancelado - a Promise do fetch rejeita com uma exceção cujo name é 'AbortError'.",
+        "Os casos de uso mais comuns são implementar um tempo-limite manual (combinando AbortController com setTimeout), cancelar pedidos desatualizados numa pesquisa em tempo real quando o utilizador continua a escrever, ou cancelar pedidos pendentes quando um componente de interface deixa de existir, evitando atualizar dados que já não interessam a ninguém."
+      ],
+      "code": "async function pesquisarComTimeout(termo, timeoutMs = 5000) {\n  const controller = new AbortController();\n  const temporizador = setTimeout(() => controller.abort(), timeoutMs);\n\n  try {\n    const response = await fetch(`https://api.exemplo.com/pesquisa?q=${termo}`, {\n      signal: controller.signal,\n    });\n    return await response.json();\n  } catch (erro) {\n    if (erro.name === \"AbortError\") {\n      throw new Error(\"O pedido demorou demasiado tempo e foi cancelado\");\n    }\n    throw erro;\n  } finally {\n    clearTimeout(temporizador);\n  }\n}",
+      "callout_kind": "NOTA",
+      "callout_text": "Um mesmo AbortController pode cancelar vários pedidos ao mesmo tempo, bastando passar o mesmo signal a cada um deles - útil quando vários pedidos fazem parte da mesma operação lógica.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🛑",
+          "text": "AbortController cancela pedidos em curso"
+        },
+        {
+          "icon": "⏱️",
+          "text": "Combine com setTimeout para timeouts"
+        },
+        {
+          "icon": "🧹",
+          "text": "Limpe sempre o temporizador no finally"
+        }
+      ]
+    },
+    {
+      "heading": "Tratamento de erros: erros de rede vs erros HTTP",
+      "body": [
+        "Consumir uma API de forma robusta exige distinguir dois tipos de falha bem diferentes. Um erro de rede - sem ligação, DNS que falhou, CORS bloqueado, pedido cancelado - faz a própria Promise do fetch() rejeitar, e é apanhado por um try/catch normal à volta do await fetch(...). Um erro HTTP, pelo contrário, não rejeita nada: a resposta chega com sucesso ao nível da rede, e só o estado (response.ok, response.status) revela que algo correu mal do ponto de vista da aplicação.",
+        "Uma função de acesso a dados bem escrita trata os dois casos de forma consistente, convertendo ambos em erros lançados explicitamente, para que quem a chama só precise de um único try/catch. Formas mais avançadas de organizar esses erros - com classes de Error personalizadas e hierarquias de erros - são exploradas em detalhe no módulo sobre tratamento de erros; aqui o foco está apenas nas particularidades próprias do fetch."
+      ],
+      "code": "async function pedidoJSON(url, opcoes) {\n  let response;\n\n  try {\n    response = await fetch(url, opcoes);\n  } catch (erro) {\n    // Erro de rede: sem ligação, DNS falhou, CORS bloqueado, etc.\n    throw new Error(`Falha de rede ao contactar ${url}: ${erro.message}`);\n  }\n\n  if (!response.ok) {\n    // Erro HTTP: o servidor respondeu, mas com um estado de erro\n    throw new Error(`Erro HTTP ${response.status} ao contactar ${url}`);\n  }\n\n  return response.json();\n}\n\nasync function main() {\n  try {\n    const dados = await pedidoJSON(\"https://api.exemplo.com/utilizadores\");\n    console.log(dados);\n  } catch (erro) {\n    console.error(\"Não foi possível obter os dados:\", erro.message);\n  }\n}\n\nmain();",
+      "callout_kind": "DICA",
+      "callout_text": "Uma boa regra prática: trate falhas de rede e cancelamentos no catch, e trate erros HTTP logo a seguir a obter a resposta, transformando-os também num Error lançado - assim o resto do código lida sempre com o mesmo tipo de falha.",
+      "table_headers": [
+        "Tipo de erro",
+        "Quando ocorre",
+        "Como detetar"
+      ],
+      "table_rows": [
+        [
+          "Erro de rede",
+          "Sem ligação, falha de DNS, bloqueio por CORS",
+          "A Promise do fetch() rejeita (apanhado no catch)"
+        ],
+        [
+          "Erro HTTP",
+          "O servidor respondeu, mas com um estado 4xx ou 5xx",
+          "response.ok é false / response.status indica o código"
+        ],
+        [
+          "Cancelamento",
+          "controller.abort() foi chamado",
+          "erro.name === 'AbortError' no catch"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🌐",
+          "text": "Erro de rede: rejeita a promise do fetch"
+        },
+        {
+          "icon": "📡",
+          "text": "Erro HTTP: resposta chega, mas com erro"
+        },
+        {
+          "icon": "🧭",
+          "text": "Separe os dois casos no tratamento"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Obter um post pelo id",
+      "difficulty": "Iniciante",
+      "statement": "Escreva uma função assíncrona obterPost(id) que faça um pedido GET ao URL https://jsonplaceholder.typicode.com/posts/ seguido do id recebido como parâmetro (por exemplo, .../posts/1), converta a resposta para JSON com response.json() e devolva o objeto resultante. De seguida, chame a função com o id 1 e imprima na consola apenas a propriedade title do post devolvido.",
+      "hint": "Repare que tanto fetch() como response.json() devolvem promises - são precisos dois await (ou dois .then encadeados) para chegar aos dados finais.",
+      "solution_code": "async function obterPost(id) {\n  const response = await fetch(`https://jsonplaceholder.typicode.com/posts/${id}`);\n  const post = await response.json();\n  return post;\n}\n\nobterPost(1).then((post) => console.log(post.title));",
+      "solution_explanation": "A função usa await duas vezes: primeiro para esperar que o pedido chegue ao servidor (fetch), depois para esperar que o corpo da resposta seja convertido num objeto JavaScript (response.json()). Como obterPost é assíncrona, devolve sempre uma Promise, por isso o resultado é consumido com .then()."
+    },
+    {
+      "title": "Detetar um utilizador inexistente",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função assíncrona obterUtilizadorSeguro(id) que faça um pedido GET ao URL https://jsonplaceholder.typicode.com/users/ seguido do id recebido. Se a resposta indicar um estado de erro (por exemplo, 404 porque o id não existe), a função deve lançar um Error com a mensagem 'Utilizador {id} não encontrado (estado {status})', sem tentar converter a resposta para JSON. Se o pedido tiver sucesso, deve devolver o objeto do utilizador em formato JSON. Teste a função com um id que não exista (por exemplo, 9999), capturando o erro com try/catch e imprimindo erro.message na consola.",
+      "hint": "fetch() só rejeita a sua própria Promise em falhas de rede; para detetar um 404 tem de verificar response.ok (ou response.status) antes de chamar response.json().",
+      "solution_code": "async function obterUtilizadorSeguro(id) {\n  const response = await fetch(`https://jsonplaceholder.typicode.com/users/${id}`);\n\n  if (!response.ok) {\n    throw new Error(`Utilizador ${id} não encontrado (estado ${response.status})`);\n  }\n\n  return response.json();\n}\n\nasync function testar() {\n  try {\n    const utilizador = await obterUtilizadorSeguro(9999);\n    console.log(utilizador);\n  } catch (erro) {\n    console.error(erro.message);\n  }\n}\n\ntestar();",
+      "solution_explanation": "A verificação response.ok acontece antes de qualquer tentativa de ler o corpo da resposta, porque um erro HTTP não faz a Promise do fetch rejeitar sozinha. Ao lançar um Error explícito dentro da função assíncrona, o erro propaga-se como uma rejeição da Promise devolvida, podendo ser apanhado normalmente num try/catch por quem chama a função."
+    },
+    {
+      "title": "Criar uma tarefa com POST",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função assíncrona criarTarefa(titulo, concluida) que envie um pedido POST para https://jsonplaceholder.typicode.com/todos, com um corpo JSON contendo as propriedades titulo e concluida, configurando corretamente o cabeçalho Content-Type. A função deve verificar response.ok e lançar um Error descritivo (incluindo o estado HTTP) se o pedido falhar, ou devolver os dados de resposta do servidor, já convertidos para JSON, em caso de sucesso. Teste a função chamando criarTarefa('Estudar Fetch API', false) e imprima o resultado na consola.",
+      "hint": "O body de um pedido fetch tem de ser uma string (ou outro tipo aceite, como FormData) - um objeto JavaScript normal tem de passar primeiro por JSON.stringify().",
+      "solution_code": "async function criarTarefa(titulo, concluida) {\n  const response = await fetch(\"https://jsonplaceholder.typicode.com/todos\", {\n    method: \"POST\",\n    headers: {\n      \"Content-Type\": \"application/json\",\n    },\n    body: JSON.stringify({ titulo, concluida }),\n  });\n\n  if (!response.ok) {\n    throw new Error(`Não foi possível criar a tarefa (estado ${response.status})`);\n  }\n\n  return response.json();\n}\n\ncriarTarefa(\"Estudar Fetch API\", false)\n  .then((tarefa) => console.log(tarefa))\n  .catch((erro) => console.error(erro.message));",
+      "solution_explanation": "O objeto passado em body tem de ser serializado com JSON.stringify(), e o cabeçalho Content-Type: application/json garante que o servidor interpreta corretamente essa string como JSON. Tal como num pedido GET, também aqui é necessário verificar response.ok antes de confiar nos dados devolvidos."
+    },
+    {
+      "title": "Pedido com tempo-limite e tratamento de erros completo",
+      "difficulty": "Avancado",
+      "statement": "Escreva uma função assíncrona obterComTimeout(url, timeoutMs) que faça um pedido GET a url, cancelando-o automaticamente com AbortController se demorar mais do que timeoutMs milissegundos. A função deve: lançar um Error com a mensagem 'Pedido cancelado por exceder o tempo limite' se o pedido for cancelado por timeout; lançar um Error que inclua o estado HTTP se o servidor responder com um erro (response.ok igual a false); propagar um erro genérico com a mensagem original se ocorrer uma falha de rede; e devolver os dados em JSON se tudo correr bem. Garanta que o temporizador criado com setTimeout é sempre limpo, mesmo quando ocorre um erro.",
+      "hint": "Use um único bloco try/catch/finally: distinga o erro de timeout verificando erro.name === 'AbortError' dentro do catch, e limpe o temporizador no finally para que corra sempre, mesmo em caso de sucesso.",
+      "solution_code": "async function obterComTimeout(url, timeoutMs) {\n  const controller = new AbortController();\n  const temporizador = setTimeout(() => controller.abort(), timeoutMs);\n\n  try {\n    const response = await fetch(url, { signal: controller.signal });\n\n    if (!response.ok) {\n      throw new Error(`Erro HTTP ${response.status} ao contactar ${url}`);\n    }\n\n    return await response.json();\n  } catch (erro) {\n    if (erro.name === \"AbortError\") {\n      throw new Error(\"Pedido cancelado por exceder o tempo limite\");\n    }\n    throw erro;\n  } finally {\n    clearTimeout(temporizador);\n  }\n}",
+      "solution_explanation": "O AbortController é ligado ao fetch através de signal, e o setTimeout chama abort() se o tempo-limite for atingido antes de haver resposta. O catch distingue o cancelamento (erro.name === 'AbortError') dos restantes erros, que incluem tanto os erros HTTP lançados explicitamente dentro do try como falhas de rede vindas diretamente do fetch; o finally garante que o temporizador é sempre limpo, evitando abortos tardios desnecessários."
+    }
+  ],
+  "summary": [
+    "fetch() devolve uma Promise que resolve assim que os cabeçalhos chegam, não quando o corpo está todo lido.",
+    "response.json() e response.text() são também assíncronos e só podem ler o corpo uma vez, a menos que use response.clone().",
+    "fetch só rejeita a promise em falhas de rede; erros HTTP (4xx/5xx) têm de ser detetados manualmente com response.ok ou response.status.",
+    "Para enviar dados, configure method, headers (normalmente Content-Type: application/json) e body (uma string, por exemplo via JSON.stringify).",
+    "AbortController permite cancelar pedidos em curso (timeouts, pesquisas desatualizadas, componentes destruídos) através de controller.signal e controller.abort().",
+    "Um tratamento de erros robusto separa falhas de rede (apanhadas no catch) de erros HTTP (verificados logo após a resposta chegar)."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 06",
+  "next_label": "Aula 06 → Generators Assíncronos e for await...of",
+  "_stage": "autoria"
+}

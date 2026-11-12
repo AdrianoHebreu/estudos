@@ -1,0 +1,284 @@
+{
+  "module_num": "01",
+  "module_title": "Fundamentos de Tipos",
+  "module_dir": "01-Fundamentos-de-Tipos",
+  "lesson_num": "05",
+  "lesson_slug": "Enums-e-Alternativas",
+  "kind": "aula",
+  "title": "Enums e as suas Alternativas",
+  "filename_base": "05-Enums-e-Alternativas",
+  "subtitle": "A única construção do TypeScript que sobrevive à compilação — e o que usar em vez dela",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Declarar enums numéricos e de string, com valores automáticos ou explícitos",
+    "Perceber que um enum gera código JavaScript real e ver o objeto produzido",
+    "Explicar o mapeamento inverso dos enums numéricos e porque não existe nos de string",
+    "Saber o que faz o const enum e porque deixou de ser recomendado",
+    "Modelar o mesmo conjunto de valores com uniões de literais e objetos as const",
+    "Escolher entre enum e união de literais com critérios objetivos"
+  ],
+  "sections": [
+    {
+      "heading": "O que é um enum",
+      "body": [
+        "Um enum dá nome a um conjunto fechado de constantes relacionadas. É uma das poucas construções que o TypeScript acrescenta à linguagem e que não tem equivalente em JavaScript: não é uma anotação sobre código existente, é sintaxe nova.",
+        "Por omissão, os membros são numéricos e começam em 0, incrementando de um em um. Pode fixar qualquer valor explicitamente, e a partir daí a numeração automática retoma a contagem a partir desse número. O nome do enum passa a existir em dois sítios ao mesmo tempo: como tipo, para anotar variáveis, e como valor, para aceder aos membros."
+      ],
+      "code": "// Enum numérico: sem valores explícitos, a numeração começa em 0\nenum DiaUtilEnum {\n  Segunda,\n  Terca,\n  Quarta,\n}\n\nconsole.log(DiaUtilEnum.Segunda); // 0\nconsole.log(DiaUtilEnum.Quarta);  // 2\n\n// Com valores explícitos, o número é o que escrever\nenum CodigoHttpEnum {\n  Ok = 200,\n  NaoAutorizado = 401,\n  NaoEncontrado = 404,\n}\n\nconsole.log(CodigoHttpEnum.NaoEncontrado); // 404\n\n// A numeração automática retoma a partir do último valor explícito\nenum PrioridadeEnum {\n  Baixa = 1,\n  Media,\n  Alta,\n}\n\nconsole.log(PrioridadeEnum.Media); // 2\nconsole.log(PrioridadeEnum.Alta);  // 3\n\n// O nome do enum serve de tipo e de valor ao mesmo tempo\nconst prioridadeAtual: PrioridadeEnum = PrioridadeEnum.Alta;\nconsole.log(prioridadeAtual); // 3",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Inserir um membro no meio de um enum numérico com valores automáticos renumera todos os membros seguintes. Se esses números já foram gravados numa base de dados ou enviados por uma API, os dados antigos passam a significar outra coisa.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔢",
+          "text": "Conjunto fechado de constantes com nome"
+        },
+        {
+          "icon": "0️⃣",
+          "text": "Numeração automática a partir de zero"
+        },
+        {
+          "icon": "🏷️",
+          "text": "O nome é tipo e valor ao mesmo tempo"
+        }
+      ]
+    },
+    {
+      "heading": "Enums de string",
+      "body": [
+        "Num enum de string, todos os membros têm de ter valor explícito: não há numeração automática a que recorrer. Em troca, o valor que circula pelo programa é legível, o que faz toda a diferença quando aparece num log, num payload JSON ou numa coluna de base de dados. Ver ENVIADA num registo é útil; ver 1 obriga a ir procurar a tabela de correspondência.",
+        "O enum de string também introduz uma propriedade rara no TypeScript: comporta-se de forma nominal. Uma string com exatamente o mesmo conteúdo não é aceite onde se espera o membro do enum. Isto protege contra valores inventados, mas cria atrito sempre que o valor chega de fora do programa."
+      ],
+      "code": "// Num enum de string, todos os membros têm de ter valor explícito\nenum EstadoEncomendaEnum {\n  Pendente = \"PENDENTE\",\n  Enviada = \"ENVIADA\",\n  Entregue = \"ENTREGUE\",\n}\n\nfunction descreverEncomenda(estado: EstadoEncomendaEnum): string {\n  return `A encomenda está ${estado}`;\n}\n\nconsole.log(descreverEncomenda(EstadoEncomendaEnum.Enviada)); // \"A encomenda está ENVIADA\"\n\n// O enum é nominal: a string crua não serve, mesmo sendo igual ao valor\n// @ts-expect-error o tipo \"ENVIADA\" não é atribuível a EstadoEncomendaEnum\ndescreverEncomenda(\"ENVIADA\");\n\n// Guardar o valor numa base de dados dá uma linha legível\nconst paraGravar: string = EstadoEncomendaEnum.Entregue;\nconsole.log(paraGravar); // \"ENTREGUE\"",
+      "callout_kind": "DICA",
+      "callout_text": "Se decidir usar enums, use enums de string. Os enums numéricos só compensam quando o número tem significado próprio, como um código de estado HTTP ou uma máscara de bits.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📝",
+          "text": "Valores legíveis em logs e base de dados"
+        },
+        {
+          "icon": "✍️",
+          "text": "Todos os membros exigem valor explícito"
+        },
+        {
+          "icon": "🚫",
+          "text": "Nominal: a string igual não é aceite"
+        }
+      ]
+    },
+    {
+      "heading": "O enum não desaparece na compilação",
+      "body": [
+        "No Módulo 00 ficou estabelecido que os tipos desaparecem por completo quando o código é compilado: o que corre é JavaScript sem qualquer vestígio das anotações. O enum é a exceção. Não é apenas um tipo, é também um objeto que o compilador escreve no ficheiro JavaScript de saída.",
+        "O código gerado é uma função imediatamente invocada que preenche um objeto com os membros. Esse objeto existe em runtime como qualquer outro, o que traz uma vantagem concreta: é possível percorrer os valores do enum sem escrever a lista uma segunda vez. É também a razão pela qual um enum aumenta o tamanho do pacote final, ao contrário de todo o resto que aprendeu até aqui."
+      ],
+      "code": "enum NivelLogEnum {\n  Aviso = \"AVISO\",\n  Erro = \"ERRO\",\n}\n\n// JavaScript gerado (simplificado):\n//\n// var NivelLogEnum;\n// (function (NivelLogEnum) {\n//     NivelLogEnum[\"Aviso\"] = \"AVISO\";\n//     NivelLogEnum[\"Erro\"] = \"ERRO\";\n// })(NivelLogEnum || (NivelLogEnum = {}));\n//\n// Repare que sobra um objeto real no ficheiro compilado.\n\n// Como o objeto existe em runtime, pode ser inspecionado como qualquer outro\nconsole.log(Object.keys(NivelLogEnum));   // [\"Aviso\", \"Erro\"]\nconsole.log(Object.values(NivelLogEnum)); // [\"AVISO\", \"ERRO\"]\n\n// E pode percorrer os valores sem escrever a lista uma segunda vez\nfor (const nivel of Object.values(NivelLogEnum)) {\n  console.log(`nível disponível: ${nivel}`);\n}",
+      "callout_kind": "NOTA",
+      "callout_text": "Esta é a razão pela qual o enum aparece sempre nas discussões sobre o futuro do TypeScript: é a construção que mais se afasta do princípio de que o TypeScript só acrescenta verificação, nunca comportamento.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "Gera um objeto real no JavaScript compilado"
+        },
+        {
+          "icon": "🔁",
+          "text": "Permite percorrer os valores em runtime"
+        },
+        {
+          "icon": "⚖️",
+          "text": "Ocupa espaço no pacote final"
+        }
+      ]
+    },
+    {
+      "heading": "O mapeamento inverso dos enums numéricos",
+      "body": [
+        "Num enum numérico, cada membro é escrito duas vezes no objeto gerado: do nome para o número e do número para o nome. Isto chama-se mapeamento inverso e permite recuperar a etiqueta a partir do valor, o que é prático para mensagens de diagnóstico.",
+        "O preço é que o objeto tem o dobro das entradas esperadas. Quem fizer Object.keys sobre um enum numérico recebe também as chaves numéricas e tem de as filtrar. Nos enums de string não existe mapeamento inverso, porque as chaves entrariam em conflito com os nomes dos membros: só há uma entrada por membro e Object.keys devolve exatamente o que se espera."
+      ],
+      "code": "enum DirecaoEnum {\n  Cima = 0,\n  Baixo = 1,\n}\n\n// JavaScript gerado (simplificado):\n//\n// var DirecaoEnum;\n// (function (DirecaoEnum) {\n//     DirecaoEnum[DirecaoEnum[\"Cima\"] = 0] = \"Cima\";\n//     DirecaoEnum[DirecaoEnum[\"Baixo\"] = 1] = \"Baixo\";\n// })(DirecaoEnum || (DirecaoEnum = {}));\n//\n// Cada linha faz duas atribuições: nome para número e número para nome.\n\nconsole.log(DirecaoEnum.Cima);                    // 0\nconsole.log(DirecaoEnum[DirecaoEnum.Cima]);       // \"Cima\"\nconsole.log(Object.keys(DirecaoEnum));            // [\"0\", \"1\", \"Cima\", \"Baixo\"]\n\nenum TemaEnum {\n  Claro = \"CLARO\",\n  Escuro = \"ESCURO\",\n}\n\n// Nos enums de string não há mapeamento inverso: só existem as chaves dos membros\n// @ts-expect-error a propriedade \"CLARO\" não existe em typeof TemaEnum\nconsole.log(TemaEnum[\"CLARO\"]);",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Contar Object.keys de um enum numérico para saber quantos membros tem devolve sempre o dobro do valor correto. Filtre primeiro as chaves que são números.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "↔️",
+          "text": "Enum numérico mapeia nos dois sentidos"
+        },
+        {
+          "icon": "🔍",
+          "text": "Object.keys devolve o dobro das entradas"
+        },
+        {
+          "icon": "🅰️",
+          "text": "Enum de string não tem mapeamento inverso"
+        }
+      ]
+    },
+    {
+      "heading": "const enum e porque é desaconselhado",
+      "body": [
+        "Um const enum resolve o problema do código gerado da forma mais direta possível: não gera objeto nenhum. Em vez disso, o compilador substitui cada acesso a um membro pelo valor literal correspondente, como uma constante compilada. O resultado é mais pequeno e mais rápido.",
+        "O problema é que esta substituição exige que o compilador conheça a definição do enum no momento em que compila o ficheiro que o usa. Ferramentas que compilam ficheiro a ficheiro, sem olhar para o projeto inteiro, não conseguem fazê-lo: é o caso do esbuild, do SWC, do transpileModule e de praticamente todos os bundlers modernos. A opção isolatedModules do tsconfig existe precisamente para sinalizar este modo de trabalho, e com ela ligada o compilador recusa exportar const enums. Acresce que um const enum publicado numa biblioteca deixa de poder mudar de valores sem partir o código já compilado que os inlinou."
+      ],
+      "code": "const enum UnidadeConstEnum {\n  Metro = \"m\",\n  Quilometro = \"km\",\n}\n\nconst distanciaTexto = `12 ${UnidadeConstEnum.Quilometro}`;\nconsole.log(distanciaTexto); // \"12 km\"\n\n// JavaScript gerado (simplificado):\n//\n// const distanciaTexto = `12 ${\"km\" /* UnidadeConstEnum.Quilometro */}`;\n//\n// Não sobra objeto nenhum: o compilador substitui cada acesso pelo valor.\n// O preço é que, sem o objeto, nada consegue percorrer os membros em runtime\n// e qualquer ferramenta que compile ficheiro a ficheiro fica sem a informação\n// de que precisa para fazer essa substituição.",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Não use const enum em código novo. Se o que procura é ausência de código gerado, a união de tipos literais dá-lhe exatamente isso sem nenhum dos problemas de compatibilidade. O tsconfig e a opção isolatedModules são tratados em detalhe no Módulo 09.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "✂️",
+          "text": "O valor é inlinado, não sobra objeto"
+        },
+        {
+          "icon": "🧱",
+          "text": "Incompatível com compilação ficheiro a ficheiro"
+        },
+        {
+          "icon": "⛔",
+          "text": "isolatedModules recusa exportar const enums"
+        }
+      ]
+    },
+    {
+      "heading": "A alternativa moderna: união de literais",
+      "body": [
+        "Os tipos literais da aula anterior já modelam um conjunto fechado de valores, e fazem-no sem gerar uma única linha de JavaScript. Para a esmagadora maioria dos casos, uma união de literais de string é tudo o que um enum de string oferecia, com menos cerimónia.",
+        "Quando também precisa dos valores em runtime, para preencher uma lista ou validar uma entrada, acrescente um objeto com as const e derive o tipo a partir dele. Assim os valores ficam escritos uma só vez: o objeto é a fonte, o tipo é consequência. Continua a ser um objeto no ficheiro compilado, mas agora é um objeto que escreveu de propósito, e só existe onde faz falta."
+      ],
+      "code": "// Versão mínima: só o tipo, sem uma linha de JavaScript gerado\ntype EstadoPagamento = \"pendente\" | \"pago\" | \"reembolsado\";\n\nfunction podeReembolsar(estado: EstadoPagamento): boolean {\n  return estado === \"pago\";\n}\n\nconsole.log(podeReembolsar(\"pago\")); // true\n\n// Quando também precisa dos valores em runtime, acrescente um objeto as const\nconst EstadoPagamentoValores = {\n  Pendente: \"pendente\",\n  Pago: \"pago\",\n  Reembolsado: \"reembolsado\",\n} as const;\n\n// O tipo passa a ser derivado do objeto, em vez de escrito duas vezes\ntype EstadoPagamentoDerivado =\n  (typeof EstadoPagamentoValores)[keyof typeof EstadoPagamentoValores];\n// \"pendente\" | \"pago\" | \"reembolsado\"\n\nconst todosOsEstados: EstadoPagamentoDerivado[] = Object.values(EstadoPagamentoValores);\nconsole.log(todosOsEstados); // [\"pendente\", \"pago\", \"reembolsado\"]\n\nconsole.log(podeReembolsar(EstadoPagamentoValores.Pago)); // true",
+      "callout_kind": "DICA",
+      "callout_text": "Sem o as const, o objeto teria propriedades do tipo string e o tipo derivado seria apenas string, perdendo toda a precisão. É o as const que congela cada propriedade no seu valor literal.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🪶",
+          "text": "O tipo sozinho não gera JavaScript nenhum"
+        },
+        {
+          "icon": "🔒",
+          "text": "as const congela os valores literais"
+        },
+        {
+          "icon": "🌱",
+          "text": "O objeto é a fonte, o tipo é derivado"
+        }
+      ]
+    },
+    {
+      "heading": "Enum ou união de literais",
+      "body": [
+        "A diferença prática que mais custa no dia a dia é a interoperabilidade. Os dados que entram num programa vêm de fora: de uma resposta HTTP, de uma consulta à base de dados, de um formulário. Com uma união de literais, a string que chega já é do tipo certo assim que for validada. Com um enum, a string tem de ser convertida para o membro correspondente, e a conversão com as não valida coisa nenhuma: aceita qualquer string e deixa passar valores que não existem no enum.",
+        "A posição recomendada é clara. Para código novo, prefira uniões de tipos literais, com um objeto as const ao lado quando precisar dos valores em runtime. Os enums continuam a fazer sentido em dois cenários concretos: quando precisa mesmo de percorrer os membros em runtime e quer isso de graça, sem manter um objeto à parte; e quando o projeto já usa enums de uma ponta à outra, porque a coerência vale mais do que a pureza. Um projeto com metade dos conjuntos em enum e a outra metade em uniões é pior do que qualquer das duas escolhas feita até ao fim."
+      ],
+      "code": "// Com união de literais, o valor que chega do exterior já é o valor final\ntype MetodoPagamento = \"cartao\" | \"mbway\" | \"transferencia\";\n\nfunction taxaDoMetodo(metodo: MetodoPagamento): number {\n  return metodo === \"cartao\" ? 0.9 : 0;\n}\n\nconst metodoBruto: string = \"mbway\";\nif (metodoBruto === \"cartao\" || metodoBruto === \"mbway\" || metodoBruto === \"transferencia\") {\n  console.log(taxaDoMetodo(metodoBruto)); // 0\n}\n\n// Com enum, o mesmo valor tem de ser convertido antes de poder ser usado\nenum MetodoPagamentoEnum {\n  Cartao = \"cartao\",\n  MbWay = \"mbway\",\n  Transferencia = \"transferencia\",\n}\n\nconst outroBruto: string = \"mbway\";\nconst metodoComoEnum = outroBruto as MetodoPagamentoEnum;\nconsole.log(metodoComoEnum === MetodoPagamentoEnum.MbWay); // true\n\n// A conversão não valida nada: isto passa na compilação e é lixo em runtime\nconst metodoInvalido = \"paypal\" as MetodoPagamentoEnum;\nconsole.log(metodoInvalido === MetodoPagamentoEnum.MbWay); // false",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Abra um ficheiro do seu projeto onde exista um enum de string. Reescreva-o como união de literais e veja quantos sítios deixam de precisar de conversões. Se nenhum precisava, o enum não estava a pagar o seu preço.",
+      "table_headers": [
+        "Critério",
+        "Enum",
+        "União de literais com as const"
+      ],
+      "table_rows": [
+        [
+          "Código gerado",
+          "Sempre um objeto no ficheiro compilado",
+          "Nenhum, a menos que escreva o objeto"
+        ],
+        [
+          "Verbosidade",
+          "Declaração compacta, uso sempre qualificado pelo nome",
+          "Uma linha para o tipo, mais o objeto só quando faz falta"
+        ],
+        [
+          "Iterar sobre os valores",
+          "Direto com Object.values sobre o enum",
+          "Precisa do objeto ou do array as const"
+        ],
+        [
+          "Interoperabilidade com JSON e APIs",
+          "O valor cru tem de ser convertido com as, sem validação",
+          "O valor cru é aceite assim que for validado"
+        ],
+        [
+          "Comportamento do tipo",
+          "Nominal: uma string igual não serve",
+          "Estrutural: qualquer string igual serve"
+        ],
+        [
+          "Ferramentas e bundlers",
+          "const enum quebra com isolatedModules",
+          "Sem qualquer problema de compatibilidade"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🆕",
+          "text": "Código novo: prefira uniões de literais"
+        },
+        {
+          "icon": "🔁",
+          "text": "Enum quando precisa de iterar em runtime"
+        },
+        {
+          "icon": "🤝",
+          "text": "Coerência com o projeto existente vale mais"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Um enum de string para o estado de uma tarefa",
+      "difficulty": "Iniciante",
+      "statement": "Declare um enum de string chamado EstadoTarefaEx com três membros: Pendente com o valor PENDENTE, EmCurso com o valor EM_CURSO e Concluida com o valor CONCLUIDA. Escreva depois uma função etiquetaTarefa que receba um valor desse enum e devolva uma etiqueta em português para mostrar ao utilizador. No fim, imprima todos os valores do enum, tirando partido do facto de o enum existir em runtime.",
+      "hint": "O enum gera um objeto, por isso Object.values funciona sobre ele tal como sobre qualquer objeto. Repare que, num enum de string, Object.values devolve os valores e não os nomes dos membros.",
+      "solution_code": "enum EstadoTarefaEx {\n  Pendente = \"PENDENTE\",\n  EmCurso = \"EM_CURSO\",\n  Concluida = \"CONCLUIDA\",\n}\n\nfunction etiquetaTarefa(estado: EstadoTarefaEx): string {\n  if (estado === EstadoTarefaEx.Pendente) {\n    return \"Por começar\";\n  }\n  if (estado === EstadoTarefaEx.EmCurso) {\n    return \"Em curso\";\n  }\n  return \"Terminada\";\n}\n\nconsole.log(etiquetaTarefa(EstadoTarefaEx.EmCurso));   // \"Em curso\"\nconsole.log(etiquetaTarefa(EstadoTarefaEx.Concluida)); // \"Terminada\"\nconsole.log(Object.values(EstadoTarefaEx));            // [\"PENDENTE\", \"EM_CURSO\", \"CONCLUIDA\"]",
+      "solution_explanation": "O enum de string obriga a dar valor a cada membro e, em troca, produz valores legíveis. Como o enum gera um objeto real no ficheiro compilado, Object.values devolve a lista de valores sem que seja preciso repeti-los. Num enum de string não há mapeamento inverso, por isso o resultado tem exatamente três entradas."
+    },
+    {
+      "title": "Substituir um enum numérico por um objeto as const",
+      "difficulty": "Intermedio",
+      "statement": "Modele três níveis de prioridade com os valores 1, 2 e 3 sem usar enum. Declare um objeto PrioridadeEx com as const e derive dele um tipo com o mesmo nome, que seja a união dos valores possíveis. Escreva uma função listarPrioridades que devolva todos os valores e uma função acimaDe que receba um nível e devolva os que lhe são superiores. Confirme, com uma linha marcada como erro esperado, que o valor 4 não é aceite pelo tipo.",
+      "hint": "Um nome pode ser simultaneamente uma constante e um tipo, porque valores e tipos vivem em espaços separados. Para obter a união dos valores de um objeto, indexe o tipo do objeto por keyof typeof desse mesmo objeto.",
+      "solution_code": "const PrioridadeEx = {\n  Baixa: 1,\n  Media: 2,\n  Alta: 3,\n} as const;\n\ntype PrioridadeEx = (typeof PrioridadeEx)[keyof typeof PrioridadeEx];\n// 1 | 2 | 3\n\nfunction listarPrioridades(): PrioridadeEx[] {\n  return Object.values(PrioridadeEx);\n}\n\nfunction acimaDe(minimo: PrioridadeEx): PrioridadeEx[] {\n  return listarPrioridades().filter((p) => p > minimo);\n}\n\nconsole.log(listarPrioridades());         // [1, 2, 3]\nconsole.log(acimaDe(PrioridadeEx.Baixa)); // [2, 3]\n\n// @ts-expect-error 4 não pertence à união 1 | 2 | 3\nconst foraDeEscala: PrioridadeEx = 4;\nconsole.log(foraDeEscala);",
+      "solution_explanation": "O as const congela cada propriedade no seu valor literal, o que permite derivar a união 1 | 2 | 3 em vez de number. A indexação por keyof typeof recolhe os valores de todas as propriedades de uma vez, pelo que acrescentar um membro ao objeto atualiza o tipo sozinho. O resultado dá a mesma segurança de um enum numérico, com a vantagem de os valores não serem renumerados quando a ordem muda."
+    },
+    {
+      "title": "Ler os nomes e os valores de um enum numérico",
+      "difficulty": "Intermedio",
+      "statement": "Declare um enum numérico CodigoErroEx com NaoEncontrado igual a 404, Conflito igual a 409 e Interno igual a 500. Imprima o resultado cru de Object.keys sobre o enum e explique a si próprio o que está a ver. Escreva depois duas funções genéricas o suficiente para receber qualquer enum numérico: nomesDoEnum, que devolve apenas os nomes dos membros, e valoresDoEnum, que devolve apenas os números. No fim, use o mapeamento inverso para obter o nome de um membro a partir do seu valor.",
+      "hint": "Todas as chaves devolvidas por Object.keys são strings, mesmo as que representam números. Converter a chave com Number e testar com Number.isNaN separa os dois grupos. Para tipar o parâmetro das funções, o tipo object é suficiente para Object.keys.",
+      "solution_code": "enum CodigoErroEx {\n  NaoEncontrado = 404,\n  Conflito = 409,\n  Interno = 500,\n}\n\nfunction nomesDoEnum(objeto: object): string[] {\n  return Object.keys(objeto).filter((chave) => Number.isNaN(Number(chave)));\n}\n\nfunction valoresDoEnum(objeto: object): number[] {\n  return Object.keys(objeto)\n    .map((chave) => Number(chave))\n    .filter((n) => !Number.isNaN(n));\n}\n\nconsole.log(Object.keys(CodigoErroEx));\n// [\"404\", \"409\", \"500\", \"NaoEncontrado\", \"Conflito\", \"Interno\"]\nconsole.log(nomesDoEnum(CodigoErroEx));\n// [\"NaoEncontrado\", \"Conflito\", \"Interno\"]\nconsole.log(valoresDoEnum(CodigoErroEx));\n// [404, 409, 500]\nconsole.log(CodigoErroEx[CodigoErroEx.Conflito]);\n// \"Conflito\"",
+      "solution_explanation": "O objeto gerado por um enum numérico tem seis entradas para três membros, porque cada membro é escrito nos dois sentidos. As chaves numéricas aparecem primeiro e por ordem crescente, que é a regra do JavaScript para chaves que parecem inteiros. Filtrar pelo resultado de Number é a forma habitual de separar os nomes dos valores, e é exatamente este trabalho extra que a união de literais dispensa."
+    },
+    {
+      "title": "Um conjunto fechado validado à entrada, sem enum",
+      "difficulty": "Avancado",
+      "statement": "Modele os estados de sessão anonimo, autenticado e expirado sem usar enum e sem escrever a lista de valores mais do que uma vez. Parta de um array declarado com as const e derive dele o tipo EstadoSessao. Escreva um type guard eEstadoSessao que aceite unknown e uma função lerEstado que valide um valor vindo do exterior, devolvendo-o já tipado ou lançando um erro. Acrescente um dicionário de etiquetas tipado de forma a que o compilador recuse a falta de qualquer estado.",
+      "hint": "Indexar o tipo de um array as const por number devolve a união dos seus elementos. O método includes de um array só aceita valores do tipo dos elementos, por isso é preciso alargar o array para readonly string[] antes de lhe passar uma string qualquer. Para o dicionário, pense num Record cujas chaves sejam o tipo derivado.",
+      "solution_code": "const ESTADOS_SESSAO = [\"anonimo\", \"autenticado\", \"expirado\"] as const;\n\ntype EstadoSessao = (typeof ESTADOS_SESSAO)[number];\n// \"anonimo\" | \"autenticado\" | \"expirado\"\n\nfunction eEstadoSessao(valor: unknown): valor is EstadoSessao {\n  return typeof valor === \"string\" && (ESTADOS_SESSAO as readonly string[]).includes(valor);\n}\n\nfunction lerEstado(bruto: unknown): EstadoSessao {\n  if (!eEstadoSessao(bruto)) {\n    throw new Error(`Estado de sessão desconhecido: ${String(bruto)}`);\n  }\n  return bruto;\n}\n\n// O Record obriga a cobrir todos os membros: falta um e o compilador reclama\nconst ETIQUETAS_SESSAO: Record<EstadoSessao, string> = {\n  anonimo: \"Visitante\",\n  autenticado: \"Sessão ativa\",\n  expirado: \"Sessão expirada\",\n};\n\nconsole.log(eEstadoSessao(\"banido\"));                  // false\nconsole.log(lerEstado(\"autenticado\"));                 // \"autenticado\"\nconsole.log(ETIQUETAS_SESSAO[lerEstado(\"expirado\")]);  // \"Sessão expirada\"\nconsole.log(ESTADOS_SESSAO.length);                    // 3",
+      "solution_explanation": "O array as const é a única fonte da lista: o tipo, a validação e o dicionário derivam todos dele, por isso acrescentar um estado quebra a compilação exatamente nos sítios que precisam de ser atualizados. O type guard faz em runtime a validação que o enum nunca faz, porque a conversão com as aceita qualquer string. Isto é o que um enum daria, mais a validação à entrada, e sem produzir uma linha de JavaScript além do próprio array."
+    }
+  ],
+  "summary": [
+    "O enum dá nome a um conjunto fechado de constantes; por omissão são números a partir de 0, e pode fixar valores explícitos.",
+    "Os enums de string são a variante recomendada quando se usa enums, porque produzem valores legíveis em logs e em bases de dados.",
+    "Ao contrário de tudo o resto que aprendeu, o enum não desaparece na compilação: gera um objeto real no ficheiro JavaScript de saída.",
+    "Os enums numéricos mapeiam nos dois sentidos, o que duplica as entradas do objeto; os de string não têm mapeamento inverso.",
+    "O const enum inlina os valores e não gera objeto, mas é incompatível com compilação ficheiro a ficheiro e com isolatedModules.",
+    "Para código novo prefira uniões de literais, com um objeto as const quando precisar dos valores em runtime; mantenha os enums quando precisa de iterar de graça ou quando o projeto já assenta neles."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para o Módulo 02",
+  "next_label": "Aula 01 → Tipar Objetos"
+}

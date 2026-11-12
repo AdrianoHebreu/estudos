@@ -1,0 +1,294 @@
+{
+  "module_num": "05",
+  "module_title": "Genéricos",
+  "module_dir": "05-Genericos",
+  "lesson_num": "04",
+  "lesson_slug": "Inferencia-em-Genericos",
+  "kind": "aula",
+  "title": "Inferência em Genéricos",
+  "filename_base": "04-Inferencia-em-Genericos",
+  "subtitle": "Como o compilador deduz os argumentos de tipo, e o que fazer quando falha",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Perceber como o compilador recolhe candidatos e escolhe o argumento de tipo",
+    "Reconhecer candidatos em conflito e saber qual é a correção",
+    "Controlar o alargamento de literais com as const, constraints ou parâmetros de tipo const",
+    "Tirar partido da inferência contextual em callbacks e respeitar a ordem dos parâmetros",
+    "Saber quando um tipo por omissão entra em jogo e quando é ignorado",
+    "Identificar os casos em que é preciso escrever o argumento de tipo à mão"
+  ],
+  "sections": [
+    {
+      "heading": "Como o compilador escolhe o argumento de tipo",
+      "body": [
+        "Quando uma função genérica é chamada sem argumentos de tipo, o compilador não adivinha: percorre os parâmetros, compara cada um com o argumento correspondente e recolhe candidatos para cada parâmetro de tipo. No fim escolhe, de entre os candidatos recolhidos, o melhor candidato comum. Com uma só posição a escolha é imediata, porque só há um candidato.",
+        "Quando o mesmo parâmetro de tipo aparece em várias posições, os candidatos multiplicam-se e a escolha passa a ser uma negociação. Enquanto todos coincidirem, o resultado é óbvio. A partir do momento em que divergem, começa a parte interessante desta aula."
+      ],
+      "code": "function repetir<T>(valor: T, vezes: number): T[] {\n  return Array.from({ length: vezes }, () => valor);\n}\n\n// um único candidato, vindo do primeiro argumento\nconst setes = repetir(7, 3);      // number[]\nconst olas = repetir(\"ola\", 2);   // string[]\n\nfunction preencher<T>(itens: T[], omissao: T): T[] {\n  return itens.length > 0 ? itens : [omissao];\n}\n\n// dois candidatos para o mesmo T, ambos number\nconst numeros = preencher([1, 2], 0);   // number[]\nconst textos = preencher([\"a\"], \"\");    // string[]\n\n// @ts-expect-error o primeiro argumento já fixou T como number\nconst misturado = preencher([1, 2], \"zero\");\n\nconsole.log(setes, olas, numeros, textos, misturado);",
+      "callout_kind": "NOTA",
+      "callout_text": "A inferência acontece por chamada. A mesma função genérica pode ser chamada dez vezes e ter dez argumentos de tipo diferentes; nada fica guardado entre chamadas.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔎",
+          "text": "Cada argumento contribui com um candidato para T"
+        },
+        {
+          "icon": "⚖️",
+          "text": "O compilador escolhe o melhor candidato comum"
+        },
+        {
+          "icon": "🔁",
+          "text": "A inferência é refeita a cada chamada"
+        }
+      ]
+    },
+    {
+      "heading": "Candidatos em conflito",
+      "body": [
+        "Se os candidatos forem diferentes mas compatíveis, o compilador fica com o supertipo comum: dada uma classe derivada e a sua base, o resultado é a base. Se forem incompatíveis, o comportamento é menos generoso do que muita gente espera: o compilador não constrói uma união a partir de candidatos separados. Fixa T no primeiro candidato e reporta erro no argumento que não encaixa.",
+        "Há, no entanto, um caso vizinho em que a união aparece sozinha: quando um único argumento já tem, ele próprio, um tipo de união. Um array literal com um número e um texto tem tipo de elemento string ou number, e esse é um candidato único, não dois candidatos em briga. Perceber esta diferença evita horas a perguntar porque é que um caso funciona e o outro não."
+      ],
+      "code": "function juntar<T>(a: T, b: T): T[] {\n  return [a, b];\n}\n\nclass Animal {\n  constructor(public nome: string) {}\n}\nclass Gato extends Animal {\n  ronrona = true;\n}\n\n// candidatos diferentes mas compatíveis: fica o supertipo comum\nconst bichos = juntar(new Gato(\"kit\"), new Animal(\"rex\")); // Animal[]\n\n// @ts-expect-error number e string não têm supertipo comum entre os candidatos\nconst partido = juntar(1, \"um\");\n\n// correção 1: escrever o argumento de tipo\nconst unido = juntar<string | number>(1, \"um\"); // (string | number)[]\n\n// correção 2: dar um só candidato que já é uma união\nfunction deLista<T>(itens: T[]): T[] {\n  return itens;\n}\nconst lista = deLista([1, \"um\"]); // (string | number)[]\n\nconsole.log(bichos, partido, unido, lista);",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Duas posições com o mesmo T e dois tipos incompatíveis dão erro, não dão união. Quem quiser a união tem de a escrever: juntar<string | number>(1, \"um\").",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🤝",
+          "text": "Candidatos compatíveis: fica o supertipo comum"
+        },
+        {
+          "icon": "🚫",
+          "text": "Incompatíveis: erro, nunca união automática"
+        },
+        {
+          "icon": "📦",
+          "text": "Uma união num só candidato passa sem problema"
+        }
+      ]
+    },
+    {
+      "heading": "Alargamento de literais na inferência",
+      "body": [
+        "Esta é a surpresa mais frequente. Um literal de texto passado a um parâmetro de tipo nu produz string, não o tipo literal. A razão é a mesma que já se viu no Módulo 01 para as variáveis declaradas com let: sem nada que peça o contrário, o compilador assume que o valor vai poder mudar e alarga o literal para o seu tipo primitivo.",
+        "Há três formas de o impedir. A primeira, as const no argumento, decide no sítio da chamada. A segunda, uma constraint como T extends string, decide na assinatura: como T tem de ser um subtipo de string, o compilador já não tem motivo para alargar. A terceira, o parâmetro de tipo const introduzido no TypeScript 5.0, também decide na assinatura e é a mais completa, porque se aplica em profundidade.",
+        "A diferença entre as duas últimas nota-se com estruturas. Uma constraint sobre string só resolve o caso do texto solto. O parâmetro de tipo const trata um objeto literal inteiro como se tivesse sido escrito com as const, sem obrigar quem chama a lembrar-se disso."
+      ],
+      "code": "function embrulhar<T>(valor: T): { valor: T } {\n  return { valor };\n}\n\nconst largo = embrulhar(\"ativo\"); // { valor: string }\n\n// 1) as const no argumento\nconst comAsConst = embrulhar(\"ativo\" as const); // { valor: \"ativo\" }\n\n// 2) uma constraint que aponte para o primitivo\nfunction embrulharTexto<T extends string>(valor: T): { valor: T } {\n  return { valor };\n}\nconst comConstraint = embrulharTexto(\"ativo\"); // { valor: \"ativo\" }\n\n// 3) parâmetro de tipo const, desde o TypeScript 5.0\nfunction embrulharConst<const T>(valor: T): { valor: T } {\n  return { valor };\n}\nconst comConstParam = embrulharConst(\"ativo\"); // { valor: \"ativo\" }\n\nconsole.log(largo, comAsConst, comConstraint, comConstParam);",
+      "callout_kind": "DICA",
+      "callout_text": "Numa API pública, preferir <const T> a esperar que quem chama se lembre de escrever as const. A assinatura é o único sítio onde a regra fica garantida.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎈",
+          "text": "T nu alarga \"ativo\" para string"
+        },
+        {
+          "icon": "📌",
+          "text": "as const fixa no sítio da chamada"
+        },
+        {
+          "icon": "🛡️",
+          "text": "T extends string e <const T> fixam na assinatura"
+        }
+      ]
+    },
+    {
+      "heading": "O parâmetro de tipo const em profundidade",
+      "body": [
+        "O parâmetro de tipo const não se limita a impedir o alargamento do primeiro nível: trata o argumento como se tivesse sido escrito com as const. As propriedades passam a só de leitura, os arrays literais passam a tuplos só de leitura e cada valor mantém o seu tipo literal. É exatamente o que se quer numa função que recebe configuração e deve devolver um tipo tão preciso quanto o objeto que lhe foi dado.",
+        "O preço é esse mesmo: o resultado é só de leitura. Se o código a seguir precisar de alterar o objeto devolvido, o parâmetro de tipo const é a escolha errada."
+      ],
+      "code": "function definir<T>(config: T): T {\n  return config;\n}\nfunction definirConst<const T>(config: T): T {\n  return config;\n}\n\nconst solto = definir({ modo: \"escuro\", tamanhos: [10, 20] });\n// { modo: string; tamanhos: number[] }\n\nconst fixo = definirConst({ modo: \"escuro\", tamanhos: [10, 20] });\n// { readonly modo: \"escuro\"; readonly tamanhos: readonly [10, 20] }\n\n// @ts-expect-error o const tornou as propriedades só de leitura\nfixo.modo = \"claro\";\n\nconsole.log(solto, fixo);",
+      "callout_kind": "ATENCAO",
+      "callout_text": "O modificador const só tem efeito sobre literais escritos diretamente na chamada. Se o argumento for uma variável já declarada com let, o tipo dessa variável alargou antes e não há nada a recuperar.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧊",
+          "text": "<const T> congela objetos e arrays em profundidade"
+        },
+        {
+          "icon": "📐",
+          "text": "Arrays literais tornam-se tuplos só de leitura"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Só atua sobre literais escritos na própria chamada"
+        }
+      ]
+    },
+    {
+      "heading": "Inferência contextual em callbacks",
+      "body": [
+        "Numa função como mapear, com dois parâmetros de tipo, o compilador trabalha por fases. Primeiro processa os argumentos que não são funções e fixa T a partir do array. Só depois tipa o callback, já com T conhecido, o que permite escrever o parâmetro sem anotação nenhuma. O tipo devolvido pelo callback torna-se então o candidato para U.",
+        "Essa ordem tem consequências. Um callback cujo parâmetro depende de um parâmetro de tipo que ainda não foi descoberto recebe unknown, e tudo o que se fizer com ele dá erro. Acontece quando não há fonte nenhuma para T, e acontece também quando os parâmetros estão numa ordem que obriga a tipar um callback antes de o parâmetro de tipo de que ele depende ter sido resolvido.",
+        "A lição prática é de desenho de API: os dados vêm primeiro, os callbacks vêm depois, e um callback que produz um valor consumido por outro tem de vir antes dele. Não é estética, é o que faz a diferença entre não anotar nada e ter de anotar tudo."
+      ],
+      "code": "function mapear<T, U>(itens: T[], fn: (item: T) => U): U[] {\n  return itens.map(fn);\n}\n\n// T é fixado por [1, 2, 3]; só depois o callback é tipado e U sai do return\nconst formatados = mapear([1, 2, 3], (n) => n.toFixed(2)); // string[]\n\n// sem nenhuma fonte para T, o parâmetro do callback fica unknown\nfunction aplicar<T>(fn: (item: T) => void): void {\n  console.log(fn);\n}\naplicar((item) => {\n  // @ts-expect-error item é unknown: nada no sítio da chamada diz o que é T\n  console.log(item.length);\n});\n\nconsole.log(formatados);",
+      "callout_kind": "DICA",
+      "callout_text": "Se o parâmetro de um callback aparece como unknown sem razão aparente, a pergunta certa é de onde é que o compilador deveria ter tirado esse tipo antes de chegar ao callback.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⏱️",
+          "text": "Primeiro os dados fixam T, depois o callback é tipado"
+        },
+        {
+          "icon": "✍️",
+          "text": "U sai do valor devolvido pelo callback"
+        },
+        {
+          "icon": "🔁",
+          "text": "Trocar a ordem dos parâmetros parte a inferência"
+        }
+      ]
+    },
+    {
+      "heading": "Ordem dos parâmetros e cadeias de callbacks",
+      "body": [
+        "O exemplo seguinte mostra as duas versões lado a lado. Na primeira, o valor vem antes da função que o transforma, e essa antes da função que consome o resultado: cada parâmetro de tipo já está resolvido quando é preciso. Na segunda, exatamente os mesmos tipos, só que por outra ordem, e o compilador tem de tipar o consumidor antes de saber o que ele consome.",
+        "O resultado não é um erro na assinatura, é um erro em quem chama, o que torna o problema especialmente irritante: a função parece correta até alguém a tentar usar sem anotações."
+      ],
+      "code": "function encadear<T, U, V>(valor: T, f: (t: T) => U, g: (u: U) => V): V {\n  return g(f(valor));\n}\nconst bom = encadear(3, (n) => n.toFixed(2), (s) => s.length); // number\n\nfunction encadearTrocado<T, U, V>(g: (u: U) => V, f: (t: T) => U, valor: T): V {\n  return g(f(valor));\n}\n// @ts-expect-error s fica unknown: g é tipado antes de U ter sido descoberto\nconst mau = encadearTrocado((s) => s.length, (n) => n.toFixed(2), 3);\n\nconsole.log(bom, mau);",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Reordenar a assinatura de encadearTrocado para valor, f, g e confirmar que o erro desaparece sem se ter mudado uma única anotação no sítio da chamada.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "➡️",
+          "text": "Resolver da esquerda para a direita: fonte antes do consumidor"
+        },
+        {
+          "icon": "💥",
+          "text": "A má ordem falha em quem chama, não na assinatura"
+        },
+        {
+          "icon": "🧰",
+          "text": "A correção é mudar a assinatura, não anotar mais"
+        }
+      ]
+    },
+    {
+      "heading": "Objetos aninhados, tipos por omissão e quando anotar",
+      "body": [
+        "A inferência não se limita ao nível de topo dos argumentos: o compilador desce pela estrutura do parâmetro até encontrar o parâmetro de tipo. Numa Resposta<T> cujos dados contêm itens do tipo T, passar um objeto literal completo chega para deduzir T a partir do primeiro item do array lá no fundo.",
+        "Um tipo por omissão, como o <T = string> da aula anterior, não compete com a inferência: é a rede de segurança para quando não há candidato nenhum. Havendo um argumento de onde inferir, o valor por omissão é simplesmente ignorado. E vale a pena reparar que passar undefined não é o mesmo que não passar nada: undefined é um candidato, e um candidato ganha sempre ao valor por omissão.",
+        "Restam os casos em que não há mesmo nada de onde inferir, ou em que o que se infere está correto mas não é o desejado. A tabela resume os mais comuns; em todos eles a solução é a mesma, escrever o argumento de tipo à mão."
+      ],
+      "code": "interface Resposta<T> {\n  dados: { itens: T[]; total: number };\n}\n\nfunction primeiroItem<T>(resposta: Resposta<T>): T {\n  return resposta.dados.itens[0];\n}\n\nconst item = primeiroItem({\n  dados: { itens: [{ id: 1, nome: \"ana\" }], total: 1 },\n}); // { id: number; nome: string }\n\nfunction extrairValor<T>(caixa: { valor: T }): T {\n  return caixa.valor;\n}\nconst numero = extrairValor({ valor: 42 });            // number\nconst literal = extrairValor({ valor: \"ok\" as const }); // \"ok\"\n\nconsole.log(item.nome, numero, literal);",
+      "callout_kind": "NOTA",
+      "callout_text": "Escrever o argumento de tipo desliga a inferência para esse parâmetro, mas não desliga a verificação: os argumentos continuam a ser conferidos contra o tipo indicado.",
+      "table_headers": [
+        "Situação",
+        "O que o compilador infere",
+        "O que se queria",
+        "Como corrigir"
+      ],
+      "table_rows": [
+        [
+          "Array literal vazio",
+          "T igual a never",
+          "T igual a string",
+          "mapear<string, number>([], fn)"
+        ],
+        [
+          "new Promise sem tipo",
+          "Promise<unknown>",
+          "Promise<void>",
+          "new Promise<void>(...)"
+        ],
+        [
+          "Literal de texto num T nu",
+          "string",
+          "o literal \"ativo\"",
+          "as const, T extends string ou <const T>"
+        ],
+        [
+          "Valor inicial que depois muda",
+          "T igual a number",
+          "T igual a number | null",
+          "caixa<number | null>(0)"
+        ],
+        [
+          "Dois candidatos incompatíveis",
+          "erro no segundo argumento",
+          "T igual a string | number",
+          "juntar<string | number>(1, \"um\")"
+        ],
+        [
+          "Callback sem fonte para T",
+          "parâmetro unknown",
+          "parâmetro number",
+          "Anotar o parâmetro ou passar o argumento de tipo"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🪆",
+          "text": "A inferência desce pela estrutura até encontrar T"
+        },
+        {
+          "icon": "🛟",
+          "text": "O tipo por omissão só entra se não houver candidato"
+        },
+        {
+          "icon": "✍️",
+          "text": "Array vazio, Promise vazia e tipo largo: anotar à mão"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Dois candidatos para o mesmo T",
+      "difficulty": "Iniciante",
+      "statement": "Escreva uma função genérica primeiroOuOmissao que recebe um array de T e um valor de omissão do mesmo tipo T, e devolve o primeiro elemento do array ou, se o array estiver vazio, o valor de omissão. Chame-a duas vezes com tipos coerentes e indique em comentário o tipo devolvido em cada caso. Depois demonstre, com um comentário ts-expect-error, a chamada em que os dois candidatos são incompatíveis, e acrescente uma última chamada corrigida com um argumento de tipo explícito que acomode ambos.",
+      "hint": "Os dois parâmetros usam o mesmo T, por isso o primeiro argumento fixa a expectativa para o segundo. Para acomodar os dois, o argumento de tipo tem de ser escrito no sítio da chamada.",
+      "solution_code": "function primeiroOuOmissao<T>(itens: T[], omissao: T): T {\n  return itens.length > 0 ? itens[0] : omissao;\n}\n\nconst n = primeiroOuOmissao([10, 20], 0);     // number\nconst s = primeiroOuOmissao([\"a\"], \"vazio\");  // string\n\n// @ts-expect-error o primeiro argumento fixa T como number e \"zero\" não serve como candidato\nconst errado = primeiroOuOmissao([10, 20], \"zero\");\n\n// correção: um argumento de tipo explícito que acomode os dois candidatos\nconst uniao = primeiroOuOmissao<string | number>([10, 20], \"zero\"); // string | number\n\nconsole.log(n, s, errado, uniao);",
+      "solution_explanation": "Com candidatos coerentes o compilador resolve T sem ajuda. Com um array de números e um texto de omissão não há supertipo comum entre os candidatos, e o erro cai no segundo argumento. Escrever primeiroOuOmissao<string | number> desliga a inferência para T e aceita ambos."
+    },
+    {
+      "title": "Preservar o tipo literal de três maneiras",
+      "difficulty": "Intermedio",
+      "statement": "Uma função criarAcao recebe o nome de uma ação e devolve um objeto com a propriedade tipo. Mostre primeiro que, com um parâmetro de tipo nu, criarAcao(\"guardar\").tipo tem o tipo string e não o literal, provando-o com uma atribuição marcada com ts-expect-error a uma variável do tipo \"guardar\". A seguir obtenha o tipo literal de três formas diferentes: as const no argumento, uma constraint sobre string e um parâmetro de tipo const. Cada uma tem de passar numa atribuição a uma variável desse tipo literal.",
+      "hint": "Declare um alias para o tipo literal e use variáveis anotadas com esse alias como prova. Se a atribuição compilar, o literal foi preservado; se falhar, o tipo alargou.",
+      "solution_code": "type Guardar = \"guardar\";\n\n// versão ingénua: o literal alarga-se para string\nfunction criarAcao<T>(tipo: T): { tipo: T } {\n  return { tipo };\n}\nconst larga = criarAcao(\"guardar\"); // { tipo: string }\n// @ts-expect-error larga.tipo é string, não o literal \"guardar\"\nconst falha: Guardar = larga.tipo;\n\n// 1) as const no argumento\nconst prova1: Guardar = criarAcao(\"guardar\" as const).tipo;\n\n// 2) constraint sobre string\nfunction criarAcaoTexto<T extends string>(tipo: T): { tipo: T } {\n  return { tipo };\n}\nconst prova2: Guardar = criarAcaoTexto(\"guardar\").tipo;\n\n// 3) parâmetro de tipo const\nfunction criarAcaoConst<const T>(tipo: T): { tipo: T } {\n  return { tipo };\n}\nconst prova3: Guardar = criarAcaoConst(\"guardar\").tipo;\n\nconsole.log(falha, prova1, prova2, prova3);",
+      "solution_explanation": "A atribuição a uma variável do tipo literal é um teste barato e exato: obriga o compilador a revelar se o tipo alargou. As três correções chegam ao mesmo resultado por caminhos diferentes, uma no sítio da chamada e duas na assinatura."
+    },
+    {
+      "title": "Dois callbacks sem uma única anotação",
+      "difficulty": "Intermedio",
+      "statement": "Escreva transformarEFiltrar<T, U>, que recebe um array de T, uma função que converte cada item num U e uma função que decide se um U fica. Faça duas chamadas, uma sobre números e outra sobre textos, sem anotar nenhum parâmetro dos callbacks, e indique em comentário o tipo devolvido. Depois escreva uma segunda versão com os parâmetros por outra ordem, o filtro primeiro e o array em último, e mostre com ts-expect-error que a mesma chamada deixa de funcionar.",
+      "hint": "Os callbacks só são tipados depois de os argumentos que não são funções terem fixado os parâmetros de tipo. Pergunte-se, em cada versão, se U já é conhecido quando chega a vez do filtro.",
+      "solution_code": "function transformarEFiltrar<T, U>(\n  itens: T[],\n  transformar: (item: T) => U,\n  manter: (valor: U) => boolean\n): U[] {\n  return itens.map(transformar).filter(manter);\n}\n\nconst precos = transformarEFiltrar([1, 2, 3, 4], (n) => n * 10, (v) => v > 15); // number[]\nconst iniciais = transformarEFiltrar([\"ana\", \"rui\"], (nome) => nome[0], (c) => c !== \"r\"); // string[]\n\nfunction trocada<T, U>(\n  manter: (valor: U) => boolean,\n  transformar: (item: T) => U,\n  itens: T[]\n): U[] {\n  return itens.map(transformar).filter(manter);\n}\n\n// @ts-expect-error valor fica unknown: manter é tipado antes de U ter sido descoberto\nconst partido = trocada((valor) => valor > 15, (n) => n * 10, [1, 2, 3, 4]);\n\nconsole.log(precos, iniciais, partido);",
+      "solution_explanation": "Na versão boa o array fixa T, o transformador produz U e o filtro recebe esse U já resolvido. Na versão trocada o filtro é tipado antes de U existir, o seu parâmetro fica unknown e a comparação deixa de compilar. As duas assinaturas têm os mesmos tipos; muda só a ordem."
+    },
+    {
+      "title": "Um acumulador que a inferência não resolve sozinha",
+      "difficulty": "Avancado",
+      "statement": "Escreva acumular<T, A>(itens, inicial, passo), que percorre os itens aplicando passo ao acumulado e devolve o resultado final. Use-a primeiro para somar um array de números, sem anotar nada, indicando em comentário o tipo devolvido. Depois tente contar ocorrências de nomes partindo de um objeto literal vazio como valor inicial e mostre, com ts-expect-error, porque é que isso não compila. Por fim escreva a versão corrigida com os argumentos de tipo explícitos, usando para o acumulador um tipo com índice de texto.",
+      "hint": "Um objeto literal vazio é um candidato perfeitamente válido para A, só que o tipo que dele resulta não tem propriedades nenhumas. Pergunte-se o que é que o passo precisa de poder fazer com o acumulado.",
+      "solution_code": "function acumular<T, A>(itens: T[], inicial: A, passo: (acumulado: A, item: T) => A): A {\n  let atual = inicial;\n  for (const item of itens) {\n    atual = passo(atual, item);\n  }\n  return atual;\n}\n\n// tudo inferido: T = number, A = number\nconst soma = acumular([1, 2, 3], 0, (total, n) => total + n); // number\n\n// @ts-expect-error A foi inferido como {} a partir do literal e não aceita índice de texto\nconst mau = acumular([\"ana\", \"ana\", \"rui\"], {}, (conta, nome) => ({ ...conta, [nome]: (conta[nome] ?? 0) + 1 }));\n\n// correção: escrever os argumentos de tipo\nconst contagens = acumular<string, { [nome: string]: number }>(\n  [\"ana\", \"ana\", \"rui\"],\n  {},\n  (conta, nome) => ({ ...conta, [nome]: (conta[nome] ?? 0) + 1 })\n); // { [nome: string]: number }\n\nconsole.log(soma, mau, contagens);",
+      "solution_explanation": "Na soma existe um candidato útil para A, o zero, e tudo se resolve sozinho. Com o objeto vazio o candidato existe mas é pobre demais, e ler uma chave nele é um erro sob strict. Indicar A como um tipo com índice de texto dá ao callback o acumulado de que ele precisa, sem mudar a assinatura da função."
+    }
+  ],
+  "summary": [
+    "O compilador recolhe um candidato por cada posição onde o parâmetro de tipo aparece e escolhe o melhor candidato comum.",
+    "Candidatos compatíveis resolvem-se no supertipo comum; candidatos incompatíveis dão erro, nunca uma união automática.",
+    "Um literal passado a um parâmetro de tipo nu alarga para o primitivo; as const, T extends string ou <const T> impedem-no.",
+    "O parâmetro de tipo const, do TypeScript 5.0, congela o argumento em profundidade e devolve estruturas só de leitura.",
+    "Os callbacks são tipados depois dos outros argumentos, por isso a ordem dos parâmetros decide se a inferência funciona.",
+    "Array vazio, Promise sem valor e tipos deliberadamente mais largos exigem o argumento de tipo escrito à mão."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 05",
+  "next_label": "Aula 05 → Padrões Genéricos Úteis"
+}

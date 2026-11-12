@@ -1,0 +1,347 @@
+{
+  "module_num": "06",
+  "module_title": "Tipos Avançados",
+  "module_dir": "06-Tipos-Avancados",
+  "lesson_num": "04",
+  "lesson_slug": "Template-Literal-Types",
+  "kind": "aula",
+  "title": "Template Literal Types",
+  "filename_base": "04-Template-Literal-Types",
+  "subtitle": "Construir e validar formatos de string ao nível dos tipos, com crases",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Distinguir uma template literal de runtime de um template literal type",
+    "Prever o que produz a interpolação de literais e dos tipos largos",
+    "Antecipar o produto cartesiano das uniões e o limite do compilador",
+    "Usar Uppercase, Lowercase, Capitalize e Uncapitalize",
+    "Restringir formatos de string e reconhecer até onde essa validação chega",
+    "Gerar nomes de chaves com key remapping e template literals"
+  ],
+  "sections": [
+    {
+      "heading": "Crases que produzem tipos, não valores",
+      "body": [
+        "Um template literal type escreve-se como uma template literal normal, com crases e interpolações, mas vive do lado dos tipos. A diferença decisiva está no que entra dentro das chavetas: numa template literal de runtime entram expressões e o resultado é um valor; num template literal type entram tipos e o resultado é um tipo.",
+        "Quando todos os tipos interpolados são literais, o resultado é um único tipo literal de string. Não há aqui nada que aconteça em execução: a junção é feita pelo compilador e desaparece por completo do JavaScript gerado."
+      ],
+      "code": "// Template literal de runtime: produz um VALOR do tipo string\nconst parte = \"menu\";\nconst idEmRuntime = `${parte}-principal`;\n\n// Template literal type: produz um TIPO, e dentro de ${} só entram tipos\ntype Parte = \"menu\";\ntype IdDeParte = `${Parte}-principal`;\n\nconst id: IdDeParte = \"menu-principal\";\n\n// @ts-expect-error \"menu-secundario\" não pertence ao tipo \"menu-principal\"\nconst errado: IdDeParte = \"menu-secundario\";\n\nconsole.log(idEmRuntime); // menu-principal\nconsole.log(id);          // menu-principal\nconsole.log(typeof errado);",
+      "callout_kind": "NOTA",
+      "callout_text": "Um template literal type só pode aparecer numa posição de tipo: a seguir a type, numa anotação de variável, num parâmetro. Nunca do lado direito de um sinal de igual que atribui um valor.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔤",
+          "text": "Mesma sintaxe de crases, mas do lado dos tipos"
+        },
+        {
+          "icon": "🧩",
+          "text": "Dentro das chavetas entram tipos, não expressões"
+        },
+        {
+          "icon": "💨",
+          "text": "Desaparece na compilação: zero código em runtime"
+        }
+      ]
+    },
+    {
+      "heading": "O que cada tipo interpolado produz",
+      "body": [
+        "Interpolar um tipo literal dá o texto correspondente. Interpolar um tipo largo mantém o buraco em aberto: o tipo resultante passa a aceitar qualquer string que encaixe no molde. É o caso de string, number e bigint, que representam infinitos valores.",
+        "Os restantes tipos permitidos são finitos e por isso colapsam numa união pequena ou num literal único. O tipo boolean gera duas combinações, porque é ele próprio a união de true e de false; null e undefined geram uma única combinação, com o texto null ou undefined. Interpolar symbol é um erro de compilação, porque um símbolo não tem representação textual."
+      ],
+      "code": "type ComString = `id-${string}`;\ntype ComNumber = `v${number}`;\ntype ComBoolean = `ativo:${boolean}`;\ntype ComNull = `x${null}`;\ntype ComUndefined = `x${undefined}`;\ntype ComBigint = `n${bigint}`;\n\nconst s: ComString = \"id-qualquer-coisa\";\nconst n: ComNumber = \"v42\";\nconst b1: ComBoolean = \"ativo:true\";\nconst b2: ComBoolean = \"ativo:false\";\nconst nu: ComNull = \"xnull\";\nconst un: ComUndefined = \"xundefined\";\nconst bi: ComBigint = \"n900\";\n\n// @ts-expect-error boolean só produz as duas combinações\nconst b3: ComBoolean = \"ativo:talvez\";\n\nconsole.log(s, n, b1, b2, nu, un, bi, b3);",
+      "callout_kind": "DICA",
+      "callout_text": "Qualquer tipo interpolado que seja uma união multiplica o resultado. Convém olhar para cada chaveta e perguntar quantos valores aquele tipo representa.",
+      "table_headers": [
+        "Tipo interpolado",
+        "O que produz"
+      ],
+      "table_rows": [
+        [
+          "um tipo literal, como menu",
+          "um único literal com esse texto"
+        ],
+        [
+          "string",
+          "molde aberto: qualquer texto naquela posição"
+        ],
+        [
+          "number",
+          "molde aberto, limitado a formas de literal numérico"
+        ],
+        [
+          "bigint",
+          "molde aberto, limitado a formas de literal bigint"
+        ],
+        [
+          "boolean",
+          "duas combinações, com true e com false"
+        ],
+        [
+          "null",
+          "uma combinação, com o texto null"
+        ],
+        [
+          "undefined",
+          "uma combinação, com o texto undefined"
+        ],
+        [
+          "symbol",
+          "erro de compilação: não é interpolável"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📌",
+          "text": "Literais dão um único resultado exato"
+        },
+        {
+          "icon": "🕳️",
+          "text": "string, number e bigint deixam o molde aberto"
+        },
+        {
+          "icon": "⚖️",
+          "text": "boolean dá duas, null e undefined dão uma"
+        }
+      ]
+    },
+    {
+      "heading": "Uniões multiplicam-se: o produto cartesiano",
+      "body": [
+        "Quando mais do que uma chaveta recebe uma união, o compilador gera todas as combinações possíveis. Duas uniões, de três e de dois membros, produzem seis literais, e o tipo resultante é exatamente essa união de seis. É isto que torna a funcionalidade útil para nomes de variantes, de classes CSS ou de eventos: a lista é escrita uma vez e as combinações saem calculadas.",
+        "O crescimento é multiplicativo e foge depressa ao controlo. O compilador recusa produzir uma união com cem mil membros ou mais e responde com o erro TS2590, que diz que o tipo é demasiado complexo para ser representado. Cinco chavetas com dez dígitos cada já batem nesse limite, enquanto noventa mil combinações ainda passam."
+      ],
+      "code": "type Tamanho = \"pequeno\" | \"medio\" | \"grande\";\ntype Cor = \"azul\" | \"vermelho\";\n\n// 3 x 2 = 6 membros\ntype Variante = `${Tamanho}-${Cor}`;\n\nconst todas: Variante[] = [\n  \"pequeno-azul\",\n  \"pequeno-vermelho\",\n  \"medio-azul\",\n  \"medio-vermelho\",\n  \"grande-azul\",\n  \"grande-vermelho\",\n];\n\n// @ts-expect-error \"roxo\" não pertence a Cor, logo esta combinação não existe\nconst inexistente: Variante = \"medio-roxo\";\n\nconsole.log(todas.length); // 6\nconsole.log(inexistente);\n\ntype Digito = \"0\" | \"1\" | \"2\" | \"3\" | \"4\" | \"5\" | \"6\" | \"7\" | \"8\" | \"9\";\n// @ts-expect-error 10^5 = 100000 combinações: o compilador recusa (TS2590)\ntype CincoDigitos = `${Digito}${Digito}${Digito}${Digito}${Digito}`;",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Mesmo abaixo do limite, uniões com dezenas de milhares de membros tornam o editor lento. Se o molde precisa de ser assim tão aberto, vale mais interpolar o tipo largo string do que enumerar tudo.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "✖️",
+          "text": "Cada chaveta com união multiplica as combinações"
+        },
+        {
+          "icon": "🧮",
+          "text": "3 tamanhos vezes 2 cores dão 6 variantes"
+        },
+        {
+          "icon": "🚧",
+          "text": "Cem mil membros ou mais: erro TS2590"
+        }
+      ]
+    },
+    {
+      "heading": "Uppercase, Lowercase, Capitalize e Uncapitalize",
+      "body": [
+        "Quatro tipos intrínsecos transformam o texto de um tipo literal de string. Uppercase põe tudo em maiúsculas, Lowercase tudo em minúsculas, Capitalize toca apenas no primeiro caractere e Uncapitalize faz o inverso desse. São implementados dentro do compilador, não em TypeScript, e não existem em runtime.",
+        "Distribuem-se sobre uniões, tal como um conditional type distributivo: aplicados a uma união de três literais, devolvem a união das três transformações. É justamente na combinação com template literal types que ganham valor, porque permitem gerar um nome com a inicial certa a partir de uma chave qualquer."
+      ],
+      "code": "type Grito = Uppercase<\"guardar\">;        // \"GUARDAR\"\ntype Sussurro = Lowercase<\"GUARDAR\">;     // \"guardar\"\ntype Titulo = Capitalize<\"guardar tudo\">; // \"Guardar tudo\"\ntype Inicial = Uncapitalize<\"Guardar\">;   // \"guardar\"\n\nconst g: Grito = \"GUARDAR\";\nconst s: Sussurro = \"guardar\";\nconst t: Titulo = \"Guardar tudo\";\nconst i: Inicial = \"guardar\";\n\n// Distribuem-se por cada membro da união\ntype Acao = \"criar\" | \"apagar\";\ntype Constante = Uppercase<Acao>;         // \"CRIAR\" | \"APAGAR\"\nconst c1: Constante = \"CRIAR\";\nconst c2: Constante = \"APAGAR\";\n\n// Combinam-se com template literal types\ntype Evento = `on${Capitalize<Acao>}`;    // \"onCriar\" | \"onApagar\"\nconst e1: Evento = \"onCriar\";\nconst e2: Evento = \"onApagar\";\n\n// @ts-expect-error Uppercase só toca nas letras: os hífenes ficam como estão\nconst errado: Uppercase<\"criar-item\"> = \"CRIAR_ITEM\";\n\nconsole.log(g, s, t, i, c1, c2, e1, e2, errado);",
+      "callout_kind": "NOTA",
+      "callout_text": "Estes tipos só mexem em letras. Hífenes, sublinhados e pontuação ficam intactos, por isso converter entre convenções de nomes exige mais do que Uppercase sozinho.",
+      "table_headers": [
+        "Tipo intrínseco",
+        "Entrada",
+        "Resultado"
+      ],
+      "table_rows": [
+        [
+          "Uppercase",
+          "guardar tudo",
+          "GUARDAR TUDO"
+        ],
+        [
+          "Lowercase",
+          "GUARDAR TUDO",
+          "guardar tudo"
+        ],
+        [
+          "Capitalize",
+          "guardar tudo",
+          "Guardar tudo"
+        ],
+        [
+          "Uncapitalize",
+          "Guardar tudo",
+          "guardar tudo"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔠",
+          "text": "Uppercase e Lowercase mudam o texto todo"
+        },
+        {
+          "icon": "🔡",
+          "text": "Capitalize e Uncapitalize só mexem na inicial"
+        },
+        {
+          "icon": "🔁",
+          "text": "Distribuem-se por cada membro da união"
+        }
+      ]
+    },
+    {
+      "heading": "Restringir formatos com o tipo largo string",
+      "body": [
+        "Interpolar string deixa uma parte do molde por preencher, e o que sobra é uma restrição de formato. Um tipo de rota escrito com uma barra seguida de string aceita qualquer caminho desde que comece por barra, e rejeita tudo o resto ainda no editor. O mesmo padrão serve para prefixos de identificadores ou de chaves de configuração.",
+        "Com number o cuidado tem de ser maior, porque a verificação cobre tudo aquilo que o compilador reconhece como literal numérico. São aceites negativos, o sinal mais, zeros à esquerda, notação científica e até hexadecimal; ficam de fora apenas formas que não são literais, como NaN, Infinity ou separadores com sublinhado. Ou seja, o molde apanha erros grosseiros de forma, mas não substitui a validação em runtime dos dados que chegam de fora."
+      ],
+      "code": "type Rota = `/${string}`;\n\nfunction navegar(rota: Rota): string {\n  return `A ir para ${rota}`;\n}\n\nconsole.log(navegar(\"/utilizadores\"));       // A ir para /utilizadores\nconsole.log(navegar(\"/\"));                   // A ir para /\n\n// @ts-expect-error falta a barra inicial exigida pelo formato\nnavegar(\"utilizadores\");\n\ntype ChaveDeCor = `cor-${string}`;\nconst primaria: ChaveDeCor = \"cor-primaria\";\nconsole.log(primaria);                       // cor-primaria\n\n// ${number} é mais permissivo do que parece\ntype Porta = `porta-${number}`;\nconst p1: Porta = \"porta-8080\";\nconst p2: Porta = \"porta--3\";      // negativo: aceite\nconst p3: Porta = \"porta-1e5\";     // notação científica: aceite\nconst p4: Porta = \"porta-0x1F\";    // hexadecimal: aceite\nconst p5: Porta = \"porta-007\";     // zeros à esquerda: aceites\n\n// @ts-expect-error \"NaN\" e \"Infinity\" não são reconhecidos como number literal\nconst p6: Porta = \"porta-NaN\";\n\nconsole.log(p1, p2, p3, p4, p5, p6);",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Um valor lido de um formulário ou de uma resposta HTTP chega como string e não passa por nenhuma destas verificações. O molde protege o código escrito à mão, não os dados externos.",
+      "table_headers": [
+        "Texto testado contra o molde porta- seguido de number",
+        "Resultado"
+      ],
+      "table_rows": [
+        [
+          "porta-8080",
+          "aceite"
+        ],
+        [
+          "porta--3",
+          "aceite, é um negativo"
+        ],
+        [
+          "porta-1e5",
+          "aceite, notação científica"
+        ],
+        [
+          "porta-0x1F",
+          "aceite, hexadecimal"
+        ],
+        [
+          "porta-007",
+          "aceite, zeros à esquerda"
+        ],
+        [
+          "porta-NaN",
+          "rejeitado"
+        ],
+        [
+          "porta-Infinity",
+          "rejeitado"
+        ],
+        [
+          "porta-1_000",
+          "rejeitado"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🛣️",
+          "text": "Uma barra mais string obriga a rota a começar certo"
+        },
+        {
+          "icon": "🔢",
+          "text": "number aceita hexadecimal, científica e negativos"
+        },
+        {
+          "icon": "🛡️",
+          "text": "Validação frouxa: não dispensa verificar em runtime"
+        }
+      ]
+    },
+    {
+      "heading": "Key remapping com template literals",
+      "body": [
+        "Este é o uso que mais compensa. Dentro de um mapped type, a cláusula as recebe um template literal type e passa a ser possível calcular nomes de chaves a partir das chaves originais: prefixar tudo com um identificador, gerar o nome de um método de leitura ou construir o nome de um handler de evento.",
+        "Há uma pedra no caminho. O K de um mapped type sobre keyof T tem como tipo string, number ou symbol, e nem Capitalize nem a própria interpolação aceitam symbol. A solução habitual é escrever K & string, o que reduz cada chave à sua parte textual e deixa cair as chaves simbólicas. Em alternativa, restringe-se o próprio parâmetro de tipo a objetos com chaves de string.",
+        "O resultado continua a ser um mapped type normal: o tipo do valor é calculado a partir de T na chave K, com todos os modificadores habituais à disposição."
+      ],
+      "code": "type Produto = { nome: string; preco: number };\n\n// K vem de keyof T, ou seja string | number | symbol.\n// Capitalize exige string, por isso é preciso restringir com & string.\ntype Getters<T> = {\n  [K in keyof T as `obter${Capitalize<K & string>}`]: () => T[K];\n};\n\ntype GettersDeProduto = Getters<Produto>;\n// { obterNome: () => string; obterPreco: () => number }\n\nconst acesso: GettersDeProduto = {\n  obterNome: () => \"Cadeira\",\n  obterPreco: () => 49.9,\n};\n\nconsole.log(acesso.obterNome());  // Cadeira\nconsole.log(acesso.obterPreco()); // 49.9\n\n// Prefixar todas as chaves, mantendo os tipos dos valores\ntype ComPrefixo<T> = {\n  [K in keyof T as `config_${K & string}`]: T[K];\n};\n\nconst config: ComPrefixo<Produto> = { config_nome: \"Mesa\", config_preco: 120 };\nconsole.log(config.config_nome); // Mesa\n\n// @ts-expect-error sem & string, K pode ser symbol e Capitalize recusa-o\ntype GettersSemFiltro<T> = { [K in keyof T as `obter${Capitalize<K>}`]: () => T[K] };",
+      "callout_kind": "DICA",
+      "callout_text": "Se K & string der never para uma chave, essa entrada desaparece do tipo resultante. É assim que as chaves simbólicas são silenciosamente descartadas por este padrão.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🗝️",
+          "text": "A cláusula as calcula o nome da chave nova"
+        },
+        {
+          "icon": "⚠️",
+          "text": "K pode ser symbol: é preciso o K & string"
+        },
+        {
+          "icon": "🏗️",
+          "text": "Getters, handlers e prefixos saem do mesmo molde"
+        }
+      ]
+    },
+    {
+      "heading": "Caso prático: listeners derivados do estado",
+      "body": [
+        "Juntando as peças, é possível derivar de um tipo de estado o tipo exato do objeto de listeners que lhe corresponde. Cada propriedade do estado gera uma chave com o nome do handler, e o parâmetro desse handler recebe o tipo da propriedade original, não um tipo qualquer. Tornar as entradas opcionais permite registar apenas os handlers desejados.",
+        "Do lado da função genérica, o estado é passado à parte para que T seja inferido a partir dele, já que um mapped type com key remapping não serve como fonte de inferência. Dentro da função, o nome do handler é recalculado em runtime com as operações normais de string, e é preciso uma asserção para atravessar a fronteira entre o nome calculado e o tipo mapeado. O ganho fica todo do lado de quem chama: nomes errados e tipos errados são apanhados na escrita."
+      ],
+      "code": "type EstadoUtilizador = {\n  nome: string;\n  idade: number;\n  ativo: boolean;\n};\n\ntype Listeners<T> = {\n  [K in keyof T as `on${Capitalize<K & string>}Alterado`]?: (valor: T[K]) => void;\n};\n\n// Listeners<EstadoUtilizador> é\n// { onNomeAlterado?: (valor: string) => void;\n//   onIdadeAlterado?: (valor: number) => void;\n//   onAtivoAlterado?: (valor: boolean) => void }\n\nfunction notificar<T extends object, K extends keyof T & string>(\n  estado: T,\n  listeners: Listeners<T>,\n  chave: K,\n  valor: T[K],\n): void {\n  estado[chave] = valor;\n  const nomeDoListener = `on${chave.charAt(0).toUpperCase()}${chave.slice(1)}Alterado`;\n  const tabela = listeners as { [nome: string]: ((v: T[K]) => void) | undefined };\n  tabela[nomeDoListener]?.(valor);\n}\n\nconst estado: EstadoUtilizador = { nome: \"Ana\", idade: 40, ativo: true };\n\nconst listeners: Listeners<EstadoUtilizador> = {\n  onNomeAlterado: (valor) => console.log(\"nome ->\", valor.toUpperCase()),\n  onIdadeAlterado: (valor) => console.log(\"idade ->\", valor + 1),\n};\n\nnotificar(estado, listeners, \"nome\", \"Rui\");   // nome -> RUI\nnotificar(estado, listeners, \"idade\", 41);     // idade -> 42\nnotificar(estado, listeners, \"ativo\", false);  // sem listener: nada acontece\n\n// @ts-expect-error onIdadeAlterado recebe number, não string\nconst mau: Listeners<EstadoUtilizador> = { onIdadeAlterado: (valor: string) => console.log(valor) };\nconsole.log(estado.nome);                       // Rui",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Vale a pena acrescentar uma propriedade ao tipo de estado e reparar que a chave do listener correspondente aparece sozinha, sem tocar em mais nada.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎯",
+          "text": "Do tipo de estado sai o tipo dos listeners"
+        },
+        {
+          "icon": "🔗",
+          "text": "Cada handler recebe o tipo certo da propriedade"
+        },
+        {
+          "icon": "🧷",
+          "text": "A ponte para runtime precisa de uma asserção"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Classes de margem e rotas",
+      "difficulty": "Iniciante",
+      "statement": "Declare um tipo Lado com os literais topo, fundo, esquerda e direita. A partir dele, declare ClasseDeMargem como um template literal type que produza os nomes margem-topo, margem-fundo, margem-esquerda e margem-direita. Declare também Rota como um tipo que só aceite textos começados por barra, seja qual for o resto. Depois escreva um array com as quatro classes e duas rotas válidas, e mostre com ts-expect-error que margem-centro e que uma rota sem barra inicial são recusadas.",
+      "hint": "Para o molde das rotas não é preciso enumerar nada: basta interpolar o tipo largo que representa qualquer texto.",
+      "solution_code": "type Lado = \"topo\" | \"fundo\" | \"esquerda\" | \"direita\";\ntype ClasseDeMargem = `margem-${Lado}`;\ntype Rota = `/${string}`;\n\nconst classes: ClasseDeMargem[] = [\n  \"margem-topo\",\n  \"margem-fundo\",\n  \"margem-esquerda\",\n  \"margem-direita\",\n];\n\n// @ts-expect-error \"centro\" não pertence a Lado\nconst invalida: ClasseDeMargem = \"margem-centro\";\n\nconst inicio: Rota = \"/\";\nconst perfil: Rota = \"/perfil/definicoes\";\n\n// @ts-expect-error uma rota tem de começar por barra\nconst relativa: Rota = \"perfil\";\n\nconsole.log(classes.length);   // 4\nconsole.log(inicio, perfil);   // / /perfil/definicoes\nconsole.log(invalida, relativa);",
+      "solution_explanation": "ClasseDeMargem interpola uma união de quatro literais e produz exatamente quatro combinações, por isso margem-centro não existe. Rota interpola o tipo largo string depois da barra, o que deixa o resto livre mas obriga ao primeiro caractere. Ambos os erros são apanhados na compilação, sem uma única linha de código em runtime."
+    },
+    {
+      "title": "Nomes de eventos a partir de duas uniões",
+      "difficulty": "Intermedio",
+      "statement": "Declare Entidade com os literais utilizador e encomenda, e Acao com criado, apagado e atualizado. Construa NomeDeEvento juntando as duas uniões com dois pontos pelo meio, o que deve dar seis combinações. Construa também ConstanteDeEvento, com as mesmas duas uniões separadas por sublinhado e o texto todo em maiúsculas. Escreva uma função emitir que só aceite um NomeDeEvento e demonstre com ts-expect-error que uma ação inexistente e que um separador errado são recusados.",
+      "hint": "O separador faz parte do molde e conta tanto como as chavetas. Para as maiúsculas há um tipo intrínseco que se aplica ao template literal inteiro de uma vez.",
+      "solution_code": "type Entidade = \"utilizador\" | \"encomenda\";\ntype Acao = \"criado\" | \"apagado\" | \"atualizado\";\n\ntype NomeDeEvento = `${Entidade}:${Acao}`;          // 2 x 3 = 6 membros\ntype ConstanteDeEvento = Uppercase<`${Entidade}_${Acao}`>;\n\nfunction emitir(evento: NomeDeEvento): string {\n  return `emitido ${evento}`;\n}\n\nconsole.log(emitir(\"utilizador:criado\"));    // emitido utilizador:criado\nconsole.log(emitir(\"encomenda:atualizado\")); // emitido encomenda:atualizado\n\n// @ts-expect-error \"enviado\" não pertence a Acao\nemitir(\"encomenda:enviado\");\n\n// @ts-expect-error o separador tem de ser dois pontos, como no tipo\nemitir(\"utilizador-criado\");\n\nconst constante: ConstanteDeEvento = \"UTILIZADOR_APAGADO\";\nconsole.log(constante);                      // UTILIZADOR_APAGADO",
+      "solution_explanation": "As duas uniões multiplicam-se e dão seis nomes de evento, calculados pelo compilador em vez de escritos à mão. Uppercase aplica-se ao template literal completo e distribui-se pelas seis combinações. Qualquer nome fora dessa lista, mesmo com o separador trocado, deixa de ser atribuível ao parâmetro de emitir."
+    },
+    {
+      "title": "Handlers gerados a partir de um formulário",
+      "difficulty": "Intermedio",
+      "statement": "Dado o tipo Formulario com as propriedades email do tipo string, idade do tipo number e aceitaTermos do tipo boolean, escreva um tipo genérico Handlers que, para cada propriedade, produza uma chave com a forma on mais o nome da propriedade com inicial maiúscula mais Mudou, cujo valor é uma função que recebe o tipo dessa propriedade e não devolve nada. Crie um objeto tipado com Handlers de Formulario, invoque os três handlers e mostre com ts-expect-error que uma chave sem o sufixo Mudou não existe.",
+      "hint": "A chave nova calcula-se na cláusula as do mapped type. Lembre-se de que a chave de um mapped type pode ser um símbolo e de que o tipo intrínseco da inicial maiúscula não o aceita.",
+      "solution_code": "type Formulario = {\n  email: string;\n  idade: number;\n  aceitaTermos: boolean;\n};\n\ntype Handlers<T> = {\n  [K in keyof T as `on${Capitalize<K & string>}Mudou`]: (valor: T[K]) => void;\n};\n\n// Handlers<Formulario> é\n// { onEmailMudou: (valor: string) => void;\n//   onIdadeMudou: (valor: number) => void;\n//   onAceitaTermosMudou: (valor: boolean) => void }\n\nconst handlers: Handlers<Formulario> = {\n  onEmailMudou: (valor) => console.log(\"email:\", valor.toLowerCase()),\n  onIdadeMudou: (valor) => console.log(\"idade:\", valor * 2),\n  onAceitaTermosMudou: (valor) => console.log(\"termos:\", valor ? \"sim\" : \"nao\"),\n};\n\nhandlers.onEmailMudou(\"ANA@EXEMPLO.PT\"); // email: ana@exemplo.pt\nhandlers.onIdadeMudou(21);               // idade: 42\nhandlers.onAceitaTermosMudou(true);      // termos: sim\n\n// @ts-expect-error a chave gerada é onEmailMudou, não onEmail\nconst inexistente = handlers.onEmail;\nconsole.log(inexistente);              // undefined",
+      "solution_explanation": "A cláusula as constrói o nome de cada handler juntando o prefixo, a chave com inicial maiúscula e o sufixo. A interseção com string é obrigatória porque a chave do mapped type inclui number e symbol. Como o valor continua a ser calculado a partir do tipo da propriedade original, cada handler recebe o tipo certo sem qualquer anotação explícita."
+    },
+    {
+      "title": "Definidores e repositores gerados do estado",
+      "difficulty": "Avancado",
+      "statement": "Dado um tipo de estado de definições com tema, que é claro ou escuro, idioma do tipo string e notificacoes do tipo boolean, escreva um tipo genérico Definidores que produza, para cada propriedade, duas chaves: uma com a forma definir mais o nome com inicial maiúscula, cujo valor é uma função que recebe o tipo da propriedade, e outra com a forma repor mais o nome com inicial maiúscula, cujo valor é uma função sem argumentos. Escreva depois uma função genérica criarDefinidores que receba um objeto de estado, guarde uma cópia dos valores iniciais e devolva um objeto com esse tipo, construindo os nomes em runtime. Confirme com ts-expect-error que definirTema recusa um valor fora da união e que reporIdioma não aceita argumentos.",
+      "hint": "Dois mapped types independentes podem ser combinados com uma interseção. Do lado do runtime, a ponte entre uma tabela indexada por string e o tipo mapeado precisa de uma asserção.",
+      "solution_code": "type EstadoDefinicoes = {\n  tema: \"claro\" | \"escuro\";\n  idioma: string;\n  notificacoes: boolean;\n};\n\ntype Definidores<T> = {\n  [K in keyof T as `definir${Capitalize<K & string>}`]: (valor: T[K]) => void;\n} & {\n  [K in keyof T as `repor${Capitalize<K & string>}`]: () => void;\n};\n\nfunction criarDefinidores<T extends object>(estado: T): Definidores<T> {\n  const inicial = { ...estado };\n  const tabela: { [nome: string]: (valor?: unknown) => void } = {};\n\n  for (const chave of Object.keys(estado) as (keyof T & string)[]) {\n    const sufixo = `${chave.charAt(0).toUpperCase()}${chave.slice(1)}`;\n    tabela[`definir${sufixo}`] = (valor) => {\n      estado[chave] = valor as T[keyof T & string];\n    };\n    tabela[`repor${sufixo}`] = () => {\n      estado[chave] = inicial[chave];\n    };\n  }\n\n  return tabela as unknown as Definidores<T>;\n}\n\nconst definicoes: EstadoDefinicoes = {\n  tema: \"claro\",\n  idioma: \"pt-PT\",\n  notificacoes: true,\n};\n\nconst api = criarDefinidores(definicoes);\napi.definirTema(\"escuro\");\napi.definirIdioma(\"en-GB\");\nconsole.log(definicoes.tema, definicoes.idioma); // escuro en-GB\n\napi.reporTema();\nconsole.log(definicoes.tema);                    // claro\n\n// @ts-expect-error definirTema só aceita \"claro\" ou \"escuro\"\napi.definirTema(\"azul\");\n\n// @ts-expect-error reporIdioma não recebe argumentos\napi.reporIdioma(\"pt-PT\");",
+      "solution_explanation": "Cada metade da interseção é um mapped type com a sua própria regra de nomes, o que permite gerar dois conjuntos de chaves a partir das mesmas propriedades. Em runtime nada disto existe, por isso os nomes são recalculados com operações normais de string e a tabela resultante é convertida para o tipo mapeado com uma asserção. Para quem chama, o tipo de cada argumento continua ligado à propriedade de origem, e por isso um tema fora da união é recusado."
+    }
+  ],
+  "summary": [
+    "Um template literal type usa crases e chavetas, mas só aceita tipos dentro das chavetas e produz um tipo.",
+    "Interpolar literais dá um resultado exato; string, number e bigint deixam o molde aberto, boolean dá duas combinações e null e undefined dão uma.",
+    "Interpolar uniões multiplica as combinações, e o compilador recusa uniões com cem mil membros ou mais com o erro TS2590.",
+    "Uppercase, Lowercase, Capitalize e Uncapitalize transformam literais de string, distribuem-se por uniões e só mexem em letras.",
+    "Moldes como uma barra seguida de string travam erros de formato, mas a verificação de number é frouxa e não substitui validação em runtime.",
+    "Key remapping com template literals gera nomes de chaves derivados, desde que a chave seja reduzida com K & string."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 05",
+  "next_label": "Aula 05 → infer e Tipos Recursivos"
+}

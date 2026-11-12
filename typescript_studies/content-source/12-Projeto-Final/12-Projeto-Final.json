@@ -1,0 +1,476 @@
+{
+  "module_num": "12",
+  "module_title": "Projeto Final",
+  "module_dir": "12-Projeto-Final",
+  "lesson_num": "",
+  "lesson_slug": "",
+  "kind": "projeto",
+  "title": "Projeto Final",
+  "filename_base": "12-Projeto-Final",
+  "subtitle": "Um Gestor de Encomendas tipado de ponta a ponta, do JSON ao relatório",
+  "objectives_label": "Este módulo inclui:",
+  "objectives": [
+    "Modelar um domínio com IDs em template literal e uma união discriminada de estados",
+    "Pôr as regras de negócio nas assinaturas e fechar cada switch com never",
+    "Validar dados externos com validadores compostos e tipos derivados do esquema",
+    "Construir um repositório genérico assíncrono com erros em Resultado<T, E>",
+    "Derivar os tipos do relatório com mapped types, ReturnType e Awaited",
+    "Proteger as garantias do projeto com testes de tipos"
+  ],
+  "sections": [
+    {
+      "heading": "O projeto e os requisitos",
+      "body": [
+        "O projeto final é um Gestor de Encomendas para uma loja pequena: regista encomendas que chegam como texto JSON, faz-as passar por pendente, paga, enviada ou cancelada, guarda-as num repositório e produz um relatório de vendas. Não há nada de novo para aprender. O objetivo é juntar, num único programa, as peças que o curso foi dando em separado.",
+        "O critério de sucesso é simples de enunciar e exigente de cumprir: nenhum any, nenhuma asserção com as fora da fronteira de validação, nenhum operador ! e um switch exaustivo em cada sítio onde se decide pelo estado. Se o compilador aceitar o código, uma encomenda cancelada não pode ser enviada, um ID mal formado não entra no sistema e um estado novo não fica esquecido em nenhuma função.",
+        "Cada etapa que se segue tem um bloco de código completo e autónomo, que compila e corre sozinho. Por isso cada bloco repete, em versão compacta, os tipos de que precisa. Num projeto real esses tipos viveriam num único ficheiro e seriam importados, como mostra a secção seguinte."
+      ],
+      "code": "",
+      "callout_kind": "NOTA",
+      "callout_text": "Os valores monetários são guardados em cêntimos, como números inteiros. Somar 0.1 e 0.2 em vírgula flutuante dá 0.30000000000000004; somar 10 e 20 cêntimos dá sempre 30. A conversão para euros só acontece na formatação final.",
+      "table_headers": [
+        "Requisito",
+        "Como se cumpre",
+        "Módulos do curso"
+      ],
+      "table_rows": [
+        [
+          "IDs com formato garantido",
+          "Template literal types como enc-${number}",
+          "01, 06"
+        ],
+        [
+          "Estados com campos próprios",
+          "União discriminada pelo campo estado",
+          "01, 02, 04"
+        ],
+        [
+          "Transições só a partir do estado certo",
+          "Parâmetros com o tipo do estado de partida",
+          "03, 04"
+        ],
+        [
+          "Nenhum estado esquecido",
+          "Switch exaustivo com never no default",
+          "04"
+        ],
+        [
+          "Dados externos verificados",
+          "JSON.parse para unknown e validadores compostos",
+          "10"
+        ],
+        [
+          "Persistência trocável",
+          "Interface Repositorio<T> genérica e classe em memória",
+          "05, 08"
+        ],
+        [
+          "Erros sem exceções",
+          "Resultado<T, E> com uniões de erros de domínio",
+          "10"
+        ],
+        [
+          "Relatório tipado",
+          "Mapped types, Record, ReturnType e Awaited",
+          "06, 07"
+        ],
+        [
+          "Garantias verificadas",
+          "Igual, Esperar e @ts-expect-error",
+          "11"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "Gestor de Encomendas tipado de ponta a ponta"
+        },
+        {
+          "icon": "🚫",
+          "text": "Sem any, sem as fora da fronteira, sem !"
+        },
+        {
+          "icon": "🔁",
+          "text": "Pendente, paga, enviada ou cancelada, sem atalhos"
+        },
+        {
+          "icon": "🧩",
+          "text": "Cada requisito exercita um módulo do curso"
+        },
+        {
+          "icon": "💶",
+          "text": "Dinheiro em cêntimos inteiros, euros só na saída"
+        }
+      ]
+    },
+    {
+      "heading": "A arquitetura em ficheiros",
+      "body": [
+        "O projeto divide-se em cinco ficheiros com dependências num só sentido: tipos.ts não depende de nada, validacao.ts e repositorio.ts dependem só dos tipos, servico.ts junta o repositório com as regras de negócio e main.ts é o único ponto que monta tudo e escreve na consola.",
+        "Esta separação não é decorativa. Os tipos de domínio podem ser importados com import type, que desaparece por completo no JavaScript emitido. A validação é o único sítio onde entra unknown. O serviço nunca vê texto em bruto, só encomendas já validadas, e o repositório não sabe nada de estados: trabalha com qualquer T que tenha um id.",
+        "Com strict ligado no tsconfig, cada fronteira entre ficheiros é também uma fronteira de tipos: se servico.ts mudar a forma de um erro, main.ts deixa de compilar no sítio exato onde o trata."
+      ],
+      "code": "",
+      "callout_kind": "DICA",
+      "callout_text": "Comece sempre por tipos.ts. Com o modelo de domínio escrito, o compilador passa a guiar o resto: cada função que falta ou está incompleta aparece como erro, e a lista de erros torna-se a lista de tarefas.",
+      "table_headers": [
+        "Ficheiro",
+        "Responsabilidade",
+        "Depende de"
+      ],
+      "table_rows": [
+        [
+          "tipos.ts",
+          "IDs, estados, Encomenda, Resultado e uniões de erros",
+          "nada"
+        ],
+        [
+          "validacao.ts",
+          "Validadores compostos e leitura de JSON para unknown",
+          "tipos.ts"
+        ],
+        [
+          "repositorio.ts",
+          "Interface Repositorio<T> e classe em memória assíncrona",
+          "tipos.ts"
+        ],
+        [
+          "servico.ts",
+          "Transições de estado, regras de negócio e relatório",
+          "tipos.ts, repositorio.ts"
+        ],
+        [
+          "main.ts",
+          "Monta as peças, lê os dados e imprime o relatório",
+          "todos"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🗂️",
+          "text": "Cinco ficheiros, dependências num só sentido"
+        },
+        {
+          "icon": "🧱",
+          "text": "tipos.ts primeiro: o resto é guiado pelo compilador"
+        },
+        {
+          "icon": "🚪",
+          "text": "unknown só entra em validacao.ts"
+        },
+        {
+          "icon": "🔌",
+          "text": "O repositório não conhece estados, só T com id"
+        },
+        {
+          "icon": "▶️",
+          "text": "main.ts é o único ficheiro que escreve na consola"
+        }
+      ]
+    },
+    {
+      "heading": "Etapa 1: o modelo de domínio",
+      "body": [
+        "O modelo começa pelos identificadores. Em vez de string, cada ID tem um template literal type: enc-${number} para encomendas e prod-${string} para produtos. Trocar um pelo outro, ou escrever encomenda-1, passa a ser um erro de compilação.",
+        "Cada estado é uma interface própria com o literal no campo estado e só os campos que fazem sentido nele: uma encomenda paga tem referência e data de pagamento, uma cancelada tem motivo, uma pendente não tem nenhum desses. Enviada estende Omit<Paga, \"estado\">, porque uma encomenda enviada continua a ter os dados do pagamento.",
+        "Tudo é readonly: as encomendas não mudam, dão origem a encomendas novas. Os tipos auxiliares derivam-se do modelo em vez de se reescreverem: Estado sai de um indexed access, NovaEncomenda de um Omit e Resumo de um Pick."
+      ],
+      "code": "// IDs \"marcados\" com template literal types\ntype IdEncomenda = `enc-${number}`;\ntype IdProduto = `prod-${string}`;\ntype DataISO = `${number}-${number}-${number}`;\n\ninterface Linha {\n  readonly produto: IdProduto;\n  readonly quantidade: number;\n  readonly precoCentimos: number;\n}\n\ninterface BaseEncomenda {\n  readonly id: IdEncomenda;\n  readonly cliente: string;\n  readonly linhas: readonly Linha[];\n  readonly criadaEm: DataISO;\n}\n\n// Cada estado traz só os campos que fazem sentido nele\ninterface Pendente extends BaseEncomenda { readonly estado: \"pendente\" }\ninterface Paga extends BaseEncomenda {\n  readonly estado: \"paga\";\n  readonly pagaEm: DataISO;\n  readonly referencia: string;\n}\ninterface Enviada extends Omit<Paga, \"estado\"> {\n  readonly estado: \"enviada\";\n  readonly codigoEnvio: string;\n}\ninterface Cancelada extends BaseEncomenda {\n  readonly estado: \"cancelada\";\n  readonly motivo: string;\n}\n\ntype Encomenda = Pendente | Paga | Enviada | Cancelada;\n\n// Tipos derivados, nunca reescritos à mão\ntype Estado = Encomenda[\"estado\"];                        // \"pendente\" | \"paga\" | \"enviada\" | \"cancelada\"\ntype NovaEncomenda = Omit<Pendente, \"id\" | \"estado\" | \"criadaEm\">;\ntype Resumo = Pick<Encomenda, \"id\" | \"cliente\" | \"estado\">;\n\nfunction totalCentimos(e: Encomenda): number {\n  return e.linhas.reduce((soma, l) => soma + l.quantidade * l.precoCentimos, 0);\n}\n\nconst pedido: NovaEncomenda = {\n  cliente: \"Ana Sousa\",\n  linhas: [\n    { produto: \"prod-caneca\", quantidade: 2, precoCentimos: 850 },\n    { produto: \"prod-cafe\", quantidade: 1, precoCentimos: 1290 },\n  ],\n};\n\nconst enc: Pendente = { ...pedido, id: \"enc-1\", estado: \"pendente\", criadaEm: \"2026-03-02\" };\nconst resumo: Resumo = { id: enc.id, cliente: enc.cliente, estado: enc.estado };\n\nconsole.log(resumo);             // { id: 'enc-1', cliente: 'Ana Sousa', estado: 'pendente' }\nconsole.log(totalCentimos(enc)); // 2990",
+      "callout_kind": "ATENCAO",
+      "callout_text": "O template literal enc-${number} aceita enc-1.5 e enc--3, porque ${number} aceita qualquer texto que seja um número válido. O tipo impede os erros grosseiros; o formato exato (só algarismos) é garantido pelo validador em runtime, na etapa 3.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏷️",
+          "text": "IDs com template literal: enc-${number}, prod-${string}"
+        },
+        {
+          "icon": "🔀",
+          "text": "Um estado, uma interface, com campos próprios"
+        },
+        {
+          "icon": "🔒",
+          "text": "Tudo readonly: transições criam objetos novos"
+        },
+        {
+          "icon": "🧬",
+          "text": "Estado, NovaEncomenda e Resumo são derivados"
+        }
+      ]
+    },
+    {
+      "heading": "Etapa 2: transições de estado",
+      "body": [
+        "As regras de negócio ficam nas assinaturas. pagar recebe uma Pendente e devolve uma Paga; enviar recebe uma Paga e devolve uma Enviada; cancelar aceita EncomendaEm<\"pendente\" | \"paga\">, um tipo feito com Extract que tira da união só os estados canceláveis. Não há nenhum if a verificar o estado dentro destas funções: quem as chama é que tem de provar ao compilador que tem o estado certo.",
+        "Essa prova faz-se com narrowing. O type predicate podeCancelar estreita uma Encomenda qualquer para Pendente | Paga, e dentro do if a chamada a cancelar compila. A função descrever usa um switch sobre o discriminante com um default que atribui a never: se alguém acrescentar um estado à união, esse default deixa de compilar."
+      ],
+      "code": "type IdEncomenda = `enc-${number}`;\ntype DataISO = `${number}-${number}-${number}`;\ninterface Linha { readonly produto: string; readonly quantidade: number; readonly precoCentimos: number }\ninterface BaseEncomenda { readonly id: IdEncomenda; readonly cliente: string; readonly linhas: readonly Linha[] }\ninterface Pendente extends BaseEncomenda { readonly estado: \"pendente\" }\ninterface Paga extends BaseEncomenda { readonly estado: \"paga\"; readonly pagaEm: DataISO; readonly referencia: string }\ninterface Enviada extends Omit<Paga, \"estado\"> { readonly estado: \"enviada\"; readonly codigoEnvio: string }\ninterface Cancelada extends BaseEncomenda { readonly estado: \"cancelada\"; readonly motivo: string }\ntype Encomenda = Pendente | Paga | Enviada | Cancelada;\ntype Estado = Encomenda[\"estado\"];\ntype EncomendaEm<S extends Estado> = Extract<Encomenda, { estado: S }>;\n\n// Cada transição só aceita o estado de partida certo\nfunction pagar(e: Pendente, referencia: string, pagaEm: DataISO): Paga {\n  return { ...e, estado: \"paga\", referencia, pagaEm };\n}\n\nfunction enviar(e: Paga, codigoEnvio: string): Enviada {\n  return { ...e, estado: \"enviada\", codigoEnvio };\n}\n\n// Cancelar aceita dois estados de partida, e só esses\nfunction cancelar(e: EncomendaEm<\"pendente\" | \"paga\">, motivo: string): Cancelada {\n  const { id, cliente, linhas } = e;\n  return { id, cliente, linhas, estado: \"cancelada\", motivo };\n}\n\n// Type predicate: estreita uma Encomenda qualquer para as canceláveis\nfunction podeCancelar(e: Encomenda): e is Pendente | Paga {\n  return e.estado === \"pendente\" || e.estado === \"paga\";\n}\n\n// Switch exaustivo: um estado novo sem case faz o default deixar de compilar\nfunction descrever(e: Encomenda): string {\n  switch (e.estado) {\n    case \"pendente\":\n      return `${e.id}: à espera de pagamento`;\n    case \"paga\":\n      return `${e.id}: paga (ref. ${e.referencia})`;\n    case \"enviada\":\n      return `${e.id}: enviada com o código ${e.codigoEnvio}`;\n    case \"cancelada\":\n      return `${e.id}: cancelada (${e.motivo})`;\n    default: {\n      const impossivel: never = e;\n      return impossivel;\n    }\n  }\n}\n\nconst nova: Pendente = {\n  id: \"enc-7\", cliente: \"Rui Lopes\", estado: \"pendente\",\n  linhas: [{ produto: \"prod-cha\", quantidade: 3, precoCentimos: 450 }],\n};\nconst paga = pagar(nova, \"MB-5521\", \"2026-03-03\");\nconst enviada = enviar(paga, \"CTT-RR123\");\n\nconst historico: Encomenda[] = [nova, paga, enviada];\nfor (const e of historico) {\n  console.log(descrever(e));\n}\n// enc-7: à espera de pagamento\n// enc-7: paga (ref. MB-5521)\n// enc-7: enviada com o código CTT-RR123\n\nfunction tentarCancelar(e: Encomenda, motivo: string): string {\n  if (podeCancelar(e)) return descrever(cancelar(e, motivo));\n  return `${e.id} já não pode ser cancelada (está ${e.estado})`;\n}\n\nconsole.log(tentarCancelar(enviada, \"desistência\")); // enc-7 já não pode ser cancelada (está enviada)\nconsole.log(tentarCancelar(nova, \"sem stock\"));      // enc-7: cancelada (sem stock)",
+      "callout_kind": "DICA",
+      "callout_text": "Tipar o parâmetro com o estado de partida é mais forte do que validar dentro da função. A validação só falha quando o código corre; a assinatura falha no editor, antes de o programa existir.",
+      "table_headers": [
+        "Função",
+        "Aceita",
+        "Devolve"
+      ],
+      "table_rows": [
+        [
+          "pagar",
+          "Pendente",
+          "Paga"
+        ],
+        [
+          "enviar",
+          "Paga",
+          "Enviada"
+        ],
+        [
+          "cancelar",
+          "Pendente ou Paga",
+          "Cancelada"
+        ],
+        [
+          "podeCancelar",
+          "Encomenda",
+          "e is Pendente | Paga"
+        ],
+        [
+          "descrever",
+          "Encomenda",
+          "string (switch exaustivo)"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "➡️",
+          "text": "pagar: Pendente para Paga; enviar: Paga para Enviada"
+        },
+        {
+          "icon": "🎯",
+          "text": "Extract tira da união os estados canceláveis"
+        },
+        {
+          "icon": "🔍",
+          "text": "Um type predicate prova o estado antes da chamada"
+        },
+        {
+          "icon": "🧱",
+          "text": "default com never: nenhum estado fica esquecido"
+        }
+      ]
+    },
+    {
+      "heading": "Etapa 3: validação na fronteira",
+      "body": [
+        "As encomendas chegam como texto JSON. JSON.parse devolve any, por isso o resultado é imediatamente atribuído a unknown, e a partir daí nada se faz sem um validador. Os validadores são os do módulo 10: Validador<T> é um type predicate sobre unknown, e eObjeto, eArrayDe e eLiteral compõem-se para descrever a forma inteira de uma encomenda.",
+        "O validador ePadrao junta um regex a um template literal type: o regex garante em runtime o formato que o tipo promete em compilação. O tipo EncomendaRecebida não se escreve, deriva-se do esquema com TipoDe. Acrescentar um campo ao esquema acrescenta-o ao tipo.",
+        "lerEncomenda devolve um Resultado com uma união de erros de leitura. JSON mal formado e dados com a forma errada são erros diferentes, com campos diferentes, e quem chama tem de os distinguir com o discriminante tipo."
+      ],
+      "code": "type IdEncomenda = `enc-${number}`;\ntype IdProduto = `prod-${string}`;\ntype DataISO = `${number}-${number}-${number}`;\ntype Resultado<T, E> = { ok: true; valor: T } | { ok: false; erro: E };\n\n// Os blocos de construção do módulo 10\ntype Validador<T> = (x: unknown) => x is T;\ntype TipoDe<V> = V extends Validador<infer T> ? T : never;\n\nconst eString: Validador<string> = (x): x is string => typeof x === \"string\";\nconst eInteiroPositivo: Validador<number> = (x): x is number =>\n  typeof x === \"number\" && Number.isInteger(x) && x > 0;\n\nfunction ePadrao<T extends string>(regex: RegExp): Validador<T> {\n  return (x): x is T => typeof x === \"string\" && regex.test(x);\n}\n\nfunction eLiteral<const L extends readonly string[]>(...valores: L): Validador<L[number]> {\n  return (x): x is L[number] => valores.includes(x as L[number]);\n}\n\nfunction eArrayDe<T>(v: Validador<T>): Validador<T[]> {\n  return (x): x is T[] => Array.isArray(x) && x.every(v);\n}\n\nfunction eObjeto<E extends Record<string, Validador<unknown>>>(\n  esquema: E\n): Validador<{ [K in keyof E]: TipoDe<E[K]> }> {\n  return (x): x is { [K in keyof E]: TipoDe<E[K]> } => {\n    if (typeof x !== \"object\" || x === null) return false;\n    const o = x as Record<string, unknown>;\n    return Object.keys(esquema).every((chave) => esquema[chave](o[chave]));\n  };\n}\n\n// Validadores dos IDs e das datas: o regex garante o que o template literal promete\nconst eIdEncomenda = ePadrao<IdEncomenda>(/^enc-\\d+$/);\nconst eIdProduto = ePadrao<IdProduto>(/^prod-[a-z-]+$/);\nconst eDataISO = ePadrao<DataISO>(/^\\d{4}-\\d{2}-\\d{2}$/);\n\n// O esquema de uma encomenda acabada de chegar (só pode vir pendente)\nconst eEncomendaRecebida = eObjeto({\n  id: eIdEncomenda,\n  cliente: eString,\n  estado: eLiteral(\"pendente\"),\n  criadaEm: eDataISO,\n  linhas: eArrayDe(eObjeto({ produto: eIdProduto, quantidade: eInteiroPositivo, precoCentimos: eInteiroPositivo })),\n});\n\n// O tipo sai do esquema: um só sítio para mudar\ntype EncomendaRecebida = TipoDe<typeof eEncomendaRecebida>;\n\ntype ErroLeitura =\n  | { tipo: \"json-invalido\" }\n  | { tipo: \"formato-invalido\"; dados: unknown };\n\nfunction lerEncomenda(texto: string): Resultado<EncomendaRecebida, ErroLeitura> {\n  let dados: unknown;\n  try {\n    dados = JSON.parse(texto);\n  } catch {\n    return { ok: false, erro: { tipo: \"json-invalido\" } };\n  }\n  if (!eEncomendaRecebida(dados)) return { ok: false, erro: { tipo: \"formato-invalido\", dados } };\n  return { ok: true, valor: dados };\n}\n\n// Dados locais, como chegariam de um ficheiro ou de um formulário\nconst entradas = [\n  '{\"id\":\"enc-1\",\"cliente\":\"Ana Sousa\",\"estado\":\"pendente\",\"criadaEm\":\"2026-03-02\",\"linhas\":[{\"produto\":\"prod-caneca\",\"quantidade\":2,\"precoCentimos\":850}]}',\n  '{\"id\":\"enc-2\",\"cliente\":\"Rui Lopes\",\"estado\":\"pendente\",\"criadaEm\":\"2026-03-02\",\"linhas\":[{\"produto\":\"prod-cha\",\"quantidade\":0,\"precoCentimos\":450}]}',\n  '{\"id\":\"encomenda-3\",\"cliente\":\"Eva\"',\n  '{\"id\":\"E-4\",\"cliente\":\"Eva Reis\",\"estado\":\"pendente\",\"criadaEm\":\"2026-03-02\",\"linhas\":[]}',\n];\n\nfor (const texto of entradas) {\n  const r = lerEncomenda(texto);\n  if (r.ok) {\n    const primeira = r.valor.linhas[0];\n    console.log(\"aceite:\", r.valor.id, primeira?.produto);\n  } else {\n    console.log(\"rejeitada:\", r.erro.tipo);\n  }\n}\n// aceite: enc-1 prod-caneca\n// rejeitada: formato-invalido\n// rejeitada: json-invalido\n// rejeitada: formato-invalido",
+      "callout_kind": "ATENCAO",
+      "callout_text": "A única asserção com as do projeto está dentro de eObjeto, e é segura: o typeof e o teste de null logo antes garantem que x é um objeto. Fora dos validadores não deve haver nenhuma. O catch sem variável evita mexer no erro do JSON.parse, cuja mensagem muda de versão para versão do Node.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🚪",
+          "text": "JSON.parse vai direto para unknown"
+        },
+        {
+          "icon": "🧩",
+          "text": "Validadores compostos descrevem a encomenda inteira"
+        },
+        {
+          "icon": "🔗",
+          "text": "ePadrao liga um regex a um template literal type"
+        },
+        {
+          "icon": "🧬",
+          "text": "O tipo deriva do esquema com TipoDe"
+        },
+        {
+          "icon": "📭",
+          "text": "json-invalido e formato-invalido são erros distintos"
+        }
+      ]
+    },
+    {
+      "heading": "Etapa 4: o repositório genérico",
+      "body": [
+        "O repositório é descrito por uma interface genérica, Repositorio<T extends { readonly id: string }>. A constraint é mínima de propósito: qualquer entidade com um id em string serve, e o parâmetro de obter é T[\"id\"], pelo que um repositório de produtos só aceita IDs prod-${string}.",
+        "A implementação em memória é uma classe que implements a interface, com um Map privado e uma latência simulada por setTimeout. A latência vem de uma parameter property com valor por omissão. Todos os métodos são async e devolvem Promise, tal como uma base de dados verdadeira; trocar esta classe por outra não obriga a mudar quem a usa.",
+        "Os erros de persistência não são exceções. São uma união discriminada, ErroRepositorio, devolvida dentro de Resultado. Quem chama vê no tipo que obter pode falhar e porquê, e a função explicar trata cada caso."
+      ],
+      "code": "type Resultado<T, E> = { ok: true; valor: T } | { ok: false; erro: E };\n\ntype ErroRepositorio =\n  | { tipo: \"nao-encontrado\"; id: string }\n  | { tipo: \"duplicado\"; id: string };\n\n// O contrato: qualquer entidade com um id em string\ninterface Repositorio<T extends { readonly id: string }> {\n  obter(id: T[\"id\"]): Promise<Resultado<T, ErroRepositorio>>;\n  inserir(item: T): Promise<Resultado<T, ErroRepositorio>>;\n  substituir(item: T): Promise<Resultado<T, ErroRepositorio>>;\n  listar(): Promise<readonly T[]>;\n}\n\nconst pausa = (ms: number) => new Promise<void>((resolver) => setTimeout(resolver, ms));\n\n// Uma implementação em memória, com uma latência simulada de poucos ms\nclass RepositorioEmMemoria<T extends { readonly id: string }> implements Repositorio<T> {\n  private readonly itens = new Map<T[\"id\"], T>();\n\n  constructor(private readonly latenciaMs: number = 5) {}\n\n  async obter(id: T[\"id\"]): Promise<Resultado<T, ErroRepositorio>> {\n    await pausa(this.latenciaMs);\n    const item = this.itens.get(id);\n    return item ? { ok: true, valor: item } : { ok: false, erro: { tipo: \"nao-encontrado\", id } };\n  }\n\n  async inserir(item: T): Promise<Resultado<T, ErroRepositorio>> {\n    await pausa(this.latenciaMs);\n    if (this.itens.has(item.id)) return { ok: false, erro: { tipo: \"duplicado\", id: item.id } };\n    this.itens.set(item.id, item);\n    return { ok: true, valor: item };\n  }\n\n  async substituir(item: T): Promise<Resultado<T, ErroRepositorio>> {\n    await pausa(this.latenciaMs);\n    if (!this.itens.has(item.id)) return { ok: false, erro: { tipo: \"nao-encontrado\", id: item.id } };\n    this.itens.set(item.id, item);\n    return { ok: true, valor: item };\n  }\n\n  async listar(): Promise<readonly T[]> {\n    await pausa(this.latenciaMs);\n    return [...this.itens.values()];\n  }\n}\n\nfunction explicar(erro: ErroRepositorio): string {\n  switch (erro.tipo) {\n    case \"nao-encontrado\":\n      return `não existe nenhum registo ${erro.id}`;\n    case \"duplicado\":\n      return `já existe um registo ${erro.id}`;\n  }\n}\n\n// O mesmo repositório serve qualquer entidade que cumpra a constraint\ninterface Produto {\n  readonly id: `prod-${string}`;\n  readonly nome: string;\n  readonly precoCentimos: number;\n}\n\nconst produtos: Repositorio<Produto> = new RepositorioEmMemoria<Produto>();\n\nawait produtos.inserir({ id: \"prod-caneca\", nome: \"Caneca\", precoCentimos: 850 });\nconst repetido = await produtos.inserir({ id: \"prod-caneca\", nome: \"Outra caneca\", precoCentimos: 900 });\nif (!repetido.ok) console.log(explicar(repetido.erro)); // já existe um registo prod-caneca\n\nconst procurado = await produtos.obter(\"prod-bule\");\nif (!procurado.ok) console.log(explicar(procurado.erro)); // não existe nenhum registo prod-bule\n\nconst caneca = await produtos.obter(\"prod-caneca\");\nif (caneca.ok) console.log(caneca.valor.nome); // Caneca\n\nconsole.log((await produtos.listar()).length); // 1",
+      "callout_kind": "NOTA",
+      "callout_text": "A variável produtos está anotada com o tipo da interface, não da classe. É isso que garante que o resto do programa só usa o contrato: se a classe tiver métodos extra, o código que depende de Repositorio<Produto> não os vê.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🗄️",
+          "text": "Repositorio<T extends { id: string }>: um contrato"
+        },
+        {
+          "icon": "🏗️",
+          "text": "Classe em memória com Map privado e implements"
+        },
+        {
+          "icon": "⏱️",
+          "text": "Métodos async com latência simulada por setTimeout"
+        },
+        {
+          "icon": "📬",
+          "text": "Falhas como Resultado<T, ErroRepositorio>"
+        }
+      ]
+    },
+    {
+      "heading": "Etapa 5: serviço e relatório",
+      "body": [
+        "O serviço junta o repositório às regras. Cada operação lê a encomenda, verifica o estado com um if que estreita a união e só então chama a transição. A união ErroServico acrescenta aos erros do repositório um erro de domínio, transicao-invalida, com o estado em que a encomenda estava e a ação pedida. Quando obter falha, o Resultado de erro é devolvido tal como está, porque os erros do repositório fazem parte de ErroServico.",
+        "O método guardar é genérico no próprio método: guardar<U extends T> devolve U, e por isso guardar uma Paga devolve uma Paga e não uma Encomenda genérica. O relatório agrega por estado com um mapped type sobre Estado, o que obriga a inicializar todas as chaves, e por cliente com Record<string, number>.",
+        "O método relatorio não tem tipo de retorno anotado. O tipo Relatorio é derivado com Awaited<ReturnType<ServicoEncomendas[\"relatorio\"]>>, e a função formatar usa-o. Se o relatório ganhar um campo, formatar vê-o sem que ninguém reescreva um tipo."
+      ],
+      "code": "// ---- tipos (tipos.ts), versão compacta ----\ntype IdEncomenda = `enc-${number}`;\ntype DataISO = `${number}-${number}-${number}`;\ntype Resultado<T, E> = { ok: true; valor: T } | { ok: false; erro: E };\ninterface Linha { readonly produto: string; readonly quantidade: number; readonly precoCentimos: number }\ninterface BaseEncomenda { readonly id: IdEncomenda; readonly cliente: string; readonly linhas: readonly Linha[] }\ninterface Pendente extends BaseEncomenda { readonly estado: \"pendente\" }\ninterface Paga extends BaseEncomenda { readonly estado: \"paga\"; readonly referencia: string; readonly pagaEm: DataISO }\ninterface Enviada extends Omit<Paga, \"estado\"> { readonly estado: \"enviada\"; readonly codigoEnvio: string }\ninterface Cancelada extends BaseEncomenda { readonly estado: \"cancelada\"; readonly motivo: string }\ntype Encomenda = Pendente | Paga | Enviada | Cancelada;\ntype Estado = Encomenda[\"estado\"];\n\n// ---- repositório (repositorio.ts), versão compacta ----\ntype ErroRepositorio = { tipo: \"nao-encontrado\"; id: string } | { tipo: \"duplicado\"; id: string };\nconst pausa = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));\n\nclass RepositorioEmMemoria<T extends { readonly id: string }> {\n  private readonly itens = new Map<T[\"id\"], T>();\n  async obter(id: T[\"id\"]): Promise<Resultado<T, ErroRepositorio>> {\n    await pausa(2);\n    const item = this.itens.get(id);\n    return item ? { ok: true, valor: item } : { ok: false, erro: { tipo: \"nao-encontrado\", id } };\n  }\n  // Genérico no método: guardar uma Paga devolve uma Paga, não uma Encomenda\n  async guardar<U extends T>(item: U): Promise<U> {\n    await pausa(2);\n    this.itens.set(item.id, item);\n    return item;\n  }\n  async listar(): Promise<readonly T[]> {\n    await pausa(2);\n    return [...this.itens.values()];\n  }\n}\n\n// ---- serviço (servico.ts) ----\ntype ErroServico =\n  | ErroRepositorio\n  | { tipo: \"transicao-invalida\"; id: IdEncomenda; de: Estado; acao: \"pagar\" | \"enviar\" };\n\nconst totalCentimos = (e: Encomenda) =>\n  e.linhas.reduce((s, l) => s + l.quantidade * l.precoCentimos, 0);\n\nclass ServicoEncomendas {\n  constructor(private readonly repo: RepositorioEmMemoria<Encomenda>) {}\n\n  registar(e: Pendente): Promise<Pendente> {\n    return this.repo.guardar(e).then(() => e);\n  }\n\n  async pagar(id: IdEncomenda, referencia: string, pagaEm: DataISO): Promise<Resultado<Paga, ErroServico>> {\n    const r = await this.repo.obter(id);\n    if (!r.ok) return r;\n    const e = r.valor;\n    if (e.estado !== \"pendente\") {\n      return { ok: false, erro: { tipo: \"transicao-invalida\", id, de: e.estado, acao: \"pagar\" } };\n    }\n    const paga: Paga = { ...e, estado: \"paga\", referencia, pagaEm };\n    return { ok: true, valor: await this.repo.guardar(paga) };\n  }\n\n  async enviar(id: IdEncomenda, codigoEnvio: string): Promise<Resultado<Enviada, ErroServico>> {\n    const r = await this.repo.obter(id);\n    if (!r.ok) return r;\n    const e = r.valor;\n    if (e.estado !== \"paga\") {\n      return { ok: false, erro: { tipo: \"transicao-invalida\", id, de: e.estado, acao: \"enviar\" } };\n    }\n    const enviada: Enviada = { ...e, estado: \"enviada\", codigoEnvio };\n    return { ok: true, valor: await this.repo.guardar(enviada) };\n  }\n\n  // Sem anotação de retorno: o tipo é inferido e derivado mais abaixo\n  async relatorio() {\n    const porEstado: { [S in Estado]: { quantidade: number; centimos: number } } = {\n      pendente: { quantidade: 0, centimos: 0 },\n      paga: { quantidade: 0, centimos: 0 },\n      enviada: { quantidade: 0, centimos: 0 },\n      cancelada: { quantidade: 0, centimos: 0 },\n    };\n    const porCliente: Record<string, number> = {};\n    for (const e of await this.repo.listar()) {\n      porEstado[e.estado].quantidade += 1;\n      porEstado[e.estado].centimos += totalCentimos(e);\n      if (e.estado !== \"cancelada\") {\n        porCliente[e.cliente] = (porCliente[e.cliente] ?? 0) + totalCentimos(e);\n      }\n    }\n    return { porEstado, porCliente };\n  }\n}\n\ntype Relatorio = Awaited<ReturnType<ServicoEncomendas[\"relatorio\"]>>;\n\nfunction descreverErro(erro: ErroServico): string {\n  switch (erro.tipo) {\n    case \"nao-encontrado\":\n      return `${erro.id} não existe`;\n    case \"duplicado\":\n      return `${erro.id} está repetida`;\n    case \"transicao-invalida\":\n      return `não é possível ${erro.acao} ${erro.id}: está ${erro.de}`;\n    default: {\n      const impossivel: never = erro;\n      return impossivel;\n    }\n  }\n}\n\nconst euros = (centimos: number) => `${(centimos / 100).toFixed(2)} €`;\n\nfunction formatar(r: Relatorio): string[] {\n  const estados = Object.keys(r.porEstado) as Estado[];\n  const linhas = estados.map((s) => {\n    const { quantidade, centimos } = r.porEstado[s];\n    return `${s.padEnd(10)} ${String(quantidade).padStart(2)} ${euros(centimos).padStart(9)}`;\n  });\n  for (const [cliente, c] of Object.entries(r.porCliente)) linhas.push(`${cliente}: ${euros(c)}`);\n  return linhas;\n}\n\n// ---- main.ts ----\nconst servico = new ServicoEncomendas(new RepositorioEmMemoria<Encomenda>());\n\nawait servico.registar({ id: \"enc-1\", cliente: \"Ana Sousa\", estado: \"pendente\",\n  linhas: [{ produto: \"prod-caneca\", quantidade: 2, precoCentimos: 850 }] });\nawait servico.registar({ id: \"enc-2\", cliente: \"Rui Lopes\", estado: \"pendente\",\n  linhas: [{ produto: \"prod-cha\", quantidade: 3, precoCentimos: 450 }] });\nawait servico.registar({ id: \"enc-3\", cliente: \"Ana Sousa\", estado: \"pendente\",\n  linhas: [{ produto: \"prod-cafe\", quantidade: 1, precoCentimos: 1290 }] });\n\nawait servico.pagar(\"enc-1\", \"MB-1001\", \"2026-03-03\");\nawait servico.enviar(\"enc-1\", \"CTT-RR001\");\nawait servico.pagar(\"enc-3\", \"MB-1002\", \"2026-03-04\");\n\nconst falhas = [\n  await servico.enviar(\"enc-2\", \"CTT-RR002\"),\n  await servico.pagar(\"enc-9\", \"MB-1003\", \"2026-03-04\"),\n];\nfor (const r of falhas) {\n  if (!r.ok) console.log(descreverErro(r.erro));\n}\n// não é possível enviar enc-2: está pendente\n// enc-9 não existe\n\nfor (const linha of formatar(await servico.relatorio())) console.log(linha);\n// pendente    1   13.50 €\n// paga        1   12.90 €\n// enviada     1   17.00 €\n// cancelada   0    0.00 €\n// Ana Sousa: 29.90 €\n// Rui Lopes: 13.50 €",
+      "callout_kind": "DICA",
+      "callout_text": "Object.keys devolve string[], não as chaves do objeto, porque um objeto pode ter mais propriedades do que o tipo declara. O as Estado[] em formatar é seguro aqui porque porEstado foi criado com exatamente as quatro chaves; num objeto vindo de fora, não seria.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⚙️",
+          "text": "O serviço estreita o estado antes de cada transição"
+        },
+        {
+          "icon": "🧯",
+          "text": "ErroServico estende os erros do repositório"
+        },
+        {
+          "icon": "🎁",
+          "text": "guardar<U extends T> devolve o tipo exato guardado"
+        },
+        {
+          "icon": "📊",
+          "text": "Relatório com mapped type sobre Estado e Record"
+        },
+        {
+          "icon": "🔎",
+          "text": "Relatorio derivado com Awaited e ReturnType"
+        }
+      ]
+    },
+    {
+      "heading": "Etapa 6: testes de tipos do projeto",
+      "body": [
+        "As garantias do projeto são promessas sobre tipos, e promessas sobre tipos testam-se no compilador. Os testes positivos usam a versão robusta de Igual com Esperar, agrupados num tuplo: se Estado ganhar ou perder um membro, ou se enviar deixar de exigir uma Paga, o ficheiro deixa de compilar.",
+        "Os testes negativos usam @ts-expect-error: enviar uma cancelada, enviar uma pendente, cancelar uma enviada, criar um ID mal formado, construir uma Paga sem referência e mudar o estado de fora. Cada linha tem de dar erro; se um dia deixar de dar, porque alguém relaxou um tipo, a diretiva fica sem erro e o tsc reporta TS2578.",
+        "As funções aparecem com declare porque aqui só interessam as assinaturas: estes testes nunca correm, só compilam."
+      ],
+      "code": "type Igual<A, B> =\n  (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;\ntype Esperar<T extends true> = T;\n\ntype IdEncomenda = `enc-${number}`;\ntype DataISO = `${number}-${number}-${number}`;\ninterface BaseEncomenda { readonly id: IdEncomenda; readonly cliente: string }\ninterface Pendente extends BaseEncomenda { readonly estado: \"pendente\" }\ninterface Paga extends BaseEncomenda { readonly estado: \"paga\"; readonly referencia: string; readonly pagaEm: DataISO }\ninterface Enviada extends Omit<Paga, \"estado\"> { readonly estado: \"enviada\"; readonly codigoEnvio: string }\ninterface Cancelada extends BaseEncomenda { readonly estado: \"cancelada\"; readonly motivo: string }\ntype Encomenda = Pendente | Paga | Enviada | Cancelada;\ntype Estado = Encomenda[\"estado\"];\ntype EncomendaEm<S extends Estado> = Extract<Encomenda, { estado: S }>;\n\ndeclare function pagar(e: Pendente, referencia: string, pagaEm: DataISO): Paga;\ndeclare function enviar(e: Paga, codigoEnvio: string): Enviada;\ndeclare function cancelar(e: EncomendaEm<\"pendente\" | \"paga\">, motivo: string): Cancelada;\n\n// 1. Testes positivos: os tipos derivados são exatamente os esperados\ntype testes = [\n  Esperar<Igual<Estado, \"pendente\" | \"paga\" | \"enviada\" | \"cancelada\">>,\n  Esperar<Igual<EncomendaEm<\"paga\">, Paga>>,\n  Esperar<Igual<Parameters<typeof enviar>[0], Paga>>,\n  Esperar<Igual<ReturnType<typeof cancelar>, Cancelada>>,\n  Esperar<Igual<Enviada[\"pagaEm\"], DataISO>>,\n];\n\n// 2. Testes negativos: o que o compilador TEM de recusar\ndeclare const pendente: Pendente;\ndeclare const cancelada: Cancelada;\ndeclare const enviada: Enviada;\n\n// Uma encomenda cancelada não pode ser enviada\n// @ts-expect-error\nenviar(cancelada, \"CTT-RR999\");\n\n// Uma pendente também não: primeiro tem de ser paga\n// @ts-expect-error\nenviar(pendente, \"CTT-RR999\");\n\n// Uma enviada já não se cancela\n// @ts-expect-error\ncancelar(enviada, \"arrependimento\");\n\n// IDs com o formato errado não passam\n// @ts-expect-error\nconst idMau: IdEncomenda = \"encomenda-1\";\n\n// Uma Paga sem referência não é uma Paga\n// @ts-expect-error\nconst incompleta: Paga = { id: \"enc-1\", cliente: \"Ana\", estado: \"paga\", pagaEm: \"2026-03-03\" };\n\n// Os campos são readonly: nada de mudar o estado \"por fora\"\ndeclare const paga: Paga;\n// @ts-expect-error\npaga.estado = \"enviada\";\n\n// E o caminho certo compila sem uma única asserção\nconst caminhoFeliz: Enviada = enviar(pagar(pendente, \"MB-1\", \"2026-03-03\"), \"CTT-RR1\");",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Retire uma das diretivas @ts-expect-error e leia a mensagem que o tsc mostra. Depois troque o parâmetro de enviar para Encomenda e veja qual dos testes negativos passa a falhar com TS2578.",
+      "table_headers": [
+        "Garantia",
+        "Teste"
+      ],
+      "table_rows": [
+        [
+          "Estado tem exatamente quatro membros",
+          "Esperar<Igual<Estado, ...>>"
+        ],
+        [
+          "enviar só aceita Paga",
+          "Parameters<typeof enviar>[0] e @ts-expect-error"
+        ],
+        [
+          "Cancelada não pode ser enviada",
+          "@ts-expect-error em enviar(cancelada, ...)"
+        ],
+        [
+          "Enviada não pode ser cancelada",
+          "@ts-expect-error em cancelar(enviada, ...)"
+        ],
+        [
+          "IDs têm formato",
+          "@ts-expect-error em \"encomenda-1\""
+        ],
+        [
+          "Encomendas são imutáveis",
+          "@ts-expect-error em paga.estado = ..."
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "✅",
+          "text": "Testes positivos: Esperar<Igual<A, B>> num tuplo"
+        },
+        {
+          "icon": "⛔",
+          "text": "Testes negativos: @ts-expect-error por garantia"
+        },
+        {
+          "icon": "🚚",
+          "text": "Uma encomenda cancelada não pode ser enviada"
+        },
+        {
+          "icon": "🚨",
+          "text": "Um tipo relaxado por engano dá TS2578"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Validar o NIF do cliente",
+      "difficulty": "Iniciante",
+      "statement": "A loja passou a pedir o NIF de cada cliente. Com os validadores Validador<T>, TipoDe, ePadrao e eObjeto, escreva um validador eCliente para objetos com nome (string) e nif (texto com exatamente 9 algarismos). Derive o tipo Cliente do esquema e teste-o com quatro strings JSON: uma válida, uma com NIF curto, uma com o NIF como número e uma sem NIF.",
+      "hint": "O tipo do NIF pode ser um template literal com ${number}; quem garante os 9 algarismos é o regex.",
+      "solution_code": "type Validador<T> = (x: unknown) => x is T;\ntype TipoDe<V> = V extends Validador<infer T> ? T : never;\n\nconst eString: Validador<string> = (x): x is string => typeof x === \"string\";\n\nfunction ePadrao<T extends string>(regex: RegExp): Validador<T> {\n  return (x): x is T => typeof x === \"string\" && regex.test(x);\n}\n\nfunction eObjeto<E extends Record<string, Validador<unknown>>>(\n  esquema: E\n): Validador<{ [K in keyof E]: TipoDe<E[K]> }> {\n  return (x): x is { [K in keyof E]: TipoDe<E[K]> } => {\n    if (typeof x !== \"object\" || x === null) return false;\n    const o = x as Record<string, unknown>;\n    return Object.keys(esquema).every((chave) => esquema[chave](o[chave]));\n  };\n}\n\n// O campo novo: um NIF com exatamente 9 algarismos\ntype Nif = `${number}`;\nconst eNif = ePadrao<Nif>(/^\\d{9}$/);\n\nconst eCliente = eObjeto({\n  nome: eString,\n  nif: eNif,\n});\n\ntype Cliente = TipoDe<typeof eCliente>; // { nome: string; nif: `${number}` }\n\nconst entradas = [\n  '{\"nome\":\"Ana Sousa\",\"nif\":\"123456789\"}',\n  '{\"nome\":\"Rui Lopes\",\"nif\":\"12345\"}',\n  '{\"nome\":\"Eva Reis\",\"nif\":123456789}',\n  '{\"nome\":\"Luís Costa\"}',\n];\n\nfor (const texto of entradas) {\n  const dados: unknown = JSON.parse(texto);\n  if (eCliente(dados)) {\n    const c: Cliente = dados;\n    console.log(\"válido:\", c.nome, c.nif);\n  } else {\n    console.log(\"inválido:\", texto);\n  }\n}\n// válido: Ana Sousa 123456789\n// inválido: {\"nome\":\"Rui Lopes\",\"nif\":\"12345\"}\n// inválido: {\"nome\":\"Eva Reis\",\"nif\":123456789}\n// inválido: {\"nome\":\"Luís Costa\"}",
+      "solution_explanation": "O esquema ganhou uma linha e o tipo Cliente ganhou o campo nif sem ser reescrito. O NIF como número falha porque ePadrao exige typeof string, e o NIF em falta falha porque eObjeto testa todas as chaves do esquema, incluindo as que não existem no objeto."
+    },
+    {
+      "title": "Um utility type para os campos editáveis",
+      "difficulty": "Intermedio",
+      "statement": "Enquanto está pendente, uma encomenda pode ter o cliente, a morada de entrega e as linhas corrigidos, mas nunca o id nem o estado. Escreva um utility type Editavel<T, Fixos extends keyof T> que tire os campos fixos, remova o readonly e torne tudo opcional. Use-o numa função editar(e: Pendente, alteracoes) e prove com Igual, Esperar e @ts-expect-error que só os campos certos são editáveis.",
+      "hint": "Componha três peças: Omit para tirar, um mapped type com -readonly para destrancar e Partial para tornar opcional.",
+      "solution_code": "type Igual<A, B> =\n  (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;\ntype Esperar<T extends true> = T;\n\ntype IdEncomenda = `enc-${number}`;\ninterface Linha { readonly produto: string; readonly quantidade: number; readonly precoCentimos: number }\ninterface Pendente {\n  readonly id: IdEncomenda;\n  readonly estado: \"pendente\";\n  readonly cliente: string;\n  readonly moradaEntrega: string;\n  readonly linhas: readonly Linha[];\n}\n\n// Tira o readonly de cada propriedade\ntype Mutavel<T> = { -readonly [K in keyof T]: T[K] };\n\n// Campos editáveis: tudo menos a identidade e o estado, todos opcionais\ntype Editavel<T, Fixos extends keyof T> = Partial<Mutavel<Omit<T, Fixos>>>;\ntype EdicaoPendente = Editavel<Pendente, \"id\" | \"estado\">;\n\nfunction editar(e: Pendente, alteracoes: EdicaoPendente): Pendente {\n  return { ...e, ...alteracoes };\n}\n\ntype testes = [\n  Esperar<Igual<keyof EdicaoPendente, \"cliente\" | \"moradaEntrega\" | \"linhas\">>,\n  Esperar<Igual<EdicaoPendente[\"moradaEntrega\"], string | undefined>>,\n];\n\nconst e: Pendente = {\n  id: \"enc-4\", estado: \"pendente\", cliente: \"Eva Reis\",\n  moradaEntrega: \"Rua Nova 1, Braga\", linhas: [],\n};\n\nconst corrigida = editar(e, { moradaEntrega: \"Rua Nova 10, Braga\" });\n\n// A identidade e o estado não se editam\n// @ts-expect-error\neditar(e, { estado: \"paga\" });\n\n// @ts-expect-error\neditar(e, { id: \"enc-5\" });",
+      "solution_explanation": "Editavel é uma composição de Omit, de um mapped type próprio e de Partial, e os testes confirmam as chaves e o tipo opcional resultante. As chamadas com estado ou id são rejeitadas pela verificação de propriedades em excesso, que se aplica a literais de objeto passados diretamente como argumento."
+    },
+    {
+      "title": "Acrescentar o estado devolvida",
+      "difficulty": "Intermedio",
+      "statement": "Acrescente ao modelo um estado devolvida, a que só se chega a partir de uma encomenda enviada, com a data de devolução e o valor reembolsado em cêntimos. Escreva a transição devolver(e: Enviada, ...) e acrescente Devolvida à união Encomenda antes de mexer no switch de descrever, para ver o compilador apontar o sítio. Depois complete o switch.",
+      "hint": "Devolvida pode estender Omit<Enviada, \"estado\">, tal como Enviada estende Omit<Paga, \"estado\">.",
+      "solution_code": "type IdEncomenda = `enc-${number}`;\ntype DataISO = `${number}-${number}-${number}`;\ninterface BaseEncomenda { readonly id: IdEncomenda; readonly cliente: string }\ninterface Pendente extends BaseEncomenda { readonly estado: \"pendente\" }\ninterface Paga extends BaseEncomenda { readonly estado: \"paga\"; readonly referencia: string; readonly pagaEm: DataISO }\ninterface Enviada extends Omit<Paga, \"estado\"> { readonly estado: \"enviada\"; readonly codigoEnvio: string }\ninterface Cancelada extends BaseEncomenda { readonly estado: \"cancelada\"; readonly motivo: string }\n// O estado novo: só se chega lá a partir de uma encomenda enviada\ninterface Devolvida extends Omit<Enviada, \"estado\"> {\n  readonly estado: \"devolvida\";\n  readonly devolvidaEm: DataISO;\n  readonly reembolsoCentimos: number;\n}\ntype Encomenda = Pendente | Paga | Enviada | Cancelada | Devolvida;\n\nfunction devolver(e: Enviada, devolvidaEm: DataISO, reembolsoCentimos: number): Devolvida {\n  return { ...e, estado: \"devolvida\", devolvidaEm, reembolsoCentimos };\n}\n\n// Depois de acrescentar Devolvida à união, o default deixou de compilar\n// (Type 'Devolvida' is not assignable to type 'never') até existir este case\nfunction descrever(e: Encomenda): string {\n  switch (e.estado) {\n    case \"pendente\":\n      return `${e.id}: à espera de pagamento`;\n    case \"paga\":\n      return `${e.id}: paga (ref. ${e.referencia})`;\n    case \"enviada\":\n      return `${e.id}: enviada com o código ${e.codigoEnvio}`;\n    case \"cancelada\":\n      return `${e.id}: cancelada (${e.motivo})`;\n    case \"devolvida\":\n      return `${e.id}: devolvida em ${e.devolvidaEm}, reembolso de ${(e.reembolsoCentimos / 100).toFixed(2)} €`;\n    default: {\n      const impossivel: never = e;\n      return impossivel;\n    }\n  }\n}\n\nconst enviada: Enviada = {\n  id: \"enc-8\", cliente: \"Luís Costa\", estado: \"enviada\",\n  referencia: \"MB-2001\", pagaEm: \"2026-03-05\", codigoEnvio: \"CTT-RR808\",\n};\n\nconsole.log(descrever(enviada));                              // enc-8: enviada com o código CTT-RR808\nconsole.log(descrever(devolver(enviada, \"2026-03-12\", 1700))); // enc-8: devolvida em 2026-03-12, reembolso de 17.00 €",
+      "solution_explanation": "Assim que Devolvida entra na união, o default de descrever deixa de compilar com Type 'Devolvida' is not assignable to type 'never'. Num projeto maior, a mesma mensagem aparece em cada switch sobre o estado, e a lista de erros é a lista exata de sítios a atualizar."
+    },
+    {
+      "title": "A máquina de estados como tipo",
+      "difficulty": "Avancado",
+      "statement": "Escreva um tipo Transicoes que associe a cada estado a união dos estados para onde pode ir (never para os estados finais). Verifique com Record que a tabela cobre todos os estados, derive dela os tipos Ativo (estados de onde se pode sair) e Final, e escreva PodeIr<De, Para> que dê true ou false. Termine com um tuplo de testes Esperar<Igual<...>> e um teste que tem de falhar.",
+      "hint": "Um mapped type sobre Estado que devolve never para os estados sem saída, seguido de um indexed access com [Estado], dá a união dos restantes.",
+      "solution_code": "type Igual<A, B> =\n  (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;\ntype Esperar<T extends true> = T;\n\ninterface Pendente { readonly id: string; readonly estado: \"pendente\" }\ninterface Paga { readonly id: string; readonly estado: \"paga\"; readonly referencia: string }\ninterface Enviada { readonly id: string; readonly estado: \"enviada\"; readonly codigoEnvio: string }\ninterface Cancelada { readonly id: string; readonly estado: \"cancelada\"; readonly motivo: string }\ntype Encomenda = Pendente | Paga | Enviada | Cancelada;\ntype Estado = Encomenda[\"estado\"];\n\n// A máquina de estados escrita uma vez, como tipo\ntype Transicoes = {\n  pendente: \"paga\" | \"cancelada\";\n  paga: \"enviada\" | \"cancelada\";\n  enviada: never;\n  cancelada: never;\n};\n\n// Garante que a tabela cobre todos os estados e só aponta para estados válidos\ntype TabelaValida = Esperar<Transicoes extends Record<Estado, Estado> ? true : false>;\n\n// Estados de onde se pode sair e estados finais, derivados da tabela\ntype Ativo = { [S in Estado]: Transicoes[S] extends never ? never : S }[Estado];\ntype Final = Exclude<Estado, Ativo>;\n\n// Pode ir de De para Para?\ntype PodeIr<De extends Estado, Para extends Estado> = Para extends Transicoes[De] ? true : false;\n\ntype testes = [\n  Esperar<Igual<Ativo, \"pendente\" | \"paga\">>,\n  Esperar<Igual<Final, \"enviada\" | \"cancelada\">>,\n  Esperar<Igual<PodeIr<\"pendente\", \"paga\">, true>>,\n  Esperar<Igual<PodeIr<\"cancelada\", \"enviada\">, false>>,\n  Esperar<Igual<PodeIr<\"pendente\", \"enviada\">, false>>,\n];\n\n// E o teste que tem de falhar, para provar que os testes mordem\n// @ts-expect-error\ntype falha = Esperar<PodeIr<\"cancelada\", \"enviada\">>;",
+      "solution_explanation": "Ativo usa o padrão de mapear cada chave para si própria ou para never e depois indexar com todas as chaves, o que junta numa união só as que sobreviveram. Final é o complemento com Exclude, e o teste com @ts-expect-error prova que Esperar rejeita mesmo um false."
+    },
+    {
+      "title": "Procurar por qualquer campo",
+      "difficulty": "Avancado",
+      "statement": "Acrescente ao repositório em memória um método assíncrono procurar que receba o nome de um campo de T e um valor, e devolva os itens em que esse campo tem esse valor. O compilador deve rejeitar campos que não existem e valores do tipo errado para o campo escolhido. Teste com um repositório de resumos de encomendas, procurando por cliente e por estado.",
+      "hint": "O método precisa do seu próprio parâmetro genérico K extends keyof T, e o valor tem o tipo T[K].",
+      "solution_code": "type IdEncomenda = `enc-${number}`;\ntype Estado = \"pendente\" | \"paga\" | \"enviada\" | \"cancelada\";\ninterface ResumoEncomenda {\n  readonly id: IdEncomenda;\n  readonly cliente: string;\n  readonly estado: Estado;\n  readonly totalCentimos: number;\n}\n\nconst pausa = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));\n\nclass RepositorioEmMemoria<T extends { readonly id: string }> {\n  private readonly itens = new Map<T[\"id\"], T>();\n\n  constructor(private readonly latenciaMs: number = 3) {}\n\n  async guardar(item: T): Promise<void> {\n    await pausa(this.latenciaMs);\n    this.itens.set(item.id, item);\n  }\n\n  // O valor tem de ter o tipo do campo escolhido: T[K]\n  async procurar<K extends keyof T>(campo: K, valor: T[K]): Promise<T[]> {\n    await pausa(this.latenciaMs);\n    return [...this.itens.values()].filter((item) => item[campo] === valor);\n  }\n}\n\nconst repo = new RepositorioEmMemoria<ResumoEncomenda>();\nawait repo.guardar({ id: \"enc-1\", cliente: \"Ana Sousa\", estado: \"enviada\", totalCentimos: 1700 });\nawait repo.guardar({ id: \"enc-2\", cliente: \"Rui Lopes\", estado: \"pendente\", totalCentimos: 1350 });\nawait repo.guardar({ id: \"enc-3\", cliente: \"Ana Sousa\", estado: \"paga\", totalCentimos: 1290 });\n\nconst daAna = await repo.procurar(\"cliente\", \"Ana Sousa\");\nconsole.log(daAna.map((e) => e.id)); // [ 'enc-1', 'enc-3' ]\n\nconst pendentes = await repo.procurar(\"estado\", \"pendente\");\nconsole.log(pendentes.length); // 1\n\n// repo.procurar(\"estado\", \"perdida\") nem compila: \"perdida\" não é um Estado\n// repo.procurar(\"morada\", \"x\") também não: \"morada\" não é uma chave",
+      "solution_explanation": "Com K extends keyof T, o primeiro argumento só aceita chaves reais, e T[K] faz o segundo depender do primeiro: procurar(\"estado\", ...) só aceita um Estado. As duas chamadas erradas dos comentários dão TS2345, uma pelo valor e outra pela chave."
+    }
+  ],
+  "summary": [
+    "O modelo de domínio vem primeiro: IDs em template literal, estados como união discriminada e tudo readonly.",
+    "As transições aceitam só o estado de partida certo, e o switch exaustivo com never impede estados esquecidos.",
+    "unknown só entra pela validação: um esquema de validadores dá ao mesmo tempo a verificação em runtime e o tipo.",
+    "O repositório genérico e o serviço devolvem Resultado com uniões de erros, e quem chama é obrigado a tratá-los.",
+    "Os tipos derivados (Pick, Omit, Extract, ReturnType, Awaited) mantêm o projeto coerente quando o modelo muda.",
+    "Testes de tipos com Igual, Esperar e @ts-expect-error transformam cada garantia num erro de compilação se for quebrada."
+  ],
+  "summary_label": "Resumo",
+  "closing_message": "Vamos continuar para o Módulo 13",
+  "next_label": "Módulo 13 → Cheat Sheet — Referência Rápida"
+}

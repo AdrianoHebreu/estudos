@@ -1,0 +1,16 @@
+{
+  "name": "biblioteca-graphql",
+  "version": "1.0.0",
+  "description": "Servidor GraphQL de estudo (dados em memória) do Mini-Curso de GraphQL",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.mjs",
+    "dev": "node --watch src/index.mjs",
+    "test": "node --test \"test/*.test.mjs\""
+  },
+  "dependencies": {
+    "@apollo/server": "^5.5.1",
+    "dataloader": "^2.2.3",
+    "graphql": "^16.11.0"
+  }
+}

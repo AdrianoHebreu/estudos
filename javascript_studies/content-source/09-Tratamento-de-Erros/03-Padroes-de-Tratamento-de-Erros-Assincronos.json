@@ -1,0 +1,232 @@
+{
+  "module_num": "09",
+  "module_title": "Tratamento de Erros",
+  "module_dir": "09-Tratamento-de-Erros",
+  "lesson_num": "03",
+  "lesson_slug": "Padroes-de-Tratamento-de-Erros-Assincronos",
+  "kind": "aula",
+  "title": "Padrões de Tratamento de Erros Assíncronos",
+  "filename_base": "03-Padroes-de-Tratamento-de-Erros-Assincronos",
+  "subtitle": "Trate rejeições, valide inputs e recupere de falhas transitórias sem esconder bugs.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Reconhecer o que é uma rejeição de promise não tratada e como monitorizá-la com os eventos globais do browser e do Node.js.",
+    "Escolher entre try/catch à volta de await e .catch() numa cadeia de promises, consoante o contexto e o estilo do código.",
+    "Validar dados de entrada de forma síncrona e lançar erros específicos antes de iniciar operações assíncronas.",
+    "Implementar um mecanismo de retry com backoff exponencial simples para falhas transitórias.",
+    "Distinguir erros esperados (validação, recursos em falta) de bugs inesperados, e tratar cada categoria de forma apropriada."
+  ],
+  "sections": [
+    {
+      "heading": "Rejeições de Promises Não Tratadas",
+      "body": [
+        "Quando uma promise é rejeitada e nenhuma parte do código a trata, nem com .catch(), nem com um try/catch à volta de um await, diz-se que existe uma rejeição não tratada (unhandled rejection). Isto acontece com frequência quando se dispara uma função assíncrona sem aguardar o seu resultado, ou quando um erro surge dentro de um .then() sem que exista um .catch() mais à frente na cadeia.",
+        "O ambiente de execução deteta estas situações e expõe-as através de um evento global: no browser é o evento unhandledrejection do objeto window, no Node.js é o evento unhandledRejection do objeto process. Nenhum dos dois resolve o problema por si só, servem apenas para registar, monitorizar ou, no limite, terminar o processo de forma controlada. O Node.js, aliás, passou a terminar o processo por omissão quando existe uma rejeição não tratada, precisamente porque um erro assíncrono ignorado pode deixar a aplicação num estado inconsistente sem que ninguém dê por isso."
+      ],
+      "code": "async function obterUtilizador(id) {\n  const resposta = await fetch(`/api/utilizadores/${id}`);\n  if (!resposta.ok) {\n    throw new Error(`Pedido falhou com estado ${resposta.status}`);\n  }\n  return resposta.json();\n}\n\n// Promise nunca é tratada: nem .catch(), nem está dentro de um try/catch\nobterUtilizador(999);\n\n// No browser, este erro só é reportado através do evento global:\nwindow.addEventListener('unhandledrejection', (evento) => {\n  console.error('Rejeição não tratada:', evento.reason);\n  evento.preventDefault(); // evita o aviso por omissão do browser, mas não resolve o problema\n});\n\n// No Node.js o equivalente é:\nprocess.on('unhandledRejection', (razao, promessa) => {\n  console.error('Rejeição não tratada:', razao);\n});",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Os handlers globais (unhandledrejection / unhandledRejection) são uma rede de segurança para deteção e registo, nunca um substituto do tratamento local do erro no ponto onde ele ocorre.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⚠️",
+          "text": "Promise sem .catch() = rejeição não tratada"
+        },
+        {
+          "icon": "🌐",
+          "text": "Browser: evento 'unhandledrejection'"
+        },
+        {
+          "icon": "🟢",
+          "text": "Node.js: evento 'unhandledRejection'"
+        },
+        {
+          "icon": "🛟",
+          "text": "Handler global é rede de segurança, não solução"
+        }
+      ]
+    },
+    {
+      "heading": "try/catch com await vs .catch() em Cadeias",
+      "body": [
+        "Dentro de uma função async, um try/catch à volta de um ou mais await funciona exatamente como à volta de código síncrono: se a promise aguardada rejeitar, a exceção é apanhada pelo catch correspondente. Esta forma é particularmente clara quando há vários passos assíncronos em sequência, porque o fluxo lê-se de cima para baixo sem necessidade de aninhar callbacks ou .then().",
+        "O .catch() no final de uma cadeia de .then() continua a ser válido e útil, sobretudo quando o código não usa await, ou quando se quer anexar a recuperação de um erro a um passo específico no meio da cadeia sem interromper o resto. É também possível combinar as duas formas: usar um .catch() num passo intermédio para fornecer um valor de recurso e deixar a cadeia continuar normalmente.",
+        "Um erro frequente é escrever return seguido de uma chamada que devolve uma promise, dentro de um try, sem o await à frente. Como a função retorna antes de a promise rejeitar, essa rejeição escapa ao catch local e só é apanhada por quem chamar a função, ou torna-se uma rejeição não tratada se ninguém a tratar. A correção é simples: escrever return await sempre que se quiser que o catch dessa função apanhe o erro da promise devolvida."
+      ],
+      "code": "async function obterPedidos(idUtilizador) {\n  const resposta = await fetch(`/api/utilizadores/${idUtilizador}/pedidos`);\n  if (!resposta.ok) {\n    throw new Error(`Pedido falhou com estado ${resposta.status}`);\n  }\n  return resposta.json();\n}\n\nfunction processarPedidos(pedidos) {\n  return pedidos.map(pedido => pedido.total);\n}\n\n// Com .catch() numa cadeia\nfunction comCatchNaCadeia() {\n  return obterUtilizador(1)\n    .then(utilizador => obterPedidos(utilizador.id))\n    .then(pedidos => processarPedidos(pedidos))\n    .catch(erro => {\n      console.error('Falha ao processar utilizador:', erro.message);\n      return [];\n    });\n}\n\n// Com try/catch à volta de await\nasync function comTryCatch() {\n  try {\n    const utilizador = await obterUtilizador(1);\n    const pedidos = await obterPedidos(utilizador.id);\n    return processarPedidos(pedidos);\n  } catch (erro) {\n    console.error('Falha ao processar utilizador:', erro.message);\n    return [];\n  }\n}\n\n// Bug comum: falta o await antes do return\nasync function comBug() {\n  try {\n    return obterUtilizador(1); // devia ser: return await obterUtilizador(1)\n  } catch (erro) {\n    // nunca chega a executar se a promise só rejeitar depois de o try terminar\n    console.error(erro);\n  }\n}",
+      "callout_kind": "DICA",
+      "callout_text": "Dentro de um try/catch, escreva return await promessa e não apenas return promessa quando quiser que esse catch apanhe o erro dessa promessa.",
+      "table_headers": [
+        "Aspeto",
+        "try/catch com await",
+        ".catch() em cadeia"
+      ],
+      "table_rows": [
+        [
+          "Legibilidade em sequências longas",
+          "Elevada, lê-se como código síncrono",
+          "Diminui à medida que a cadeia cresce"
+        ],
+        [
+          "Tratar o erro de um passo intermédio",
+          "Exige try/catch dentro desse passo",
+          "Basta um .catch() nesse ponto da cadeia"
+        ],
+        [
+          "Erro comum a evitar",
+          "Esquecer o await antes do return",
+          "Esquecer o .catch() final"
+        ],
+        [
+          "Onde pode ser usado",
+          "Só dentro de uma função async",
+          "Em qualquer contexto, com ou sem async"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔁",
+          "text": "try/catch lê-se como código síncrono"
+        },
+        {
+          "icon": "⛓️",
+          "text": ".catch() encaixa bem em cadeias .then"
+        },
+        {
+          "icon": "🐛",
+          "text": "Erro comum: 'return' sem 'await' no try"
+        },
+        {
+          "icon": "✅",
+          "text": "Use 'return await' para apanhar o erro"
+        }
+      ]
+    },
+    {
+      "heading": "Validação de Input e Erros Específicos",
+      "body": [
+        "Antes de iniciar uma operação assíncrona como um pedido de rede, vale a pena validar os dados de entrada de forma síncrona e lançar um erro imediatamente se algo estiver errado. Isto evita gastar tempo e recursos numa operação que já se sabe, à partida, que vai falhar ou produzir um resultado inválido.",
+        "Em vez de lançar um Error genérico, compensa criar classes de erro específicas que estendem Error, com um name descritivo e, quando fizer sentido, propriedades adicionais como o campo em causa. Isto permite a quem trata o erro usar instanceof para reagir de forma diferente a cada tipo de problema, em vez de tentar interpretar mensagens de texto."
+      ],
+      "code": "class ErroDeValidacao extends Error {\n  constructor(mensagem, campo) {\n    super(mensagem);\n    this.name = 'ErroDeValidacao';\n    this.campo = campo;\n  }\n}\n\nfunction validarEmail(email) {\n  if (typeof email !== 'string' || !email.includes('@')) {\n    throw new ErroDeValidacao('Email inválido', 'email');\n  }\n}\n\nasync function registarUtilizador(dados) {\n  validarEmail(dados.email); // lança de forma síncrona, antes de qualquer pedido de rede\n\n  if (!dados.password || dados.password.length < 8) {\n    throw new ErroDeValidacao('A password deve ter pelo menos 8 caracteres', 'password');\n  }\n\n  const resposta = await fetch('/api/utilizadores', {\n    method: 'POST',\n    headers: { 'Content-Type': 'application/json' },\n    body: JSON.stringify(dados),\n  });\n\n  if (!resposta.ok) {\n    throw new Error(`Erro do servidor: ${resposta.status}`);\n  }\n\n  return resposta.json();\n}\n\n(async () => {\n  try {\n    await registarUtilizador({ email: 'ana@exemplo.com', password: '123' });\n  } catch (erro) {\n    if (erro instanceof ErroDeValidacao) {\n      console.warn(`Campo inválido (${erro.campo}): ${erro.message}`);\n    } else {\n      console.error('Erro inesperado:', erro);\n    }\n  }\n})();",
+      "callout_kind": "NOTA",
+      "callout_text": "Lançar erros de validação antes de qualquer await torna-os síncronos, mais fáceis de testar e mais rápidos de detetar do que esperar por uma resposta do servidor para só depois falhar.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧪",
+          "text": "Valide antes de qualquer pedido assíncrono"
+        },
+        {
+          "icon": "🏷️",
+          "text": "Erros customizados identificam o campo inválido"
+        },
+        {
+          "icon": "🎯",
+          "text": "instanceof distingue validação de outros erros"
+        }
+      ]
+    },
+    {
+      "heading": "Retry com Backoff Simples",
+      "body": [
+        "Algumas falhas assíncronas são transitórias: uma ligação de rede momentaneamente instável, um serviço temporariamente sobrecarregado ou um limite de pedidos por segundo excedido. Nestes casos, repetir o pedido passado algum tempo tem, muitas vezes, sucesso sem qualquer intervenção manual.",
+        "Um padrão de retry simples tenta a operação e, se falhar, espera um atraso que aumenta a cada tentativa, o chamado backoff exponencial, por exemplo o atraso base multiplicado por dois elevado ao número de tentativas já feitas, até um número máximo de tentativas. É essencial só repetir erros identificados como transitórios: erros de validação ou de lógica vão falhar sempre da mesma forma, pelo que repeti-los é apenas desperdiçar tempo e recursos."
+      ],
+      "code": "function esperar(ms) {\n  return new Promise(resolve => setTimeout(resolve, ms));\n}\n\nasync function comRetry(funcaoAssincrona, tentativasMaximas = 3, atrasoBase = 300) {\n  for (let tentativa = 1; tentativa <= tentativasMaximas; tentativa++) {\n    try {\n      return await funcaoAssincrona();\n    } catch (erro) {\n      const ultimaTentativa = tentativa === tentativasMaximas;\n\n      // Erros de validação não devem ser repetidos: vão falhar sempre da mesma forma\n      if (erro instanceof ErroDeValidacao || ultimaTentativa) {\n        throw erro;\n      }\n\n      const atraso = atrasoBase * 2 ** (tentativa - 1); // 300ms, 600ms, 1200ms, ...\n      console.warn(`Tentativa ${tentativa} falhou (${erro.message}). A repetir em ${atraso}ms...`);\n      await esperar(atraso);\n    }\n  }\n}\n\n// Utilização:\nconst dados = await comRetry(() =>\n  fetch('/api/relatorio').then(resposta => {\n    if (!resposta.ok) throw new Error(`Estado ${resposta.status}`);\n    return resposta.json();\n  })\n);",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Repetir automaticamente operações que alteram dados, como criar um registo, pode duplicar efeitos se apenas a resposta se tiver perdido. Reserve o retry para leituras ou para operações que sejam idempotentes.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔄",
+          "text": "Repita só falhas transitórias, nunca validações"
+        },
+        {
+          "icon": "⏱️",
+          "text": "Backoff exponencial: 300ms, 600ms, 1200ms..."
+        },
+        {
+          "icon": "🚫",
+          "text": "Cuidado com retry em operações não idempotentes"
+        }
+      ]
+    },
+    {
+      "heading": "Erros Esperados vs Erros Inesperados (Bugs)",
+      "body": [
+        "É útil pensar nos erros em duas categorias. Os erros esperados, também chamados operacionais, fazem parte do funcionamento normal da aplicação: um input inválido, um recurso que não existe, uma rede indisponível. São situações previsíveis, para as quais já se pode ter uma resposta pronta, como mostrar uma mensagem ao utilizador, devolver um valor por omissão ou tentar de novo.",
+        "Os bugs, ou erros de programação, são outra coisa: aceder a uma propriedade de undefined, chamar uma função que não existe, uma condição de lógica errada. Estes não devem ser silenciados por um catch genérico que apenas regista e segue em frente, porque isso esconde problemas reais do código. Um erro deste tipo deve propagar, ser registado com o máximo de detalhe possível e, em produção, ser reportado a um serviço de monitorização, para que a equipa o corrija.",
+        "Uma técnica simples para separar os dois casos é marcar os erros esperados com uma propriedade própria, atribuída no construtor da classe de erro, e, no ponto onde se trata o erro, decidir o comportamento com base nessa marca, em vez de tratar todos os catch da mesma forma."
+      ],
+      "code": "class ErroOperacional extends Error {\n  constructor(mensagem) {\n    super(mensagem);\n    this.name = 'ErroOperacional';\n    this.operacional = true; // erro esperado: problema de negócio ou de rede\n  }\n}\n\nclass ErroDeRecursoNaoEncontrado extends ErroOperacional {\n  constructor(recurso) {\n    super(`${recurso} não encontrado`);\n    this.name = 'ErroDeRecursoNaoEncontrado';\n  }\n}\n\nasync function obterPedido(id) {\n  const pedidos = { 1: { itens: [{ preco: 10 }, { preco: 20 }] } };\n  return pedidos[id];\n}\n\nasync function processarPedido(id) {\n  const pedido = await obterPedido(id);\n\n  if (!pedido) {\n    throw new ErroDeRecursoNaoEncontrado(`Pedido ${id}`);\n  }\n\n  // Se \"pedido.itens\" não existisse por um erro de lógica algures,\n  // isto lançaria um TypeError normal, não um erro operacional\n  return pedido.itens.map(item => item.preco);\n}\n\nasync function tratarPedido(id) {\n  try {\n    return await processarPedido(id);\n  } catch (erro) {\n    if (erro.operacional) {\n      console.warn('Erro esperado:', erro.message);\n      return null; // resposta controlada, por exemplo um 404 para o cliente\n    }\n\n    // Erro inesperado: regista com detalhe e propaga, nunca esconder um bug\n    console.error('Bug inesperado:', erro);\n    throw erro;\n  }\n}",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Reveja um catch genérico que já tenha escrito e pergunte-se: este código está a esconder um bug real atrás de uma mensagem de 'deu erro'? Se sim, separe os casos com uma propriedade como 'operacional'.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧭",
+          "text": "Erro esperado: trate e siga em frente"
+        },
+        {
+          "icon": "🐞",
+          "text": "Bug inesperado: regista e propague"
+        },
+        {
+          "icon": "🚩",
+          "text": "Uma flag 'operacional' separa os dois casos"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Apanhar a Rejeição em Falta",
+      "difficulty": "Iniciante",
+      "statement": "Foi-lhe dada a função abaixo, que obtém a idade de um utilizador a partir de um pedido simulado (a função simularPedido já está pronta e pode rejeitar):\n\nfunction simularPedido(deveFalhar) {\n  return new Promise((resolve, reject) => {\n    setTimeout(() => {\n      if (deveFalhar) {\n        reject(new Error('Servidor indisponível'));\n      } else {\n        resolve(34);\n      }\n    }, 100);\n  });\n}\n\nasync function obterIdade(deveFalhar) {\n  const idade = await simularPedido(deveFalhar);\n  return idade;\n}\n\nDe momento, se a promise devolvida por simularPedido rejeitar, esse erro nunca é tratado. Reescreva a função obterIdade para que, se a promise rejeitar, o erro seja apanhado, seja escrita na consola a mensagem \"Não foi possível obter a idade: \" seguida da mensagem do erro, e a função devolva null nesse caso. Quando não houver falha, o comportamento deve manter-se igual (devolver a idade).",
+      "hint": "Lembre-se que, dentro de uma função async, um await pode ser combinado com o tratamento de erros que já conhece de código síncrono.",
+      "solution_code": "function simularPedido(deveFalhar) {\n  return new Promise((resolve, reject) => {\n    setTimeout(() => {\n      if (deveFalhar) {\n        reject(new Error('Servidor indisponível'));\n      } else {\n        resolve(34);\n      }\n    }, 100);\n  });\n}\n\nasync function obterIdade(deveFalhar) {\n  try {\n    const idade = await simularPedido(deveFalhar);\n    return idade;\n  } catch (erro) {\n    console.error(`Não foi possível obter a idade: ${erro.message}`);\n    return null;\n  }\n}",
+      "solution_explanation": "O await dentro do bloco try faz com que uma rejeição da promise seja convertida numa exceção apanhada pelo catch correspondente, tal como aconteceria com um throw síncrono. Assim, a função nunca deixa escapar uma rejeição não tratada e devolve sempre um valor previsível a quem a chama."
+    },
+    {
+      "title": "Validar Antes de Pedir",
+      "difficulty": "Intermedio",
+      "statement": "Crie uma classe ErroDeValidacao que estenda Error e que, no construtor, receba uma mensagem e um campo, guardando o campo numa propriedade com esse nome. Depois escreva uma função assíncrona criarProduto(dados) que: primeiro lance um ErroDeValidacao se dados.nome não for uma string não vazia (campo 'nome'); a seguir lance um ErroDeValidacao se dados.preco não for um número maior que zero (campo 'preco'); só depois destas duas validações, simule uma gravação com await new Promise(resolve => setTimeout(() => resolve({ ...dados, id: 1 }), 50)) e devolva esse resultado. Escreva ainda código que chame criarProduto com dados inválidos (por exemplo nome vazio) e trate o erro com try/catch, usando instanceof para escrever na consola uma mensagem diferente consoante o erro seja um ErroDeValidacao ou qualquer outro tipo de erro.",
+      "hint": "As regras de negócio (nome e preço) podem ser verificadas de forma síncrona antes de qualquer operação assíncrona; pense em como o código que trata o erro pode saber qual delas falhou.",
+      "solution_code": "class ErroDeValidacao extends Error {\n  constructor(mensagem, campo) {\n    super(mensagem);\n    this.name = 'ErroDeValidacao';\n    this.campo = campo;\n  }\n}\n\nasync function criarProduto(dados) {\n  if (typeof dados.nome !== 'string' || dados.nome.trim() === '') {\n    throw new ErroDeValidacao('O nome é obrigatório', 'nome');\n  }\n\n  if (typeof dados.preco !== 'number' || dados.preco <= 0) {\n    throw new ErroDeValidacao('O preço deve ser um número maior que zero', 'preco');\n  }\n\n  const produtoGravado = await new Promise(resolve =>\n    setTimeout(() => resolve({ ...dados, id: 1 }), 50)\n  );\n\n  return produtoGravado;\n}\n\n(async () => {\n  try {\n    const produto = await criarProduto({ nome: '', preco: 10 });\n    console.log('Produto criado:', produto);\n  } catch (erro) {\n    if (erro instanceof ErroDeValidacao) {\n      console.warn(`Campo inválido (${erro.campo}): ${erro.message}`);\n    } else {\n      console.error('Erro inesperado:', erro);\n    }\n  }\n})();",
+      "solution_explanation": "As validações lançam erros de forma síncrona logo no início da função, antes de qualquer operação assíncrona, o que evita simular uma gravação para dados que já se sabem inválidos. O instanceof no catch permite reagir de forma diferente a um erro de validação, que é esperado, do que a qualquer outra falha."
+    },
+    {
+      "title": "Erro Esperado ou Bug?",
+      "difficulty": "Intermedio",
+      "statement": "Tem o seguinte código:\n\nasync function obterPedido(id) {\n  const pedidos = { 1: { itens: [{ preco: 10 }, { preco: 20 }] } };\n  return pedidos[id];\n}\n\nasync function totalDoPedido(id) {\n  const pedido = await obterPedido(id);\n  return pedido.itens.reduce((soma, item) => soma + item.preco, 0);\n}\n\nSe chamar totalDoPedido(2) (um id inexistente), o código atual lança um TypeError confuso, porque pedido é undefined. Crie uma classe PedidoNaoEncontrado que estenda Error, receba o id no construtor, defina uma mensagem clara e marque a instância com uma propriedade esperado = true. Altere totalDoPedido para lançar um PedidoNaoEncontrado quando o pedido não existir, em vez de deixar o TypeError acontecer. Depois escreva uma função assíncrona chamarComTratamento(id) que chama totalDoPedido(id) dentro de um try/catch e: se o erro apanhado tiver esperado === true, escreve na consola \"Pedido inválido: \" seguido da mensagem do erro; caso contrário, escreve \"Erro inesperado, a reportar à equipa:\" seguido do erro, e relança esse erro.",
+      "hint": "Pense no que torna um pedido inexistente diferente, na sua natureza, de um erro de programação como aceder a uma propriedade de undefined, e em como pode marcar essa diferença numa propriedade do próprio objeto de erro.",
+      "solution_code": "class PedidoNaoEncontrado extends Error {\n  constructor(id) {\n    super(`Pedido com id ${id} não encontrado`);\n    this.name = 'PedidoNaoEncontrado';\n    this.esperado = true;\n  }\n}\n\nasync function obterPedido(id) {\n  const pedidos = { 1: { itens: [{ preco: 10 }, { preco: 20 }] } };\n  return pedidos[id];\n}\n\nasync function totalDoPedido(id) {\n  const pedido = await obterPedido(id);\n\n  if (!pedido) {\n    throw new PedidoNaoEncontrado(id);\n  }\n\n  return pedido.itens.reduce((soma, item) => soma + item.preco, 0);\n}\n\nasync function chamarComTratamento(id) {\n  try {\n    const total = await totalDoPedido(id);\n    console.log(`Total do pedido: ${total}`);\n  } catch (erro) {\n    if (erro.esperado) {\n      console.warn(`Pedido inválido: ${erro.message}`);\n    } else {\n      console.error('Erro inesperado, a reportar à equipa:', erro);\n      throw erro;\n    }\n  }\n}\n\nchamarComTratamento(2);",
+      "solution_explanation": "A verificação explícita de pedido antes de aceder a pedido.itens transforma um TypeError genérico num erro de negócio claro e identificável através da propriedade esperado. No tratamento, essa propriedade permite decidir entre mostrar uma mensagem controlada ao utilizador ou deixar o erro propagar para ser investigado como um bug real."
+    },
+    {
+      "title": "Retry Inteligente",
+      "difficulty": "Avancado",
+      "statement": "Escreva uma função genérica comRetry(funcaoAssincrona, opcoes) que aceite um segundo argumento opcional com as propriedades tentativasMaximas (por omissão 4) e atrasoBase (por omissão 200, em milissegundos). A função deve: tentar executar funcaoAssincrona(); se esta rejeitar com um erro cuja propriedade transitorio seja true e ainda não for a última tentativa permitida, esperar atrasoBase * 2 elevado a (tentativa - 1) milissegundos (usando setTimeout dentro de uma promise) e tentar de novo; se o erro não tiver transitorio === true, ou se já for a última tentativa, a função deve propagar esse erro em vez de continuar a tentar. Depois teste a sua função com uma função simulada que rejeita com um objeto de erro com transitorio: true nas duas primeiras chamadas e resolve com o valor 'sucesso' na terceira, confirmando com console.log que o resultado final é obtido.",
+      "hint": "Pense em como, dentro do catch de um ciclo, decidir entre esperar e tentar outra vez ou desistir e propagar imediatamente o erro.",
+      "solution_code": "function esperar(ms) {\n  return new Promise(resolve => setTimeout(resolve, ms));\n}\n\nasync function comRetry(funcaoAssincrona, { tentativasMaximas = 4, atrasoBase = 200 } = {}) {\n  for (let tentativa = 1; tentativa <= tentativasMaximas; tentativa++) {\n    try {\n      return await funcaoAssincrona();\n    } catch (erro) {\n      const ultimaTentativa = tentativa === tentativasMaximas;\n\n      if (!erro.transitorio || ultimaTentativa) {\n        throw erro;\n      }\n\n      const atraso = atrasoBase * 2 ** (tentativa - 1);\n      console.warn(`Tentativa ${tentativa} falhou, a repetir em ${atraso}ms...`);\n      await esperar(atraso);\n    }\n  }\n}\n\nlet chamadas = 0;\nfunction operacaoInstavel() {\n  chamadas++;\n  return new Promise((resolve, reject) => {\n    if (chamadas <= 2) {\n      const erro = new Error('Falha temporária');\n      erro.transitorio = true;\n      reject(erro);\n    } else {\n      resolve('sucesso');\n    }\n  });\n}\n\n(async () => {\n  const resultado = await comRetry(operacaoInstavel);\n  console.log('Resultado final:', resultado);\n})();",
+      "solution_explanation": "O ciclo for tenta executar a função até tentativasMaximas vezes; sempre que o erro apanhado tem transitorio true e ainda não é a última tentativa, a função espera um atraso que duplica a cada repetição (backoff exponencial) antes de tentar de novo. Qualquer outro tipo de erro, ou o esgotar das tentativas, faz o erro propagar imediatamente em vez de continuar a repetir."
+    }
+  ],
+  "summary": [
+    "Uma promise rejeitada sem .catch() nem try/catch gera uma rejeição não tratada; use os eventos globais (unhandledrejection / unhandledRejection) apenas como rede de segurança para monitorização, nunca como tratamento principal.",
+    "try/catch à volta de await lê-se como código síncrono e é ideal para sequências de passos; .catch() no fim de uma cadeia continua útil sem await ou para recuperar um passo específico no meio da cadeia.",
+    "Dentro de um try, use return await, e não apenas return, quando quiser que o catch local apanhe o erro de uma promise devolvida.",
+    "Valide os inputs de forma síncrona, lançando erros específicos com classes que estendem Error, antes de iniciar operações assíncronas como pedidos de rede.",
+    "Um retry com backoff exponencial deve repetir apenas falhas transitórias conhecidas; erros de validação ou de lógica nunca devem ser repetidos, pois vão falhar sempre da mesma forma.",
+    "Distinga sempre erros esperados (validação, recurso não encontrado, falha de rede) de bugs inesperados: os primeiros tratam-se e mostram-se ao utilizador, os segundos devem propagar e ser registados, nunca escondidos por um catch genérico."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para o Módulo 10",
+  "next_label": "Aula 01 → Selecionar e Manipular o DOM",
+  "_stage": "autoria"
+}

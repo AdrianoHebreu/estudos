@@ -1,0 +1,300 @@
+{
+  "module_num": "10",
+  "module_title": "TypeScript no Mundo Real",
+  "module_dir": "10-TypeScript-no-Mundo-Real",
+  "lesson_num": "02",
+  "lesson_slug": "Consumir-APIs-com-Seguranca",
+  "kind": "aula",
+  "title": "Consumir APIs com Segurança: unknown na Fronteira",
+  "filename_base": "02-Consumir-APIs-com-Seguranca",
+  "subtitle": "Tratar o que chega de fora como unknown e só confiar depois de verificar",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Identificar a fronteira onde os dados deixam de ter tipo garantido",
+    "Perceber por que razão JSON.parse e Response.json() devolvem any",
+    "Reconhecer a falsa segurança de um genérico de conveniência ou de um as",
+    "Anotar a entrada como unknown e estreitá-la manualmente",
+    "Organizar o código com uma função de parse fina na fronteira"
+  ],
+  "sections": [
+    {
+      "heading": "Onde está a fronteira",
+      "body": [
+        "O compilador só conhece o que vê no código. Uma resposta de API, o resultado de JSON.parse, um valor lido de localStorage, uma mensagem de um worker ou o conteúdo de um formulário são produzidos em runtime, por outro programa ou por uma pessoa. Nenhum tipo escrito no código garante a forma desses dados.",
+        "As declarações da biblioteca padrão admitem isso mesmo, mas da forma mais permissiva: no TypeScript 5.9.3, JSON.parse está declarado em lib.es5.d.ts com retorno any, e Response.json() está em lib.dom.d.ts com retorno Promise<any>. Com target es2022 e sem opção lib explícita, a lib DOM entra por omissão, por isso Response existe na compilação; e o Node 24 tem Response global, o que permite simular uma API sem rede."
+      ],
+      "code": "// Declarações reais do TypeScript 5.9.3:\n// lib.es5.d.ts:  parse(text: string, reviver?: ...): any;\n// lib.dom.d.ts:  json(): Promise<any>;\n\n// Uma \"API\" local: devolve o texto que um servidor enviaria.\nasync function servidor(): Promise<string> {\n  return '{\"id\": 7, \"nome\": \"Rita\", \"ativo\": true}';\n}\n\nconst texto = await servidor();\nconst viaParse = JSON.parse(texto); // viaParse: any\n\nconst resposta = new Response(texto, { status: 200 });\nconst viaJson = await resposta.json(); // viaJson: any\n\nconsole.log(resposta.status, viaParse.nome, viaJson.id); // 200 Rita 7\n",
+      "callout_kind": "NOTA",
+      "callout_text": "Em todos os exemplos desta aula a rede é simulada: uma função async devolve o texto, ou constrói-se um new Response(texto) localmente. O comportamento dos tipos é exatamente o mesmo de um fetch real.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🌍",
+          "text": "Dados de fora: API, JSON.parse, localStorage, formulários"
+        },
+        {
+          "icon": "📜",
+          "text": "JSON.parse devolve any (lib.es5.d.ts)"
+        },
+        {
+          "icon": "📨",
+          "text": "Response.json() devolve Promise<any> (lib.dom.d.ts)"
+        },
+        {
+          "icon": "🧪",
+          "text": "new Response(texto) simula a rede sem sair do Node"
+        }
+      ]
+    },
+    {
+      "heading": "any: o erro aparece longe da origem",
+      "body": [
+        "Um valor any desliga a verificação em tudo o que toca: pode ser atribuído a qualquer tipo, qualquer propriedade existe e qualquer chamada é aceite. Se o servidor mudar o formato, o programa continua a compilar sem um único aviso.",
+        "O problema não é só o erro: é o sítio onde aparece. O valor errado viaja pelo programa, passa como string para uma função que confia no seu parâmetro, e só rebenta lá dentro, muitas linhas depois do JSON.parse que o deixou entrar. Pior ainda são os casos que não rebentam: um undefined ou um number disfarçado de string seguem em silêncio."
+      ],
+      "code": "async function servidor(): Promise<string> {\n  // O servidor mudou o formato: \"nome\" passou a \"nomeCompleto\".\n  return '{\"id\": 7, \"nomeCompleto\": \"Rita Sousa\"}';\n}\n\nconst utilizador = JSON.parse(await servidor()); // any\n\n// Tudo compila: com any o compilador não verifica nada.\nconst id: string = utilizador.id; // mentira: em runtime é um number\nconsole.log(typeof id);           // number\nconsole.log(utilizador.nome);     // undefined\n\nfunction iniciais(nome: string): string {\n  return nome.split(\" \").map((p) => p[0]).join(\"\");\n}\n\ntry {\n  // O erro só rebenta aqui, longe do JSON.parse que o causou.\n  console.log(iniciais(utilizador.nome));\n} catch (erro) {\n  console.log(\"Falhou:\", (erro as Error).message);\n  // Falhou: Cannot read properties of undefined (reading 'split')\n}\n",
+      "callout_kind": "ATENCAO",
+      "callout_text": "A anotação const id: string = utilizador.id não converte nem verifica nada. Com any à direita, o compilador aceita a atribuição e o tipo string passa a ser uma mentira que o resto do código vai herdar.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🕳️",
+          "text": "any aceita tudo: propriedades, chamadas, atribuições"
+        },
+        {
+          "icon": "💥",
+          "text": "O erro rebenta longe do sítio onde os dados entraram"
+        },
+        {
+          "icon": "🤫",
+          "text": "Pior: undefined e tipos errados seguem em silêncio"
+        },
+        {
+          "icon": "🏷️",
+          "text": "Anotar o destino não verifica nada"
+        }
+      ]
+    },
+    {
+      "heading": "A falsa segurança dos genéricos de conveniência",
+      "body": [
+        "A primeira tentação é pedir o tipo ao JSON.parse. Não é possível: JSON.parse não tem parâmetros de tipo, e JSON.parse<Utilizador>(texto) dá o erro TS2558, Expected 0 type arguments, but got 1 (ver o bloco da secção seguinte).",
+        "A segunda tentação é escrever um genérico como obterJson<T>(): Promise<T>, ou usar as Utilizador. Ambos compilam e o código fica com ótimo aspeto, mas ninguém verificou nada: o any devolvido por JSON.parse é aceite como T sem qualquer queixa. O tipo passa a ser uma promessa feita por quem escreve o código, não um facto confirmado."
+      ],
+      "code": "type Utilizador = { id: number; nome: string };\n\nasync function servidor(): Promise<string> {\n  return '{\"codigo\": 404, \"erro\": \"não encontrado\"}';\n}\n\n// Genérico de conveniência: parece seguro, mas é só um cast escondido.\nasync function obterJson<T>(): Promise<T> {\n  const texto = await servidor();\n  return JSON.parse(texto); // any passa sem queixa para T\n}\n\nconst u = await obterJson<Utilizador>(); // u: Utilizador (segundo o tipo)\nconsole.log(u.nome);                     // undefined\n\n// O mesmo com \"as\": o compilador aceita a palavra de quem escreve.\nconst v = JSON.parse(await servidor()) as Utilizador;\nconsole.log(typeof v.id);                // undefined\n",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Um genérico cujo T só aparece no retorno, sem nenhum argumento que o prenda, é quase sempre um as disfarçado. Quem chama escolhe o tipo que quer e o compilador acredita.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🚫",
+          "text": "JSON.parse<T>() não existe: erro TS2558"
+        },
+        {
+          "icon": "🎭",
+          "text": "obterJson<T>(): Promise<T> é um as escondido"
+        },
+        {
+          "icon": "🤝",
+          "text": "O tipo fica a ser uma promessa que ninguém verificou"
+        },
+        {
+          "icon": "🔎",
+          "text": "T só no retorno é sinal de alarme"
+        }
+      ]
+    },
+    {
+      "heading": "unknown na fronteira",
+      "body": [
+        "A correção começa com uma anotação: const dados: unknown = JSON.parse(texto). Atribuir any a unknown é sempre permitido, e a partir daí o compilador inverte a postura: em vez de aceitar tudo, recusa tudo até haver prova.",
+        "Aceder a uma propriedade de um identificador unknown dá TS18046, 'dados' is of type 'unknown'. Atribuí-lo a um tipo concreto dá TS2322. Só pode ser passado para onde se aceita unknown. Os erros não são um incómodo: são a lista exata dos sítios onde falta verificar."
+      ],
+      "code": "// @ts-expect-error TS2558: Expected 0 type arguments, but got 1. JSON.parse não é genérico.\nconst tentativa = JSON.parse<{ nome: string }>('{\"nome\": \"Ana\"}');\n\n// A anotação transforma o any em unknown logo na fronteira.\nconst dados: unknown = JSON.parse('{\"nome\": \"Ana\", \"idade\": 30}');\n\n// @ts-expect-error TS18046: 'dados' is of type 'unknown'.\nconsole.log(dados.nome);\n\n// @ts-expect-error TS18046: 'dados' is of type 'unknown'.\nconst idade: number = dados.idade + 1;\n\n// Atribuir unknown a um tipo concreto também é recusado.\n// @ts-expect-error TS2322: Type 'unknown' is not assignable to type 'string'.\nconst nome: string = dados;\n\n// Passar unknown para onde se espera unknown é sempre permitido.\nconst copia: unknown = dados;\n",
+      "callout_kind": "DICA",
+      "callout_text": "Em Response.json() o padrão é igual: const dados: unknown = await resposta.json(). A anotação na própria linha da fronteira impede que o any se espalhe antes de alguém reparar.",
+      "table_headers": [
+        "Forma de receber",
+        "Compila?",
+        "Verifica em runtime?",
+        "Consequência"
+      ],
+      "table_rows": [
+        [
+          "JSON.parse(texto) (any)",
+          "Sim",
+          "Não",
+          "Erros surgem longe da origem"
+        ],
+        [
+          "obterJson<T>() ou as T",
+          "Sim",
+          "Não",
+          "Tipo fiável na aparência, falso na prática"
+        ],
+        [
+          "unknown + narrowing",
+          "Só depois de verificar",
+          "Sim",
+          "O tipo do domínio é um facto"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🛡️",
+          "text": "const dados: unknown = JSON.parse(texto)"
+        },
+        {
+          "icon": "⛔",
+          "text": "Propriedade de unknown: erro TS18046"
+        },
+        {
+          "icon": "⛔",
+          "text": "Atribuir unknown a string: erro TS2322"
+        },
+        {
+          "icon": "📋",
+          "text": "Cada erro marca um sítio onde falta verificar"
+        }
+      ]
+    },
+    {
+      "heading": "Narrowing manual de unknown",
+      "body": [
+        "As ferramentas são as do Módulo 04. typeof x === \"object\" && x !== null estreita para object (a verificação de null é necessária porque typeof null também é \"object\"). Depois, \"nome\" in x estreita para object & Record<\"nome\", unknown>: desde o TS 4.9 o in acrescenta a propriedade ao tipo, mas como unknown. Finalmente typeof x.nome === \"string\" estreita essa propriedade.",
+        "Array.isArray é a exceção perigosa: aplicado a unknown, estreita para any[], e o any volta a entrar pela porta das traseiras. A correção é imediata: guardar o resultado numa variável anotada como unknown[], e cada elemento passa a exigir verificação (aceder a propriedades de um elemento dá TS2571, Object is of type 'unknown')."
+      ],
+      "code": "const dados: unknown = JSON.parse('{\"nome\": \"Ana\", \"tags\": [\"a\", \"b\"]}');\n\nif (typeof dados === \"object\" && dados !== null) {\n  // dados: object\n  if (\"nome\" in dados) {\n    // dados: object & Record<\"nome\", unknown>\n    const campo = dados.nome; // campo: unknown\n    if (typeof campo === \"string\") {\n      console.log(campo.toUpperCase()); // ANA\n    }\n  }\n  if (\"tags\" in dados && Array.isArray(dados.tags)) {\n    // Cuidado: Array.isArray dá any[], e o any volta a entrar.\n    const tags = dados.tags; // tags: any[]\n    try {\n      console.log(tags[0].nao.existe); // compila, mas rebenta\n    } catch (erro) {\n      console.log(\"Falhou:\", (erro as Error).message);\n      // Falhou: Cannot read properties of undefined (reading 'existe')\n    }\n    // Correção: guardar logo como unknown[].\n    const seguras: unknown[] = dados.tags;\n    console.log(seguras.filter((t) => typeof t === \"string\").length); // 2\n  }\n}\n",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Array.isArray(valor) com valor: unknown dá any[]. Escrever logo const itens: unknown[] = valor evita que um elemento sem verificação volte a desligar o compilador.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧱",
+          "text": "typeof x === \"object\" && x !== null dá object"
+        },
+        {
+          "icon": "🔑",
+          "text": "\"campo\" in x acrescenta campo: unknown"
+        },
+        {
+          "icon": "🔤",
+          "text": "typeof x.campo === \"string\" estreita a propriedade"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Array.isArray em unknown dá any[]: anotar unknown[]"
+        }
+      ]
+    },
+    {
+      "heading": "Uma função de parse na fronteira",
+      "body": [
+        "Em vez de espalhar verificações pelo programa, concentra-se tudo numa função que recebe unknown e devolve o tipo do domínio, ou null (ou lança) quando os dados não servem. A fronteira é fina e desconfiada; o interior recebe Utilizador e confia nele sem mais testes.",
+        "Um pormenor medido no TS 5.9: typeof valor.id === \"number\" estreita a propriedade, mas não o objeto. Depois de todas as verificações, valor continua a ser um object & Record<\"id\", unknown> & ... e não é aceite como Utilizador (TS2322). Por isso a função constrói um objeto novo com os campos já estreitados, o que tem a vantagem extra de descartar propriedades que não fazem parte do domínio."
+      ],
+      "code": "type Utilizador = { id: number; nome: string; ativo: boolean };\n\n// A fronteira: recebe unknown, devolve um tipo do domínio ou null.\nfunction parseUtilizador(valor: unknown): Utilizador | null {\n  if (typeof valor !== \"object\" || valor === null) return null;\n  if (!(\"id\" in valor) || typeof valor.id !== \"number\") return null;\n  if (!(\"nome\" in valor) || typeof valor.nome !== \"string\") return null;\n  if (!(\"ativo\" in valor) || typeof valor.ativo !== \"boolean\") return null;\n  // valor continua a ser object & Record<...>, por isso constrói-se um objeto novo.\n  return { id: valor.id, nome: valor.nome, ativo: valor.ativo };\n}\n\nasync function pedir(corpo: string): Promise<Response> {\n  return new Response(corpo, { status: 200 }); // simula a rede\n}\n\nasync function obterUtilizador(corpo: string): Promise<Utilizador | null> {\n  const resposta = await pedir(corpo);\n  const dados: unknown = await resposta.json();\n  return parseUtilizador(dados);\n}\n\n// O interior só vê Utilizador: nada de verificações aqui.\nfunction saudacao(u: Utilizador): string {\n  return `${u.ativo ? \"Olá\" : \"Adeus\"}, ${u.nome} (#${u.id})`;\n}\n\nconst bom = await obterUtilizador('{\"id\": 1, \"nome\": \"Rui\", \"ativo\": true}');\nconst mau = await obterUtilizador('{\"id\": \"1\", \"nome\": \"Rui\"}');\n\nconsole.log(bom ? saudacao(bom) : \"dados inválidos\"); // Olá, Rui (#1)\nconsole.log(mau ? saudacao(mau) : \"dados inválidos\"); // dados inválidos\n",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Acrescentar a Utilizador um campo email: string e ver o compilador apontar o return de parseUtilizador até existir a verificação correspondente.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🚪",
+          "text": "Uma função recebe unknown e devolve o tipo do domínio"
+        },
+        {
+          "icon": "❓",
+          "text": "Dados inválidos: devolver null ou lançar"
+        },
+        {
+          "icon": "🏗️",
+          "text": "Construir um objeto novo com os campos estreitados"
+        },
+        {
+          "icon": "🏠",
+          "text": "O interior do programa trabalha só com tipos fiáveis"
+        }
+      ]
+    },
+    {
+      "heading": "satisfies, unknown e strict",
+      "body": [
+        "satisfies (Módulo 06) verifica valores escritos no próprio código, não dados que chegam em runtime; num JSON.parse não acrescenta segurança nenhuma. Serve bem, isso sim, para o valor predefinido que a fronteira devolve quando a entrada vem estragada.",
+        "O modo strict não transforma o any das bibliotecas em unknown: a decisão de anotar unknown na fronteira é de quem escreve o código. No Módulo 11 volta-se a este tema, ao tratar de evitar any e outras fugas de tipo num projeto inteiro."
+      ],
+      "code": "type Config = { tema: \"claro\" | \"escuro\"; tamanho: number };\n\n// satisfies verifica um valor ESCRITO no código; não serve para dados de fora.\nconst predefinida = { tema: \"claro\", tamanho: 14 } satisfies Config;\n\nfunction parseConfig(valor: unknown): Config {\n  if (typeof valor === \"object\" && valor !== null &&\n      \"tema\" in valor && (valor.tema === \"claro\" || valor.tema === \"escuro\") &&\n      \"tamanho\" in valor && typeof valor.tamanho === \"number\") {\n    return { tema: valor.tema, tamanho: valor.tamanho };\n  }\n  return predefinida; // entrada estragada: volta ao valor seguro\n}\n\n// Simula o que viria de localStorage.getItem(\"config\").\nconst guardado: string = '{\"tema\": \"roxo\", \"tamanho\": 16}';\nconst config = parseConfig(JSON.parse(guardado));\nconsole.log(config.tema, config.tamanho); // claro 14\n",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "✅",
+          "text": "satisfies verifica valores do código, não de runtime"
+        },
+        {
+          "icon": "💾",
+          "text": "localStorage e formulários seguem o mesmo padrão"
+        },
+        {
+          "icon": "🧷",
+          "text": "Valor predefinido seguro quando a entrada falha"
+        },
+        {
+          "icon": "⚙️",
+          "text": "strict não muda o any de JSON.parse"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Contador guardado",
+      "difficulty": "Iniciante",
+      "statement": "Um contador é guardado como texto (por exemplo, o que viria de localStorage). Escrever lerContador(texto: string): number que faz JSON.parse, trata o resultado como unknown e devolve o número se for um number finito, ou 0 em qualquer outro caso. Testar com \"42\", '\"42\"' e \"null\".",
+      "hint": "Anotar o resultado de JSON.parse como unknown e usar typeof antes de o devolver.",
+      "solution_code": "function lerContador(texto: string): number {\n  const dados: unknown = JSON.parse(texto);\n  if (typeof dados === \"number\" && Number.isFinite(dados)) {\n    return dados;\n  }\n  return 0;\n}\n\nconsole.log(lerContador(\"42\"));      // 42\nconsole.log(lerContador('\"42\"'));    // 0\nconsole.log(lerContador(\"null\"));    // 0\n",
+      "solution_explanation": "A anotação unknown obriga a provar o tipo antes do return. typeof dados === \"number\" estreita o valor e Number.isFinite exclui NaN e Infinity; a string \"42\" e null caem no valor 0."
+    },
+    {
+      "title": "Parse de um produto",
+      "difficulty": "Intermedio",
+      "statement": "Definir type Produto = { nome: string; preco: number } e escrever parseProduto(valor: unknown): Produto | null, que só devolve um Produto quando valor é um objeto não nulo com nome string e preco number. Testar com um objeto válido, um com preco em string e um array vazio.",
+      "hint": "Encadear typeof object, a verificação de null, in e typeof em cada campo, e devolver um objeto novo no fim.",
+      "solution_code": "type Produto = { nome: string; preco: number };\n\nfunction parseProduto(valor: unknown): Produto | null {\n  if (typeof valor !== \"object\" || valor === null) return null;\n  if (!(\"nome\" in valor) || typeof valor.nome !== \"string\") return null;\n  if (!(\"preco\" in valor) || typeof valor.preco !== \"number\") return null;\n  return { nome: valor.nome, preco: valor.preco };\n}\n\nconsole.log(parseProduto(JSON.parse('{\"nome\": \"Caneta\", \"preco\": 1.5}')));\n// { nome: 'Caneta', preco: 1.5 }\nconsole.log(parseProduto(JSON.parse('{\"nome\": \"Caneta\", \"preco\": \"1.5\"}'))); // null\nconsole.log(parseProduto(JSON.parse(\"[]\")));                                 // null\n",
+      "solution_explanation": "Cada guarda com return null estreita valor um pouco mais. Como o objeto em si não fica com o tipo Produto, constrói-se { nome, preco } a partir das propriedades já estreitadas. O array vazio passa o typeof object mas falha no in."
+    },
+    {
+      "title": "Catálogo sem fugas",
+      "difficulty": "Intermedio",
+      "statement": "Reutilizando parseProduto, escrever parseCatalogo(valor: unknown): Produto[] que devolve [] se valor não for um array e, caso seja, devolve apenas os elementos válidos. Garantir que nenhum any escapa do Array.isArray. Testar com um array que mistura produtos válidos, um objeto incompleto e null, e somar os preços.",
+      "hint": "Depois de Array.isArray, copiar o valor para uma variável anotada como unknown[] antes de percorrer os elementos.",
+      "solution_code": "type Produto = { nome: string; preco: number };\n\nfunction parseProduto(valor: unknown): Produto | null {\n  if (typeof valor !== \"object\" || valor === null) return null;\n  if (!(\"nome\" in valor) || typeof valor.nome !== \"string\") return null;\n  if (!(\"preco\" in valor) || typeof valor.preco !== \"number\") return null;\n  return { nome: valor.nome, preco: valor.preco };\n}\n\nfunction parseCatalogo(valor: unknown): Produto[] {\n  if (!Array.isArray(valor)) return [];\n  const itens: unknown[] = valor; // fecha a porta ao any[]\n  const produtos: Produto[] = [];\n  for (const item of itens) {\n    const p = parseProduto(item);\n    if (p !== null) produtos.push(p);\n  }\n  return produtos;\n}\n\nconst texto = '[{\"nome\": \"Lápis\", \"preco\": 0.8}, {\"nome\": 3}, null, {\"nome\": \"Borracha\", \"preco\": 0.5}]';\nconst catalogo = parseCatalogo(JSON.parse(texto));\nconsole.log(catalogo.length);                                  // 2\nconsole.log(catalogo.reduce((soma, p) => soma + p.preco, 0));  // 1.3\n",
+      "solution_explanation": "Array.isArray estreita unknown para any[]; a anotação unknown[] fecha essa fuga e cada elemento tem de passar por parseProduto. Os inválidos são descartados, ficam 2 produtos e a soma é 1.3."
+    },
+    {
+      "title": "Resposta com dois formatos",
+      "difficulty": "Avancado",
+      "statement": "Uma API responde { estado: \"ok\", total: number } ou { estado: \"erro\", mensagem: string }. Definir a união discriminada Resposta, escrever parseResposta(valor: unknown): Resposta que lança um Error se o formato não bater certo, e uma função async consultar(corpo: string) que simula a rede com new Response(corpo), lê o corpo como unknown e o passa por parseResposta. Testar com uma resposta ok, uma de erro e uma ok sem total, tratando a rejeição com try/catch.",
+      "hint": "Depois de \"estado\" in valor, comparar valor.estado com cada literal e só então verificar o campo próprio de cada variante.",
+      "solution_code": "type Resposta =\n  | { estado: \"ok\"; total: number }\n  | { estado: \"erro\"; mensagem: string };\n\nfunction parseResposta(valor: unknown): Resposta {\n  if (typeof valor === \"object\" && valor !== null && \"estado\" in valor) {\n    if (valor.estado === \"ok\" && \"total\" in valor && typeof valor.total === \"number\") {\n      return { estado: \"ok\", total: valor.total };\n    }\n    if (valor.estado === \"erro\" && \"mensagem\" in valor && typeof valor.mensagem === \"string\") {\n      return { estado: \"erro\", mensagem: valor.mensagem };\n    }\n  }\n  throw new Error(\"Resposta com formato inesperado\");\n}\n\nasync function consultar(corpo: string): Promise<Resposta> {\n  const resposta = new Response(corpo); // simula a rede\n  const dados: unknown = await resposta.json();\n  return parseResposta(dados);\n}\n\nfunction descrever(r: Resposta): string {\n  return r.estado === \"ok\" ? `Total: ${r.total}` : `Erro: ${r.mensagem}`;\n}\n\nfor (const corpo of ['{\"estado\": \"ok\", \"total\": 12}', '{\"estado\": \"erro\", \"mensagem\": \"sem stock\"}', '{\"estado\": \"ok\"}']) {\n  try {\n    console.log(descrever(await consultar(corpo)));\n  } catch (erro) {\n    console.log(\"Rejeitado:\", (erro as Error).message);\n  }\n}\n// Total: 12\n// Erro: sem stock\n// Rejeitado: Resposta com formato inesperado\n",
+      "solution_explanation": "A fronteira confirma o discriminante e o campo de cada variante e devolve um objeto novo com o tipo exato. Assim, descrever pode usar r.total ou r.mensagem sem verificações, e o formato inesperado é rejeitado logo na entrada, dentro do try/catch."
+    }
+  ],
+  "summary": [
+    "Dados de fora não têm tipo garantido: o compilador só conhece o código",
+    "JSON.parse devolve any e Response.json() devolve Promise<any>",
+    "JSON.parse<T>() não existe (TS2558); obterJson<T>() e as T apenas mentem",
+    "Anotar unknown na fronteira faz o compilador exigir verificações (TS18046)",
+    "in acrescenta a propriedade como unknown; Array.isArray dá any[], anotar unknown[]",
+    "Uma função de parse fina devolve o tipo do domínio e o interior confia nele"
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 03",
+  "next_label": "Aula 03 → Validação em Runtime de Dados Externos"
+}

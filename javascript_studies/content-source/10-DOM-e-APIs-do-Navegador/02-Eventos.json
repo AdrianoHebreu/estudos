@@ -1,0 +1,272 @@
+{
+  "module_num": "10",
+  "module_title": "DOM e APIs do Navegador",
+  "module_dir": "10-DOM-e-APIs-do-Navegador",
+  "lesson_num": "02",
+  "lesson_slug": "Eventos",
+  "kind": "aula",
+  "title": "Eventos",
+  "filename_base": "02-Eventos",
+  "subtitle": "Como registar, controlar e delegar eventos do DOM de forma eficiente",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Registar e remover listeners de eventos com addEventListener e removeEventListener, incluindo as opções once, capture e signal.",
+    "Usar o objeto event para aceder a target e currentTarget e para controlar o comportamento com preventDefault e stopPropagation.",
+    "Compreender as três fases de propagação de um evento: captura, alvo e bubbling.",
+    "Aplicar delegação de eventos para gerir elementos criados dinamicamente com um único listener num ancestral estável.",
+    "Trabalhar com os eventos mais comuns da interface: click, input, submit e keydown."
+  ],
+  "sections": [
+    {
+      "heading": "addEventListener e removeEventListener",
+      "body": [
+        "A forma correta de reagir a eventos em JavaScript moderno é addEventListener, que regista uma função a correr sempre que um determinado tipo de evento ocorre num elemento. Ao contrário de atribuir diretamente uma função à propriedade onclick, addEventListener permite associar vários ouvintes (listeners) diferentes ao mesmo evento e ao mesmo elemento, sem que um substitua o outro. O método aceita um terceiro argumento opcional, um objeto de opções, com propriedades como once, capture e passive.",
+        "Para remover um listener com removeEventListener é obrigatório passar exatamente a mesma referência de função que foi usada no addEventListener. Uma arrow function anónima criada diretamente dentro da chamada a addEventListener nunca pode ser removida desta forma, porque cada execução do código cria uma função nova, diferente da anterior. Quando um listener só precisa de correr uma vez, a opção { once: true } remove-o automaticamente depois do primeiro disparo, sem necessidade de chamar removeEventListener."
+      ],
+      "code": "const botao = document.querySelector('#guardar');\n\nfunction aoClicar(event) {\n  console.log('Botão clicado, elemento:', event.currentTarget);\n}\n\nbotao.addEventListener('click', aoClicar);\n\n// mais tarde, remove exatamente a mesma função registada acima\nbotao.removeEventListener('click', aoClicar);\n\n// um listener que se remove sozinho depois de disparar uma vez\nbotao.addEventListener('click', () => {\n  console.log('Isto só corre na primeira vez');\n}, { once: true });",
+      "callout_kind": "ATENCAO",
+      "callout_text": "removeEventListener só funciona se receber a mesma referência de função usada no addEventListener. Guarde a função numa variável ou numa declaração nomeada sempre que precisar de a remover mais tarde; funções anónimas criadas na própria chamada nunca podem ser removidas.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎧",
+          "text": "addEventListener regista, removeEventListener remove"
+        },
+        {
+          "icon": "🔁",
+          "text": "Permite vários listeners no mesmo elemento"
+        },
+        {
+          "icon": "1️⃣",
+          "text": "{ once: true } remove-se sozinho após disparar"
+        }
+      ]
+    },
+    {
+      "heading": "O objeto event: target, currentTarget e controlo do comportamento",
+      "body": [
+        "Sempre que um evento dispara, o browser passa automaticamente ao listener um objeto event com informação sobre o que aconteceu. event.target é o elemento exato onde o evento se originou, o elemento mais profundo da árvore DOM que foi clicado ou manipulado. event.currentTarget é o elemento ao qual o listener está associado, e mantém-se sempre igual, mesmo que o evento tenha começado num elemento descendente; a diferença entre os dois torna-se essencial quando um listener é colocado num ancestral e o evento chega até ele por bubbling.",
+        "event.preventDefault() cancela o comportamento por omissão que o browser associaria a esse evento, como seguir a hiperligação de um link, submeter e recarregar a página num formulário, ou mostrar o menu de contexto num clique direito. event.stopPropagation() faz algo diferente: impede que o evento continue a propagar-se para outros elementos na árvore, mas não cancela nenhum comportamento por omissão. Os dois métodos resolvem problemas distintos e podem ser usados em conjunto ou isoladamente, conforme o que se pretende evitar."
+      ],
+      "code": "document.querySelector('#menu').addEventListener('click', (event) => {\n  console.log('target:', event.target);            // elemento exato clicado, ex: um <span> dentro do link\n  console.log('currentTarget:', event.currentTarget); // sempre o <ul id=\"menu\">, onde o listener foi registado\n});\n\ndocument.querySelector('#formulario-login').addEventListener('submit', (event) => {\n  event.preventDefault(); // impede o recarregamento da página\n  console.log('Dados validados no lado do cliente antes de enviar');\n});",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎯",
+          "text": "target: onde o evento se originou"
+        },
+        {
+          "icon": "📌",
+          "text": "currentTarget: onde o listener está"
+        },
+        {
+          "icon": "🚫",
+          "text": "preventDefault cancela o comportamento padrão"
+        }
+      ]
+    },
+    {
+      "heading": "Bubbling e capturing: as fases de propagação",
+      "body": [
+        "Quando um evento ocorre, não fica confinado ao elemento onde aconteceu; percorre a árvore DOM em três fases. Primeiro a fase de captura, que desce do document até ao elemento alvo. Depois a fase de alvo, no próprio elemento onde o evento ocorreu. Por fim a fase de bubbling, que sobe do elemento alvo de volta até ao document. Por omissão, addEventListener regista o listener para a fase de bubbling; passando true, ou { capture: true }, como terceiro argumento, o listener passa a correr na fase de captura.",
+        "A maioria dos eventos de interface usados no dia a dia, como click, input, submit e keydown, propaga-se (bubbles); alguns eventos, como focus e blur, não propagam por omissão. Perceber esta ordem de execução é essencial para prever em que sequência vários listeners colocados em níveis diferentes da árvore vão correr, e é a base que torna possível a delegação de eventos."
+      ],
+      "code": "const exterior = document.querySelector('#exterior');\nconst interior = document.querySelector('#interior');\n\nexterior.addEventListener('click', () => console.log('1 - exterior (captura)'), { capture: true });\ninterior.addEventListener('click', () => console.log('2 - interior (alvo)'));\nexterior.addEventListener('click', () => console.log('3 - exterior (bubbling)'));\n\n// ao clicar em #interior, a consola mostra, por esta ordem:\n// 1 - exterior (captura)\n// 2 - interior (alvo)\n// 3 - exterior (bubbling)",
+      "callout_kind": "DICA",
+      "callout_text": "stopPropagation() interrompe esta viagem do evento pela árvore, mas use-o com moderação: pode impedir que outro código legítimo, por exemplo um listener global que fecha menus ao clicar fora deles, chegue a reagir ao mesmo clique.",
+      "table_headers": [
+        "Fase",
+        "Direção",
+        "Quando é usada"
+      ],
+      "table_rows": [
+        [
+          "Captura (capturing)",
+          "Do document até ao elemento alvo",
+          "Raramente; útil para intercetar um evento antes de o alvo reagir"
+        ],
+        [
+          "Alvo (target)",
+          "No próprio elemento onde o evento ocorreu",
+          "Execução normal do listener registado nesse elemento"
+        ],
+        [
+          "Propagação (bubbling)",
+          "Do elemento alvo até ao document",
+          "Comportamento por omissão; base da delegação de eventos"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "⬇️",
+          "text": "Captura: desce do document ao alvo"
+        },
+        {
+          "icon": "🎯",
+          "text": "Alvo: executa no elemento clicado"
+        },
+        {
+          "icon": "⬆️",
+          "text": "Bubbling: sobe do alvo ao document"
+        }
+      ]
+    },
+    {
+      "heading": "Delegação de eventos",
+      "body": [
+        "Adicionar um listener a cada elemento filho, sobretudo quando há muitos ou quando são criados dinamicamente depois da página carregar, é ineficiente e propenso a erros: um elemento criado mais tarde com createElement ou innerHTML não tem nenhum listener próprio, a não ser que seja explicitamente adicionado. A delegação de eventos resolve este problema ao tirar partido do bubbling, registando um único listener num ancestral estável, que já existe desde o início, em vez de um listener por cada filho.",
+        "Dentro desse listener único, o código examina event.target para descobrir onde o clique realmente ocorreu. Como o alvo pode ser um elemento aninhado dentro do que realmente interessa, por exemplo um ícone ou um span dentro de um botão, é boa prática usar event.target.closest(seletor) para subir até ao elemento correspondente ao seletor pretendido, em vez de comparar event.target diretamente."
+      ],
+      "code": "const lista = document.querySelector('#lista-tarefas');\n\nlista.addEventListener('click', (event) => {\n  const botaoRemover = event.target.closest('.remover');\n  if (!botaoRemover) return; // o clique não foi num botão de remover\n\n  const item = botaoRemover.closest('li');\n  item.remove();\n});\n\n// itens adicionados depois já funcionam, sem registar nenhum novo listener\nconst novoItem = document.createElement('li');\nnovoItem.innerHTML = 'Comprar leite <button class=\"remover\">Remover</button>';\nlista.appendChild(novoItem);",
+      "callout_kind": "DICA",
+      "callout_text": "Use sempre closest(seletor) em vez de comparar event.target diretamente com o elemento esperado. O clique pode acontecer num elemento filho, como um ícone ou texto dentro do botão, e closest sobe pela árvore até encontrar o antepassado que corresponde ao seletor.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧩",
+          "text": "Um listener no pai serve todos os filhos"
+        },
+        {
+          "icon": "➕",
+          "text": "Funciona com elementos criados depois"
+        },
+        {
+          "icon": "🔍",
+          "text": "closest() localiza o elemento certo"
+        }
+      ]
+    },
+    {
+      "heading": "Eventos comuns: click, input, submit e keydown",
+      "body": [
+        "click dispara quando um elemento é clicado com o rato ou ativado pelo teclado, através de Enter ou espaço em elementos focáveis como botões e links; é o evento mais usado para reagir a ações do utilizador. input dispara de forma síncrona sempre que o valor de um campo de texto, área de texto ou elemento com contenteditable muda, incluindo a cada tecla escrita, o que o torna ideal para validação em tempo real, contadores de caracteres ou filtragem enquanto se escreve.",
+        "submit dispara num elemento form quando a submissão é acionada, seja por um botão do tipo submit, seja por Enter num campo de texto dentro do formulário; ao tratar a submissão do lado do cliente, é habitual chamar preventDefault() logo no início do listener, para evitar o recarregamento da página. keydown dispara quando uma tecla é pressionada, antes de o valor do campo ser atualizado, e repete-se enquanto a tecla se mantém premida; a propriedade event.key indica o valor lógico da tecla, como Enter ou Escape, enquanto event.code indica a tecla física no teclado, independentemente do layout."
+      ],
+      "code": "const campoBusca = document.querySelector('#busca');\nconst formulario = document.querySelector('#formulario-busca');\n\ncampoBusca.addEventListener('input', (event) => {\n  console.log('Valor atual:', event.target.value);\n});\n\ncampoBusca.addEventListener('keydown', (event) => {\n  if (event.key === 'Escape') {\n    campoBusca.value = '';\n  }\n});\n\nformulario.addEventListener('submit', (event) => {\n  event.preventDefault();\n  const termo = campoBusca.value.trim();\n  if (termo) {\n    console.log('A pesquisar por:', termo);\n  }\n});",
+      "callout_kind": "NOTA",
+      "callout_text": "event.key devolve o valor lógico da tecla ('Enter', 'a', 'A'); event.code devolve a tecla física no teclado ('KeyA', 'Enter'), útil quando o comportamento deve depender da posição da tecla e não do carácter produzido.",
+      "table_headers": [
+        "Evento",
+        "Dispara quando",
+        "Uso típico"
+      ],
+      "table_rows": [
+        [
+          "click",
+          "Elemento clicado ou ativado pelo teclado (Enter/Espaço)",
+          "Botões, links, ações do utilizador"
+        ],
+        [
+          "input",
+          "O valor de um campo muda, a cada tecla escrita",
+          "Validação em tempo real, contadores, filtros"
+        ],
+        [
+          "submit",
+          "Um formulário é submetido",
+          "Validar e enviar dados sem recarregar a página"
+        ],
+        [
+          "keydown",
+          "Uma tecla é pressionada, antes do valor mudar",
+          "Atalhos de teclado, intercetar Enter/Escape/setas"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🖱️",
+          "text": "click: ativação de botões e links"
+        },
+        {
+          "icon": "⌨️",
+          "text": "input: cada alteração de valor"
+        },
+        {
+          "icon": "📨",
+          "text": "submit: envio de formulários"
+        },
+        {
+          "icon": "🔑",
+          "text": "keydown: tecla pressionada"
+        }
+      ]
+    },
+    {
+      "heading": "Boas práticas na gestão de listeners",
+      "body": [
+        "Deixar listeners associados a elementos que já foram removidos do documento, ou a componentes que já não existem, é uma causa comum de fugas de memória em interfaces dinâmicas: enquanto o listener existir, o motor de JavaScript mantém viva uma referência ao elemento e à função associada. A forma tradicional de evitar isto é chamar removeEventListener com a mesma função usada no registo, no momento em que o elemento ou o componente é destruído.",
+        "Uma alternativa mais simples é usar um AbortController: ao passar o mesmo controlador.signal como opção signal em vários addEventListener, uma única chamada a controlador.abort() remove todos esses listeners de uma vez, sem necessidade de guardar cada função numa variável só para depois a passar a removeEventListener. Para eventos de scroll e toque, como wheel ou touchstart, que nunca chamam preventDefault(), a opção { passive: true } permite ao browser continuar a rolar a página sem esperar pelo listener, melhorando o desempenho percebido."
+      ],
+      "code": "const controlador = new AbortController();\n\ndocument.querySelector('#abrir-modal').addEventListener('click', abrirModal, {\n  signal: controlador.signal,\n});\ndocument.addEventListener('keydown', fecharComEscape, {\n  signal: controlador.signal,\n});\n\n// mais tarde, ao destruir o componente, remove os dois listeners de uma só vez\ncontrolador.abort();",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧹",
+          "text": "Listeners esquecidos causam fugas de memória"
+        },
+        {
+          "icon": "🛑",
+          "text": "AbortController remove vários de uma vez"
+        },
+        {
+          "icon": "⚡",
+          "text": "{ passive: true } melhora o scroll"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Contador de cliques",
+      "difficulty": "Iniciante",
+      "statement": "Tem no HTML um botão <button id=\"btn-contar\">Clicar</button> e um parágrafo <p id=\"contagem\">Cliques: 0</p>. Escreva o código JavaScript que, usando addEventListener, incrementa um contador a cada clique no botão e atualiza o texto do parágrafo para mostrar o valor atual (por exemplo, \"Cliques: 3\").",
+      "hint": "Guarde o número de cliques numa variável declarada fora da função do listener, para que o valor não seja reiniciado sempre que a função corre.",
+      "solution_code": "let cliques = 0;\nconst botao = document.querySelector('#btn-contar');\nconst paragrafo = document.querySelector('#contagem');\n\nbotao.addEventListener('click', () => {\n  cliques++;\n  paragrafo.textContent = `Cliques: ${cliques}`;\n});",
+      "solution_explanation": "A variável cliques é declarada fora da função de callback, por isso mantém o seu valor entre cliques graças ao closure. Cada clique dispara o listener, incrementa o contador e atualiza o textContent do parágrafo com o valor atual."
+    },
+    {
+      "title": "Validação de formulário no submit",
+      "difficulty": "Intermedio",
+      "statement": "Tem um formulário <form id=\"form-contacto\"> com um campo <input id=\"email\" type=\"text\"> e um botão de submissão, além de um elemento <p id=\"erro\"></p> para mensagens. Escreva o JavaScript que, ao submeter o formulário: impede o comportamento por omissão do browser (recarregar a página); verifica se o valor do campo email contém o caráter \"@\"; caso não contenha, escreve a mensagem \"Email inválido\" dentro de #erro e não avança; caso contenha, limpa a mensagem de erro e escreve na consola \"Formulário válido\".",
+      "hint": "Chame event.preventDefault() logo no início do listener de submit, antes de qualquer validação, e use um return antecipado para não executar o código de sucesso quando a validação falha.",
+      "solution_code": "const formulario = document.querySelector('#form-contacto');\nconst campoEmail = document.querySelector('#email');\nconst erro = document.querySelector('#erro');\n\nformulario.addEventListener('submit', (event) => {\n  event.preventDefault();\n\n  const valor = campoEmail.value.trim();\n\n  if (!valor.includes('@')) {\n    erro.textContent = 'Email inválido';\n    return;\n  }\n\n  erro.textContent = '';\n  console.log('Formulário válido');\n});",
+      "solution_explanation": "event.preventDefault() é chamado logo no início, garantindo que a página nunca recarrega, independentemente do resultado da validação. A verificação usa includes('@') sobre o valor tratado com trim(), e o return antecipado evita que o código de sucesso corra quando a validação falha."
+    },
+    {
+      "title": "Lista de tarefas com delegação de eventos",
+      "difficulty": "Avancado",
+      "statement": "Tem uma lista vazia <ul id=\"tarefas\"></ul> e um botão externo <button id=\"adicionar\">Adicionar tarefa</button>. Cada tarefa deve ser um <li> com um texto e um botão interno <button class=\"concluir\">Concluir</button>. Escreva o JavaScript que: 1) ao clicar em \"Adicionar tarefa\", cria um novo <li> com o texto \"Nova tarefa\" e o botão \"Concluir\" lá dentro, adicionando-o à lista; 2) usando um único listener de clique registado na própria <ul> (delegação de eventos, sem adicionar um listener a cada <li>), quando se clica no botão \"Concluir\" de qualquer tarefa, incluindo as criadas depois, essa tarefa passa a ter a classe CSS \"feita\", em vez de ser removida do documento.",
+      "hint": "Dentro do listener registado na <ul>, use event.target.closest('.concluir') para descobrir se o clique atingiu mesmo um botão \"Concluir\" (ou um seu descendente), e depois closest('li') para chegar à tarefa correspondente.",
+      "solution_code": "const lista = document.querySelector('#tarefas');\nconst botaoAdicionar = document.querySelector('#adicionar');\n\nbotaoAdicionar.addEventListener('click', () => {\n  const item = document.createElement('li');\n  item.innerHTML = 'Nova tarefa <button class=\"concluir\">Concluir</button>';\n  lista.appendChild(item);\n});\n\nlista.addEventListener('click', (event) => {\n  const botaoConcluir = event.target.closest('.concluir');\n  if (!botaoConcluir) return;\n\n  const tarefa = botaoConcluir.closest('li');\n  tarefa.classList.add('feita');\n});",
+      "solution_explanation": "O listener de clique é registado uma única vez na <ul>, que já existe desde o início da página; graças ao bubbling, cliques em botões \"Concluir\" criados mais tarde continuam a chegar a este mesmo listener. closest('.concluir') confirma que o clique atingiu o botão certo antes de marcar a tarefa como feita, e closest('li') localiza o elemento da tarefa a partir do botão clicado."
+    },
+    {
+      "title": "Menu suspenso que fecha ao clicar fora",
+      "difficulty": "Avancado",
+      "statement": "Tem um botão <button id=\"menu-toggle\">Menu</button> e uma lista <ul id=\"menu-opcoes\" hidden>...</ul> com algumas opções lá dentro. Escreva o JavaScript que: ao clicar no botão, alterna o atributo hidden da lista (mostra se estava escondida, esconde se estava visível); enquanto o menu está visível, um clique em qualquer sítio fora dele (incluindo no resto do document) volta a escondê-lo; mas um clique dentro da própria <ul id=\"menu-opcoes\"> nunca deve chegar a esse listener global do document e fechar o menu por engano.",
+      "hint": "Registe um listener de click no document que esconde o menu, mas registe também um listener de click no botão e outro na própria <ul id=\"menu-opcoes\"> que chamem event.stopPropagation(), para que esses cliques nunca cheguem, por bubbling, ao listener do document.",
+      "solution_code": "const botaoMenu = document.querySelector('#menu-toggle');\nconst menu = document.querySelector('#menu-opcoes');\n\nbotaoMenu.addEventListener('click', (event) => {\n  event.stopPropagation();\n  menu.hidden = !menu.hidden;\n});\n\nmenu.addEventListener('click', (event) => {\n  event.stopPropagation();\n});\n\ndocument.addEventListener('click', () => {\n  if (!menu.hidden) {\n    menu.hidden = true;\n  }\n});",
+      "solution_explanation": "O clique no botão também chama stopPropagation(), senão o mesmo clique que abre o menu chegaria de imediato ao listener do document e fechá-lo-ia no mesmo instante. O listener registado na própria <ul> impede que cliques em opções do menu se propaguem por bubbling até ao document; qualquer outro clique na página chega ao listener do document e esconde o menu."
+    }
+  ],
+  "summary": [
+    "addEventListener regista listeners e permite vários por elemento; removeEventListener exige a mesma referência de função, ou recorra a { once: true } ou a um AbortController para simplificar a remoção.",
+    "event.target é o elemento onde o evento realmente ocorreu; event.currentTarget é sempre o elemento ao qual o listener está associado.",
+    "preventDefault() cancela o comportamento por omissão do browser; stopPropagation() impede o evento de continuar a propagar-se pela árvore DOM. São mecanismos independentes.",
+    "Um evento percorre três fases: captura (do document até ao alvo), alvo, e bubbling (do alvo até ao document); por omissão os listeners registam-se para a fase de bubbling.",
+    "A delegação de eventos aproveita o bubbling para gerir elementos dinâmicos com um único listener num ancestral estável, normalmente combinada com closest() para identificar o elemento certo.",
+    "click, input, submit e keydown são os eventos de interface mais usados no dia a dia; nunca esquecer preventDefault() no submit para evitar o recarregamento da página."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 03",
+  "next_label": "Aula 03 → Formulários e Validação",
+  "_stage": "autoria"
+}

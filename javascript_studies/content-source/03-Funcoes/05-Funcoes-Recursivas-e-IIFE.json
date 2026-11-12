@@ -1,0 +1,248 @@
+{
+  "module_num": "03",
+  "module_title": "Funções",
+  "module_dir": "03-Funcoes",
+  "lesson_num": "05",
+  "lesson_slug": "Funcoes-Recursivas-e-IIFE",
+  "kind": "aula",
+  "title": "Funções Recursivas e IIFE",
+  "filename_base": "05-Funcoes-Recursivas-e-IIFE",
+  "subtitle": "Funções que se chamam a si próprias e código isolado que corre uma única vez.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Reconhecer, em qualquer função recursiva, o caso base e o caso recursivo, e perceber porque ambos são obrigatórios.",
+    "Compreender como a pilha de chamadas cresce a cada chamada recursiva e por que motivo isso pode causar um stack overflow.",
+    "Saber comparar recursão e iteração e escolher a abordagem mais adequada consoante o problema.",
+    "Escrever e usar IIFEs (Immediately Invoked Function Expressions) para executar código imediatamente num âmbito isolado.",
+    "Aplicar o padrão módulo clássico, combinando IIFE e closures, para encapsular estado privado antes da existência dos módulos ES6."
+  ],
+  "sections": [
+    {
+      "heading": "Recursão: caso base e caso recursivo",
+      "body": [
+        "Recursão é a técnica de resolver um problema fazendo uma função chamar-se a si própria com uma versão mais pequena, ou mais próxima da solução, desse mesmo problema. Toda a função recursiva bem construída precisa de duas partes claramente identificáveis: o caso base, uma condição simples que a função consegue responder diretamente, sem fazer mais nenhuma chamada recursiva, e o caso recursivo, em que a função se chama a si própria com um valor de entrada mais próximo do caso base do que o valor atual.",
+        "Sem um caso base bem definido, ou sem uma progressão garantida em direção a ele em cada caso recursivo, a recursão nunca para. No exemplo do fatorial, o caso base corresponde aos valores triviais 0 e 1, cujo fatorial é conhecido sem necessidade de mais cálculos, e o caso recursivo exprime o fatorial de n em função do fatorial de n - 1, aproximando-se do caso base a cada chamada."
+      ],
+      "code": "function fatorial(n) {\n  if (n < 0) {\n    throw new RangeError(\"fatorial não definido para negativos\");\n  }\n  if (n === 0 || n === 1) {\n    return 1; // caso base\n  }\n  return n * fatorial(n - 1); // caso recursivo\n}\n\nconsole.log(fatorial(5)); // 120\nconsole.log(fatorial(0)); // 1",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Uma função recursiva sem um caso base bem definido, ou em que o caso recursivo não se aproxima dele, entra em recursão infinita: em JavaScript isto não trava o programa em silêncio, provoca um RangeError por esgotamento da pilha de chamadas, como se vê na secção seguinte.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔁",
+          "text": "Função que se chama a si própria"
+        },
+        {
+          "icon": "🛑",
+          "text": "Caso base: para a recursão"
+        },
+        {
+          "icon": "➡️",
+          "text": "Caso recursivo: aproxima-se do caso base"
+        }
+      ]
+    },
+    {
+      "heading": "A pilha de chamadas e o risco de stack overflow",
+      "body": [
+        "Cada chamada a uma função, incluindo uma chamada recursiva, abre uma nova frame na pilha de chamadas, que guarda as variáveis locais dessa chamada e o ponto do código para onde a execução deve voltar quando ela terminar. Numa função recursiva que ainda não chegou ao caso base, cada chamada fica suspensa na pilha à espera do resultado da chamada seguinte, pelo que a pilha cresce uma frame por cada nível de recursão até o caso base ser atingido; só a partir daí é que as frames começam a ser resolvidas e removidas, em ordem inversa à que foram criadas.",
+        "Os motores de JavaScript impõem um limite ao tamanho da pilha, que varia consoante o motor e o ambiente e não é definido pela especificação da linguagem. Quando esse limite é ultrapassado, é lançado um RangeError com a mensagem Maximum call stack size exceeded, o conhecido stack overflow. Isto pode acontecer por um erro de programação, como um caso base em falta, mas também de forma legítima, quando a entrada é tão grande que a profundidade de recursão necessária excede o limite, mesmo com um caso base correto."
+      ],
+      "code": "function contarProfundidade(n) {\n  return contarProfundidade(n + 1);\n}\n\ntry {\n  contarProfundidade(0);\n} catch (erro) {\n  console.error(erro instanceof RangeError); // true\n  console.error(erro.message); // \"Maximum call stack size exceeded\"\n}",
+      "callout_kind": "NOTA",
+      "callout_text": "O ECMAScript 2015 define a recursão de cauda (tail calls) como uma otimização possível, em que o motor reutilizaria a mesma frame quando a chamada recursiva é a última operação da função. Na prática, motores como o V8 (usado no Chrome e no Node.js) não implementam essa otimização, por isso não é seguro assumir, em JavaScript, que uma recursão de cauda evita o stack overflow.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📚",
+          "text": "Cada chamada cria uma frame na pilha"
+        },
+        {
+          "icon": "💥",
+          "text": "Limite ultrapassado gera RangeError"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Tail-call optimization não é fiável em JS"
+        }
+      ]
+    },
+    {
+      "heading": "Recursão vs iteração: quando escolher cada uma",
+      "body": [
+        "Recursão e iteração são duas formas de expressar repetição, e qualquer problema resolvido com uma pode, em princípio, ser resolvido com a outra. A recursão tende a produzir código mais próximo da definição conceptual do problema, o que a torna especialmente clara em problemas naturalmente definidos em função de si próprios; a iteração, por sua vez, mantém um uso de memória constante, porque não abre uma frame nova por cada passo, e por isso não está sujeita ao risco de stack overflow que a recursão apresenta em entradas grandes.",
+        "Como regra prática, a recursão compensa quando torna o código mais legível e a profundidade previsível da recursão é pequena ou moderada; a iteração é preferível quando a profundidade pode ser grande ou imprevisível, ou quando a memória e o desempenho são críticos. Qualquer recursão pode ser reescrita de forma iterativa, normalmente substituindo a pilha de chamadas implícita por um ciclo simples, como se vê ao comparar as duas versões do fatorial abaixo."
+      ],
+      "code": "function fatorialRecursivo(n) {\n  if (n <= 1) return 1;\n  return n * fatorialRecursivo(n - 1);\n}\n\nfunction fatorialIterativo(n) {\n  let resultado = 1;\n  for (let i = 2; i <= n; i++) {\n    resultado *= i;\n  }\n  return resultado;\n}\n\nconsole.log(fatorialRecursivo(6), fatorialIterativo(6)); // 720 720",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [
+        "Critério",
+        "Recursão",
+        "Iteração"
+      ],
+      "table_rows": [
+        [
+          "Legibilidade em problemas naturalmente recursivos",
+          "Mais próxima da definição conceptual do problema",
+          "Pode exigir lógica adicional para simular a repetição"
+        ],
+        [
+          "Uso de memória",
+          "Uma frame nova por cada chamada",
+          "Uso constante, sem crescer com a profundidade"
+        ],
+        [
+          "Risco de stack overflow",
+          "Existe, sobretudo em entradas grandes",
+          "Não existe esse risco"
+        ],
+        [
+          "Desempenho típico em loops simples",
+          "Overhead de criação de frames",
+          "Geralmente mais rápida"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "⚖️",
+          "text": "Recursão: legibilidade em problemas hierárquicos"
+        },
+        {
+          "icon": "🔄",
+          "text": "Iteração: memória constante, sem limite de pilha"
+        },
+        {
+          "icon": "🧠",
+          "text": "Toda a recursão pode reescrever-se em iteração"
+        }
+      ]
+    },
+    {
+      "heading": "IIFE: executar uma função imediatamente",
+      "body": [
+        "Uma IIFE, sigla de Immediately Invoked Function Expression, é uma função definida e chamada no mesmo instante, sem precisar de um nome nem de uma chamada separada mais à frente no código. A sintaxe mais comum envolve parênteses a envolver a função, (function () {})(), precisamente porque o motor de JavaScript precisa de reconhecer aquilo como uma expressão de função e não como uma declaração de função no início de uma instrução; sem esses parênteses, function nome(){}() é interpretado como uma declaração seguida de uma instrução separada e inválida.",
+        "Antes de existirem let e const com âmbito de bloco, e antes de existirem os módulos ES6, cada ficheiro de script partilhava o mesmo âmbito global, e uma variável declarada com var no topo de um ficheiro ficava visível, e podia colidir, com o código de outros ficheiros. A IIFE tornou-se a forma habitual de criar um âmbito isolado, executado uma única vez, onde se podiam declarar variáveis temporárias sem as deixar escapar para fora. O mesmo padrão pode ser escrito com arrow functions, pode receber argumentos e existe também numa versão assíncrona, útil para poder usar await dentro dela sem precisar de uma função async à volta (o async/await em si é estudado em detalhe no módulo 07; para já basta saber que permite aguardar por uma Promise dentro da função)."
+      ],
+      "code": "// IIFE anónima com function expression\n(function () {\n  const mensagem = \"Executado imediatamente\";\n  console.log(mensagem);\n})();\n\n// IIFE com arrow function\n(() => {\n  console.log(\"Também corre de imediato\");\n})();\n\n// IIFE com parâmetros\n(function (nome) {\n  console.log(`Olá, ${nome}!`);\n})(\"Mundo\");\n\n// IIFE assíncrona\n(async () => {\n  const resposta = await Promise.resolve(42);\n  console.log(resposta);\n})();",
+      "callout_kind": "DICA",
+      "callout_text": "Se o código não terminar sempre as instruções com ponto e vírgula, uma IIFE logo a seguir a uma expressão sem ponto e vírgula pode ser interpretada como uma chamada dessa expressão anterior. Por segurança, muitos estilos de código colocam um ponto e vírgula antes do parêntesis de abertura da IIFE.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⚡",
+          "text": "Executa-se assim que é definida"
+        },
+        {
+          "icon": "🔒",
+          "text": "Cria um âmbito isolado"
+        },
+        {
+          "icon": "🧩",
+          "text": "Existe em versão função, arrow e assíncrona"
+        }
+      ]
+    },
+    {
+      "heading": "O padrão módulo clássico: encapsular estado com closures",
+      "body": [
+        "Combinar uma IIFE com closures dá origem ao padrão módulo clássico: variáveis declaradas dentro da IIFE ficam inacessíveis a partir de fora, e o valor que a IIFE devolve, normalmente um objeto literal, expõe apenas as funções que devem ser públicas, cada uma mantendo acesso a esse estado privado através de closure. Foi assim que o JavaScript conseguiu, muito antes de existirem classes com campos privados ou módulos com import e export, um encapsulamento real de informação dentro de um único ficheiro.",
+        "A esta variante costuma chamar-se revealing module pattern, padrão de módulo revelador: no final da IIFE devolve-se explicitamente um objeto que lista, de forma clara, quais são as funções internas que passam a fazer parte da API pública do módulo, tornando essa API visível num único ponto do código."
+      ],
+      "code": "const contador = (function () {\n  let valor = 0; // estado privado, inacessível de fora\n\n  function incrementar() {\n    valor += 1;\n    return valor;\n  }\n\n  function decrementar() {\n    valor -= 1;\n    return valor;\n  }\n\n  function obterValor() {\n    return valor;\n  }\n\n  return { incrementar, decrementar, obterValor }; // revealing module pattern\n})();\n\ncontador.incrementar();\ncontador.incrementar();\nconsole.log(contador.obterValor()); // 2\nconsole.log(contador.valor); // undefined",
+      "callout_kind": "NOTA",
+      "callout_text": "Hoje este encapsulamento consegue-se de forma mais direta com campos privados de classes (módulo 05) ou com o âmbito próprio de cada ficheiro nos ES Modules (módulo 08); ainda assim, o padrão módulo com IIFE continua a aparecer em código legado e é uma forma muito clara de perceber closures na prática.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔐",
+          "text": "Variáveis privadas dentro da IIFE"
+        },
+        {
+          "icon": "📤",
+          "text": "Só o que é devolvido fica público"
+        },
+        {
+          "icon": "🕰️",
+          "text": "Alternativa histórica a classes e ES Modules"
+        }
+      ]
+    },
+    {
+      "heading": "IIFEs para organizar código e evitar colisões globais",
+      "body": [
+        "Antes de existirem bundlers e módulos ES6, uma aplicação maior era muitas vezes dividida em vários ficheiros carregados por várias tags script, todos partilhando o mesmo objeto global. Uma função ou uma variável declarada com var no topo de qualquer um desses ficheiros tornava-se, na prática, uma propriedade desse âmbito global partilhado, e dois ficheiros que usassem o mesmo nome sobrepunham-se silenciosamente um ao outro.",
+        "Um padrão defensivo muito comum era envolver cada ficheiro na sua própria IIFE e anexar a essa IIFE apenas um único ponto de entrada a um objeto de namespace comum a toda a aplicação, em vez de vários nomes globais independentes. Assim, os nomes auxiliares internos de cada ficheiro nunca chegavam a existir fora da sua IIFE."
+      ],
+      "code": "var MinhaApp = MinhaApp || {};\n\n(function (app) {\n  function calcularTotalComIva(precoBase, taxaIva) {\n    return precoBase + precoBase * taxaIva;\n  }\n\n  app.catalogo = { calcularTotalComIva };\n})(MinhaApp);\n\n(function (app) {\n  function ehMaiorDeIdade(idade) {\n    return idade >= 18;\n  }\n\n  app.utilizadores = { ehMaiorDeIdade };\n})(MinhaApp);\n\nconsole.log(MinhaApp.catalogo.calcularTotalComIva(100, 0.23)); // 123\nconsole.log(MinhaApp.utilizadores.ehMaiorDeIdade(20)); // true\nconsole.log(typeof calcularTotalComIva); // \"undefined\" - não vazou para o âmbito global",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Experimente remover a passagem de MinhaApp como argumento em cada IIFE e usar diretamente a variável global lá dentro; depois experimente renomear a variável global no código chamador para perceber por que passar o namespace como parâmetro torna cada IIFE mais independente do nome exato da global.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🌐",
+          "text": "Evita poluir o âmbito global"
+        },
+        {
+          "icon": "🏷️",
+          "text": "Um único ponto de entrada por namespace"
+        },
+        {
+          "icon": "🧱",
+          "text": "Base histórica para organizar apps grandes"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Soma recursiva de 1 até n",
+      "difficulty": "Iniciante",
+      "statement": "Escreva uma função recursiva chamada somaAte que recebe um número inteiro n e devolve a soma de todos os números inteiros de 1 até n (inclusive). Identifique, num comentário dentro do código, qual é o caso base e qual é o caso recursivo. Por exemplo, somaAte(4) deve devolver 10 (1+2+3+4), e somaAte(0) deve devolver 0.",
+      "hint": "Pense em somaAte(n) como n mais a soma de todos os números até n - 1; o caso base é o valor de n a partir do qual já não faz sentido continuar a somar.",
+      "solution_code": "function somaAte(n) {\n  if (n <= 0) {\n    return 0; // caso base: já não há nada para somar\n  }\n  return n + somaAte(n - 1); // caso recursivo: n mais a soma até n - 1\n}\n\nconsole.log(somaAte(4)); // 10\nconsole.log(somaAte(1)); // 1\nconsole.log(somaAte(0)); // 0",
+      "solution_explanation": "Cada chamada aproxima-se do caso base (n <= 0), que devolve 0 e interrompe a recursão. As chamadas ficam empilhadas até esse ponto e, à medida que vão sendo resolvidas, cada uma soma o seu próprio n ao resultado devolvido pela chamada com n - 1."
+    },
+    {
+      "title": "Potência recursiva, o seu limite e a versão iterativa",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função recursiva potencia(base, expoente) que calcula base elevado a expoente (um inteiro não negativo), sem usar o operador ** nem Math.pow. Depois, experimente chamar potencia(2, 100000) e observe o erro que ocorre (registe-o num comentário). Por fim, escreva potenciaIterativa(base, expoente), que resolve o mesmo problema com um ciclo for, e confirme que essa versão não sofre do mesmo problema com expoentes grandes.",
+      "hint": "O caso base de uma potência é quando o expoente chega a 0 (qualquer número elevado a 0 é 1); cada chamada recursiva deve reduzir o expoente em 1.",
+      "solution_code": "function potencia(base, expoente) {\n  if (expoente === 0) {\n    return 1; // caso base\n  }\n  return base * potencia(base, expoente - 1); // caso recursivo\n}\n\nconsole.log(potencia(2, 10)); // 1024\n\n// potencia(2, 100000) provoca:\n// RangeError: Maximum call stack size exceeded\n// porque cada chamada recursiva acrescenta uma frame à pilha de chamadas\n// e o motor de JavaScript tem um limite de profundidade da pilha.\n\nfunction potenciaIterativa(base, expoente) {\n  let resultado = 1;\n  for (let i = 0; i < expoente; i++) {\n    resultado *= base;\n  }\n  return resultado;\n}\n\nconsole.log(potenciaIterativa(2, 100000)); // Infinity - o valor ultrapassa o máximo representável em number, mas não há RangeError nem crescimento da pilha",
+      "solution_explanation": "A versão recursiva abre uma frame na pilha por cada chamada, pelo que um expoente muito grande esgota o limite da pilha e lança RangeError. A versão iterativa usa apenas um acumulador e um contador reutilizados a cada volta do ciclo, por isso o seu uso de memória não cresce com o expoente; o resultado pode ultrapassar o maior número representável (tornando-se Infinity), mas isso é uma limitação do tipo number, não um erro de pilha."
+    },
+    {
+      "title": "Módulo carteira com estado privado",
+      "difficulty": "Intermedio",
+      "statement": "Usando uma IIFE, crie um módulo chamado carteira que mantenha um saldo privado (não acessível diretamente de fora do módulo), inicializado a 0, e exponha um objeto público com três métodos: depositar(valor), que aumenta o saldo e lança um Error se valor não for positivo; levantar(valor), que reduz o saldo e lança um Error se valor não for positivo ou se for maior do que o saldo disponível; e obterSaldo(), que devolve o saldo atual. Confirme com console.log que carteira.saldo é undefined a partir de fora do módulo.",
+      "hint": "Lembre-se do padrão módulo clássico: a IIFE deve devolver um objeto com os métodos públicos, enquanto a variável do saldo fica declarada só dentro da função, acessível às funções internas através de closures.",
+      "solution_code": "const carteira = (function () {\n  let saldo = 0; // estado privado, só acessível através dos métodos abaixo\n\n  function depositar(valor) {\n    if (valor <= 0) {\n      throw new Error(\"O valor a depositar tem de ser positivo\");\n    }\n    saldo += valor;\n    return saldo;\n  }\n\n  function levantar(valor) {\n    if (valor <= 0) {\n      throw new Error(\"O valor a levantar tem de ser positivo\");\n    }\n    if (valor > saldo) {\n      throw new Error(\"Saldo insuficiente\");\n    }\n    saldo -= valor;\n    return saldo;\n  }\n\n  function obterSaldo() {\n    return saldo;\n  }\n\n  return { depositar, levantar, obterSaldo };\n})();\n\ncarteira.depositar(100);\ncarteira.levantar(30);\nconsole.log(carteira.obterSaldo()); // 70\nconsole.log(carteira.saldo); // undefined - estado encapsulado",
+      "solution_explanation": "A IIFE executa-se uma única vez e devolve um objeto com as três funções públicas; como foram definidas no mesmo âmbito da variável saldo, mantêm uma closure sobre ela mesmo depois de a IIFE terminar. Como saldo nunca é devolvida diretamente, só é possível alterá-la através dos métodos que validam as regras de negócio."
+    },
+    {
+      "title": "Fibonacci recursivo com cache num módulo",
+      "difficulty": "Avancado",
+      "statement": "Crie, através de uma IIFE, um módulo fibonacci que exponha um único método calcular(n), capaz de devolver o n-ésimo termo da sequência de Fibonacci (calcular(0) igual a 0, calcular(1) igual a 1) usando uma função recursiva interna. Dentro da mesma IIFE, mantenha um objeto privado de cache que guarda cada resultado já calculado, de modo a que, ao ser preciso o mesmo n outra vez (por exemplo, como subproblema de outro cálculo), o valor seja lido do cache em vez de recalculado por recursão. Teste com fibonacci.calcular(30) e confirme que o resultado aparece de forma praticamente instantânea.",
+      "hint": "A função recursiva interna deve, antes de fazer as duas chamadas recursivas de Fibonacci, verificar se o valor de n já existe no objeto de cache e, nesse caso, devolver logo esse valor guardado.",
+      "solution_code": "const fibonacci = (function () {\n  const cache = {}; // estado privado: guarda resultados já calculados\n\n  function calcularRecursivo(n) {\n    if (n === 0 || n === 1) {\n      return n; // caso base\n    }\n    if (cache[n] !== undefined) {\n      return cache[n]; // já calculado antes, evita recursão repetida\n    }\n    const resultado = calcularRecursivo(n - 1) + calcularRecursivo(n - 2); // caso recursivo\n    cache[n] = resultado; // guarda para reutilizar\n    return resultado;\n  }\n\n  return { calcular: calcularRecursivo };\n})();\n\nconsole.log(fibonacci.calcular(30)); // 832040, praticamente instantâneo",
+      "solution_explanation": "Sem cache, calcular(n) faz duas chamadas recursivas por nível, o que faz o número total de chamadas crescer exponencialmente e torna valores como 40 muito lentos. Guardando cada resultado num objeto privado mantido vivo pela closure da IIFE, cada termo da sequência só é calculado uma vez, reduzindo drasticamente o número de chamadas recursivas."
+    }
+  ],
+  "summary": [
+    "Recursão resolve um problema fazendo a função chamar-se a si própria, sempre com um caso base bem definido e um caso recursivo que se aproxima dele.",
+    "Cada chamada recursiva ocupa uma frame na pilha de chamadas; ultrapassar o limite dessa pilha lança um RangeError (stack overflow), e os motores de JavaScript atuais não garantem otimização de chamadas de cauda.",
+    "Recursão e iteração resolvem os mesmos problemas com trade-offs diferentes: recursão favorece legibilidade em problemas naturalmente recursivos, iteração favorece memória constante e ausência de risco de stack overflow.",
+    "Uma IIFE, escrita como (function () {})() ou (() => {})(), executa-se imediatamente após ser definida e cria um âmbito isolado que não interfere com o resto do código.",
+    "O padrão módulo clássico combina uma IIFE com closures para manter estado privado e expor apenas uma API pública através do valor devolvido.",
+    "Antes dos ES Modules e das classes com campos privados, as IIFEs também serviam para organizar código em namespaces e evitar colisões no âmbito global partilhado entre ficheiros."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 06",
+  "next_label": "Aula 06 → Programação Funcional Básica",
+  "_stage": "revisao"
+}

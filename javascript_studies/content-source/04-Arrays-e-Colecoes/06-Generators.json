@@ -1,0 +1,223 @@
+{
+  "module_num": "04",
+  "module_title": "Arrays e Coleções",
+  "module_dir": "04-Arrays-e-Colecoes",
+  "lesson_num": "06",
+  "lesson_slug": "Generators",
+  "kind": "aula",
+  "title": "Generators",
+  "filename_base": "06-Generators",
+  "subtitle": "Pausar funções com yield: iteradores, sequências preguiçosas e máquinas de estado",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Compreender a sintaxe function* e o comportamento da palavra-chave yield para pausar e retomar execução.",
+    "Perceber como um generator atribuído a Symbol.iterator simplifica a criação de objetos iteráveis personalizados.",
+    "Usar yield* para delegar a produção de valores noutro generator ou iterável, incluindo em chamadas recursivas.",
+    "Enviar valores para dentro de um generator em execução com .next(valor), criando comunicação bidirecional.",
+    "Aplicar generators a sequências infinitas com avaliação preguiçosa e a máquinas de estado simples."
+  ],
+  "sections": [
+    {
+      "heading": "function* e yield: pausar e retomar execução",
+      "body": [
+        "Uma generator function declara-se acrescentando um asterisco a seguir à palavra-chave function (function* nome() {...}) ou, num método de objeto ou classe, antes do nome do método (*nomeDoMetodo() {...}). Ao contrário de uma função normal, chamar uma generator function não executa o seu corpo de imediato: devolve um generator object, um objeto que implementa o protocolo iterador através de um método next(). Só quando se chama next() é que o corpo começa, ou continua, a ser executado.",
+        "Dentro do corpo, a expressão yield suspende a execução naquele ponto exato e devolve ao chamador um objeto com a forma { value, done }, em que value é o valor indicado a seguir a yield e done é false, porque a execução ainda não terminou. Na chamada seguinte a next(), a execução retoma mesmo a seguir a esse yield, com todas as variáveis locais intactas, até encontrar o próximo yield, um return, ou chegar ao fim do corpo - nesse caso done passa a true."
+      ],
+      "code": "function* contarAteTres() {\n  console.log('início');\n  yield 1;\n  console.log('depois do primeiro yield');\n  yield 2;\n  yield 3;\n  console.log('fim');\n}\n\nconst gerador = contarAteTres();\n\nconsole.log(gerador.next());\n// início\n// { value: 1, done: false }\n\nconsole.log(gerador.next());\n// depois do primeiro yield\n// { value: 2, done: false }\n\nconsole.log(gerador.next());\n// { value: 3, done: false }\n\nconsole.log(gerador.next());\n// fim\n// { value: undefined, done: true }",
+      "callout_kind": "NOTA",
+      "callout_text": "O generator object criado por uma generator function é, ele próprio, iterável: implementa Symbol.iterator devolvendo-se a si mesmo, por isso pode usar-se diretamente em for...of, no operador de espalhamento ou em destructuring.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⏸️",
+          "text": "function* pausa em cada yield"
+        },
+        {
+          "icon": "🔄",
+          "text": "next() retoma exatamente onde parou"
+        },
+        {
+          "icon": "📦",
+          "text": "Cada next() devolve {value, done}"
+        }
+      ]
+    },
+    {
+      "heading": "Generators como forma simples de criar iteradores",
+      "body": [
+        "Um objeto torna-se iterável ao implementar Symbol.iterator devolvendo um objeto com um método next() que respeita o protocolo iterador - isso pode ser escrito à mão, controlando manualmente um índice ou outro estado guardado num closure. Uma generator function atribuída a Symbol.iterator poupa esse trabalho: é o próprio mecanismo de pausa e retoma do generator que guarda o ponto onde ficou e as variáveis locais, sem que seja preciso geri-las explicitamente.",
+        "Isto torna trivial dar suporte a for...of, ao operador de espalhamento e a destructuring em qualquer estrutura de dados personalizada: basta percorrer os elementos internos com um ciclo normal e usar yield em vez de, por exemplo, acumular resultados noutro array."
+      ],
+      "code": "class ListaDeTarefas {\n  #itens = [];\n\n  adicionar(tarefa) {\n    this.#itens.push(tarefa);\n  }\n\n  *[Symbol.iterator]() {\n    for (const tarefa of this.#itens) {\n      yield tarefa;\n    }\n  }\n}\n\nconst tarefas = new ListaDeTarefas();\ntarefas.adicionar('estudar generators');\ntarefas.adicionar('praticar yield*');\n\nfor (const tarefa of tarefas) {\n  console.log(tarefa);\n}\n// estudar generators\n// praticar yield*",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [
+        "Aspeto",
+        "Iterador manual",
+        "Generator"
+      ],
+      "table_rows": [
+        [
+          "Gestão do estado",
+          "Variáveis explícitas mantidas no closure do objeto iterador",
+          "Gerida automaticamente pela pausa e retoma do generator"
+        ],
+        [
+          "Código necessário",
+          "Objeto com next() escrito à mão, a devolver {value, done}",
+          "Função com yield; o motor trata do {value, done}"
+        ],
+        [
+          "Legibilidade",
+          "Mais verboso, lógica de estado espalhada pelo código",
+          "Lê-se como um ciclo normal com yield"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧩",
+          "text": "Symbol.iterator + generator = iterável fácil"
+        },
+        {
+          "icon": "✍️",
+          "text": "Sem gerir índices manualmente"
+        }
+      ]
+    },
+    {
+      "heading": "yield* - delegar para outro generator",
+      "body": [
+        "A expressão yield* recebe um iterável - outro generator, um array, uma string, um Map, um Set - e delega nele toda a produção de valores: percorre-o internamente e vai fazendo yield de cada um dos seus valores, um a um, como se essa produção estivesse escrita diretamente no generator que delega. Isto evita ter de escrever um ciclo for...of manual com um yield lá dentro sempre que se quer reaproveitar outro generator.",
+        "Além de produzir os valores, a própria expressão yield* é avaliada: o seu valor final corresponde ao valor de retorno (return) do generator delegado, quando este existir. yield* é também a forma natural de escrever generators recursivos, por exemplo para percorrer estruturas aninhadas, delegando em si mesmo a cada nível da recursão."
+      ],
+      "code": "function* percorrerNos(no) {\n  yield no.valor;\n  for (const filho of no.filhos) {\n    yield* percorrerNos(filho);\n  }\n}\n\nconst arvore = {\n  valor: 'raiz',\n  filhos: [\n    { valor: 'a', filhos: [{ valor: 'a1', filhos: [] }] },\n    { valor: 'b', filhos: [] },\n  ],\n};\n\nconsole.log([...percorrerNos(arvore)]); // ['raiz', 'a', 'a1', 'b']",
+      "callout_kind": "DICA",
+      "callout_text": "yield* também funciona com iteráveis que não são generators, como arrays ou strings: function* letras() { yield* 'abc'; } produz 'a', 'b' e 'c'.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔗",
+          "text": "yield* delega a iteração noutro iterável"
+        },
+        {
+          "icon": "🌳",
+          "text": "Ideal para generators recursivos"
+        }
+      ]
+    },
+    {
+      "heading": "Enviar valores para dentro do generator com next(valor)",
+      "body": [
+        "yield não serve só para emitir valores para fora - é também uma expressão que pode receber um valor de volta. O argumento passado a next(valor) torna-se o resultado da expressão yield que estava suspensa à espera, permitindo que quem consome o generator influencie o que acontece a seguir dentro dele.",
+        "Há uma subtileza importante: a primeira chamada a next() serve apenas para arrancar a execução até ao primeiro yield, por isso qualquer valor passado nessa primeira chamada é ignorado, já que ainda não existe nenhuma expressão yield à espera de o receber. É só a partir da segunda chamada a next() que os valores enviados chegam efetivamente a um yield."
+      ],
+      "code": "function* somador() {\n  let total = 0;\n  while (true) {\n    const incremento = yield total;\n    total += incremento;\n  }\n}\n\nconst soma = somador();\nconsole.log(soma.next().value);    // 0 (arranca o generator; um argumento aqui seria ignorado)\nconsole.log(soma.next(5).value);   // 5\nconsole.log(soma.next(10).value);  // 15\nconsole.log(soma.next(-2).value);  // 13",
+      "callout_kind": "ATENCAO",
+      "callout_text": "O valor passado na primeira chamada a next() é sempre descartado, porque a execução ainda não parou em nenhum yield para o receber.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📨",
+          "text": "next(valor) entra pelo yield suspenso"
+        },
+        {
+          "icon": "⚠️",
+          "text": "1º next() nunca recebe o valor enviado"
+        }
+      ]
+    },
+    {
+      "heading": "Sequências infinitas e avaliação preguiçosa",
+      "body": [
+        "Como um generator só produz o valor seguinte quando alguém o pede através de next(), é possível descrever sequências infinitas sem nunca as materializar por completo em memória - ao contrário de um array, que teria de conter todos os elementos de uma só vez. O corpo do generator fica simplesmente à espera dentro de um ciclo while (true), e cada valor só é calculado no momento exato em que é pedido.",
+        "Esta avaliação preguiçosa é útil para gerar sequências matemáticas, fluxos de dados ou identificadores sem limite prévio, deixando ao consumidor a responsabilidade de decidir quantos valores quer efetivamente consumir - por exemplo parando um for...of com break, ou usando uma função auxiliar que retira apenas uma quantidade fixa de valores."
+      ],
+      "code": "function* naturais() {\n  let n = 1;\n  while (true) {\n    yield n;\n    n++;\n  }\n}\n\nfunction tomar(gerador, quantidade) {\n  const resultado = [];\n  for (const valor of gerador) {\n    resultado.push(valor);\n    if (resultado.length === quantidade) break;\n  }\n  return resultado;\n}\n\nconsole.log(tomar(naturais(), 5)); // [1, 2, 3, 4, 5]",
+      "callout_kind": "DICA",
+      "callout_text": "Sem uma condição de paragem como break ou um limite numa função auxiliar, percorrer um generator infinito com for...of nunca terminaria.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "♾️",
+          "text": "while(true) + yield gera sequência infinita"
+        },
+        {
+          "icon": "🐢",
+          "text": "Só calcula valores quando são pedidos"
+        }
+      ]
+    },
+    {
+      "heading": "Generators como máquinas de estado simples",
+      "body": [
+        "Cada ponto yield de um generator é, na prática, um estado em que a execução fica suspensa à espera do próximo estímulo. Isto encaixa naturalmente na modelação de máquinas de estado: o generator mantém o estado atual em variáveis locais entre chamadas, e usa o valor recebido através de next(evento) para decidir, com um if ou switch, qual a transição a aplicar antes de fazer yield do novo estado.",
+        "Em comparação com implementar a mesma máquina de estados numa classe com propriedades mutáveis, o generator tem a vantagem de o estado atual corresponder literalmente ao ponto do código onde a execução está parada, tornando as transições mais fáceis de seguir e testar, sem risco de outro código alterar o estado por fora do fluxo previsto."
+      ],
+      "code": "function* semaforo() {\n  let cor = 'vermelho';\n  while (true) {\n    const evento = yield cor;\n    if (cor === 'vermelho' && evento === 'avancar') {\n      cor = 'verde';\n    } else if (cor === 'verde' && evento === 'avancar') {\n      cor = 'amarelo';\n    } else if (cor === 'amarelo' && evento === 'avancar') {\n      cor = 'vermelho';\n    }\n  }\n}\n\nconst luz = semaforo();\nconsole.log(luz.next().value);          // 'vermelho'\nconsole.log(luz.next('avancar').value); // 'verde'\nconsole.log(luz.next('avancar').value); // 'amarelo'\nconsole.log(luz.next('avancar').value); // 'vermelho'",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Tente adaptar o exemplo do semáforo para aceitar também um evento 'emergencia' que force a cor a passar imediatamente a 'vermelho', a partir de qualquer estado.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🚦",
+          "text": "Cada yield é um estado suspenso"
+        },
+        {
+          "icon": "🔀",
+          "text": "next(evento) decide a transição"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Contar até um limite com um generator",
+      "difficulty": "Iniciante",
+      "statement": "Escreva uma generator function chamada contarAte que recebe um parâmetro maximo e usa yield para produzir, um de cada vez, os números inteiros de 1 até maximo (inclusive). Depois utilize um ciclo for...of para percorrer o generator devolvido por contarAte(5) e imprimir cada valor na consola.",
+      "hint": "Lembre-se que uma generator function se declara com function* e que cada yield dentro do ciclo pausa a execução até ao pedido seguinte de valor.",
+      "solution_code": "function* contarAte(maximo) {\n  for (let n = 1; n <= maximo; n++) {\n    yield n;\n  }\n}\n\nfor (const valor of contarAte(5)) {\n  console.log(valor);\n}",
+      "solution_explanation": "contarAte é uma generator function que pausa em cada yield dentro do ciclo for. O for...of chama automaticamente next() em cada iteração até o generator devolver done: true, imprimindo 1, 2, 3, 4 e 5."
+    },
+    {
+      "title": "Sequência infinita e preguiçosa de naturais",
+      "difficulty": "Intermedio",
+      "statement": "Implemente uma generator function chamada naturais que produz, de forma infinita, os números naturais a partir de 1 (nunca deve terminar por si só). Depois escreva uma função tomar(gerador, quantidade) que recebe um generator e um número quantidade, e devolve um array com os primeiros quantidade valores produzidos, sem nunca pedir mais valores do que os necessários. Teste com tomar(naturais(), 5).",
+      "hint": "tomar deve chamar .next() manualmente dentro de um ciclo que para assim que atingir a quantidade pedida - não pode percorrer o generator infinito sem uma condição de paragem explícita.",
+      "solution_code": "function* naturais() {\n  let n = 1;\n  while (true) {\n    yield n;\n    n++;\n  }\n}\n\nfunction tomar(gerador, quantidade) {\n  const resultado = [];\n  for (let i = 0; i < quantidade; i++) {\n    const { value, done } = gerador.next();\n    if (done) break;\n    resultado.push(value);\n  }\n  return resultado;\n}\n\nconsole.log(tomar(naturais(), 5)); // [1, 2, 3, 4, 5]",
+      "solution_explanation": "naturais() nunca chega a done: true, produzindo números indefinidamente. tomar chama next() exatamente quantidade vezes, pelo que apenas esses valores chegam a ser calculados, demonstrando a avaliação preguiçosa dos generators."
+    },
+    {
+      "title": "Combinar generators com yield*",
+      "difficulty": "Intermedio",
+      "statement": "Tem duas generator functions: tarefasUrgentes, que produz as strings 'rever pedido' e 'responder cliente', e tarefasNormais, que produz 'arquivar email' e 'atualizar agenda'. Escreva uma terceira generator function todasAsTarefas que, usando yield*, produz primeiro todas as tarefas urgentes e depois todas as tarefas normais, sem repetir a lógica de iteração de cada uma. Percorra o resultado com for...of e imprima cada tarefa.",
+      "hint": "yield* delega a iteração completa de outro generator, produzindo todos os seus valores como se fizessem parte do generator que delega.",
+      "solution_code": "function* tarefasUrgentes() {\n  yield 'rever pedido';\n  yield 'responder cliente';\n}\n\nfunction* tarefasNormais() {\n  yield 'arquivar email';\n  yield 'atualizar agenda';\n}\n\nfunction* todasAsTarefas() {\n  yield* tarefasUrgentes();\n  yield* tarefasNormais();\n}\n\nfor (const tarefa of todasAsTarefas()) {\n  console.log(tarefa);\n}",
+      "solution_explanation": "yield* tarefasUrgentes() percorre por completo esse generator antes de passar ao seguinte, sem que todasAsTarefas precise de um ciclo manual com yield para cada valor. O resultado final combina as quatro tarefas pela ordem de delegação."
+    },
+    {
+      "title": "Máquina de estado do ciclo de vida de uma encomenda",
+      "difficulty": "Avancado",
+      "statement": "Implemente uma generator function chamada estadoPedido que modela o ciclo de vida de uma encomenda através dos estados 'pendente', 'pago', 'enviado' e 'entregue'. A cada yield, o generator deve devolver o estado atual e esperar, através de .next(evento), um evento em string ('pagar', 'enviar' ou 'entregar') que determina a transição para o estado seguinte; um evento que não corresponda a uma transição válida a partir do estado atual deve ser ignorado, mantendo o generator no mesmo estado. Crie o generator, chame .next() uma vez para o iniciar, e depois envie os eventos 'pagar', 'enviar' e 'entregar' um a um, imprimindo o estado devolvido após cada chamada.",
+      "hint": "O valor passado na primeira chamada a next() é sempre ignorado; guarde o estado atual numa variável local dentro de um while (true) e use a expressão yield para receber o evento seguinte.",
+      "solution_code": "function* estadoPedido() {\n  let estado = 'pendente';\n  while (true) {\n    const evento = yield estado;\n    if (estado === 'pendente' && evento === 'pagar') {\n      estado = 'pago';\n    } else if (estado === 'pago' && evento === 'enviar') {\n      estado = 'enviado';\n    } else if (estado === 'enviado' && evento === 'entregar') {\n      estado = 'entregue';\n    }\n    // eventos que não correspondem a uma transição válida são ignorados\n  }\n}\n\nconst pedido = estadoPedido();\nconsole.log(pedido.next().value);           // 'pendente'\nconsole.log(pedido.next('pagar').value);    // 'pago'\nconsole.log(pedido.next('enviar').value);   // 'enviado'\nconsole.log(pedido.next('entregar').value); // 'entregue'",
+      "solution_explanation": "A primeira chamada a next() arranca o generator até ao primeiro yield, devolvendo o estado inicial 'pendente'. Cada next(evento) seguinte entrega o evento à expressão yield suspensa, o generator decide a transição com base no estado guardado localmente e devolve o novo estado, funcionando como uma máquina de estados autocontida."
+    }
+  ],
+  "summary": [
+    "function* declara uma generator function; chamá-la devolve um generator object sem executar o corpo de imediato.",
+    "yield suspende a execução e devolve { value, done }; next() retoma exatamente onde ficou.",
+    "Atribuir uma generator function a Symbol.iterator é a forma mais simples de tornar um objeto iterável.",
+    "yield* delega toda a iteração noutro generator ou iterável, incluindo em chamadas recursivas.",
+    "next(valor) envia dados para dentro do generator, criando comunicação bidirecional; o valor passado na primeira chamada a next() é sempre ignorado.",
+    "Generators servem tanto para sequências infinitas com avaliação preguiçosa como para máquinas de estado simples que guardam o próprio estado internamente."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para o Módulo 05",
+  "next_label": "Aula 01 → Object Literals, Propriedades e Métodos",
+  "_stage": "revisao"
+}

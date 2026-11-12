@@ -1,0 +1,233 @@
+{
+  "module_num": "08",
+  "module_title": "Módulos e Ecossistema",
+  "module_dir": "08-Modulos-e-Ecossistema",
+  "lesson_num": "01",
+  "lesson_slug": "ES-Modules-import-e-export",
+  "kind": "aula",
+  "title": "ES Modules: import e export",
+  "filename_base": "01-ES-Modules-import-e-export",
+  "subtitle": "Organizar código em módulos com export, import e carregamento dinâmico",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Distinguir export nomeado de export default e saber quando usar cada um.",
+    "Importar módulos com import nomeado, com import * as (objeto de namespace) e renomear identificadores com as.",
+    "Usar import() dinâmico para carregar módulos em tempo de execução, com carregamento condicional e code-splitting.",
+    "Reconhecer e configurar ES Modules no browser com <script type=\"module\">.",
+    "Reconhecer e configurar ES Modules em Node.js através da extensão .mjs ou de \"type\": \"module\" no package.json."
+  ],
+  "sections": [
+    {
+      "heading": "Export nomeado: expor vários valores de um módulo",
+      "body": [
+        "Um export nomeado permite que um módulo exponha vários valores independentes — constantes, funções, classes ou objetos — cada um identificado pelo seu próprio nome. A forma mais comum consiste em colocar a palavra-chave export diretamente antes da declaração, mas também é possível declarar tudo normalmente e, no final do ficheiro, agrupar os nomes a exportar numa única instrução export seguida de chavetas com a lista de nomes. As duas formas produzem exatamente o mesmo resultado.",
+        "Ao contrário do export default, um módulo pode ter tantos exports nomeados quantos forem necessários, e cada um deles tem de ser importado com exatamente o mesmo nome com que foi exportado, entre chavetas, a não ser que se recorra à renomeação com as, que é vista mais à frente nesta aula."
+      ],
+      "code": "// matematica.js\nexport const PI = 3.14159;\n\nexport function somar(a, b) {\n  return a + b;\n}\n\nfunction subtrair(a, b) {\n  return a - b;\n}\n\n// Também é válido agrupar os exports no final do ficheiro:\nexport { subtrair };",
+      "callout_kind": "NOTA",
+      "callout_text": "Exportar na declaração (export const x = ...) ou agrupar tudo no final (export { a, b, c }) são equivalentes; a segunda forma ajuda a ver de relance tudo o que o módulo expõe.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "export nomeado: vários valores por módulo"
+        },
+        {
+          "icon": "🔤",
+          "text": "import { nome } usa o nome exato exportado"
+        },
+        {
+          "icon": "🧩",
+          "text": "export { a, b } agrupa exports no fim do ficheiro"
+        }
+      ]
+    },
+    {
+      "heading": "Export default: o valor principal do módulo",
+      "body": [
+        "O export default identifica o valor principal de um módulo — tipicamente uma função, uma classe ou um objeto que resume a razão de existir desse ficheiro. Cada módulo só pode ter um único export default; tentar declarar mais do que um resulta num erro de sintaxe.",
+        "A diferença essencial em relação ao export nomeado está no import: quem importa um export default não usa chavetas e pode escolher livremente o nome local da variável, já que não existe um nome fixo a respeitar. É por isso normal ver o mesmo módulo importado com nomes diferentes em ficheiros diferentes, consoante o que faz mais sentido em cada contexto."
+      ],
+      "code": "// calculadora.js\nexport default function calcular(operacao, a, b) {\n  switch (operacao) {\n    case \"somar\":\n      return a + b;\n    case \"subtrair\":\n      return a - b;\n    default:\n      throw new Error(`Operação desconhecida: ${operacao}`);\n  }\n}\n\n// principal.js\nimport calcular from \"./calculadora.js\";\n// Podia igualmente chamar-se \"import operar from ...\" — o nome é livre.\n\nconsole.log(calcular(\"somar\", 4, 5));",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Um módulo só pode ter um export default. Ter mais do que um export default no mesmo ficheiro é um erro de sintaxe detetado antes do código correr.",
+      "table_headers": [
+        "Característica",
+        "Export nomeado",
+        "Export default"
+      ],
+      "table_rows": [
+        [
+          "Quantidade por módulo",
+          "Vários por ficheiro",
+          "Um único por ficheiro"
+        ],
+        [
+          "Sintaxe de export",
+          "export const x = ...",
+          "export default funcao/classe/valor"
+        ],
+        [
+          "Sintaxe de import",
+          "import { x } from \"./mod.js\"",
+          "import qualquerNome from \"./mod.js\""
+        ],
+        [
+          "Nome no import",
+          "Tem de corresponder ao exportado (ou usar as)",
+          "Escolhido livremente"
+        ],
+        [
+          "Uso típico",
+          "Conjunto de utilitários relacionados",
+          "Função, classe ou componente principal do módulo"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "⭐",
+          "text": "export default: um valor principal por módulo"
+        },
+        {
+          "icon": "🏷️",
+          "text": "import com qualquer nome, sem chavetas"
+        }
+      ]
+    },
+    {
+      "heading": "Import nomeado, namespace e renomear com as",
+      "body": [
+        "A forma mais direta de consumir exports nomeados é import { nomeExportado } from \"caminho\", podendo importar-se vários de uma vez, separados por vírgulas. Quando se quer aceder a tudo o que um módulo exporta sem listar cada nome, usa-se import * as Nome from \"caminho\", que cria um objeto de namespace com uma propriedade para cada export nomeado, acedida depois como Nome.propriedade.",
+        "Tanto no import como no export é possível renomear um identificador com a palavra-chave as. Isto é útil para resolver conflitos entre módulos diferentes que exportam algo com o mesmo nome, ou para usar, num determinado ficheiro, um nome mais claro do que aquele com que o valor foi originalmente exportado, sem alterar o módulo de origem."
+      ],
+      "code": "import { somar, subtrair } from \"./matematica.js\";\nimport calcular from \"./calculadora.js\";\n\n// Importar tudo como um único objeto de namespace\nimport * as Matematica from \"./matematica.js\";\nconsole.log(Matematica.PI, Matematica.somar(2, 3));\n\n// Renomear no import para evitar conflitos de nomes\nimport { somar as somarInteiros } from \"./matematica.js\";\n\n// Renomear também é possível ao exportar\nexport { somar as adicionar };",
+      "callout_kind": "DICA",
+      "callout_text": "Renomear com as no import é a forma mais simples de resolver o caso em que dois módulos diferentes exportam algo com o mesmo nome, sem tocar no ficheiro original.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🌐",
+          "text": "import * as Nome agrupa tudo num objeto"
+        },
+        {
+          "icon": "🔁",
+          "text": "as renomeia no import e no export"
+        }
+      ]
+    },
+    {
+      "heading": "import() dinâmico: carregar módulos em tempo de execução",
+      "body": [
+        "Além da sintaxe estática de import, o JavaScript disponibiliza a função import(caminho), que carrega um módulo em tempo de execução e devolve uma promise resolvida com o objeto desse módulo, do mesmo tipo que import * as produziria. Ao contrário do import estático, que tem de estar no topo do ficheiro e é resolvido antes de o código correr, o import() pode ser chamado em qualquer ponto do programa — dentro de uma condição, de um manipulador de eventos ou de uma função assíncrona.",
+        "Este mecanismo é a base do code-splitting: em vez de carregar todo o código de uma aplicação de uma só vez, é possível adiar o carregamento de partes menos usadas, como um painel de administração ou uma biblioteca de gráficos, até ao momento em que são efetivamente necessárias. Bundlers como Vite, Webpack ou Rollup reconhecem chamadas a import() e transformam-nas automaticamente em ficheiros separados, carregados sob demanda."
+      ],
+      "code": "async function carregarModuloDeGraficos() {\n  const { desenharGrafico } = await import(\"./graficos.js\");\n  desenharGrafico(dados);\n}\n\nbotao.addEventListener(\"click\", async () => {\n  const { default: Modal } = await import(\"./modal.js\");\n  new Modal().abrir();\n});\n\n// Carregamento condicional consoante o idioma escolhido\nif (utilizadorPrecisaDeTraducao) {\n  const { traduzir } = await import(`./i18n/${idioma}.js`);\n  traduzir(pagina);\n}",
+      "callout_kind": "NOTA",
+      "callout_text": "import() aceita expressões no caminho (como um template literal), o que permite decidir em tempo de execução qual módulo carregar, algo impossível com o import estático.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⚡",
+          "text": "import() devolve uma promise"
+        },
+        {
+          "icon": "✂️",
+          "text": "permite code-splitting e carregamento sob demanda"
+        },
+        {
+          "icon": "🧭",
+          "text": "caminho pode ser decidido em tempo de execução"
+        }
+      ]
+    },
+    {
+      "heading": "Módulos no browser: <script type=\"module\">",
+      "body": [
+        "Para usar ES Modules diretamente no browser, um elemento script tem de incluir o atributo type=\"module\", tanto quando aponta para um ficheiro externo através de src como quando contém código inline. Isto altera várias regras de comportamento: o código corre automaticamente em modo estrito, cada módulo tem o seu próprio scope de topo (as suas variáveis não passam a existir no objeto global), e o carregamento do script é adiado, comportando-se como se tivesse o atributo defer, correndo só depois de o HTML ser interpretado.",
+        "Os módulos carregados desta forma ficam também sujeitos às regras de CORS: um browser recusa importar um módulo servido a partir de uma origem diferente sem os cabeçalhos apropriados, e a maioria dos browsers bloqueia mesmo imports feitos a partir de ficheiros abertos localmente com o protocolo file://, exigindo por isso um servidor HTTP mesmo em desenvolvimento."
+      ],
+      "code": "<script type=\"module\" src=\"./app.js\"></script>\n\n<script type=\"module\">\n  import { iniciar } from \"./app.js\";\n  iniciar();\n</script>",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Scripts com type=\"module\" só funcionam servidos via http:// ou https://; abrir o ficheiro HTML diretamente com file:// bloqueia os imports por causa das regras de CORS.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🖥️",
+          "text": "<script type=\"module\"> ativa ES Modules no browser"
+        },
+        {
+          "icon": "🔒",
+          "text": "modo estrito automático e scope isolado"
+        },
+        {
+          "icon": "🌍",
+          "text": "sujeito às regras de CORS entre origens"
+        }
+      ]
+    },
+    {
+      "heading": "Módulos em Node.js: .mjs e package.json",
+      "body": [
+        "O Node.js suporta ES Modules, mas por omissão interpreta ficheiros .js como CommonJS (require e module.exports). Há duas formas de indicar que se quer usar a sintaxe de import/export: dar aos ficheiros a extensão .mjs, que força sempre o modo de ES Module independentemente de outra configuração, ou adicionar \"type\": \"module\" ao package.json do projeto, o que faz com que todos os ficheiros .js do projeto passem a ser tratados como ES Modules, podendo usar-se depois .cjs para os ficheiros que precisem explicitamente de CommonJS.",
+        "Uma diferença prática importante em relação a muitos bundlers é que, em Node.js, os caminhos de import relativos têm de incluir a extensão do ficheiro, e não existe resolução automática de um index.js dentro de uma pasta sem configuração adicional."
+      ],
+      "code": "// package.json\n{\n  \"type\": \"module\"\n}\n\n// utilizadores.mjs\nexport function obterUtilizador(id) {\n  return { id, nome: \"Ana\" };\n}\n\n// principal.mjs\nimport { obterUtilizador } from \"./utilizadores.mjs\";\n\nconsole.log(obterUtilizador(1));",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Em Node.js os caminhos de import relativos têm de incluir a extensão do ficheiro (por exemplo ./utilizadores.js), ao contrário do que acontece em muitos bundlers.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🟢",
+          "text": "Node.js: .mjs ou \"type\": \"module\""
+        },
+        {
+          "icon": "📁",
+          "text": "caminhos de import exigem extensão do ficheiro"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Exportar utilitários de texto",
+      "difficulty": "Iniciante",
+      "statement": "Crie (mentalmente ou num ficheiro) um módulo texto.js que exporte, como exports nomeados, duas funções: maiuscula(texto), que devolve o texto todo em maiúsculas, e contarPalavras(texto), que devolve o número de palavras do texto (separadas por espaços). Depois, num ficheiro principal.js, importe as duas funções e use-as para mostrar na consola a frase \"javascript é fantástico\" em maiúsculas e o número de palavras que ela contém.",
+      "hint": "Lembre-se de que um export nomeado permite ter vários exports no mesmo ficheiro, e que no import se usam chavetas com os nomes exatos que foram exportados.",
+      "solution_code": "// texto.js\nexport function maiuscula(texto) {\n  return texto.toUpperCase();\n}\n\nexport function contarPalavras(texto) {\n  return texto.trim().split(/\\s+/).length;\n}\n\n// principal.js\nimport { maiuscula, contarPalavras } from \"./texto.js\";\n\nconst frase = \"javascript é fantástico\";\n\nconsole.log(maiuscula(frase));\nconsole.log(contarPalavras(frase));",
+      "solution_explanation": "As duas funções são exports nomeados, pelo que são importadas entre chavetas com o nome exato com que foram declaradas. toUpperCase() converte a frase para maiúsculas, e trim().split(/\\s+/).length conta as palavras dividindo a frase por sequências de espaços em branco."
+    },
+    {
+      "title": "Combinar export default com exports nomeados",
+      "difficulty": "Intermedio",
+      "statement": "Crie um módulo carrinho.js com um export default de uma função criarCarrinho() que devolve um array vazio, e ainda dois exports nomeados no mesmo ficheiro: adicionarItem(carrinho, item), que devolve um novo array com o item acrescentado, e calcularTotal(carrinho), que soma a propriedade preco de todos os itens do carrinho. Num ficheiro principal.js, importe o export default com o nome novoCarrinho e as duas funções nomeadas, renomeando calcularTotal para somarPrecos com a palavra-chave as. Use tudo isto para criar um carrinho, adicionar dois itens com preços diferentes e mostrar o total na consola.",
+      "hint": "Um módulo só pode ter um export default, mas pode combiná-lo com quantos exports nomeados forem precisos; para renomear no import usa-se import { nomeOriginal as novoNome }.",
+      "solution_code": "// carrinho.js\nexport default function criarCarrinho() {\n  return [];\n}\n\nexport function adicionarItem(carrinho, item) {\n  return [...carrinho, item];\n}\n\nexport function calcularTotal(carrinho) {\n  return carrinho.reduce((total, item) => total + item.preco, 0);\n}\n\n// principal.js\nimport novoCarrinho, { adicionarItem, calcularTotal as somarPrecos } from \"./carrinho.js\";\n\nlet carrinho = novoCarrinho();\ncarrinho = adicionarItem(carrinho, { nome: \"Livro\", preco: 15 });\ncarrinho = adicionarItem(carrinho, { nome: \"Caneta\", preco: 3 });\n\nconsole.log(somarPrecos(carrinho));",
+      "solution_explanation": "O export default é importado sem chavetas e com um nome escolhido livremente (novoCarrinho), enquanto os exports nomeados vão entre chavetas na mesma instrução de import, sendo calcularTotal renomeado para somarPrecos com as. reduce soma imutavelmente a propriedade preco de cada item do array."
+    },
+    {
+      "title": "Carregamento condicional com import() dinâmico",
+      "difficulty": "Avancado",
+      "statement": "Existem dois módulos: relatorioSimples.js, com um export default de uma função gerar(dados) que devolve uma string com o total de itens do array dados, e relatorioDetalhado.js, com um export default de uma função gerar(dados) que devolve uma string com o total de itens e ainda a soma dos valores numéricos do array. Escreva uma função assíncrona mostrarRelatorio(dados, detalhado) que, consoante o parâmetro booleano detalhado, use import() dinâmico para carregar apenas o módulo necessário (relatorioDetalhado.js se detalhado for true, relatorioSimples.js caso contrário), chame a função exportada por defeito desse módulo e mostre o resultado na consola. Explique numa linha de comentário por que motivo este padrão ajuda no code-splitting.",
+      "hint": "import() devolve uma promise que resolve para o objeto do módulo; a exportação por defeito fica disponível na propriedade default desse objeto.",
+      "solution_code": "// relatorioSimples.js\nexport default function gerar(dados) {\n  return `Total de itens: ${dados.length}`;\n}\n\n// relatorioDetalhado.js\nexport default function gerar(dados) {\n  const soma = dados.reduce((total, valor) => total + valor, 0);\n  return `Total de itens: ${dados.length} | Soma dos valores: ${soma}`;\n}\n\n// principal.js\nasync function mostrarRelatorio(dados, detalhado) {\n  const caminho = detalhado ? \"./relatorioDetalhado.js\" : \"./relatorioSimples.js\";\n  const { default: gerar } = await import(caminho);\n  console.log(gerar(dados));\n}\n\n// Só carrega o código do relatório detalhado quando é mesmo preciso,\n// reduzindo o tamanho do código carregado inicialmente (code-splitting).\nmostrarRelatorio([10, 20, 30], true);",
+      "solution_explanation": "import() é assíncrono e devolve uma promise que resolve para o objeto do módulo, do qual se extrai a propriedade default com destructuring. Como o caminho a importar só é decidido em tempo de execução, o módulo não escolhido nunca chega a ser carregado, o que permite dividir o código em partes carregadas sob demanda."
+    }
+  ],
+  "summary": [
+    "Export nomeado permite vários valores por módulo, importados com o nome exato entre chavetas ou renomeados com as.",
+    "Export default define o valor principal de um módulo, um só por ficheiro, importável com qualquer nome e sem chavetas.",
+    "Um mesmo módulo pode combinar um export default com vários exports nomeados.",
+    "import * as Nome cria um objeto de namespace com todos os exports nomeados do módulo.",
+    "import() dinâmico devolve uma promise e permite carregar módulos sob demanda, base do code-splitting e do carregamento condicional.",
+    "No browser usa-se <script type=\"module\">; em Node.js usa-se a extensão .mjs ou \"type\": \"module\" no package.json, exigindo sempre a extensão nos caminhos de import."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 02",
+  "next_label": "Aula 02 → CommonJS e Node.js",
+  "_stage": "autoria"
+}

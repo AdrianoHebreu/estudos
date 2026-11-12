@@ -1,0 +1,265 @@
+{
+  "module_num": "05",
+  "module_title": "Objetos e Orientação a Objetos",
+  "module_dir": "05-Objetos-e-Orientacao-a-Objetos",
+  "lesson_num": "04",
+  "lesson_slug": "Getters-Setters-e-Campos-Privados",
+  "kind": "aula",
+  "title": "Getters, Setters e Campos Privados",
+  "filename_base": "04-Getters-Setters-e-Campos-Privados",
+  "subtitle": "Getters, setters, campos privados e static blocks para um encapsulamento real",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Criar propriedades get/set em classes para valores computados e validados.",
+    "Usar get/set também em object literals, sem precisar de uma classe.",
+    "Declarar campos de instância com valores por omissão, incluindo campos privados.",
+    "Garantir encapsulamento real com campos privados #, distinto da convenção _nome.",
+    "Definir métodos privados # para organizar lógica interna sem a expor.",
+    "Usar static blocks para inicializar propriedades estáticas complexas."
+  ],
+  "sections": [
+    {
+      "heading": "Getters e Setters em Classes",
+      "body": [
+        "Dentro de uma classe, as palavras-chave get e set permitem definir acessores: métodos que se comportam como propriedades comuns na leitura e na escrita, sem parênteses na chamada. Um get executa código sempre que a propriedade é lida e um set executa código sempre que lhe é atribuído um valor, o que os torna o local ideal para calcular valores derivados (como converter graus Celsius em Fahrenheit) ou para validar um valor antes de o guardar.",
+        "Um acessor tem quase sempre de trabalhar em conjunto com um campo interno onde o valor real fica guardado, porque o próprio nome do acessor (por exemplo celsius) não pode ser também o nome do campo que ele lê ou escreve, sob pena de entrar em recursão infinita. No exemplo desta secção, esse campo interno já é um campo privado, #celsius: a explicação detalhada de como o # impede qualquer código fora da classe de contornar a validação do set e escrever diretamente no valor guardado surge mais adiante, nesta mesma unidade, dedicada especificamente a campos privados."
+      ],
+      "code": "class Temperatura {\n  #celsius;\n\n  constructor(celsius = 0) {\n    this.celsius = celsius; // passa pelo setter, com validação\n  }\n\n  get celsius() {\n    return this.#celsius;\n  }\n\n  set celsius(valor) {\n    if (typeof valor !== \"number\" || Number.isNaN(valor)) {\n      throw new TypeError(\"celsius tem de ser um número\");\n    }\n    this.#celsius = valor;\n  }\n\n  get fahrenheit() {\n    return (this.#celsius * 9) / 5 + 32;\n  }\n\n  set fahrenheit(valor) {\n    this.celsius = ((valor - 32) * 5) / 9;\n  }\n}\n\nconst t = new Temperatura(20);\nconsole.log(t.fahrenheit); // 68\nt.fahrenheit = 100;\nconsole.log(t.celsius.toFixed(2)); // \"37.78\"",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Nunca escrever, dentro de set celsius(valor), a atribuição this.celsius = valor. Isso chamaria o próprio setter outra vez, indefinidamente, até rebentar a pilha de chamadas. O setter tem de escrever sempre no campo privado (this.#celsius), nunca na propriedade acessora com o mesmo nome.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧮",
+          "text": "Getter/setter parecem propriedades simples"
+        },
+        {
+          "icon": "🔁",
+          "text": "Calculam valores derivados (ex.: Fahrenheit)"
+        },
+        {
+          "icon": "✅",
+          "text": "Validam o valor antes de o guardar"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Cuidado com recursão infinita no acessor"
+        }
+      ]
+    },
+    {
+      "heading": "Propriedades Computadas em Object Literals",
+      "body": [
+        "A mesma sintaxe get e set funciona também dentro de um object literal, sem que seja preciso declarar uma classe. É útil sempre que se quer expor num objeto simples uma propriedade computada, como um estado textual calculado a partir de outro valor, ou uma propriedade validada, como um volume que só pode variar entre 0 e 100, mantendo a leitura e a escrita com o aspeto de uma propriedade normal.",
+        "Como um object literal não é uma classe, não pode ter campos privados com #: essa sintaxe só é reconhecida dentro do corpo de uma classe. Para simular privacidade num objeto simples recorre-se normalmente a uma convenção de nome, como _volume, ou a técnicas baseadas em closures, exploradas no módulo sobre funções."
+      ],
+      "code": "const leitor = {\n  _volume: 50,\n\n  get volume() {\n    return this._volume;\n  },\n\n  set volume(valor) {\n    if (valor < 0 || valor > 100) {\n      throw new RangeError(\"o volume tem de estar entre 0 e 100\");\n    }\n    this._volume = valor;\n  },\n\n  get estado() {\n    return this._volume === 0 ? \"mudo\" : `a tocar a ${this._volume}%`;\n  }\n};\n\nleitor.volume = 80;\nconsole.log(leitor.estado); // \"a tocar a 80%\"\n\ntry {\n  leitor.volume = 150;\n} catch (erro) {\n  console.log(erro.message); // \"o volume tem de estar entre 0 e 100\"\n}",
+      "callout_kind": "NOTA",
+      "callout_text": "_volume continua a ser uma propriedade pública normal: qualquer código pode fazer leitor._volume = -50 e contornar a validação do setter volume. A convenção do sublinhado avisa quem lê o código, mas não impede nada, ao contrário de um verdadeiro campo privado com #.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎛️",
+          "text": "get/set também funcionam em object literals"
+        },
+        {
+          "icon": "🔓",
+          "text": "Sem classe, não há campos privados com #"
+        },
+        {
+          "icon": "📦",
+          "text": "Ótimo para objetos de configuração ou estado"
+        }
+      ]
+    },
+    {
+      "heading": "Campos de Instância com Valor por Omissão",
+      "body": [
+        "Um campo de instância é uma propriedade declarada diretamente no corpo da classe, fora do construtor, na forma nome = valor (ou apenas nome, se não precisar de valor inicial). Este campo é inicializado em cada novo objeto, na ordem em que está escrito, antes do corpo do construtor correr, o que evita ter de repetir this.nome = valor várias vezes apenas para atribuir valores por omissão.",
+        "Uma vantagem prática é que cada instância recebe a sua própria cópia do valor inicial: um campo como respostas = [] cria um array novo para cada objeto, ao contrário do que aconteceria se esse valor fosse partilhado por engano entre instâncias através de um único array definido fora da classe. Os campos de instância também podem ser privados, combinando a inicialização automática com o encapsulamento estudado a seguir."
+      ],
+      "code": "class Inquerito {\n  respostas = [];\n  criadoEm = new Date();\n  #totalPerguntas = 0;\n\n  constructor(perguntas = []) {\n    this.#totalPerguntas = perguntas.length;\n    this.perguntas = perguntas;\n  }\n\n  get porResponder() {\n    return this.#totalPerguntas - this.respostas.length;\n  }\n}\n\nconst a = new Inquerito([\"a\", \"b\", \"c\"]);\nconst b = new Inquerito([\"x\"]);\na.respostas.push(\"primeira resposta\");\nconsole.log(a.respostas.length, b.respostas.length); // 1 0",
+      "callout_kind": "DICA",
+      "callout_text": "respostas = [] é reavaliado para cada nova instância, por isso duas instâncias de Inquerito nunca partilham sem querer o mesmo array. Isto evita um erro clássico em que um valor por omissão mutável (array ou objeto) acaba a ser modificado por um objeto e afeta todos os outros.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏗️",
+          "text": "campo = valor cria um valor por instância"
+        },
+        {
+          "icon": "🆕",
+          "text": "Corre antes do corpo do construtor"
+        },
+        {
+          "icon": "🚫",
+          "text": "Evita arrays/objetos partilhados por engano"
+        },
+        {
+          "icon": "🔐",
+          "text": "Pode combinar-se com campos privados"
+        }
+      ]
+    },
+    {
+      "heading": "Campos Privados com # e Encapsulamento Real",
+      "body": [
+        "Um campo privado, declarado com o prefixo # (por exemplo #saldo), só pode ser lido ou escrito por código que esteja dentro do corpo da própria classe. Isto é encapsulamento real, imposto pelo motor de JavaScript, e não uma simples convenção: tentar escrever objeto.#saldo fora da classe onde #saldo foi declarado nem sequer é um erro em tempo de execução, é um erro de sintaxe detetado antes de o código correr.",
+        "Campos privados têm de ser declarados no corpo da classe, mesmo que só recebam valor mais tarde no construtor, e não aparecem em Object.keys, em ciclos for...in nem no resultado de JSON.stringify, o que os distingue claramente da convenção _nome, que continua a ser uma propriedade pública normal. Como a privacidade é por classe e não por instância, um método pode aceder ao campo privado de outra instância da mesma classe sem qualquer restrição, o que é útil para comparar dois objetos ou para verificar com segurança, através do operador #campo in objeto, se um valor pertence de facto a essa classe."
+      ],
+      "code": "class ContaBancaria {\n  #saldo;\n  #historico = [];\n\n  constructor(saldoInicial = 0) {\n    this.#saldo = saldoInicial;\n  }\n\n  depositar(valor) {\n    if (valor <= 0) throw new RangeError(\"o valor tem de ser positivo\");\n    this.#saldo += valor;\n    this.#historico.push({ tipo: \"deposito\", valor });\n    return this.#saldo;\n  }\n\n  levantar(valor) {\n    if (valor > this.#saldo) throw new Error(\"saldo insuficiente\");\n    this.#saldo -= valor;\n    this.#historico.push({ tipo: \"levantamento\", valor });\n    return this.#saldo;\n  }\n\n  get saldo() {\n    return this.#saldo;\n  }\n\n  static eContaValida(obj) {\n    return #saldo in obj; // verificação segura, sem lançar erro\n  }\n}\n\nconst conta = new ContaBancaria(100);\nconta.depositar(50);\nconsole.log(conta.saldo); // 150\nconsole.log(ContaBancaria.eContaValida(conta)); // true\nconsole.log(ContaBancaria.eContaValida({})); // false\n// conta.#saldo fora da classe -> SyntaxError, nem chega a executar",
+      "callout_kind": "NOTA",
+      "callout_text": "A privacidade é por classe, não por instância: dentro de ContaBancaria pode escrever-se, por exemplo, igual(outraConta) { return this.#saldo === outraConta.#saldo }, acedendo ao campo privado de outro objeto, desde que seja da mesma classe.",
+      "table_headers": [
+        "Aspeto",
+        "Convenção _nome",
+        "Campo privado #nome"
+      ],
+      "table_rows": [
+        [
+          "Acesso a partir de fora da classe",
+          "Possível (só por convenção não se deve fazer)",
+          "Impossível, erro de sintaxe"
+        ],
+        [
+          "Aparece em Object.keys / for...in / JSON.stringify",
+          "Sim",
+          "Não"
+        ],
+        [
+          "Acessível diretamente em subclasses",
+          "Sim, como qualquer propriedade",
+          "Não, só através de métodos da própria classe"
+        ],
+        [
+          "Precisa de ser declarado no corpo da classe",
+          "Não",
+          "Sim"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔐",
+          "text": "# impede acesso fora da classe"
+        },
+        {
+          "icon": "🙈",
+          "text": "Não aparece em Object.keys nem JSON.stringify"
+        },
+        {
+          "icon": "🏷️",
+          "text": "#campo in obj faz uma verificação segura"
+        },
+        {
+          "icon": "📐",
+          "text": "Privacidade é por classe, não por instância"
+        }
+      ]
+    },
+    {
+      "heading": "Métodos e Acessores Privados",
+      "body": [
+        "A mesma sintaxe # aplica-se a métodos: um método privado, escrito como #nome() {}, só pode ser chamado a partir de outro método da mesma classe, nunca a partir de código exterior. É a forma correta de dividir um algoritmo interno em passos mais pequenos e com nomes claros, sem que esses passos intermédios façam parte da interface pública da classe nem se tornem uma responsabilidade de compatibilidade para quem a usa.",
+        "Também é possível declarar acessores privados, get #nome() e set #nome(), e métodos estáticos privados, static #nome(), estes últimos úteis para lógica auxiliar que pertence à classe como um todo e não a uma instância em particular, mas que continua a não dever ser exposta publicamente."
+      ],
+      "code": "class ValidadorEmail {\n  #dominiosPermitidos;\n\n  constructor(dominiosPermitidos = [\"gmail.com\", \"outlook.com\"]) {\n    this.#dominiosPermitidos = dominiosPermitidos;\n  }\n\n  validar(email) {\n    const normalizado = this.#normalizar(email);\n    return this.#temFormatoValido(normalizado) && this.#dominioPermitido(normalizado);\n  }\n\n  #normalizar(email) {\n    return email.trim().toLowerCase();\n  }\n\n  #temFormatoValido(email) {\n    return /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email);\n  }\n\n  #dominioPermitido(email) {\n    const dominio = email.split(\"@\")[1];\n    return this.#dominiosPermitidos.includes(dominio);\n  }\n}\n\nconst validador = new ValidadorEmail();\nconsole.log(validador.validar(\"  Ana@Gmail.com \")); // true\nconsole.log(validador.validar(\"ana@empresa.pt\")); // false",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Adiciona um método público listarDominios() que devolva uma cópia da lista de domínios permitidos (por exemplo com [...this.#dominiosPermitidos]), sem nunca devolver o array #dominiosPermitidos diretamente. Assim, quem receber a lista não consegue alterar o original com push.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧩",
+          "text": "Métodos #auxiliares organizam a lógica interna"
+        },
+        {
+          "icon": "🙈",
+          "text": "Não fazem parte da API pública da classe"
+        },
+        {
+          "icon": "🔗",
+          "text": "Podem chamar-se uns aos outros livremente"
+        }
+      ]
+    },
+    {
+      "heading": "Static Blocks: Inicialização Estática Complexa",
+      "body": [
+        "Um static block, escrito como static { ... } dentro do corpo da classe, corre exatamente uma vez, no momento em que a classe é definida, e não sempre que se cria uma instância com new. Serve para inicializar propriedades estáticas cuja lógica não cabe numa única expressão, por exemplo quando é preciso um ciclo, uma condição mais elaborada ou vários passos que dependem uns dos outros.",
+        "Dentro de um static block, this refere-se à própria classe, o que dá acesso direto a campos e métodos estáticos privados que, de outro modo, não poderiam ser preenchidos fora do corpo da classe. Uma classe pode ter vários static blocks, executados pela ordem em que aparecem, misturados livremente com declarações normais de campos estáticos."
+      ],
+      "code": "class ConfiguracaoApp {\n  static #ambiente;\n  static #limites;\n\n  static {\n    const modo = typeof process !== \"undefined\" ? process.env.NODE_ENV : \"producao\";\n    this.#ambiente = modo === \"desenvolvimento\" ? \"dev\" : \"prod\";\n  }\n\n  static {\n    this.#limites = { maxPedidos: this.#ambiente === \"dev\" ? 1000 : 100 };\n  }\n\n  static get ambiente() {\n    return this.#ambiente;\n  }\n\n  static get limites() {\n    return this.#limites;\n  }\n}\n\nconsole.log(ConfiguracaoApp.ambiente, ConfiguracaoApp.limites);",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Um static block corre uma única vez, quando a classe é definida (avaliada pelo motor de JavaScript), e não de cada vez que se cria uma instância com new. Não o uses para lógica que dependa dos dados de um objeto em concreto; isso pertence ao construtor.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏗️",
+          "text": "static {} corre uma vez, ao definir a classe"
+        },
+        {
+          "icon": "🔒",
+          "text": "Acede a campos estáticos privados"
+        },
+        {
+          "icon": "🧵",
+          "text": "Ideal para inicializações em vários passos"
+        },
+        {
+          "icon": "🔁",
+          "text": "Vários blocos correm pela ordem em que aparecem"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Retângulo com Dimensões Validadas",
+      "difficulty": "Iniciante",
+      "statement": "Cria uma classe Retangulo com campos privados #largura e #altura. O construtor deve receber largura e altura (com valor por omissão 1 para cada) e atribuí-los através dos respetivos setters. Implementa: um getter e um setter para largura e para altura, que lancem um RangeError se o valor atribuído não for um número positivo; um getter area que devolva largura vezes altura; um getter perimetro que devolva 2 vezes (largura + altura). Testa a classe criando um retângulo 4x5 e tentando depois atribuir -2 à largura, confirmando que o erro é lançado.",
+      "hint": "Faz os getters de area e perimetro calcularem o valor a partir de this.largura e this.altura (que passam pelos getters), e usa os setters também dentro do construtor para reaproveitar a validação.",
+      "solution_code": "class Retangulo {\n  #largura;\n  #altura;\n\n  constructor(largura = 1, altura = 1) {\n    this.largura = largura;\n    this.altura = altura;\n  }\n\n  get largura() {\n    return this.#largura;\n  }\n\n  set largura(valor) {\n    if (typeof valor !== \"number\" || valor <= 0) {\n      throw new RangeError(\"largura tem de ser um número positivo\");\n    }\n    this.#largura = valor;\n  }\n\n  get altura() {\n    return this.#altura;\n  }\n\n  set altura(valor) {\n    if (typeof valor !== \"number\" || valor <= 0) {\n      throw new RangeError(\"altura tem de ser um número positivo\");\n    }\n    this.#altura = valor;\n  }\n\n  get area() {\n    return this.largura * this.altura;\n  }\n\n  get perimetro() {\n    return 2 * (this.largura + this.altura);\n  }\n}\n\nconst r = new Retangulo(4, 5);\nconsole.log(r.area); // 20\nconsole.log(r.perimetro); // 18\n\ntry {\n  r.largura = -2;\n} catch (erro) {\n  console.log(erro.message); // \"largura tem de ser um número positivo\"\n}",
+      "solution_explanation": "Os setters centralizam a validação, por isso tanto o construtor como qualquer atribuição posterior a r.largura passam pela mesma verificação. Os getters area e perimetro nunca guardam um valor: recalculam-no a partir dos campos privados sempre que são lidos, através dos próprios getters largura e altura."
+    },
+    {
+      "title": "Produto com Desconto e Preço Final",
+      "difficulty": "Intermedio",
+      "statement": "Cria uma classe Produto com um campo de instância moeda com valor por omissão 'EUR', um campo privado #precoBase e um campo privado #desconto inicializado a 0. O construtor recebe nome (guardado num campo público nome) e precoBase. Implementa um getter/setter desconto que aceite apenas valores entre 0 e 1 (inclusive), lançando RangeError caso contrário. Implementa um getter precoFinal que devolva #precoBase * (1 - #desconto), arredondado a 2 casas decimais. Implementa também um getter etiqueta que devolva uma string no formato 'nome: precoFinal moeda' (por exemplo 'Teclado: 45.00 EUR').",
+      "hint": "Para arredondar a 2 casas decimais usa Number(valor.toFixed(2)); lembra-te que toFixed devolve uma string.",
+      "solution_code": "class Produto {\n  moeda = \"EUR\";\n  #precoBase;\n  #desconto = 0;\n\n  constructor(nome, precoBase) {\n    this.nome = nome;\n    this.#precoBase = precoBase;\n  }\n\n  get desconto() {\n    return this.#desconto;\n  }\n\n  set desconto(valor) {\n    if (typeof valor !== \"number\" || valor < 0 || valor > 1) {\n      throw new RangeError(\"desconto tem de estar entre 0 e 1\");\n    }\n    this.#desconto = valor;\n  }\n\n  get precoFinal() {\n    const preco = this.#precoBase * (1 - this.#desconto);\n    return Number(preco.toFixed(2));\n  }\n\n  get etiqueta() {\n    return `${this.nome}: ${this.precoFinal.toFixed(2)} ${this.moeda}`;\n  }\n}\n\nconst teclado = new Produto(\"Teclado\", 50);\nteclado.desconto = 0.1;\nconsole.log(teclado.precoFinal); // 45\nconsole.log(teclado.etiqueta); // \"Teclado: 45.00 EUR\"",
+      "solution_explanation": "moeda é um campo de instância com valor por omissão, por isso cada Produto já nasce em EUR sem o construtor o ter de definir explicitamente. O getter precoFinal recalcula sempre o valor a partir de #precoBase e #desconto, garantindo que nunca fica desatualizado depois de um novo desconto ser atribuído."
+    },
+    {
+      "title": "Fila de Tarefas com Métodos Privados",
+      "difficulty": "Avancado",
+      "statement": "Cria uma classe FilaDeTarefas com um campo privado #tarefas inicializado como array vazio e um campo privado #proximoId inicializado a 1. Implementa os métodos públicos: adicionar(descricao), que valida (através de um método privado #validarDescricao) que descricao é uma string não vazia depois de trim antes de a acrescentar à fila com um id sequencial, devolvendo esse id; concluir(id), que remove da fila a tarefa com esse id usando um método privado #encontrarIndice, lançando um Error se o id não existir; e um getter pendentes que devolva uma cópia (não a referência direta) do array de tarefas por concluir. Garante que #tarefas nunca é exposto diretamente.",
+      "hint": "#encontrarIndice(id) pode devolver o resultado de this.#tarefas.findIndex(...), e tanto concluir como a própria lógica interna podem reutilizá-lo.",
+      "solution_code": "class FilaDeTarefas {\n  #tarefas = [];\n  #proximoId = 1;\n\n  adicionar(descricao) {\n    const descricaoValida = this.#validarDescricao(descricao);\n    const tarefa = { id: this.#proximoId++, descricao: descricaoValida };\n    this.#tarefas.push(tarefa);\n    return tarefa.id;\n  }\n\n  concluir(id) {\n    const indice = this.#encontrarIndice(id);\n    if (indice === -1) {\n      throw new Error(`não existe nenhuma tarefa com o id ${id}`);\n    }\n    this.#tarefas.splice(indice, 1);\n  }\n\n  get pendentes() {\n    return [...this.#tarefas];\n  }\n\n  #validarDescricao(descricao) {\n    if (typeof descricao !== \"string\" || descricao.trim() === \"\") {\n      throw new TypeError(\"descrição tem de ser uma string não vazia\");\n    }\n    return descricao.trim();\n  }\n\n  #encontrarIndice(id) {\n    return this.#tarefas.findIndex((tarefa) => tarefa.id === id);\n  }\n}\n\nconst fila = new FilaDeTarefas();\nconst id1 = fila.adicionar(\"  Rever pull request  \");\nfila.adicionar(\"Escrever testes\");\nconsole.log(fila.pendentes.length); // 2\nfila.concluir(id1);\nconsole.log(fila.pendentes.length); // 1",
+      "solution_explanation": "Os métodos #validarDescricao e #encontrarIndice concentram lógica reutilizada e nunca aparecem na API pública da classe. O getter pendentes devolve [...this.#tarefas], uma cópia superficial, para que quem chama a fila não consiga alterar as tarefas internas com push ou splice diretamente no array devolvido."
+    },
+    {
+      "title": "Registo Automático de Instâncias com Static Block",
+      "difficulty": "Avancado",
+      "statement": "Cria uma classe Sessao com um campo privado estático #totalCriadas, inicializado através de um static block a 0. O construtor deve incrementar #totalCriadas e guardar o valor resultante num campo de instância público id (cada Sessao criada recebe assim um id sequencial único, começando em 1). Adiciona um getter estático total que devolva o número atual de sessões criadas. Adiciona ainda, através de um segundo static block, um campo privado estático #limiteMaximo definido como 3; o construtor deve lançar um Error se, ao ser chamado, #totalCriadas já tiver atingido #limiteMaximo antes de incrementar.",
+      "hint": "Usa um método estático privado, por exemplo static #incrementar(), chamado a partir do construtor com Sessao.#incrementar(), para concentrar a lógica de verificar o limite e aumentar o contador.",
+      "solution_code": "class Sessao {\n  static #totalCriadas;\n  static #limiteMaximo;\n\n  static {\n    this.#totalCriadas = 0;\n  }\n\n  static {\n    this.#limiteMaximo = 3;\n  }\n\n  id;\n\n  constructor() {\n    this.id = Sessao.#incrementar();\n  }\n\n  static #incrementar() {\n    if (this.#totalCriadas >= this.#limiteMaximo) {\n      throw new Error(`limite de ${this.#limiteMaximo} sessões ativas atingido`);\n    }\n    this.#totalCriadas += 1;\n    return this.#totalCriadas;\n  }\n\n  static get total() {\n    return this.#totalCriadas;\n  }\n}\n\nconst s1 = new Sessao();\nconst s2 = new Sessao();\nconst s3 = new Sessao();\nconsole.log(s1.id, s2.id, s3.id); // 1 2 3\nconsole.log(Sessao.total); // 3\n\ntry {\n  new Sessao();\n} catch (erro) {\n  console.log(erro.message); // \"limite de 3 sessões ativas atingido\"\n}",
+      "solution_explanation": "Os dois static blocks correm uma única vez, quando a classe Sessao é definida, e inicializam #totalCriadas e #limiteMaximo antes de qualquer instância existir. O método estático privado #incrementar centraliza a verificação do limite e o incremento do contador, sendo chamado a partir do construtor de cada nova instância."
+    }
+  ],
+  "summary": [
+    "get/set tornam a leitura e a escrita de uma propriedade um ponto de controlo: permitem calcular valores derivados ou validar o que é atribuído.",
+    "Object literals suportam get/set diretamente, sem necessidade de uma classe, mas não têm campos privados com #.",
+    "Campos de instância (nome = valor) simplificam o construtor e garantem um valor novo, independente, em cada instância.",
+    "Campos privados com # são impostos pela linguagem: aceder-lhes fora da classe é um erro de sintaxe, não apenas uma má prática.",
+    "Métodos e acessores privados com # organizam a lógica interna sem alargar a API pública da classe.",
+    "static blocks correm uma única vez, na definição da classe, e permitem inicializar vários campos estáticos, incluindo privados, de forma coordenada."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 05",
+  "next_label": "Aula 05 → Mixins e Composição",
+  "_stage": "revisao"
+}

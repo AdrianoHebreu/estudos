@@ -1,0 +1,317 @@
+{
+  "module_num": "06",
+  "module_title": "Strings e Expressões Regulares",
+  "module_dir": "06-Strings-e-Expressoes-Regulares",
+  "lesson_num": "03",
+  "lesson_slug": "Expressoes-Regulares-Fundamentos",
+  "kind": "aula",
+  "title": "Expressões Regulares: Fundamentos",
+  "filename_base": "03-Expressoes-Regulares-Fundamentos",
+  "subtitle": "Aprenda a descrever, testar e extrair padrões de texto com expressões regulares em JavaScript.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Escrever expressões regulares em JavaScript usando a sintaxe literal /padrão/flags e o construtor RegExp",
+    "Aplicar as flags g, i, m e s para controlar como uma expressão regular pesquisa o texto",
+    "Usar classes de caracteres e quantificadores (* + ? {n,m}) para descrever padrões de texto",
+    "Ancorar padrões ao início e ao fim de uma string ou de cada linha, com ^ e $",
+    "Testar e extrair correspondências com test(), exec(), match(), matchAll(), replace() e split()"
+  ],
+  "sections": [
+    {
+      "heading": "Criar expressões regulares: literal e construtor RegExp",
+      "body": [
+        "Em JavaScript, uma expressão regular é um objeto do tipo RegExp que descreve um padrão de texto, usado para procurar, validar ou substituir partes de uma string. Há duas formas de a criar: a forma literal, delimitada por barras (/padrão/flags), e o construtor RegExp(padrão, flags), que recebe o padrão como uma string. A forma literal é a mais usada no dia a dia, por ser mais legível e ser interpretada em tempo de análise do código, mas o construtor é indispensável quando o padrão só é conhecido em tempo de execução, por exemplo quando vem de uma variável, de um parâmetro de função ou de um valor introduzido pelo utilizador.",
+        "Uma diferença prática entre as duas formas está na escrita de caracteres especiais. Na forma literal, a barra invertida escreve-se uma única vez, como em /\\d+/. Quando o mesmo padrão é passado como string ao construtor, a barra invertida tem de ser escrita duas vezes, porque a primeira é interpretada como carácter de escape da própria string antes de a expressão regular sequer existir: new RegExp(\"\\\\d+\"). Fora estes casos, ambas as formas produzem objetos RegExp equivalentes, com os mesmos métodos disponíveis."
+      ],
+      "code": "// Literal - forma mais comum e mais legível\nconst regexLiteral = /gato/i;\n\n// Construtor - útil quando o padrão vem de uma variável\nconst termo = \"gato\";\nconst regexDinamico = new RegExp(termo, \"i\");\n\nconsole.log(regexLiteral.test(\"Tenho um Gato\"));  // true\nconsole.log(regexDinamico.test(\"Tenho um Gato\")); // true\n\n// Numa string usada no construtor, a barra invertida duplica-se\nconst comBarra = new RegExp(\"\\\\d+\"); // equivalente a /\\d+/\nconsole.log(comBarra.test(\"Ano 2026\")); // true",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📝",
+          "text": "Literal: /padrão/flags"
+        },
+        {
+          "icon": "🏗️",
+          "text": "new RegExp() para padrões dinâmicos"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Barra invertida duplica-se em strings"
+        }
+      ]
+    },
+    {
+      "heading": "Flags: g, i, m e s",
+      "body": [
+        "As flags são letras opcionais colocadas depois da barra final (ou como segundo argumento do construtor) que alteram o comportamento de uma expressão regular sem alterar o padrão em si. A flag g (global) faz com que a pesquisa não pare na primeira correspondência: métodos como match() passam a devolver todas as ocorrências, e exec() passa a avançar posição a posição a cada chamada. A flag i ignora a diferença entre maiúsculas e minúsculas ao comparar caracteres.",
+        "A flag m (multiline) altera o significado das âncoras ^ e $: em vez de corresponderem apenas ao início e ao fim de toda a string, passam a corresponder ao início e ao fim de cada linha dentro dela. Já a flag s (dotAll) altera o comportamento do ponto (.), que por omissão corresponde a qualquer carácter exceto uma quebra de linha; com s, o ponto passa a corresponder também a \\n. As flags combinam-se livremente na mesma expressão, por exemplo /padrão/gim."
+      ],
+      "code": "const texto = `Primeira linha\nSegunda LINHA\nTerceira linha`;\n\nconsole.log(/^linha/i.test(\"LINHA de teste\"));  // true (i: ignora maiúsculas)\nconsole.log(texto.match(/^segunda.*$/im)[0]);   // \"Segunda LINHA\" (m: ^ $ por linha)\n\nconst comQuebra = \"início\\nfim\";\nconsole.log(/início.fim/.test(comQuebra));  // false: '.' não apanha \\n\nconsole.log(/início.fim/s.test(comQuebra)); // true: com 's', '.' apanha \\n\n\nconst repetido = \"gato gato gato\";\nconsole.log(repetido.match(/gato/g)); // [\"gato\", \"gato\", \"gato\"]",
+      "callout_kind": "DICA",
+      "callout_text": "As flags combinam-se na mesma expressão: /padrão/gi aplica pesquisa global e insensível a maiúsculas ao mesmo tempo.",
+      "table_headers": [
+        "Flag",
+        "Nome",
+        "Efeito"
+      ],
+      "table_rows": [
+        [
+          "g",
+          "global",
+          "Encontra todas as ocorrências, não só a primeira"
+        ],
+        [
+          "i",
+          "ignoreCase",
+          "Ignora a diferença entre maiúsculas e minúsculas"
+        ],
+        [
+          "m",
+          "multiline",
+          "^ e $ passam a corresponder ao início/fim de cada linha"
+        ],
+        [
+          "s",
+          "dotAll",
+          "O ponto (.) passa a corresponder também a quebras de linha"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🌍",
+          "text": "g: todas as ocorrências"
+        },
+        {
+          "icon": "🔤",
+          "text": "i: ignora maiúsculas/minúsculas"
+        },
+        {
+          "icon": "📏",
+          "text": "m: ^ $ por linha"
+        },
+        {
+          "icon": "🌐",
+          "text": "s: '.' apanha quebras de linha"
+        }
+      ]
+    },
+    {
+      "heading": "Classes de caracteres",
+      "body": [
+        "Uma classe de caracteres define um conjunto de caracteres aceites numa determinada posição do padrão. Existem classes predefinidas de utilização muito frequente: \\d corresponde a um dígito (equivalente a [0-9]), \\w corresponde a uma letra, dígito ou underscore (equivalente a [A-Za-z0-9_]) e \\s corresponde a um espaço em branco, incluindo espaço, tabulação e quebra de linha. Cada uma tem a versão negada em maiúscula, \\D, \\W e \\S, que corresponde exatamente ao oposto.",
+        "Quando as classes predefinidas não chegam, é possível definir classes próprias com parênteses retos: [aeiou] aceita qualquer uma das vogais, [a-z] aceita qualquer letra minúscula através de um intervalo, e [a-zA-Z0-9_] combina vários intervalos numa só classe. Colocando um acento circunflexo (^) logo a seguir ao parêntese de abertura, a classe passa a negar o conjunto: [^0-9] corresponde a qualquer carácter que não seja um dígito."
+      ],
+      "code": "const texto = \"Sala 101, telefone 912-345-678\";\n\nconsole.log(texto.match(/\\d+/g));      // [\"101\", \"912\", \"345\", \"678\"]\nconsole.log(texto.match(/[aeiou]/gi)); // todas as vogais, maiúsculas e minúsculas\n\nconst identificador = /^[a-zA-Z_][a-zA-Z0-9_]*$/;\nconsole.log(identificador.test(\"nomeVariavel_2\")); // true\nconsole.log(identificador.test(\"2nomeInvalido\"));  // false\n\nconst semDigitos = /[^0-9]+/g;\nconsole.log(\"abc123def456\".match(semDigitos)); // [\"abc\", \"def\"]",
+      "callout_kind": "NOTA",
+      "callout_text": "Dentro de uma classe de caracteres [ ], a maioria dos símbolos especiais deixa de ter significado próprio; continuam especiais apenas o ], a barra invertida \\, o ^ (quando é o primeiro carácter, significando negação) e o - (quando não está no início nem no fim, definindo um intervalo).",
+      "table_headers": [
+        "Classe",
+        "Equivalente",
+        "Corresponde a"
+      ],
+      "table_rows": [
+        [
+          "\\d",
+          "[0-9]",
+          "Um dígito"
+        ],
+        [
+          "\\D",
+          "[^0-9]",
+          "Um carácter que não é dígito"
+        ],
+        [
+          "\\w",
+          "[A-Za-z0-9_]",
+          "Letra, dígito ou underscore"
+        ],
+        [
+          "\\W",
+          "[^A-Za-z0-9_]",
+          "O oposto de \\w"
+        ],
+        [
+          "\\s",
+          "—",
+          "Espaço, tabulação ou quebra de linha"
+        ],
+        [
+          "\\S",
+          "—",
+          "Qualquer carácter que não seja espaço em branco"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔢",
+          "text": "\\d dígito, \\w palavra, \\s espaço"
+        },
+        {
+          "icon": "🔠",
+          "text": "[abc] define um conjunto próprio"
+        },
+        {
+          "icon": "🚫",
+          "text": "[^abc] nega o conjunto"
+        }
+      ]
+    },
+    {
+      "heading": "Quantificadores: * + ? e {n,m}",
+      "body": [
+        "Os quantificadores indicam quantas vezes o elemento anterior do padrão se pode repetir. O asterisco (*) aceita zero ou mais repetições, o sinal de mais (+) exige pelo menos uma repetição, e o ponto de interrogação (?) torna o elemento anterior opcional, aceitando zero ou uma ocorrência. Para um controlo mais preciso existe a notação com chavetas: {n} exige exatamente n repetições, {n,} exige pelo menos n, e {n,m} aceita entre n e m repetições, ambos incluídos.",
+        "Por omissão, os quantificadores são gulosos (greedy): tentam sempre corresponder ao maior trecho de texto possível antes de recuar, se necessário, para que o resto do padrão também corresponda. Isto é importante para não obter resultados inesperados em padrões com .* ou .+ sobre texto com várias ocorrências do mesmo delimitador. Colocando um ? a seguir ao quantificador, este passa a ser preguiçoso (lazy), tentando corresponder ao menor trecho possível."
+      ],
+      "code": "const preco = \"Preços: 9€, 19,90€ e 100€\";\n\nconsole.log(preco.match(/\\d+/g));        // [\"9\", \"19\", \"90\", \"100\"] (+ : um ou mais dígitos)\nconsole.log(preco.match(/\\d+,\\d{2}/g));  // [\"19,90\"] ({2}: exatamente dois dígitos)\n\nconst cores = /colou?r/gi; // 'u' opcional: aceita \"color\" e \"colour\"\nconsole.log(\"color e colour\".match(cores)); // [\"color\", \"colour\"]\n\nconst telefone = /^\\d{9}$/; // exatamente 9 dígitos\nconsole.log(telefone.test(\"912345678\")); // true\nconsole.log(telefone.test(\"91234567\"));  // false\n\n// Guloso (greedy) por omissão: tenta apanhar o máximo possível\nconsole.log(\"<b>negrito</b>\".match(/<.+>/)[0]);  // \"<b>negrito</b>\"\nconsole.log(\"<b>negrito</b>\".match(/<.+?>/)[0]); // \"<b>\" (lazy, com '?')",
+      "callout_kind": "DICA",
+      "callout_text": "Se um padrão guloso (greedy) como .* ou .+ estiver a apanhar mais texto do que o pretendido, torne-o preguiçoso (lazy) acrescentando um ? a seguir ao quantificador, como em .*? ou .+?.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "➕",
+          "text": "+ uma ou mais vezes"
+        },
+        {
+          "icon": "❓",
+          "text": "? torna opcional"
+        },
+        {
+          "icon": "🔁",
+          "text": "{n,m} entre n e m repetições"
+        },
+        {
+          "icon": "🦈",
+          "text": "Guloso por omissão"
+        }
+      ]
+    },
+    {
+      "heading": "Âncoras: ^ e $",
+      "body": [
+        "As âncoras não correspondem a nenhum carácter; marcam antes uma posição no texto. O acento circunflexo (^), usado fora de uma classe de caracteres, ancora o padrão ao início da string, e o cifrão ($) ancora-o ao fim. Usadas em conjunto, como em /^\\d+$/, obrigam a que a string inteira, do primeiro ao último carácter, corresponda ao padrão, o que as torna essenciais em validações.",
+        "Com a flag m ativa, este comportamento muda: ^ passa a corresponder ao início de cada linha da string (logo a seguir a uma quebra de linha ou ao início absoluto) e $ ao fim de cada linha (imediatamente antes de uma quebra de linha ou no fim absoluto). Isto é útil para processar texto com várias linhas e aplicar o padrão a cada uma individualmente, em vez de à string completa."
+      ],
+      "code": "const cp = /^\\d{4}-\\d{3}$/; // código postal português: 1234-567\nconsole.log(cp.test(\"4700-000\"));       // true\nconsole.log(cp.test(\"4700-000 Braga\")); // false, sobra texto depois do padrão\n\nconst linhas = `pera\nbanana\nuva`;\n\nconsole.log(linhas.match(/^\\w+$/gm)); // [\"pera\", \"banana\", \"uva\"] (m: por linha)",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Não confundir os dois significados de ^: fora de uma classe de caracteres é uma âncora que marca o início da string (ou de linha, com a flag m); dentro de [ ], logo a seguir ao parêntese de abertura, significa negação do conjunto.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎯",
+          "text": "^ início, $ fim"
+        },
+        {
+          "icon": "📐",
+          "text": "Combinar com quantificadores valida a string toda"
+        },
+        {
+          "icon": "⚠️",
+          "text": "^ dentro de [ ] tem outro significado"
+        }
+      ]
+    },
+    {
+      "heading": "test() e exec(): os métodos do RegExp",
+      "body": [
+        "test() e exec() são métodos do objeto RegExp, chamados sobre a própria expressão regular, com a string como argumento. test(string) devolve apenas um booleano, indicando se existe alguma correspondência, e é a escolha certa quando só interessa saber se o padrão ocorre ou não. exec(string) devolve mais informação: um array com a correspondência completa na posição 0, os grupos capturados nas posições seguintes (se o padrão os tiver) e propriedades como index, a posição onde a correspondência começou; se não houver correspondência, devolve null.",
+        "Quando a expressão regular tem a flag g, exec() passa a ter um comportamento com estado: cada chamada continua a pesquisa a partir da propriedade lastIndex do objeto RegExp, atualizada automaticamente após cada correspondência. Isto permite percorrer todas as ocorrências num ciclo while, chamando exec() repetidamente até obter null. Sem a flag g, lastIndex nunca é atualizado e exec() devolve sempre a primeira correspondência a partir do início."
+      ],
+      "code": "const regexEmail = /\\w+@\\w+\\.\\w+/;\nconsole.log(regexEmail.test(\"contacto: ana@exemplo.com\")); // true\n\nconst resultado = regexEmail.exec(\"contacto: ana@exemplo.com\");\nconsole.log(resultado[0]);    // \"ana@exemplo.com\"\nconsole.log(resultado.index); // 10\n\n// Com a flag 'g', exec() avança lastIndex a cada chamada\nconst regexPalavras = /\\b\\w{4,}\\b/g;\nconst frase = \"O rato roeu a rolha da garrafa\";\nlet m;\nwhile ((m = regexPalavras.exec(frase)) !== null) {\n  console.log(`\"${m[0]}\" na posição ${m.index}`);\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Reutilizar a mesma expressão regular global (flag g) em chamadas sucessivas de exec() ou test() pode produzir resultados inesperados, porque lastIndex fica guardado no objeto entre chamadas. Se for preciso recomeçar do início, reponha manualmente regex.lastIndex = 0.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "✅",
+          "text": "test() devolve true/false"
+        },
+        {
+          "icon": "🔍",
+          "text": "exec() devolve detalhes da correspondência"
+        },
+        {
+          "icon": "🔄",
+          "text": "Com 'g', exec() avança lastIndex"
+        }
+      ]
+    },
+    {
+      "heading": "match(), matchAll(), replace() e split(): regex nos métodos de String",
+      "body": [
+        "Vários métodos de String aceitam uma expressão regular como argumento em vez de, ou além de, uma substring fixa. match(regex) devolve a primeira correspondência (com detalhes semelhantes aos de exec()) quando a regex não tem a flag g, ou um array simples com todas as substrings correspondentes, sem detalhes de grupos, quando tem. matchAll(regex) exige sempre a flag g e devolve um iterador com um objeto de correspondência completo para cada ocorrência, sendo a escolha mais completa quando é preciso aceder aos detalhes de todas as ocorrências.",
+        "replace(regex, substituto) troca a primeira correspondência por omissão, ou todas quando a regex tem a flag g; o substituto pode ser uma string fixa ou uma função, chamada com a correspondência encontrada e cujo valor de retorno é usado na substituição. split(regex) divide a string em partes sempre que o padrão corresponde, sendo mais flexível do que dividir por uma substring fixa, porque o próprio separador pode variar, como acontece com espaços múltiplos ou diferentes sinais de pontuação."
+      ],
+      "code": "const texto = \"O ano de 2024 e o ano de 2026\";\n\nconsole.log(texto.match(/\\d{4}/));   // [\"2024\", index: 9, ...] (sem 'g': só a 1ª ocorrência)\nconsole.log(texto.match(/\\d{4}/g));  // [\"2024\", \"2026\"] (com 'g': todas)\n\nfor (const m of texto.matchAll(/\\d{4}/g)) {\n  console.log(m[0], \"na posição\", m.index);\n}\n\nconsole.log(texto.replace(/\\d{4}/, \"20XX\"));  // só troca a primeira ocorrência\nconsole.log(texto.replace(/\\d{4}/g, \"20XX\")); // troca todas\n\nconst comColchetes = texto.replace(/\\d{4}/g, (ano) => `[${ano}]`);\nconsole.log(comColchetes); // \"O ano de [2024] e o ano de [2026]\"\n\nconsole.log(\"um,dois;três  quatro\".split(/[,;\\s]+/));\n// [\"um\", \"dois\", \"três\", \"quatro\"]",
+      "callout_kind": "NOTA",
+      "callout_text": "matchAll() exige sempre a flag g na expressão regular; sem ela, lança um TypeError. Já match() e replace() aceitam a regex com ou sem g, mas o resultado (e, em replace(), quantas ocorrências são trocadas) muda consoante a flag esteja presente.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔎",
+          "text": "match() e matchAll() extraem texto"
+        },
+        {
+          "icon": "✏️",
+          "text": "replace() substitui (string ou função)"
+        },
+        {
+          "icon": "✂️",
+          "text": "split() divide por um padrão"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Validar um código composto só por dígitos",
+      "difficulty": "Iniciante",
+      "statement": "Escreva uma função chamada apenasDigitos que recebe uma string e devolve true se a string for composta exclusivamente por um ou mais dígitos (0-9), do início ao fim, e false em qualquer outro caso (incluindo a string vazia ou strings com espaços, letras ou outros caracteres). Use uma expressão regular com âncoras e o método test().",
+      "hint": "Ancore o padrão ao início (^) e ao fim ($) da string, para garantir que não sobra nenhum caractere fora do que o padrão descreve.",
+      "solution_code": "function apenasDigitos(texto) {\n  return /^\\d+$/.test(texto);\n}\n\nconsole.log(apenasDigitos(\"2026\"));   // true\nconsole.log(apenasDigitos(\"20 26\"));  // false\nconsole.log(apenasDigitos(\"\"));       // false",
+      "solution_explanation": "A expressão /^\\d+$/ ancora o padrão ao início (^) e ao fim ($) da string, exigindo pelo menos um dígito (+) e nada mais no meio. test() devolve diretamente o valor booleano que a função precisa de retornar."
+    },
+    {
+      "title": "Extrair hashtags de um texto",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função extrairHashtags que recebe uma string com um texto de rede social e devolve um array com todos os hashtags encontrados, sem o carácter #. Um hashtag começa por # seguido de uma ou mais letras, dígitos ou underscore. Se não existir nenhum hashtag no texto, a função deve devolver um array vazio. Por exemplo, extrairHashtags(\"Adorei o #curso de #JavaScript hoje!\") deve devolver [\"curso\", \"JavaScript\"].",
+      "hint": "Use \\w para letras, dígitos e underscore, a flag g para apanhar todas as ocorrências com match(), e depois retire o # de cada resultado (por exemplo com slice).",
+      "solution_code": "function extrairHashtags(texto) {\n  const encontrados = texto.match(/#\\w+/g);\n  if (!encontrados) return [];\n  return encontrados.map((hashtag) => hashtag.slice(1));\n}\n\nconsole.log(extrairHashtags(\"Adorei o #curso de #JavaScript hoje!\"));\n// [\"curso\", \"JavaScript\"]\nconsole.log(extrairHashtags(\"Sem hashtags aqui\"));\n// []",
+      "solution_explanation": "match(/#\\w+/g) devolve um array com todas as substrings que começam por # seguidas de letras, dígitos ou underscore, ou null quando não há nenhuma correspondência. map() percorre esse array e slice(1) remove o # inicial de cada hashtag encontrado."
+    },
+    {
+      "title": "Mascarar números de telefone num texto",
+      "difficulty": "Avancado",
+      "statement": "Escreva uma função mascararTelefones que recebe um texto e substitui todas as sequências de exatamente 9 dígitos consecutivos (números de telefone) por uma versão em que só os últimos 4 dígitos ficam visíveis, com os restantes 5 substituídos por asteriscos. Por exemplo, mascararTelefones(\"Ligar para 912345678 ou 934567890\") deve devolver \"Ligar para *****5678 ou *****7890\". Use replace() com uma função de substituição.",
+      "hint": "A função passada a replace() recebe a correspondência encontrada como argumento; dentro dela pode usar slice() para separar os últimos 4 dígitos do resto e repeat() para gerar os asteriscos.",
+      "solution_code": "function mascararTelefones(texto) {\n  return texto.replace(/\\d{9}/g, (numero) => {\n    const visiveis = numero.slice(-4);\n    const escondidos = \"*\".repeat(numero.length - 4);\n    return escondidos + visiveis;\n  });\n}\n\nconsole.log(mascararTelefones(\"Ligar para 912345678 ou 934567890\"));\n// \"Ligar para *****5678 ou *****7890\"\nconsole.log(mascararTelefones(\"Sem números aqui\"));\n// \"Sem números aqui\"",
+      "solution_explanation": "replace(/\\d{9}/g, funcao) substitui cada sequência de exatamente 9 dígitos pelo valor devolvido pela função de substituição, que recebe o próprio número encontrado. Dentro dela, slice(-4) isola os últimos 4 dígitos e '*'.repeat() gera os asteriscos que escondem os restantes."
+    },
+    {
+      "title": "Contar a frequência de palavras num texto",
+      "difficulty": "Avancado",
+      "statement": "Escreva uma função contarPalavras que recebe uma string de texto e devolve um Map em que cada chave é uma palavra (uma sequência de uma ou mais letras entre a-z, ignorando a diferença entre maiúsculas e minúsculas) e o valor é o número de vezes que essa palavra aparece no texto. Pontuação, espaços e números não fazem parte de nenhuma palavra. Use matchAll() com a flag g para extrair as palavras e um Map para contar as ocorrências.",
+      "hint": "Comece por converter o texto todo para minúsculas com toLowerCase(); depois use matchAll(/[a-z]+/g) para obter um iterador de correspondências e percorra-o com for...of, fazendo destructuring de cada array de correspondência para obter só o texto encontrado.",
+      "solution_code": "function contarPalavras(texto) {\n  const contagem = new Map();\n  const palavras = texto.toLowerCase().matchAll(/[a-z]+/g);\n\n  for (const [palavra] of palavras) {\n    contagem.set(palavra, (contagem.get(palavra) ?? 0) + 1);\n  }\n\n  return contagem;\n}\n\nconst resultado = contarPalavras(\"O rato roeu a rolha. A rolha era do rato!\");\nconsole.log(resultado);\n// Map(7) { 'o' => 1, 'rato' => 2, 'roeu' => 1, 'a' => 2, 'rolha' => 2, 'era' => 1, 'do' => 1 }",
+      "solution_explanation": "toLowerCase() elimina a distinção entre maiúsculas e minúsculas antes de procurar; matchAll(/[a-z]+/g) devolve um iterador com uma correspondência por sequência de letras encontrada, e o destructuring [palavra] extrai só o texto de cada uma. O Map acumula a contagem, usando 0 como valor por omissão sempre que uma palavra ainda não existe como chave."
+    }
+  ],
+  "summary": [
+    "Uma regex cria-se como literal /padrão/flags ou com new RegExp(padrão, flags), sendo o construtor útil quando o padrão vem de uma variável.",
+    "As flags g, i, m e s controlam, respetivamente, se se procuram todas as ocorrências, se há distinção entre maiúsculas e minúsculas, o alcance de ^ e $, e se o ponto (.) apanha quebras de linha.",
+    "Classes de caracteres como \\d, \\w, \\s (e as suas negações \\D, \\W, \\S), além de [abc] e [^abc], descrevem o conjunto de caracteres aceite numa posição do padrão.",
+    "Os quantificadores * + ? {n,m} indicam quantas vezes um elemento se repete, e são gulosos (greedy) por omissão.",
+    "As âncoras ^ e $ marcam o início e o fim da string (ou de cada linha, com a flag m), sendo essenciais para validar o conteúdo completo de uma string.",
+    "test() e exec() operam sobre a regex; match(), matchAll(), replace() e split() operam sobre a string e aceitam um padrão regex como argumento."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 04",
+  "next_label": "Aula 04 → Regex Avançado",
+  "_stage": "revisao"
+}

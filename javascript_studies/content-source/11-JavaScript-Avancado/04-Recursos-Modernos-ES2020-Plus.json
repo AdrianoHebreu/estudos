@@ -1,0 +1,276 @@
+{
+  "module_num": "11",
+  "module_title": "JavaScript Avançado",
+  "module_dir": "11-JavaScript-Avancado",
+  "lesson_num": "04",
+  "lesson_slug": "Recursos-Modernos-ES2020-Plus",
+  "kind": "aula",
+  "title": "Recursos Modernos: ES2020+",
+  "filename_base": "04-Recursos-Modernos-ES2020-Plus",
+  "subtitle": "BigInt, separadores numéricos, novos métodos de array e uma janela para o futuro do JS",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Usar BigInt para calcular com inteiros maiores do que Number.MAX_SAFE_INTEGER, sem perda de precisão.",
+    "Escrever literais numéricos mais legíveis com separadores (_).",
+    "Aplicar Array.prototype.at, flat e flatMap, e Object.hasOwn no dia a dia.",
+    "Criar cópias profundas nativas com structuredClone, incluindo casos com referências circulares.",
+    "Consolidar o uso de import() dinâmico e top-level await como práticas do JavaScript moderno.",
+    "Perceber, em linhas gerais, como o TC39 faz evoluir a linguagem e o que vem a caminho."
+  ],
+  "sections": [
+    {
+      "heading": "BigInt: inteiros para além dos limites do Number",
+      "body": [
+        "O tipo Number do JavaScript representa números em vírgula flutuante de precisão dupla (IEEE 754), o que significa que só consegue representar inteiros com exatidão até 2^53 - 1, disponível como Number.MAX_SAFE_INTEGER. Acima desse limite, várias operações deixam de ser fiáveis: somar 1 a um número já fora da zona segura pode devolver o mesmo valor, e comparações que deveriam ser diferentes passam a ser iguais. Isto é um problema real em identificadores muito grandes, cálculos criptográficos, ou qualquer situação em que a precisão de um inteiro importa mais do que a conveniência de usar sempre o mesmo tipo numérico.",
+        "O BigInt resolve isto introduzindo um tipo primitivo próprio para inteiros de tamanho arbitrário, limitado apenas pela memória disponível. Cria-se um BigInt escrevendo um n a seguir ao literal (123n) ou chamando BigInt(valor), e o operador typeof devolve 'bigint' para estes valores. As operações aritméticas normais (+, -, *, /, %, **) funcionam entre BigInts, mas o motor recusa-se a misturar BigInt com Number nessas operações, precisamente para evitar perdas de precisão silenciosas: é preciso converter explicitamente um dos lados com BigInt(numero) ou Number(bigint), sabendo que esta última conversão pode voltar a perder precisão se o valor for demasiado grande.",
+        "Nas comparações relacionais e de igualdade solta (==), o JavaScript permite comparar BigInt com Number, aplicando coerção (10n == 10 é true), mas a igualdade estrita (===) considera-os sempre diferentes por serem tipos distintos. Na prática, o BigInt aparece sobretudo em cálculos matemáticos com números muito grandes (fatoriais, combinatória), em identificadores de precisão elevada e em criptografia; para o dia a dia com quantias monetárias ou contagens normais, o Number continua a ser a escolha certa."
+      ],
+      "code": "console.log(Number.MAX_SAFE_INTEGER); // 9007199254740991\nconsole.log(Number.MAX_SAFE_INTEGER + 1 === Number.MAX_SAFE_INTEGER + 2); // true (!)\n\nconst grande = 9007199254740993n;\nconsole.log(grande, typeof grande); // 9007199254740993n 'bigint'\n\nfunction fatorial(n) {\n  let resultado = 1n;\n  for (let i = 2n; i <= n; i++) resultado *= i;\n  return resultado;\n}\n\nconsole.log(fatorial(25n)); // 15511210043330985984000000n\n\nconsole.log(10n === 10n); // true\nconsole.log(10n === 10);  // false (tipos diferentes)\nconsole.log(10n == 10);   // true (com coerção)\n\nconsole.log(10n + BigInt(5)); // 15n\n\ntry {\n  console.log(10n + 5); // TypeError: não é possível misturar BigInt com outros tipos\n} catch (erro) {\n  console.log(erro.message);\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "BigInt e Number não podem ser combinados em operações aritméticas diretas (10n + 5 lança TypeError). Além disso, JSON.stringify() lança um erro ao encontrar um BigInt, por isso é preciso convertê-lo para String ou Number antes de serializar.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔢",
+          "text": "BigInt guarda inteiros além de 2^53 sem perder precisão"
+        },
+        {
+          "icon": "🏷️",
+          "text": "Literais terminam em n: 123n"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Não se pode somar BigInt com Number diretamente"
+        }
+      ]
+    },
+    {
+      "heading": "Separadores numéricos: legibilidade sem alterar o valor",
+      "body": [
+        "Literais numéricos longos são difíceis de ler à vista: 1000000000 obriga a contar zeros um a um para perceber que se trata de mil milhões. O separador numérico, um underscore colocado entre dígitos, resolve este problema puramente visual sem alterar o valor do número: 1_000_000_000 é exatamente o mesmo valor que 1000000000, apenas mais fácil de interpretar.",
+        "O separador funciona em qualquer literal numérico, incluindo decimais, notação científica, hexadecimal, binária, octal e literais BigInt. Há, no entanto, regras sintáticas simples: o underscore não pode aparecer no início ou fim do literal, não pode haver dois seguidos, e não pode ficar colado ao ponto decimal ou ao prefixo de base (0x, 0b, 0o). O motor de JavaScript remove os separadores durante a análise do código, por isso não têm qualquer efeito em tempo de execução nem aparecem quando o número é convertido para string."
+      ],
+      "code": "const milMilhoes = 1_000_000_000;\nconst salarioAnual = 24_000.50;\nconst binario = 0b1010_0101_1100;\nconst hexadecimal = 0xFF_EC_DE;\nconst idPrecisaoAlta = 9_007_199_254_740_993n;\n\nconsole.log(milMilhoes);         // 1000000000\nconsole.log(salarioAnual);       // 24000.5\nconsole.log(binario);            // 2652\nconsole.log(hexadecimal);        // 16772318\nconsole.log(idPrecisaoAlta);     // 9007199254740993n\nconsole.log(String(milMilhoes)); // \"1000000000\" (sem underscores)",
+      "callout_kind": "NOTA",
+      "callout_text": "Os separadores existem só para quem lê o código-fonte; não têm efeito nenhum em tempo de execução, e o valor de 1_000 é rigorosamente igual ao de 1000.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔟",
+          "text": "Separador _ torna números grandes mais legíveis"
+        },
+        {
+          "icon": "🚫",
+          "text": "Não pode estar no início, fim ou duplicado"
+        },
+        {
+          "icon": "💡",
+          "text": "Funciona em decimais, hexadecimais e BigInt"
+        }
+      ]
+    },
+    {
+      "heading": "at, flat, flatMap e Object.hasOwn: consolidação de sintaxe recente",
+      "body": [
+        "Vários métodos incorporados nos últimos anos consolidam padrões que antes exigiam código auxiliar. Array.prototype.at(indice) devolve o elemento numa posição, aceitando índices negativos para contar a partir do fim: array.at(-1) devolve o último elemento sem ser preciso escrever array[array.length - 1], e funciona também em strings.",
+        "Array.prototype.flat(profundidade) achata arrays aninhados num único nível de profundidade (por omissão), podendo receber um número maior ou Infinity para achatar completamente. Array.prototype.flatMap(funcao) combina map e flat(1) numa só passagem: aplica a função a cada elemento e depois achata um nível do resultado, o que é especialmente útil quando cada elemento de entrada pode gerar zero, um ou vários elementos de saída.",
+        "Object.hasOwn(objeto, propriedade) substitui o padrão Object.prototype.hasOwnProperty.call(objeto, propriedade), verificando se uma propriedade existe diretamente no objeto (e não herdada da cadeia de protótipos). É a forma recomendada de fazer esta verificação porque funciona mesmo com objetos criados com Object.create(null), que não têm hasOwnProperty disponível como método próprio."
+      ],
+      "code": "const numeros = [10, 20, 30, 40, 50];\nconsole.log(numeros.at(-1)); // 50\nconsole.log(numeros.at(-2)); // 40\n\nconst aninhado = [1, [2, 3], [4, [5, 6]]];\nconsole.log(aninhado.flat());         // [1, 2, 3, 4, [5, 6]]\nconsole.log(aninhado.flat(Infinity)); // [1, 2, 3, 4, 5, 6]\n\nconst frases = [\"ola mundo\", \"boa tarde\"];\nconsole.log(frases.flatMap(frase => frase.split(\" \")));\n// [\"ola\", \"mundo\", \"boa\", \"tarde\"]\n\nconst semPrototipo = Object.create(null);\nsemPrototipo.tema = \"escuro\";\n\nconsole.log(Object.hasOwn(semPrototipo, \"tema\"));     // true\nconsole.log(Object.hasOwn(semPrototipo, \"toString\")); // false\n// semPrototipo.hasOwnProperty(\"tema\") lançaria TypeError: não existe esse método",
+      "callout_kind": "DICA",
+      "callout_text": "Object.hasOwn(objeto, chave) é preferível a 'chave in objeto' quando só interessam propriedades próprias, e mais seguro do que hasOwnProperty.call quando o objeto pode não ter protótipo.",
+      "table_headers": [
+        "Necessidade",
+        "Abordagem antiga",
+        "Alternativa moderna (ES2020+)"
+      ],
+      "table_rows": [
+        [
+          "Aceder ao último elemento",
+          "array[array.length - 1]",
+          "array.at(-1)"
+        ],
+        [
+          "Achatar arrays aninhados",
+          "array.reduce((acc, val) => acc.concat(val), [])",
+          "array.flat()"
+        ],
+        [
+          "Mapear e achatar num só passo",
+          "array.map(fn).reduce((a, b) => a.concat(b), [])",
+          "array.flatMap(fn)"
+        ],
+        [
+          "Verificar propriedade própria",
+          "Object.prototype.hasOwnProperty.call(obj, chave)",
+          "Object.hasOwn(obj, chave)"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📍",
+          "text": "at(-1) acede ao último elemento sem calcular length"
+        },
+        {
+          "icon": "📦",
+          "text": "flat() e flatMap() achatam arrays aninhados"
+        },
+        {
+          "icon": "🔍",
+          "text": "Object.hasOwn substitui hasOwnProperty.call"
+        }
+      ]
+    },
+    {
+      "heading": "structuredClone: cópias profundas sem bibliotecas",
+      "body": [
+        "Copiar um objeto em profundidade, de forma que alterar a cópia não afete o original mesmo em propriedades aninhadas, era até há pouco tempo um problema resolvido com JSON.parse(JSON.stringify(objeto)) ou com bibliotecas externas. A primeira abordagem falha silenciosamente com datas (viram strings), Map, Set, undefined, funções e referências circulares (lança erro). A função global structuredClone(valor) resolve isto nativamente, usando o mesmo algoritmo de clonagem estruturada que o browser já usava internamente para comunicação entre janelas e workers.",
+        "structuredClone suporta corretamente tipos como Date, RegExp, Map, Set, ArrayBuffer, e até referências circulares dentro da mesma estrutura, produzindo uma cópia totalmente independente do original. Tem, no entanto, limites claros: não consegue clonar funções nem símbolos, e ao clonar uma instância de uma classe personalizada o resultado é um objeto simples com as mesmas propriedades, mas sem o protótipo da classe original, deixando de responder a instanceof MinhaClasse."
+      ],
+      "code": "const original = {\n  nome: \"Projeto X\",\n  criadoEm: new Date(),\n  tags: new Set([\"urgente\", \"cliente\"]),\n};\n\nconst copia = structuredClone(original);\ncopia.tags.add(\"revisto\");\n\nconsole.log(original.tags); // Set(2) {'urgente', 'cliente'}\nconsole.log(copia.tags);    // Set(3) {'urgente', 'cliente', 'revisto'}\n\n// Suporta referências circulares\nconst no = { valor: 1 };\nno.proprio = no;\nconst copiaNo = structuredClone(no);\nconsole.log(copiaNo.proprio === copiaNo); // true\nconsole.log(copiaNo === no);              // false\n\ntry {\n  structuredClone({ acao: () => {} });\n} catch (erro) {\n  console.log(erro.name); // \"DataCloneError\"\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "structuredClone não preserva o protótipo de classes personalizadas (a cópia deixa de ser instanceof da classe original) nem clona funções; nesses casos continua a ser preciso um clone manual ou uma biblioteca dedicada.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧬",
+          "text": "structuredClone cria cópias profundas nativas"
+        },
+        {
+          "icon": "🔁",
+          "text": "Suporta referências circulares e tipos como Map e Set"
+        },
+        {
+          "icon": "🚫",
+          "text": "Não clona funções nem preserva classes"
+        }
+      ]
+    },
+    {
+      "heading": "import() dinâmico e top-level await, revisitados",
+      "body": [
+        "O módulo sobre Módulos e Ecossistema já apresentou o import() dinâmico e o top-level await em detalhe; aqui interessa situá-los como parte do conjunto de funcionalidades que definem o JavaScript moderno, lado a lado com o resto desta unidade. import(especificador) devolve uma promise que resolve para o módulo carregado, permitindo adiar o carregamento de código para o momento em que é realmente necessário, por exemplo uma funcionalidade só usada depois de um clique, ou um módulo alternativo escolhido em função de uma condição em tempo de execução.",
+        "O top-level await permite usar await diretamente no corpo de um módulo ES, sem o envolver numa função async, o que é particularmente útil para inicializar um módulo com dados que só ficam disponíveis de forma assíncrona (uma configuração vinda de um ficheiro remoto, uma ligação a uma base de dados). Combinados, os dois mecanismos permitem escrever módulos que se autoconfiguram de forma assíncrona e que só carregam dependências pesadas quando são efetivamente precisas."
+      ],
+      "code": "// dentro de um módulo ES (ficheiro com \"type\": \"module\" ou extensão .mjs)\n\nconst idiomaAtivo = \"pt\";\n\nconst formatadores = idiomaAtivo === \"pt\"\n  ? await import(\"./formatadores-pt.js\")\n  : await import(\"./formatadores-en.js\");\n\nexport const formatarData = formatadores.formatarData;\n\n// top-level await também serve para inicializar o módulo com dados assíncronos\nconst configuracao = await fetch(\"./config.json\").then(resposta => resposta.json());\nexport const API_URL = configuracao.apiUrl;",
+      "callout_kind": "NOTA",
+      "callout_text": "Os detalhes de funcionamento do import() dinâmico e do top-level await, incluindo os seus casos de uso e restrições, estão explicados no módulo 08, Módulos e Ecossistema; aqui aparecem apenas como peças do conjunto de funcionalidades modernas da linguagem.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📥",
+          "text": "import() carrega módulos sob demanda, de forma assíncrona"
+        },
+        {
+          "icon": "⏳",
+          "text": "top-level await dispensa uma função async envolvente"
+        },
+        {
+          "icon": "🧩",
+          "text": "Ambos já vistos no módulo Módulos e Ecossistema"
+        }
+      ]
+    },
+    {
+      "heading": "Para onde caminha o JavaScript: o processo TC39",
+      "body": [
+        "O JavaScript evolui através do TC39, o comité técnico responsável por especificar o ECMAScript. Qualquer nova funcionalidade, desde o BigInt ao optional chaining, começa como uma proposta que percorre cinco estágios, de Stage 0 a Stage 4, cada um exigindo mais maturidade: uma ideia inicial, depois uma proposta formal, depois uma especificação em rascunho, depois uma especificação completa e testada em implementações reais, e finalmente a inclusão na revisão anual da norma ECMAScript. Só as propostas que chegam a Stage 4 é que entram de facto na linguagem.",
+        "Nem tudo o que se vê mencionado online já é seguro para produção: uma proposta em Stage 2 ou 3 pode mudar de sintaxe, ser reformulada ou até ser abandonada antes de chegar a Stage 4. Algumas propostas atualmente a percorrer o processo incluem Temporal (uma API moderna para datas e horas, a substituir o Date), Records and Tuples (estruturas de dados imutáveis por valor), Decorators (anotações declarativas para classes, já populares em frameworks através de transpiladores) e o Pipeline Operator (uma sintaxe para encadear chamadas de função de forma mais legível que o encadeamento atual).",
+        "Acompanhar estas propostas não é uma prioridade para quem está a aprender a linguagem, mas vale a pena saber que existem e onde consultar o seu estado: o repositório público de proposals do TC39 no GitHub lista todas elas com o estágio atual, para não confundir uma sintaxe experimental de um artigo ou vídeo com algo já suportado de forma universal nos motores de JavaScript."
+      ],
+      "code": "",
+      "callout_kind": "DICA",
+      "callout_text": "Antes de usar uma funcionalidade nova encontrada num artigo ou vídeo, vale a pena confirmar no MDN ou no caniuse.com se já é suportada nos ambientes-alvo (browsers, Node.js) e a partir de que versão.",
+      "table_headers": [
+        "Estágio",
+        "Significado"
+      ],
+      "table_rows": [
+        [
+          "Stage 0",
+          "Ideia inicial (strawman), ainda sem proposta formal"
+        ],
+        [
+          "Stage 1",
+          "Proposta formal, problema e solução geral aceites para exploração"
+        ],
+        [
+          "Stage 2",
+          "Sintaxe e semântica em rascunho, especificação inicial"
+        ],
+        [
+          "Stage 3",
+          "Especificação completa e revista, à espera de implementações e feedback real"
+        ],
+        [
+          "Stage 4",
+          "Pronto para entrar na especificação oficial do ECMAScript"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🛤️",
+          "text": "TC39 avança propostas por estágios, de 0 a 4"
+        },
+        {
+          "icon": "🔭",
+          "text": "Temporal, Decorators e Records/Tuples estão a caminho"
+        },
+        {
+          "icon": "📚",
+          "text": "Vale a pena acompanhar o repositório proposals do TC39"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Idade do universo em segundos",
+      "difficulty": "Iniciante",
+      "statement": "Crie uma constante idadeUniversoAnos que represente, de forma legível através de separadores numéricos, o valor 13800000000 (idade aproximada do universo, em anos), escrita como BigInt. De seguida, escreva uma função anosParaSegundos(anos) que recebe um BigInt com um número de anos e devolve o número aproximado de segundos correspondente, sabendo que um ano tem aproximadamente 31536000 segundos (defina esse valor também como BigInt, com separadores numéricos). Teste a função com anosParaSegundos(idadeUniversoAnos).",
+      "hint": "Lembre-se de que, numa operação aritmética, os dois operandos precisam de ser BigInt — não é possível multiplicar um BigInt por um Number comum.",
+      "solution_code": "const idadeUniversoAnos = 13_800_000_000n;\nconst segundosPorAno = 31_536_000n;\n\nfunction anosParaSegundos(anos) {\n  return anos * segundosPorAno;\n}\n\nconsole.log(anosParaSegundos(idadeUniversoAnos));\n// 435196800000000000n",
+      "solution_explanation": "Os separadores numéricos tornam os literais 13_800_000_000n e 31_536_000n fáceis de ler sem alterar o seu valor. Como ambos são BigInt (sufixo n), a multiplicação dentro de anosParaSegundos é válida e devolve outro BigInt, sem qualquer perda de precisão nesta ordem de grandeza."
+    },
+    {
+      "title": "Resumo de vendas trimestrais",
+      "difficulty": "Intermedio",
+      "statement": "Tem o seguinte array de vendas, agrupadas por trimestre: const vendasPorTrimestre = [[120, 150, 130], [200, 210], [90, 95, 100, 110]]; Escreva uma função resumoVendas(dados) que devolva um objeto com duas propriedades: todasAsVendas, um array de uma só dimensão com todos os valores de venda, obtido a partir de dados; e ultimaVenda, o valor da última venda registada, obtido a partir de todasAsVendas usando o método at(). Depois, a partir de todasAsVendas, use flatMap para construir um array de strings em que cada venda abaixo de 100 gera duas entradas, \"Venda: X€\" e \"Aviso: venda baixa\", e cada venda igual ou acima de 100 gera apenas \"Venda: X€\".",
+      "hint": "flat() resolve o primeiro nível de aninhamento; dentro de flatMap, a função passada pode devolver arrays com tamanhos diferentes consoante a condição.",
+      "solution_code": "const vendasPorTrimestre = [[120, 150, 130], [200, 210], [90, 95, 100, 110]];\n\nfunction resumoVendas(dados) {\n  const todasAsVendas = dados.flat();\n  const ultimaVenda = todasAsVendas.at(-1);\n  return { todasAsVendas, ultimaVenda };\n}\n\nconst { todasAsVendas, ultimaVenda } = resumoVendas(vendasPorTrimestre);\nconsole.log(ultimaVenda); // 110\n\nconst vendasFormatadas = todasAsVendas.flatMap(valor =>\n  valor < 100 ? [`Venda: ${valor}€`, \"Aviso: venda baixa\"] : [`Venda: ${valor}€`]\n);\n\nconsole.log(vendasFormatadas);\n// [\"Venda: 120€\", \"Venda: 150€\", \"Venda: 130€\", \"Venda: 200€\", \"Venda: 210€\",\n//  \"Venda: 90€\", \"Aviso: venda baixa\", \"Venda: 95€\", \"Aviso: venda baixa\",\n//  \"Venda: 100€\", \"Venda: 110€\"]",
+      "solution_explanation": "dados.flat() remove um nível de aninhamento, transformando o array de arrays num único array numérico; at(-1) obtém o último elemento sem calcular manualmente o índice. Em flatMap, cada venda abaixo de 100 devolve um array com dois elementos e as restantes devolvem um array com um elemento, e o resultado final é automaticamente achatado num único nível."
+    },
+    {
+      "title": "Configuração por utilizador sem partilhar referências",
+      "difficulty": "Intermedio",
+      "statement": "Tem o seguinte objeto de configuração base: const configBase = { tema: \"escuro\", modulosAtivos: new Set([\"dashboard\", \"relatorios\"]) };. Escreva uma função criarConfiguracaoUtilizador(configBase, permissoesExtra) que: primeiro, cria uma cópia totalmente independente de configBase (de forma que alterar o Set da cópia não afete o Set do original); depois, para cada chave do objeto permissoesExtra, verifica com Object.hasOwn se essa chave já existe diretamente na cópia — se existir, lança um Error com a mensagem \"Permissão já definida: <chave>\"; caso contrário, adiciona a chave e o respetivo valor à cópia. A função deve devolver a cópia final com as novas permissões.",
+      "hint": "Existe uma função global, introduzida recentemente, que faz cópias profundas nativas sem precisar de bibliotecas nem de JSON.parse(JSON.stringify(...)).",
+      "solution_code": "const configBase = {\n  tema: \"escuro\",\n  modulosAtivos: new Set([\"dashboard\", \"relatorios\"]),\n};\n\nfunction criarConfiguracaoUtilizador(configBase, permissoesExtra) {\n  const copia = structuredClone(configBase);\n\n  for (const chave of Object.keys(permissoesExtra)) {\n    if (Object.hasOwn(copia, chave)) {\n      throw new Error(`Permissão já definida: ${chave}`);\n    }\n    copia[chave] = permissoesExtra[chave];\n  }\n\n  return copia;\n}\n\nconst configUtilizador = criarConfiguracaoUtilizador(configBase, { exportarRelatorios: true });\nconfigUtilizador.modulosAtivos.add(\"auditoria\");\n\nconsole.log(configBase.modulosAtivos);       // Set(2) {'dashboard', 'relatorios'}\nconsole.log(configUtilizador.modulosAtivos); // Set(3) {'dashboard', 'relatorios', 'auditoria'}",
+      "solution_explanation": "structuredClone(configBase) cria uma cópia profunda, incluindo o Set interno, pelo que alterar configUtilizador.modulosAtivos não afeta configBase.modulosAtivos. Object.hasOwn(copia, chave) verifica com segurança se a chave já existe diretamente na cópia antes de a sobrescrever, lançando o erro pedido quando há conflito."
+    },
+    {
+      "title": "Carregamento sob demanda com precisão ajustável",
+      "difficulty": "Avancado",
+      "statement": "Assuma um projeto organizado em módulos ES com dois ficheiros: calculo-precisao-simples.js, que exporta uma função calcular(a, b) que devolve a * b usando Number; e calculo-precisao-alta.js, que exporta uma função calcular(a, b) que devolve a * b usando BigInt. Escreva uma função assíncrona obterResultado(a, b, precisaoAlta) que recebe dois números e uma flag booleana; quando precisaoAlta for true, deve converter a e b para BigInt e importar dinamicamente o módulo de alta precisão, devolvendo o resultado do seu calcular; quando for false, deve importar dinamicamente o módulo de precisão simples e devolver o resultado do seu calcular com a e b como Number. A função deve devolver sempre o resultado final, aguardando a promise correspondente.",
+      "hint": "import() devolve uma promise que resolve para o objeto do módulo; dentro de uma função async, pode fazer await diretamente sobre essa promise antes de aceder às exportações.",
+      "solution_code": "async function obterResultado(a, b, precisaoAlta) {\n  if (precisaoAlta) {\n    const { calcular } = await import(\"./calculo-precisao-alta.js\");\n    return calcular(BigInt(a), BigInt(b));\n  }\n\n  const { calcular } = await import(\"./calculo-precisao-simples.js\");\n  return calcular(a, b);\n}\n\n// calculo-precisao-alta.js\n// export function calcular(a, b) {\n//   return a * b;\n// }\n\n// calculo-precisao-simples.js\n// export function calcular(a, b) {\n//   return a * b;\n// }\n\nobterResultado(6, 7, true).then(resultado => {\n  console.log(resultado); // 42n\n});\n\nobterResultado(6, 7, false).then(resultado => {\n  console.log(resultado); // 42\n});",
+      "solution_explanation": "import() dentro da função async devolve uma promise que só é resolvida quando o módulo correto termina de carregar, por isso o await garante que calcular já está disponível antes de ser chamada. A conversão para BigInt só acontece no ramo de alta precisão, mantendo o outro ramo a trabalhar com Number tal como o módulo simples espera."
+    }
+  ],
+  "summary": [
+    "BigInt permite trabalhar com inteiros arbitrariamente grandes sem perda de precisão, mas não pode ser misturado diretamente com Number em operações aritméticas.",
+    "Separadores numéricos (_) tornam literais grandes mais legíveis sem alterar o valor do número nem aparecer em runtime.",
+    "at(), flat() e flatMap() simplificam o acesso e a transformação de arrays; Object.hasOwn() é a forma segura e recomendada de verificar propriedades próprias.",
+    "structuredClone() cria cópias profundas nativas, incluindo referências circulares e tipos como Map, Set e Date, mas não clona funções nem preserva protótipos de classes.",
+    "import() dinâmico e top-level await, já vistos em detalhe no módulo de Módulos e Ecossistema, são peças centrais do JavaScript moderno para carregamento sob demanda e inicialização assíncrona.",
+    "A linguagem continua a evoluir através do processo TC39, por estágios de 0 a 4, com propostas como Temporal, Records and Tuples e Decorators a caminho do standard."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para o Módulo 12",
+  "next_label": "Aula 01 → Padrões de Projeto em JavaScript",
+  "_stage": "autoria"
+}

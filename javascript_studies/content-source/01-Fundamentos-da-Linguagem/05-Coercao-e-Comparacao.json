@@ -1,0 +1,336 @@
+{
+  "module_num": "01",
+  "module_title": "Fundamentos da Linguagem",
+  "module_dir": "01-Fundamentos-da-Linguagem",
+  "lesson_num": "05",
+  "lesson_slug": "Coercao-e-Comparacao",
+  "kind": "aula",
+  "title": "Coerção e Comparação",
+  "filename_base": "05-Coercao-e-Comparacao",
+  "subtitle": "Como o JavaScript converte tipos entre si - e como evitar as armadilhas mais comuns",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Distinguir coerção implícita de coerção explícita e converter valores com Number(), String() e Boolean().",
+    "Identificar os oito valores falsy da linguagem e saber que tudo o resto, incluindo [] e {}, é truthy.",
+    "Compreender as regras de conversão do operador == e explicar por que === é mais previsível.",
+    "Detetar NaN corretamente com Number.isNaN(), evitando as armadilhas do isNaN() global e de === com NaN.",
+    "Usar Object.is() para distinguir os casos em que === não chega, como NaN e o par +0/-0."
+  ],
+  "sections": [
+    {
+      "heading": "Coerção implícita vs. coerção explícita",
+      "body": [
+        "O JavaScript é uma linguagem de tipagem dinâmica e fraca, o que significa que os valores podem mudar de tipo automaticamente consoante o contexto em que são usados. Essa conversão automática chama-se coerção implícita e acontece, por exemplo, sempre que se usa o operador + com uma string e um número, ou sempre que se compara um número com uma string usando ==. O motor de JavaScript decide sozinho para que tipo converter cada operando, seguindo regras internas da especificação.",
+        "A coerção explícita é o oposto: é o próprio código que pede uma conversão de tipo, de forma clara e intencional, usando as funções Number(), String() e Boolean(). Estas funções aceitam qualquer valor e devolvem sempre o tipo correspondente ao seu nome, sem efeitos colaterais inesperados. Preferir a coerção explícita torna o código mais previsível e mais fácil de ler, porque a conversão fica visível em vez de escondida dentro de um operador."
+      ],
+      "code": "// Coerção implícita: o operador + com uma string converte o número\nconst resultadoImplicito = \"10\" + 5; // \"105\" (5 é convertido para string)\nconst subtracaoImplicita = \"10\" - 5; // 5 (aqui \"10\" é convertido para número)\n\n// Coerção explícita: o próprio código pede a conversão\nconst paraNumero = Number(\"42\");   // 42\nconst paraTexto = String(42);      // \"42\"\nconst paraBooleano = Boolean(\"\");  // false\n\nconsole.log(typeof resultadoImplicito, resultadoImplicito); // string 105\nconsole.log(typeof paraNumero, paraNumero);                 // number 42",
+      "callout_kind": "DICA",
+      "callout_text": "Sempre que a legibilidade for importante, prefere a coerção explícita: Number(valor), String(valor) ou Boolean(valor) deixam a intenção clara para quem lê o código.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔄",
+          "text": "Coerção implícita: o JS converte sozinho"
+        },
+        {
+          "icon": "🎯",
+          "text": "Coerção explícita: tu decides a conversão"
+        },
+        {
+          "icon": "🔢",
+          "text": "Number(), String(), Boolean() convertem"
+        }
+      ]
+    },
+    {
+      "heading": "Valores truthy e falsy",
+      "body": [
+        "Sempre que um valor é usado num contexto booleano, como a condição de um if, de um while ou como operando de !, o JavaScript converte-o implicitamente para true ou false. Chama-se falsy a um valor que se converte para false nesse contexto, e truthy a um que se converte para true. Costumam listar-se oito valores falsy: false, 0, -0, 0n, a string vazia \"\", null, undefined e NaN.",
+        "É aqui que surgem as maiores surpresas para quem vem de outras linguagens: um array vazio [], um objeto vazio {} e a string \"0\" são todos truthy, porque nenhum deles consta da lista de valores falsy. Só a ausência real de conteúdo (null, undefined, string vazia) ou um valor numérico que representa zero ou inválido (0, -0, NaN, 0n) tornam algo falsy."
+      ],
+      "code": "const valores = [false, 0, -0, 0n, \"\", null, undefined, NaN, \"0\", \"false\", [], {}];\n\nfor (const valor of valores) {\n  console.log(valor, \"->\", Boolean(valor) ? \"truthy\" : \"falsy\");\n}",
+      "callout_kind": "NOTA",
+      "callout_text": "Cuidado com a intuição: um array vazio [] e um objeto vazio {} são sempre truthy em JavaScript, mesmo sem conteúdo. Só a ausência de valor ou valores numericamente nulos tornam algo falsy.",
+      "table_headers": [
+        "Valor falsy",
+        "Tipo"
+      ],
+      "table_rows": [
+        [
+          "false",
+          "boolean"
+        ],
+        [
+          "0 e -0",
+          "number"
+        ],
+        [
+          "0n",
+          "bigint"
+        ],
+        [
+          "\"\" (string vazia)",
+          "string"
+        ],
+        [
+          "null",
+          "object (valor nulo)"
+        ],
+        [
+          "undefined",
+          "undefined"
+        ],
+        [
+          "NaN",
+          "number"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "✅",
+          "text": "8 valores falsy: false, 0, -0, 0n, \"\", null, undefined, NaN"
+        },
+        {
+          "icon": "📦",
+          "text": "[] e {} são sempre truthy, mesmo vazios"
+        },
+        {
+          "icon": "🔍",
+          "text": "Boolean(valor) revela truthy ou falsy"
+        }
+      ]
+    },
+    {
+      "heading": "Igualdade solta (==) e as suas regras de coerção",
+      "body": [
+        "O operador de igualdade solta (==), também chamado de igualdade abstrata, compara dois valores aplicando primeiro uma série de regras de conversão de tipo sempre que os operandos não são do mesmo tipo. Por exemplo, se um dos lados for uma string e o outro um número, a string é convertida para número antes da comparação; se um dos lados for um array ou objeto, este é primeiro convertido para uma primitiva. O resultado final depende de uma cadeia de conversões que nem sempre corresponde à intuição.",
+        "Isto produz comparações válidas mas pouco óbvias, como 0 == \"0\" ou 0 == [] serem ambas true, enquanto null só é == a undefined e a nenhum outro valor, nem sequer a 0. Como as regras completas envolvem vários passos e casos especiais, decorá-las não compensa: a prática recomendada é evitar == entre tipos diferentes e reservar essa comparação, no máximo, para o idioma valor == null, que verifica de uma só vez se um valor é null ou undefined."
+      ],
+      "code": "console.log(0 == \"0\");         // true  (\"0\" é convertida para 0)\nconsole.log(0 == \"\");          // true  (\"\" é convertida para 0)\nconsole.log(0 == []);          // true  ([] é convertido para \"\" e depois para 0)\nconsole.log(false == \"false\"); // false (\"false\" converte-se para NaN, não para 0)\nconsole.log(null == undefined);// true  (caso especial das regras)\nconsole.log(null == 0);        // false (null só é == a undefined)\nconsole.log(NaN == NaN);       // false (NaN nunca é igual a nada)",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Os resultados de == dependem de uma cadeia de regras de conversão difíceis de memorizar na totalidade. Evita usar == para comparar valores de tipos diferentes; usa-o, quando muito, apenas na forma valor == null.",
+      "table_headers": [
+        "Comparação",
+        "Resultado",
+        "Porquê"
+      ],
+      "table_rows": [
+        [
+          "0 == \"0\"",
+          "true",
+          "A string é convertida para número"
+        ],
+        [
+          "0 == \"\"",
+          "true",
+          "A string vazia converte-se para 0"
+        ],
+        [
+          "null == undefined",
+          "true",
+          "Regra especial da especificação"
+        ],
+        [
+          "null == 0",
+          "false",
+          "null só é == a undefined (e a si próprio)"
+        ],
+        [
+          "[] == false",
+          "true",
+          "[] converte-se para \"\" e depois para 0"
+        ],
+        [
+          "NaN == NaN",
+          "false",
+          "NaN nunca é igual a nada, nem a si próprio"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "⚠️",
+          "text": "== converte os tipos antes de comparar"
+        },
+        {
+          "icon": "🌀",
+          "text": "null == undefined mas null != 0"
+        },
+        {
+          "icon": "🚫",
+          "text": "NaN == NaN é sempre false"
+        }
+      ]
+    },
+    {
+      "heading": "Igualdade estrita (===) e previsibilidade",
+      "body": [
+        "O operador de igualdade estrita (===) compara dois valores sem realizar qualquer conversão de tipo: se os operandos tiverem tipos diferentes, o resultado é sempre false, independentemente dos valores. Só quando ambos os operandos partilham o mesmo tipo é que os valores são comparados diretamente. Esta ausência de conversão torna === previsível e é a razão pela qual é a comparação recomendada por omissão em JavaScript.",
+        "O === tem apenas duas particularidades a conhecer: NaN nunca é === a si próprio, e +0 é === a -0, apesar de matematicamente terem sinais opostos. Fora destes dois casos especiais, que serão detalhados nas próximas secções, === comporta-se exatamente como seria de esperar de uma comparação de igualdade."
+      ],
+      "code": "console.log(0 === \"0\");           // false (tipos diferentes)\nconsole.log(null === undefined);  // false (tipos diferentes)\nconsole.log(1 === 1);             // true\nconsole.log(NaN === NaN);         // false (mesmo com ===)\nconsole.log(+0 === -0);           // true  (=== não distingue +0 de -0)\n\nfunction saoIguaisComSeguranca(a, b) {\n  return a === b;\n}",
+      "callout_kind": "DICA",
+      "callout_text": "A maioria dos linters (por exemplo o ESLint com a regra eqeqeq) pode obrigar o uso de === e !== em todo o projeto, eliminando esta classe de erros à partida.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "✅",
+          "text": "=== nunca converte tipos"
+        },
+        {
+          "icon": "🎯",
+          "text": "Tipos diferentes com === são sempre false"
+        },
+        {
+          "icon": "📏",
+          "text": "Regra de ouro: usa sempre ===, evita =="
+        }
+      ]
+    },
+    {
+      "heading": "NaN e a deteção correta com Number.isNaN",
+      "body": [
+        "NaN, abreviatura de Not a Number, é o valor numérico especial devolvido por operações matemáticas inválidas, como 0 dividido por 0 ou Number(\"texto\"). A particularidade mais confusa de NaN é que ele nunca é igual a nada, nem sequer a si próprio: tanto NaN == NaN como NaN === NaN devolvem false, o que torna impossível testar a sua presença com uma comparação direta.",
+        "A forma correta de detetar NaN é Number.isNaN(valor), um método que devolve true apenas quando o valor recebido já é exatamente NaN, sem realizar qualquer conversão prévia. Deve evitar-se a função global isNaN(), herdada do JavaScript mais antigo, porque esta converte primeiro o argumento para número antes de testar, o que produz falsos positivos: isNaN(\"texto\") devolve true, apesar de \"texto\" nunca ter sido NaN, apenas uma string que se converteu para NaN durante o teste."
+      ],
+      "code": "const resultadoInvalido = 0 / 0;                // NaN\nconsole.log(resultadoInvalido === NaN);         // false, nunca funciona\nconsole.log(Number.isNaN(resultadoInvalido));   // true\n\nconsole.log(isNaN(\"texto\"));                    // true  -> \"texto\" é convertido para NaN primeiro\nconsole.log(Number.isNaN(\"texto\"));             // false -> não é o valor NaN, é uma string\n\nconsole.log(Number.isNaN(Number(\"texto\")));     // true, forma correta e explícita",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Nunca uses x === NaN para testar se um valor é NaN - essa comparação é sempre false. E evita o isNaN() global, porque converte o argumento antes de testar, dando falsos positivos para valores como isNaN(\"abc\").",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "❓",
+          "text": "NaN nunca é igual a si próprio"
+        },
+        {
+          "icon": "✅",
+          "text": "Number.isNaN() é a forma correta de testar"
+        },
+        {
+          "icon": "⚠️",
+          "text": "isNaN() global converte o valor primeiro"
+        }
+      ]
+    },
+    {
+      "heading": "Object.is: os casos em que === não chega",
+      "body": [
+        "Object.is(a, b) é um método que compara dois valores de forma muito semelhante a ===, mas com duas exceções bem definidas que resolvem precisamente as lacunas apontadas na secção anterior sobre ===. Em primeiro lugar, Object.is(NaN, NaN) devolve true, ao contrário de NaN === NaN. Em segundo lugar, Object.is(0, -0) devolve false, ao contrário de 0 === -0, que devolve true.",
+        "Na prática, Object.is raramente é necessário no dia a dia; usa-se sobretudo em código de baixo nível, como implementações de comparação profunda de estruturas de dados, bibliotecas de testes ou verificações internas de frameworks, onde a distinção exata entre +0 e -0, ou entre NaN e qualquer outro valor, importa de facto."
+      ],
+      "code": "console.log(NaN === NaN);         // false\nconsole.log(Object.is(NaN, NaN)); // true\n\nconsole.log(0 === -0);            // true\nconsole.log(Object.is(0, -0));    // false\n\nconsole.log(Object.is(5, 5));     // true, comporta-se como === no caso normal",
+      "callout_kind": "NOTA",
+      "callout_text": "Object.is() não é um substituto geral de ===; usa-se apenas nos casos raros em que precisas de distinguir +0 de -0 ou tratar NaN como igual a si próprio, por exemplo em bibliotecas de comparação profunda de estruturas.",
+      "table_headers": [
+        "Caso",
+        "===",
+        "Object.is"
+      ],
+      "table_rows": [
+        [
+          "NaN e NaN",
+          "false",
+          "true"
+        ],
+        [
+          "0 e -0",
+          "true",
+          "false"
+        ],
+        [
+          "5 e 5",
+          "true",
+          "true"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔬",
+          "text": "Object.is trata NaN como igual a NaN"
+        },
+        {
+          "icon": "➖",
+          "text": "Object.is distingue +0 de -0"
+        },
+        {
+          "icon": "🧪",
+          "text": "Uso raro, mas importante conhecer"
+        }
+      ]
+    },
+    {
+      "heading": "Erros comuns causados por coerção inesperada",
+      "body": [
+        "A maior parte dos bugs relacionados com coerção surge quando se combinam valores vindos de origens diferentes sem converter explicitamente o tipo antes de operar ou comparar. Um exemplo clássico é ler valores de um formulário HTML, que chegam sempre como strings, e tentar somá-los diretamente: \"10\" + \"5\" produz a string \"105\" em vez do número 15, porque o + entre duas strings faz concatenação, não soma.",
+        "Outro erro frequente é assumir que um array ou objeto vazio é falsy ao testar se uma coleção tem itens, quando na realidade ambos são sempre truthy independentemente do seu conteúdo; o teste correto é verificar explicitamente a propriedade length ou o número de chaves. Por outro lado, o idioma valor == null é uma das raras utilizações intencionais e aceitáveis de ==, porque tira partido, de forma consciente, da regra especial que torna null e undefined mutuamente iguais."
+      ],
+      "code": "// Erro comum 1: somar valores vindos de um input (sempre strings) sem converter\nfunction somarPrecos(precoInput1, precoInput2) {\n  // ERRADO seria: precoInput1 + precoInput2 (concatenaria as strings)\n  return Number(precoInput1) + Number(precoInput2);\n}\n\n// Erro comum 2: assumir que um array vazio é falsy\nfunction temItens(carrinho) {\n  // ERRADO seria: if (carrinho) - nunca é false para um array, mesmo vazio\n  return carrinho.length > 0;\n}\n\n// Uso correto e intencional do == apenas para null/undefined\nfunction valorNaoDefinido(valor) {\n  return valor == null; // true tanto para null como para undefined\n}",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Antes de avançar, revê código teu antigo à procura de comparações com == ou condições if (variavel) que assumam erradamente que arrays, objetos ou strings numéricas se comportam como esperarias.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🐛",
+          "text": "Inputs de formulário são sempre strings"
+        },
+        {
+          "icon": "📋",
+          "text": "Array vazio nunca é falsy"
+        },
+        {
+          "icon": "🧯",
+          "text": "valor == null testa null e undefined juntos"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Filtrar valores truthy",
+      "difficulty": "Iniciante",
+      "statement": "Escreva uma função filtrarTruthy(lista) que recebe um array com valores de tipos variados (números, strings, null, undefined, booleanos, arrays, objetos, etc.) e devolve um novo array apenas com os valores truthy, mantendo a ordem original. Teste com a lista [0, \"ola\", \"\", null, 42, undefined, \"0\", NaN, [], {}].",
+      "hint": "Array.prototype.filter aceita uma função de callback que recebe cada valor; pensa em que função já existente se comporta exatamente como um teste de truthy/falsy quando aplicada a um único valor.",
+      "solution_code": "function filtrarTruthy(lista) {\n  return lista.filter(Boolean);\n}\n\nconsole.log(\n  filtrarTruthy([0, \"ola\", \"\", null, 42, undefined, \"0\", NaN, [], {}])\n);\n// [\"ola\", 42, \"0\", [], {}]",
+      "solution_explanation": "O filter chama Boolean(valor) para cada elemento, e Boolean devolve true ou false consoante o valor ser truthy ou falsy. Como [] e {} não constam da lista de valores falsy, e \"0\" é uma string não vazia, os três permanecem no resultado, ao contrário do que a intuição de outras linguagens poderia sugerir."
+    },
+    {
+      "title": "Validar um formulário numérico",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função calcularMedia(valores) que recebe um array de strings vindas de campos de um formulário (por exemplo [\"10\", \"abc\", \"20\"]), converte cada uma para número e devolve a média apenas das entradas que resultam num número válido, ignorando as inválidas. Se não sobrar nenhum valor válido, a função deve devolver 0. Use Number.isNaN, nunca o isNaN global, para filtrar os valores inválidos.",
+      "hint": "Converte primeiro todos os valores com Number() e só depois filtra o resultado já convertido com Number.isNaN; testar a string original com isNaN daria resultados diferentes.",
+      "solution_code": "function calcularMedia(valores) {\n  const numeros = valores\n    .map(Number)\n    .filter((numero) => !Number.isNaN(numero));\n\n  if (numeros.length === 0) {\n    return 0;\n  }\n\n  const soma = numeros.reduce((acumulador, numero) => acumulador + numero, 0);\n  return soma / numeros.length;\n}\n\nconsole.log(calcularMedia([\"10\", \"abc\", \"20\"])); // 15\nconsole.log(calcularMedia([\"x\", \"y\"]));          // 0",
+      "solution_explanation": "map(Number) converte cada string para o número correspondente, transformando entradas inválidas em NaN. O filtro usa Number.isNaN sobre o valor já convertido, o que verifica se é exatamente NaN sem nenhuma coerção adicional, ao contrário do isNaN global que faria uma segunda conversão implícita sobre o argumento recebido."
+    },
+    {
+      "title": "Corrigir uma comparação com ==",
+      "difficulty": "Intermedio",
+      "statement": "A função abaixo pretende verificar se um id vindo de uma query string (que chega sempre como texto) corresponde a um id numérico guardado em memória, mas o uso de == provoca um comportamento incorreto nalguns casos:\n\nfunction validarId(idQueryString, idGuardado) {\n  return idQueryString == idGuardado;\n}\n\nReescreva validarId para usar uma comparação explícita e estrita (sem ==), e explique num comentário um caso concreto em que a versão original com == validava um id que deveria ter sido rejeitado.",
+      "hint": "Em vez de converteres idQueryString (que é sempre texto) para número, converte idGuardado para string com String() e compara diretamente com === contra idQueryString; assim evitas que a string vazia seja tratada como 0, tal como acontecia com ==.",
+      "solution_code": "function validarId(idQueryString, idGuardado) {\n  // idQueryString vem sempre como texto (ex.: de uma URL); convertemos\n  // idGuardado para string, em vez do contrário, porque Number(\"\")\n  // resulta em 0 e reproduziria o mesmo bug da versão original.\n  return String(idGuardado) === idQueryString;\n}\n\n// Caso problemático da versão original com ==:\n// validarId(\"\", 0) devolvia true com ==, porque \"\" é convertida para 0\n// e 0 == 0, aceitando um id vazio como se fosse o id 0 (um bug silencioso).\nconsole.log(validarId(\"\", 0));    // false (agora rejeita corretamente)\nconsole.log(validarId(\"42\", 42)); // true",
+      "solution_explanation": "A versão original deixava o == decidir como converter os tipos, e a regra que converte a string vazia para 0 fazia com que um id vazio fosse aceite como o id 0. Converter idQueryString para número com Number() reproduziria exatamente o mesmo problema, porque Number(\"\") também é 0; a correção passa por inverter o sentido da conversão, transformando idGuardado em string com String() e comparando diretamente com === contra idQueryString, o que evita que a string vazia seja tratada como zero."
+    },
+    {
+      "title": "Implementar uma verificação de igualdade robusta",
+      "difficulty": "Avancado",
+      "statement": "Escreva uma função saoValoresEquivalentes(a, b) que devolve true apenas quando a e b são o mesmo valor primitivo, tratando corretamente dois casos em que === não corresponde à noção intuitiva de \"o mesmo valor\": NaN comparado com NaN deve devolver true, e +0 comparado com -0 deve devolver false (devem ser tratados como distintos). Não é permitido usar Object.is diretamente; implemente a lógica apenas com === e operações aritméticas elementares.",
+      "hint": "Para detetar NaN sem Object.is, lembra-te que NaN é o único valor que nunca é === a si próprio. Para distinguir +0 de -0, pensa no resultado de dividir 1 por cada um deles.",
+      "solution_code": "function saoValoresEquivalentes(a, b) {\n  // NaN é o único valor que não é === a si próprio\n  const ambosSaoNaN = a !== a && b !== b;\n  if (ambosSaoNaN) {\n    return true;\n  }\n\n  // === trata +0 e -0 como iguais; distinguimo-los pela divisão\n  const ambosSaoZero = a === 0 && b === 0;\n  if (ambosSaoZero) {\n    return 1 / a === 1 / b;\n  }\n\n  return a === b;\n}\n\nconsole.log(saoValoresEquivalentes(NaN, NaN)); // true\nconsole.log(saoValoresEquivalentes(0, -0));    // false\nconsole.log(saoValoresEquivalentes(-0, -0));   // true\nconsole.log(saoValoresEquivalentes(5, 5));     // true\nconsole.log(saoValoresEquivalentes(5, \"5\"));   // false",
+      "solution_explanation": "A expressão a !== a só é verdadeira quando a vale NaN, o que permite detetá-lo sem recorrer a Object.is. Para distinguir +0 de -0, dividimos 1 pelo valor: 1/0 resulta em Infinity e 1/-0 resulta em -Infinity, dois valores que já são diferentes entre si com ===, reproduzindo manualmente o comportamento de Object.is."
+    }
+  ],
+  "summary": [
+    "Coerção implícita acontece automaticamente em operadores como + e ==; a explícita é pedida com Number(), String() e Boolean().",
+    "Apenas oito valores são falsy: false, 0, -0, 0n, \"\", null, undefined e NaN; tudo o resto, incluindo [] e {}, é truthy.",
+    "O operador == aplica regras de conversão de tipo antes de comparar, produzindo resultados pouco intuitivos; === compara sem converter e deve ser a escolha por defeito.",
+    "NaN nunca é igual a si próprio, nem com ===; usa sempre Number.isNaN() para o detetar, nunca o isNaN global.",
+    "Object.is comporta-se como === exceto em dois casos: considera NaN igual a NaN e distingue +0 de -0.",
+    "A maioria dos bugs de coerção surge ao comparar ou operar com dados de origens diferentes (formulários, APIs) sem converter explicitamente o tipo primeiro."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para o Módulo 02",
+  "next_label": "Aula 01 → Condicionais: if, else e switch",
+  "_stage": "revisao"
+}

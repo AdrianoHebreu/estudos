@@ -1,0 +1,359 @@
+{
+  "module_num": "13",
+  "module_title": "Objetos Nativos e Utilitários",
+  "module_dir": "13-Objetos-Nativos-e-Utilitarios",
+  "lesson_num": "04",
+  "lesson_slug": "Intl-Internacionalizacao",
+  "kind": "aula",
+  "title": "Intl: Internacionalização",
+  "filename_base": "04-Intl-Internacionalizacao",
+  "subtitle": "Formatar números, moedas, datas e texto segundo as convenções de pt-PT com a API Intl",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Perceber o conceito de locale e como pt-PT, pt-BR e en-US diferem nos separadores, na moeda e no formato das datas.",
+    "Formatar valores, moedas, percentagens e unidades com Intl.NumberFormat, reutilizando o formatador em vez de o criar dentro de ciclos.",
+    "Formatar datas e horas com Intl.DateTimeFormat, usando dateStyle, timeStyle, opções detalhadas e timeZone.",
+    "Produzir tempos relativos naturais com Intl.RelativeTimeFormat, incluindo a opção numeric auto.",
+    "Ordenar texto português corretamente com Intl.Collator e localeCompare, controlando acentos, maiúsculas e ordenação numérica.",
+    "Construir frases corretas com Intl.PluralRules e Intl.ListFormat, sem condições escritas à mão."
+  ],
+  "sections": [
+    {
+      "heading": "O problema: cada região escreve os mesmos dados de forma diferente",
+      "body": [
+        "O mesmo número não se escreve da mesma maneira em todo o lado. Em Portugal, 1234567.891 escreve-se com espaço a separar os milhares e vírgula decimal; no Brasil o separador de milhares é o ponto; nos Estados Unidos é exatamente o contrário do português. Se juntar a isto a posição do símbolo da moeda, a ordem de dia e mês nas datas e a forma de escrever o nome dos meses, percebe-se que escrever esta lógica à mão é um erro à espera de acontecer.",
+        "A API Intl resolve este problema. É um objeto global que faz parte da própria linguagem e que contém construtores de formatadores. A cada formatador indica-se um locale, uma etiqueta de idioma e região no formato BCP 47 como pt-PT, pt-BR ou en-US, e um objeto de opções. O formatador trata de aplicar as convenções corretas a partir dos dados da biblioteca CLDR que o motor traz consigo.",
+        "Vale a pena distinguir pt-PT de pt-BR: são a mesma língua, mas locales diferentes, com separadores numéricos e formatos de data diferentes. Passar simplesmente pt deixa a decisão ao motor, por isso convém ser explícito e escrever pt-PT."
+      ],
+      "code": "const valor = 1234567.891;\n\nconsole.log(valor.toLocaleString(\"pt-PT\")); // \"1 234 567,891\" (espaço estreito)\nconsole.log(valor.toLocaleString(\"pt-BR\")); // \"1.234.567,891\"\nconsole.log(valor.toLocaleString(\"en-US\")); // \"1,234,567.891\"\n\nconst preco = 49.9;\nconst opcoes = { style: \"currency\", currency: \"EUR\" };\n\nconsole.log(preco.toLocaleString(\"pt-PT\", opcoes)); // \"49,90 €\" (símbolo depois do valor)\nconsole.log(preco.toLocaleString(\"en-US\", opcoes)); // \"€49.90\" (símbolo antes do valor)\n\n// Saber se um locale é mesmo suportado pelo motor\nconsole.log(Intl.NumberFormat.supportedLocalesOf([\"pt-PT\", \"zz-ZZ\"])); // [ 'pt-PT' ]\nconsole.log(new Intl.NumberFormat(\"pt-PT\").resolvedOptions().locale); // \"pt-PT\"",
+      "callout_kind": "NOTA",
+      "callout_text": "Os métodos toLocaleString, toLocaleDateString e localeCompare são atalhos para a Intl: por baixo criam um formatador e usam-no uma única vez.",
+      "table_headers": [
+        "Locale",
+        "1234567.891",
+        "Moeda local (1234.5)",
+        "Data curta de 15/03/2026"
+      ],
+      "table_rows": [
+        [
+          "pt-PT",
+          "1 234 567,891",
+          "1234,50 €",
+          "15/03/26"
+        ],
+        [
+          "pt-BR",
+          "1.234.567,891",
+          "R$ 1.234,50",
+          "15/03/2026"
+        ],
+        [
+          "en-US",
+          "1,234,567.891",
+          "$1,234.50",
+          "3/15/26"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🌍",
+          "text": "Um locale é idioma mais região: pt-PT, pt-BR, en-US"
+        },
+        {
+          "icon": "🔢",
+          "text": "Separadores e moeda mudam de região para região"
+        },
+        {
+          "icon": "🧩",
+          "text": "Intl faz parte da linguagem, não é biblioteca externa"
+        }
+      ]
+    },
+    {
+      "heading": "Intl.NumberFormat: valores, moeda, percentagens e unidades",
+      "body": [
+        "Intl.NumberFormat cobre praticamente tudo o que precisa de fazer com números apresentados ao utilizador. A opção style escolhe o tipo de formatação: decimal por omissão, currency para moeda, percent para percentagens e unit para unidades de medida. Com style currency é obrigatório indicar currency, o código ISO da moeda, que para o euro é EUR. Repare que em pt-PT o símbolo do euro aparece depois do valor, ao contrário do dólar em inglês.",
+        "As opções minimumFractionDigits e maximumFractionDigits controlam as casas decimais e substituem com vantagem o toFixed visto na aula anterior, porque aplicam o separador decimal correto do locale e devolvem texto já pronto a mostrar. Com style percent, o valor passado é uma fração: 0.2345 dá 23,5 por cento, não 0,23 por cento.",
+        "Criar um formatador tem custo: o motor tem de resolver o locale e preparar as tabelas de formatação. Por isso, crie o formatador uma vez, fora do ciclo, e chame format muitas vezes. Criar um Intl.NumberFormat dentro de um map sobre mil linhas é desperdício puro, e é um dos erros de desempenho mais comuns com esta API."
+      ],
+      "code": "const euros = new Intl.NumberFormat(\"pt-PT\", {\n  style: \"currency\",\n  currency: \"EUR\"\n});\nconsole.log(euros.format(1234.5)); // \"1234,50 €\" (o espaço antes do € pode variar)\nconsole.log(euros.format(0));      // \"0,00 €\"\n\nconst decimal = new Intl.NumberFormat(\"pt-PT\", {\n  minimumFractionDigits: 2,\n  maximumFractionDigits: 2\n});\nconsole.log(decimal.format(0.1 + 0.2)); // \"0,30\"\n\nconst percentagem = new Intl.NumberFormat(\"pt-PT\", {\n  style: \"percent\",\n  maximumFractionDigits: 1\n});\nconsole.log(percentagem.format(0.2345)); // \"23,5%\"\n\nconst velocidade = new Intl.NumberFormat(\"pt-PT\", {\n  style: \"unit\",\n  unit: \"kilometer-per-hour\"\n});\nconsole.log(velocidade.format(120)); // \"120 km/h\"\n\nconst compacto = new Intl.NumberFormat(\"pt-PT\", { notation: \"compact\" });\nconsole.log(compacto.format(1234567)); // \"1,2 M\" (a abreviatura pode variar)\n\n// Formatador criado UMA vez e reutilizado em todas as linhas\nconst carrinho = [12.5, 3.99, 240, 7.25];\nconsole.log(carrinho.map((v) => euros.format(v)));\n// [ '12,50 €', '3,99 €', '240,00 €', '7,25 €' ]",
+      "callout_kind": "DICA",
+      "callout_text": "Declare os formatadores no topo do módulo, como constantes. Um formatador é imutável e seguro de partilhar por toda a aplicação.",
+      "table_headers": [
+        "Opção",
+        "Para que serve",
+        "Exemplo em pt-PT"
+      ],
+      "table_rows": [
+        [
+          "style: \"decimal\"",
+          "Número simples (valor por omissão)",
+          "1234,5"
+        ],
+        [
+          "style: \"currency\" com currency: \"EUR\"",
+          "Valores monetários",
+          "1234,50 €"
+        ],
+        [
+          "style: \"percent\"",
+          "Percentagens a partir de uma fração",
+          "23,5%"
+        ],
+        [
+          "style: \"unit\" com unit",
+          "Unidades de medida",
+          "120 km/h"
+        ],
+        [
+          "notation: \"compact\"",
+          "Abreviar números grandes",
+          "1,2 M"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "💶",
+          "text": "style currency mais currency EUR para valores em euros"
+        },
+        {
+          "icon": "📊",
+          "text": "percent recebe fração: 0.2345 dá 23,5%"
+        },
+        {
+          "icon": "⚡",
+          "text": "Criar o formatador uma vez, nunca dentro do ciclo"
+        }
+      ]
+    },
+    {
+      "heading": "Intl.DateTimeFormat: estilos, opções detalhadas e fusos horários",
+      "body": [
+        "Intl.DateTimeFormat recebe um objeto Date e devolve texto. A forma mais rápida de o configurar são as opções dateStyle e timeStyle, que aceitam full, long, medium e short e escolhem um formato completo já pensado para o locale. Não é preciso combinar campos um a um para obter resultados com boa aparência.",
+        "Quando precisa de controlo fino, use as opções detalhadas: weekday, year, month, day, hour, minute e second. Cada uma aceita valores como numeric, 2-digit, long ou short, conforme o campo. As opções detalhadas e os estilos não se misturam: ou usa dateStyle e timeStyle, ou usa os campos individuais, caso contrário obtém um TypeError.",
+        "A opção timeZone indica em que fuso o instante deve ser lido, com um identificador IANA como Europe/Lisbon ou Asia/Tokyo. Isto é essencial em aplicações com utilizadores em vários países: o Date guarda um instante absoluto e a Intl mostra-o na hora local de quem lê. Nos exemplos deste curso indicamos sempre timeZone para que o resultado seja igual em qualquer máquina."
+      ],
+      "code": "const data = new Date(\"2026-03-15T10:00:00Z\");\n\nconst completo = new Intl.DateTimeFormat(\"pt-PT\", { dateStyle: \"full\", timeZone: \"UTC\" });\nconsole.log(completo.format(data)); // \"domingo, 15 de março de 2026\"\n\nconst curto = new Intl.DateTimeFormat(\"pt-PT\", { dateStyle: \"short\", timeZone: \"UTC\" });\nconsole.log(curto.format(data)); // \"15/03/26\"\n\nconst comHoras = new Intl.DateTimeFormat(\"pt-PT\", {\n  dateStyle: \"long\",\n  timeStyle: \"short\",\n  timeZone: \"Europe/Lisbon\"\n});\nconsole.log(comHoras.format(data)); // \"15 de março de 2026 às 10:00\"\n\nconst detalhado = new Intl.DateTimeFormat(\"pt-PT\", {\n  weekday: \"long\",\n  day: \"numeric\",\n  month: \"long\",\n  year: \"numeric\",\n  timeZone: \"UTC\"\n});\nconsole.log(detalhado.format(data)); // \"domingo, 15 de março de 2026\"\n\n// O mesmo instante, visto de Tóquio\nconst toquio = new Intl.DateTimeFormat(\"pt-PT\", { timeStyle: \"short\", timeZone: \"Asia/Tokyo\" });\nconsole.log(toquio.format(data)); // \"19:00\"\n\nconst eua = new Intl.DateTimeFormat(\"en-US\", { dateStyle: \"short\", timeZone: \"UTC\" });\nconsole.log(eua.format(data)); // \"3/15/26\"",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Misturar dateStyle ou timeStyle com opções detalhadas como year ou month lança TypeError. Escolha uma das duas abordagens.",
+      "table_headers": [
+        "dateStyle",
+        "Resultado em pt-PT para 15/03/2026"
+      ],
+      "table_rows": [
+        [
+          "full",
+          "domingo, 15 de março de 2026"
+        ],
+        [
+          "long",
+          "15 de março de 2026"
+        ],
+        [
+          "medium",
+          "15/03/2026"
+        ],
+        [
+          "short",
+          "15/03/26"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📅",
+          "text": "dateStyle e timeStyle: full, long, medium, short"
+        },
+        {
+          "icon": "🕒",
+          "text": "timeZone com identificadores IANA como Europe/Lisbon"
+        },
+        {
+          "icon": "🚫",
+          "text": "Estilos e opções detalhadas não se misturam"
+        }
+      ]
+    },
+    {
+      "heading": "Intl.RelativeTimeFormat: há 3 dias, dentro de 2 horas",
+      "body": [
+        "Mostrar há 3 dias em vez de uma data absoluta é comum em listas de notificações e comentários. Intl.RelativeTimeFormat faz isso corretamente em qualquer idioma. O método format recebe um valor numérico e uma unidade: valores negativos são passado, positivos são futuro. As unidades aceites são second, minute, hour, day, week, month, quarter e year, no singular ou no plural.",
+        "A opção numeric controla o estilo. Com o valor always, que é o predefinido, obtém sempre uma forma com número, como há 1 dia. Com numeric auto, a API usa as palavras naturais da língua quando existem: ontem, hoje, amanhã, semana passada. Para interfaces é quase sempre auto que quer.",
+        "A API não decide por si qual a unidade a usar: se lhe der 172800 segundos, mostra há 172800 segundos. Escolher entre segundos, minutos, horas ou dias é trabalho seu, e é exatamente isso que vai fazer num dos exercícios."
+      ],
+      "code": "const sempre = new Intl.RelativeTimeFormat(\"pt-PT\", { numeric: \"always\" });\nconsole.log(sempre.format(-3, \"day\")); // \"há 3 dias\"\nconsole.log(sempre.format(2, \"hour\")); // \"dentro de 2 horas\"\nconsole.log(sempre.format(-1, \"day\")); // \"há 1 dia\"\n\nconst auto = new Intl.RelativeTimeFormat(\"pt-PT\", { numeric: \"auto\" });\nconsole.log(auto.format(-1, \"day\"));   // \"ontem\"\nconsole.log(auto.format(1, \"day\"));    // \"amanhã\"\nconsole.log(auto.format(0, \"day\"));    // \"hoje\"\nconsole.log(auto.format(-1, \"week\"));  // \"semana passada\"\nconsole.log(auto.format(-2, \"month\")); // \"há 2 meses\"\n\n// Calcular a diferença a partir de duas datas fixas\nconst inicio = new Date(\"2026-03-15T10:00:00Z\");\nconst fim = new Date(\"2026-03-18T10:00:00Z\");\nconst dias = Math.round((fim - inicio) / 86400000);\nconsole.log(auto.format(dias, \"day\")); // \"dentro de 3 dias\"",
+      "callout_kind": "DICA",
+      "callout_text": "Use numeric auto em interfaces. Ontem lê-se muito melhor do que há 1 dia, e a API sabe fazer isso em qualquer idioma que suporte.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⏪",
+          "text": "Valores negativos são passado, positivos são futuro"
+        },
+        {
+          "icon": "🗣️",
+          "text": "numeric auto produz ontem, hoje, amanhã"
+        },
+        {
+          "icon": "🧮",
+          "text": "A escolha da unidade é responsabilidade do programador"
+        }
+      ]
+    },
+    {
+      "heading": "Intl.Collator e localeCompare: ordenar português a sério",
+      "body": [
+        "Já viu no módulo dos arrays que sort sem comparador converte tudo em texto e compara ponto de código a ponto de código. Isso funciona por acaso com palavras sem acentos, mas falha redondamente em português: o carácter á tem ponto de código 225, muito acima de z, que tem 122. Resultado: árvore fica depois de único e açúcar fica depois de azul, o que nenhum utilizador aceita.",
+        "Intl.Collator resolve isto. Cria um comparador que respeita as regras de ordenação do idioma, tratando as vogais acentuadas como variantes da vogal base e o cê cedilha como variante do c. Como collator.compare já é uma função de duas variáveis que devolve um número negativo, zero ou positivo, pode passá-la diretamente a sort. O atalho localeCompare faz o mesmo para comparações pontuais, mas cria um comparador em cada chamada, pelo que num sort sobre muitos elementos o Collator é mais eficiente.",
+        "Duas opções merecem destaque. A opção sensitivity controla o que conta como diferença: com base, acentos e maiúsculas são ignorados, o que é ideal para pesquisa e para agrupar resultados. A opção numeric a true faz com que sequências de dígitos sejam comparadas como números, colocando ficheiro2 antes de ficheiro10, que é o que qualquer pessoa espera ver."
+      ],
+      "code": "const palavras = [\"único\", \"açúcar\", \"arvore\", \"árvore\", \"abacate\", \"azul\", \"maçã\"];\n\nconsole.log([...palavras].sort());\n// [ 'abacate', 'arvore', 'azul', 'açúcar', 'maçã', 'árvore', 'único' ]  <- errado\n\nconst colator = new Intl.Collator(\"pt-PT\");\nconsole.log([...palavras].sort(colator.compare));\n// [ 'abacate', 'açúcar', 'arvore', 'árvore', 'azul', 'maçã', 'único' ]  <- correto\n\nconsole.log([...palavras].sort((a, b) => a.localeCompare(b, \"pt-PT\")));\n// mesma ordem, mas cria um comparador em cada comparação\n\nconst ficheiros = [\"ficheiro10\", \"ficheiro2\", \"ficheiro1\"];\nconsole.log([...ficheiros].sort());\n// [ 'ficheiro1', 'ficheiro10', 'ficheiro2' ]\n\nconst natural = new Intl.Collator(\"pt-PT\", { numeric: true });\nconsole.log([...ficheiros].sort(natural.compare));\n// [ 'ficheiro1', 'ficheiro2', 'ficheiro10' ]\n\nconst pesquisa = new Intl.Collator(\"pt-PT\", { sensitivity: \"base\" });\nconsole.log(pesquisa.compare(\"acao\", \"ação\")); // 0 (iguais para efeitos de pesquisa)\nconsole.log(pesquisa.compare(\"MAÇA\", \"maca\")); // 0",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Nunca ordene texto visível ao utilizador com sort sem comparador. Com palavras acentuadas o resultado está simplesmente errado.",
+      "table_headers": [
+        "sensitivity",
+        "Distingue acentos",
+        "Distingue maiúsculas",
+        "Uso típico"
+      ],
+      "table_rows": [
+        [
+          "base",
+          "Não",
+          "Não",
+          "Pesquisa e filtros"
+        ],
+        [
+          "accent",
+          "Sim",
+          "Não",
+          "Agrupar ignorando capitalização"
+        ],
+        [
+          "case",
+          "Não",
+          "Sim",
+          "Raro"
+        ],
+        [
+          "variant",
+          "Sim",
+          "Sim",
+          "Ordenação final de listas (predefinido)"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔤",
+          "text": "sort sem comparador falha com acentos e cedilha"
+        },
+        {
+          "icon": "✅",
+          "text": "Passe collator.compare diretamente ao sort"
+        },
+        {
+          "icon": "🔢",
+          "text": "numeric true coloca ficheiro2 antes de ficheiro10"
+        }
+      ]
+    },
+    {
+      "heading": "Intl.PluralRules e Intl.ListFormat: frases corretas sem ifs",
+      "body": [
+        "Escrever mensagens como 1 ficheiro e 3 ficheiros parece trivial em português, onde basta um if com n igual a um. Mas há idiomas com três, quatro ou seis formas plurais, e nesses um if não chega. Intl.PluralRules recebe um número e devolve a categoria gramatical do locale: zero, one, two, few, many ou other. O seu trabalho é apenas fornecer o texto de cada categoria; a decisão de qual usar é da API.",
+        "Intl.ListFormat trata do outro lado do problema: juntar elementos numa enumeração natural. Em pt-PT produz maçãs, peras e uvas, com vírgulas entre todos os elementos exceto o último, que leva a conjunção e. A opção type aceita conjunction, que usa e, disjunction, que usa ou, e unit, para listas de medidas. Gerar isto com join e um if para o último elemento é código que não precisa de escrever."
+      ],
+      "code": "const plural = new Intl.PluralRules(\"pt-PT\");\nconsole.log(plural.select(0), plural.select(1), plural.select(2)); // other one other\n\nconst FORMAS = { one: \"ficheiro\", other: \"ficheiros\" };\nfunction descrever(n) {\n  const forma = FORMAS[plural.select(n)] ?? FORMAS.other;\n  return `${n} ${forma}`;\n}\nconsole.log(descrever(1)); // \"1 ficheiro\"\nconsole.log(descrever(7)); // \"7 ficheiros\"\n\n// Em polaco há três categorias para cardinais\nconst polaco = new Intl.PluralRules(\"pl\");\nconsole.log(polaco.select(1), polaco.select(2), polaco.select(5)); // one few many\n\nconst e = new Intl.ListFormat(\"pt-PT\", { style: \"long\", type: \"conjunction\" });\nconsole.log(e.format([\"maçãs\", \"peras\", \"uvas\"])); // \"maçãs, peras e uvas\"\nconsole.log(e.format([\"maçãs\", \"peras\"]));         // \"maçãs e peras\"\nconsole.log(e.format([\"maçãs\"]));                  // \"maçãs\"\n\nconst ou = new Intl.ListFormat(\"pt-PT\", { type: \"disjunction\" });\nconsole.log(ou.format([\"sim\", \"não\", \"talvez\"])); // \"sim, não ou talvez\"",
+      "callout_kind": "NOTA",
+      "callout_text": "As categorias devolvidas por PluralRules são gramaticais, não numéricas. Em pt-PT só existem one e other; noutros idiomas há mais, por isso inclua sempre um valor de recurso para other.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔀",
+          "text": "PluralRules devolve a categoria: one, few, many, other"
+        },
+        {
+          "icon": "📝",
+          "text": "ListFormat junta listas com vírgulas e a conjunção certa"
+        },
+        {
+          "icon": "🧹",
+          "text": "Menos ifs à mão, menos frases erradas"
+        }
+      ]
+    },
+    {
+      "heading": "Disponibilidade, variação entre motores e boas práticas",
+      "body": [
+        "A Intl faz parte da especificação ECMA-402, é irmã da própria linguagem e está disponível em todos os navegadores modernos e no Node moderno. Não precisa de instalar nada. A única ressalva histórica são construções mínimas do Node compiladas com ICU reduzido, onde apenas o inglês está disponível; nesse caso, resolvedOptions devolve um locale diferente do pedido e é assim que deteta o problema.",
+        "O texto exato produzido pode variar ligeiramente entre motores e entre versões do mesmo motor, porque os dados de formatação vêm do CLDR, que é atualizado com frequência. Um exemplo concreto: o separador de milhares em pt-PT é hoje um espaço estreito não separável, e não o espaço normal que escreveria no teclado; e o espaço antes do símbolo do euro também já mudou de tipo entre versões. Por isso, nunca escreva testes automáticos que comparem texto formatado com uma constante literal. Teste a sua lógica de escolha de unidades, de arredondamento ou de ordenação, não o resultado textual da Intl.",
+        "Quando precisa de aceder a uma parte específica do resultado, não parta o texto com expressões regulares: use formatToParts, que devolve a lista de pedaços etiquetados com o seu tipo. É estável, legível e funciona em qualquer locale."
+      ],
+      "code": "const fmt = new Intl.NumberFormat(\"pt-PT\", { style: \"currency\", currency: \"EUR\" });\n\nconst partes = fmt.formatToParts(1234.5);\nconsole.log(partes.map((p) => p.type).join(\" \"));\n// \"integer decimal fraction literal currency\" (a ordem depende do locale)\n\nconst soNumero = partes\n  .filter((p) => p.type !== \"currency\" && p.type !== \"literal\")\n  .map((p) => p.value)\n  .join(\"\");\nconsole.log(soNumero); // \"1234,50\"\n\n// Cache simples de formatadores, útil em aplicações multilingues\nconst cache = new Map();\nfunction formatador(locale, opcoes) {\n  const chave = locale + JSON.stringify(opcoes);\n  if (!cache.has(chave)) {\n    cache.set(chave, new Intl.NumberFormat(locale, opcoes));\n  }\n  return cache.get(chave);\n}\n\nconsole.log(formatador(\"pt-PT\", { style: \"currency\", currency: \"EUR\" }).format(10)); // \"10,00 €\"\nconsole.log(formatador(\"pt-PT\", { style: \"currency\", currency: \"EUR\" }).format(20)); // \"20,00 €\"\nconsole.log(cache.size); // 1",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Não escreva testes que comparem texto da Intl com literais. O espaço antes do euro e o separador de milhares em pt-PT são caracteres especiais que já mudaram entre versões do CLDR.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "Intl é padrão ECMA-402, sem dependências a instalar"
+        },
+        {
+          "icon": "⚠️",
+          "text": "O texto exato varia entre motores e versões do CLDR"
+        },
+        {
+          "icon": "🔍",
+          "text": "formatToParts em vez de partir o resultado com regex"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Preços de uma loja em euros",
+      "difficulty": "Iniciante",
+      "statement": "Crie um formatador Intl.NumberFormat para pt-PT com moeda EUR, guardado numa constante e reutilizado. Escreva uma função formatarPrecos que recebe um array de números e devolve um array com cada valor já formatado. Aplique-a ao array [4.5, 19.99, 1250, 0.75], imprima o resultado e imprima também o total formatado. No fim, imprima o mesmo total formatado em en-US com moeda USD, para ver a diferença na posição do símbolo.",
+      "hint": "O formatador deve ser criado fora da função, para não ser recriado em cada chamada. Para o total, use reduce sobre o array original, não sobre o array já formatado.",
+      "solution_code": "const euros = new Intl.NumberFormat(\"pt-PT\", { style: \"currency\", currency: \"EUR\" });\nconst dolares = new Intl.NumberFormat(\"en-US\", { style: \"currency\", currency: \"USD\" });\n\nfunction formatarPrecos(precos) {\n  return precos.map((p) => euros.format(p));\n}\n\nconst precos = [4.5, 19.99, 1250, 0.75];\nconsole.log(formatarPrecos(precos));\n// [ '4,50 €', '19,99 €', '1250,00 €', '0,75 €' ]\n\nconst total = precos.reduce((acc, p) => acc + p, 0);\nconsole.log(`Total: ${euros.format(total)}`); // \"Total: 1275,24 €\"\nconsole.log(dolares.format(total));           // \"$1,275.24\"",
+      "solution_explanation": "O formatador é criado uma única vez no topo do ficheiro e reutilizado em todas as chamadas a format, que é o padrão recomendado. O total é calculado com os números originais e só é formatado no fim, porque formatar antes de somar obrigaria a voltar a converter texto em número."
+    },
+    {
+      "title": "Ordenar uma lista de produtos em português",
+      "difficulty": "Intermedio",
+      "statement": "Dado o array [\"Óleo\", \"arroz\", \"açúcar\", \"Azeite\", \"item10\", \"item2\", \"ovo\"], escreva uma função ordenarPT que devolve uma nova lista ordenada com Intl.Collator para pt-PT, ignorando a diferença entre maiúsculas e minúsculas e entre acentuadas e não acentuadas, e ordenando os números dentro do texto pelo seu valor. A função não pode alterar o array original. Imprima também o resultado de sort sem comparador, para comparar.",
+      "hint": "Precisa das opções numeric e sensitivity no construtor do Collator. Para não alterar o original, copie o array com o operador de propagação antes de ordenar.",
+      "solution_code": "const produtos = [\"Óleo\", \"arroz\", \"açúcar\", \"Azeite\", \"item10\", \"item2\", \"ovo\"];\n\nfunction ordenarPT(lista) {\n  const colator = new Intl.Collator(\"pt-PT\", { numeric: true, sensitivity: \"base\" });\n  return [...lista].sort(colator.compare);\n}\n\nconsole.log([...produtos].sort());\n// [ 'Azeite', 'arroz', 'açúcar', 'item10', 'item2', 'ovo', 'Óleo' ]\n\nconsole.log(ordenarPT(produtos));\n// [ 'açúcar', 'arroz', 'Azeite', 'item2', 'item10', 'Óleo', 'ovo' ]\n\nconsole.log(produtos[0]); // \"Óleo\" (o array original ficou intacto)",
+      "solution_explanation": "O sort sem comparador coloca todas as maiúsculas antes das minúsculas e atira as palavras acentuadas para o fim, porque compara pontos de código. O Collator com sensitivity base trata Azeite, azeite e ázeite como equivalentes para efeitos de ordem, e numeric true garante que item2 vem antes de item10."
+    },
+    {
+      "title": "Tempos relativos com a unidade certa",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função tempoRelativo(data, referencia) que recebe dois objetos Date e devolve uma descrição relativa em pt-PT, escolhendo automaticamente a unidade mais apropriada entre segundos, minutos, horas, dias, semanas, meses e anos. Use Intl.RelativeTimeFormat com numeric auto, para que uma diferença de um dia dê ontem. Teste com a referência new Date(\"2026-03-15T10:00:00Z\") e com datas trinta segundos antes, duas horas depois, um dia antes e três meses antes.",
+      "hint": "Comece a diferença em segundos e vá dividindo sucessivamente pelos limites de cada unidade (60, 60, 24, 7, e assim por diante) enquanto o valor absoluto for maior ou igual ao limite. Math.abs e Math.round são os seus aliados.",
+      "solution_code": "const DIVISOES = [\n  [\"second\", 60],\n  [\"minute\", 60],\n  [\"hour\", 24],\n  [\"day\", 7],\n  [\"week\", 4.34524],\n  [\"month\", 12],\n  [\"year\", Infinity]\n];\n\nconst rtf = new Intl.RelativeTimeFormat(\"pt-PT\", { numeric: \"auto\" });\n\nfunction tempoRelativo(data, referencia) {\n  let delta = (data.getTime() - referencia.getTime()) / 1000;\n  for (const [unidade, limite] of DIVISOES) {\n    if (Math.abs(delta) < limite) {\n      return rtf.format(Math.round(delta), unidade);\n    }\n    delta /= limite;\n  }\n  return rtf.format(Math.round(delta), \"year\");\n}\n\nconst referencia = new Date(\"2026-03-15T10:00:00Z\");\nconsole.log(tempoRelativo(new Date(\"2026-03-15T09:59:30Z\"), referencia)); // \"há 30 segundos\"\nconsole.log(tempoRelativo(new Date(\"2026-03-15T12:00:00Z\"), referencia)); // \"dentro de 2 horas\"\nconsole.log(tempoRelativo(new Date(\"2026-03-14T10:00:00Z\"), referencia)); // \"ontem\"\nconsole.log(tempoRelativo(new Date(\"2026-03-01T10:00:00Z\"), referencia)); // \"há 2 semanas\"\nconsole.log(tempoRelativo(new Date(\"2025-12-15T10:00:00Z\"), referencia)); // \"há 3 meses\"",
+      "solution_explanation": "A tabela DIVISOES guarda cada unidade com o número de unidades dessa escala que cabem na seguinte, o que permite percorrer as escalas dividindo sucessivamente o delta. Assim que o valor absoluto cabe dentro do limite da escala atual, essa é a unidade certa. O formatador é criado uma vez e a opção numeric auto é que transforma menos um dia em ontem."
+    },
+    {
+      "title": "Resumo de encomenda internacionalizado",
+      "difficulty": "Avancado",
+      "statement": "Escreva uma função descreverEncomenda(itens, entrega) que devolve uma frase em pt-PT a resumir uma encomenda. Cada item é um objeto com nome, preco e quantidade. A frase deve conter o número total de unidades com a palavra artigo ou artigos escolhida por Intl.PluralRules, a enumeração dos nomes com Intl.ListFormat, o total em euros com Intl.NumberFormat e a data de entrega com Intl.DateTimeFormat em estilo long no fuso Europe/Lisbon. Todos os formatadores devem ser criados uma única vez, fora da função. Teste com um carrinho de vários itens e com um carrinho de um só item.",
+      "hint": "Precisa de dois reduce: um para o total em euros (preco vezes quantidade) e outro para o número de unidades. O resultado de plural.select é a chave de um objeto que mapeia one e other para as palavras certas.",
+      "solution_code": "const LOCALE = \"pt-PT\";\n\nconst moeda = new Intl.NumberFormat(LOCALE, { style: \"currency\", currency: \"EUR\" });\nconst lista = new Intl.ListFormat(LOCALE, { style: \"long\", type: \"conjunction\" });\nconst plural = new Intl.PluralRules(LOCALE);\nconst dataFmt = new Intl.DateTimeFormat(LOCALE, { dateStyle: \"long\", timeZone: \"Europe/Lisbon\" });\n\nconst PALAVRAS = { one: \"artigo\", other: \"artigos\" };\n\nfunction descreverEncomenda(itens, entrega) {\n  const total = itens.reduce((acc, item) => acc + item.preco * item.quantidade, 0);\n  const unidades = itens.reduce((acc, item) => acc + item.quantidade, 0);\n  const palavra = PALAVRAS[plural.select(unidades)] ?? PALAVRAS.other;\n  const nomes = lista.format(itens.map((item) => item.nome));\n  return `${unidades} ${palavra} (${nomes}), num total de ${moeda.format(total)}, com entrega a ${dataFmt.format(entrega)}.`;\n}\n\nconst entrega = new Date(\"2026-03-15T10:00:00Z\");\n\nconst carrinho = [\n  { nome: \"maçãs\", preco: 2.49, quantidade: 2 },\n  { nome: \"peras\", preco: 3.1, quantidade: 1 },\n  { nome: \"uvas\", preco: 4.75, quantidade: 1 }\n];\n\nconsole.log(descreverEncomenda(carrinho, entrega));\n// \"4 artigos (maçãs, peras e uvas), num total de 12,83 €, com entrega a 15 de março de 2026.\"\n\nconsole.log(descreverEncomenda([{ nome: \"pão\", preco: 1.2, quantidade: 1 }], entrega));\n// \"1 artigo (pão), num total de 1,20 €, com entrega a 15 de março de 2026.\"",
+      "solution_explanation": "Cada formatador é criado uma vez ao carregar o módulo e reutilizado em todas as chamadas, que é o padrão correto para desempenho. O acesso PALAVRAS[plural.select(unidades)] com um valor de recurso para other torna a função fácil de adaptar a idiomas com mais categorias plurais. A data é formatada com timeZone explícito, pelo que o resultado é o mesmo em qualquer máquina."
+    }
+  ],
+  "summary": [
+    "A Intl aplica as convenções de cada locale a números, moedas, datas e texto, evitando lógica de formatação escrita à mão. Seja explícito e use pt-PT, não apenas pt.",
+    "Intl.NumberFormat cobre decimais, moeda EUR com o símbolo depois do valor, percentagens, unidades e notação compacta; Intl.DateTimeFormat oferece dateStyle e timeStyle ou opções detalhadas, mais timeZone.",
+    "Crie os formatadores uma única vez e reutilize-os. Criar um formatador dentro de um ciclo é um desperdício de desempenho fácil de evitar.",
+    "Intl.RelativeTimeFormat com numeric auto produz ontem e amanhã; a escolha da unidade continua a ser responsabilidade do programador.",
+    "Intl.Collator, ou localeCompare para casos pontuais, é a única forma correta de ordenar texto português; as opções sensitivity e numeric resolvem pesquisa insensível a acentos e ordenação natural de nomes com números.",
+    "Intl.PluralRules e Intl.ListFormat geram frases gramaticalmente corretas; use formatToParts para extrair partes e nunca compare texto formatado com literais em testes."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para o Módulo 14",
+  "next_label": "Módulo 14 → Projeto Final e Exercícios Consolidados"
+}

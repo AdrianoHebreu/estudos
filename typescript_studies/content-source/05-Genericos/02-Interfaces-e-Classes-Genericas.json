@@ -1,0 +1,294 @@
+{
+  "module_num": "05",
+  "module_title": "Genéricos",
+  "module_dir": "05-Genericos",
+  "lesson_num": "02",
+  "lesson_slug": "Interfaces-e-Classes-Genericas",
+  "kind": "aula",
+  "title": "Interfaces e Classes Genéricas",
+  "filename_base": "02-Interfaces-e-Classes-Genericas",
+  "subtitle": "Parametrizar interfaces, aliases e classes, e saber onde vive o parâmetro de tipo",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Declarar interfaces e type aliases genéricos e fornecer o argumento de tipo no uso",
+    "Modelar um resultado com sucesso ou falha através de um alias genérico discriminado",
+    "Escrever interfaces com vários parâmetros de tipo e com métodos",
+    "Construir classes genéricas em que o tipo acompanha os dados guardados",
+    "Distinguir o parâmetro de tipo da classe do parâmetro de tipo de um método",
+    "Separar um tipo de função genérico de um tipo de função parametrizado"
+  ],
+  "sections": [
+    {
+      "heading": "Interfaces à espera de um tipo",
+      "body": [
+        "Uma interface também aceita parâmetros de tipo entre os sinais de menor e maior, exatamente como uma função genérica. Muda quem fornece o argumento. Numa função genérica o compilador infere o tipo a partir dos valores da chamada; numa interface genérica o tipo escreve-se onde a interface é usada, com Caixa<string> ou Caixa<number[]>.",
+        "A declaração fica, por isso, incompleta de propósito: Caixa sozinha não é um tipo, é um modelo à espera de um argumento. Usá-la sem argumento é erro, e essa é a diferença mais visível em relação a uma interface normal. Dentro da interface, o parâmetro de tipo comporta-se como qualquer outro tipo e pode aparecer em quantas propriedades forem precisas."
+      ],
+      "code": "interface Caixa<T> {\n  etiqueta: string;\n  conteudo: T;\n}\n\nconst manual: Caixa<string> = { etiqueta: \"docs\", conteudo: \"manual.pdf\" };\nconst medidas: Caixa<number[]> = { etiqueta: \"sensor\", conteudo: [12, 15, 11] };\n\nfunction desembrulhar<T>(caixa: Caixa<T>): T {\n  return caixa.conteudo;\n}\n\nconst texto = desembrulhar(manual); // string\nconst numeros = desembrulhar(medidas); // number[]\n\nconsole.log(texto.toUpperCase()); // \"MANUAL.PDF\"\nconsole.log(numeros.length); // 3\n\n// @ts-expect-error Caixa<string> exige conteudo string; 42 é number\nconst errada: Caixa<string> = { etiqueta: \"erro\", conteudo: 42 };\n\n// @ts-expect-error nao existe uma Caixa \"sem T\": o argumento de tipo é obrigatório no uso\nconst semArgumento: Caixa = { etiqueta: \"x\", conteudo: \"y\" };",
+      "callout_kind": "NOTA",
+      "callout_text": "O parâmetro de tipo vale para a interface inteira: se aparecer em três propriedades, as três ficam obrigadas ao mesmo tipo dentro da mesma Caixa.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "interface Caixa<T> declara um modelo, não um tipo"
+        },
+        {
+          "icon": "🏷️",
+          "text": "O argumento de tipo escreve-se no uso: Caixa<string>"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Caixa sem argumento de tipo não compila"
+        }
+      ]
+    },
+    {
+      "heading": "Type aliases genéricos e uniões discriminadas",
+      "body": [
+        "Um type alias aceita os mesmos parâmetros de tipo, e é aqui que os genéricos se encontram com as uniões discriminadas do módulo anterior. Um Resultado<T> descreve uma operação que ou devolve um valor do tipo T, ou devolve uma mensagem de erro, sem nunca deixar as duas coisas ao mesmo tempo.",
+        "O discriminante continua a ser a propriedade ok, e o estreitamento funciona como sempre: dentro do ramo em que ok é true existe valor, com o tipo T concreto de cada uso; no outro ramo existe erro. A parte genérica não atrapalha o narrowing, só evita escrever um alias novo para cada tipo de conteúdo."
+      ],
+      "code": "type Resultado<T> =\n  | { ok: true; valor: T }\n  | { ok: false; erro: string };\n\nfunction dividir(a: number, b: number): Resultado<number> {\n  if (b === 0) {\n    return { ok: false, erro: \"divisão por zero\" };\n  }\n  return { ok: true, valor: a / b };\n}\n\nfunction lerConfig(chave: string): Resultado<string> {\n  const tabela: Record<string, string | undefined> = { porta: \"8080\" };\n  const valor = tabela[chave];\n  if (valor === undefined) {\n    return { ok: false, erro: \"chave ausente: \" + chave };\n  }\n  return { ok: true, valor };\n}\n\nfunction descrever<T>(r: Resultado<T>): string {\n  return r.ok ? \"ok: \" + String(r.valor) : \"erro: \" + r.erro;\n}\n\nconsole.log(descrever(dividir(10, 4))); // \"ok: 2.5\"\nconsole.log(descrever(dividir(1, 0))); // \"erro: divisão por zero\"\n\nconst config = lerConfig(\"host\");\nif (config.ok) {\n  console.log(config.valor.toUpperCase());\n} else {\n  console.log(config.erro); // \"chave ausente: host\"\n}",
+      "callout_kind": "DICA",
+      "callout_text": "Um alias genérico é a forma mais barata de reaproveitar uma união discriminada: o formato dos estados fica escrito uma vez e o tipo do valor transportado muda em cada uso.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔀",
+          "text": "type Resultado<T> junta genéricos e uniões discriminadas"
+        },
+        {
+          "icon": "✅",
+          "text": "O estreitamento por ok funciona como já era conhecido"
+        },
+        {
+          "icon": "♻️",
+          "text": "Um formato de estados escrito uma vez, vários conteúdos"
+        }
+      ]
+    },
+    {
+      "heading": "Vários parâmetros de tipo e interfaces com métodos",
+      "body": [
+        "Uma interface genérica pode declarar vários parâmetros de tipo e usá-los nas assinaturas dos seus métodos. Um repositório é o exemplo clássico: precisa de saber que tipo de entidade guarda e que tipo de identificador a procura, e essas duas coisas variam de forma independente.",
+        "Repare-se que os métodos não são genéricos aqui: T e ID pertencem à interface, portanto ficam fixos a partir do momento em que se escreve Repositorio<Utilizador, number>. Quem implementa a interface recebe assinaturas já concretas, e quem a usa fica preso a elas, que é exatamente o que se pretende."
+      ],
+      "code": "interface Repositorio<T, ID> {\n  guardar(item: T): void;\n  procurar(id: ID): T | undefined;\n  todos(): readonly T[];\n}\n\ninterface Utilizador {\n  id: number;\n  nome: string;\n}\n\nfunction criarRepositorio<T, ID>(chave: (item: T) => ID): Repositorio<T, ID> {\n  const itens: T[] = [];\n  return {\n    guardar(item) {\n      itens.push(item);\n    },\n    procurar(id) {\n      return itens.find((item) => chave(item) === id);\n    },\n    todos() {\n      return itens;\n    },\n  };\n}\n\nconst utilizadores = criarRepositorio<Utilizador, number>((u) => u.id);\nutilizadores.guardar({ id: 1, nome: \"Ana\" });\nutilizadores.guardar({ id: 2, nome: \"Bruno\" });\n\nconsole.log(utilizadores.procurar(2)?.nome); // \"Bruno\"\nconsole.log(utilizadores.todos().length); // 2\n\n// @ts-expect-error o ID deste repositório é number, não string\nutilizadores.procurar(\"2\");",
+      "callout_kind": "DICA",
+      "callout_text": "Nomes de uma letra são convenção, não regra. Com mais de dois parâmetros, nomes como TEntidade e TChave poupam muito tempo a quem lê o código meses depois.",
+      "table_headers": [
+        "Nome",
+        "Uso habitual"
+      ],
+      "table_rows": [
+        [
+          "T",
+          "O tipo principal, o item ou o valor guardado"
+        ],
+        [
+          "U",
+          "Um segundo tipo, muitas vezes o resultado de uma transformação"
+        ],
+        [
+          "K",
+          "A chave de um par chave-valor"
+        ],
+        [
+          "V",
+          "O valor associado a uma chave"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧱",
+          "text": "Repositorio<T, ID> parametriza entidade e identificador"
+        },
+        {
+          "icon": "📜",
+          "text": "Os métodos usam os parâmetros de tipo da interface"
+        },
+        {
+          "icon": "✍️",
+          "text": "T, U, K e V são convenção; nomes descritivos também servem"
+        }
+      ]
+    },
+    {
+      "heading": "Classes genéricas: uma pilha que não perde o tipo",
+      "body": [
+        "Numa classe, o parâmetro de tipo escreve-se a seguir ao nome e fica visível em todos os membros de instância: campos, parâmetros do construtor, parâmetros e tipos de retorno dos métodos. Uma pilha é o caso perfeito, porque o que entra e o que sai têm de ser do mesmo tipo e esse tipo não é conhecido por quem escreve a classe.",
+        "Há duas maneiras de fixar o tipo, e não dão o mesmo resultado. Escrever new Pilha<string>() fixa-o explicitamente. Passar valores ao construtor deixa o compilador inferir, e new Pilha([3, 1, 4]) produz uma Pilha<number>. Instanciar sem nada, com new Pilha(), não dá ao compilador nada por onde inferir e o tipo cai em unknown: a pilha aceita tudo e deixa de proteger fosse o que fosse.",
+        "Dentro da classe, T é tratado como um tipo completamente desconhecido, e nada se pode assumir sobre os seus membros. Para poder assumir alguma coisa é precisa uma constraint com extends, que é o tema da aula seguinte."
+      ],
+      "code": "class Pilha<T> {\n  itens: T[];\n\n  constructor(iniciais: T[] = []) {\n    this.itens = [...iniciais];\n  }\n\n  empilhar(item: T): void {\n    this.itens.push(item);\n  }\n\n  desempilhar(): T | undefined {\n    return this.itens.pop();\n  }\n\n  espreitar(): T | undefined {\n    return this.itens[this.itens.length - 1];\n  }\n\n  tamanho(): number {\n    return this.itens.length;\n  }\n}\n\nconst pendentes = new Pilha<string>();\npendentes.empilhar(\"rever PR\");\npendentes.empilhar(\"escrever testes\");\n\nconsole.log(pendentes.espreitar()?.toUpperCase()); // \"ESCREVER TESTES\"\nconsole.log(pendentes.desempilhar()); // \"escrever testes\"\nconsole.log(pendentes.tamanho()); // 1\n\n// @ts-expect-error a pilha é de string: um number não entra\npendentes.empilhar(7);\n\nconst historico = new Pilha([3, 1, 4]); // Pilha<number>, inferida pelo construtor\nconsole.log(historico.desempilhar()! + 1); // 5\n\nconst solta = new Pilha(); // Pilha<unknown>: nada por onde inferir\nsolta.empilhar(\"texto\");\nsolta.empilhar(42);\nconsole.log(solta.tamanho()); // 2",
+      "callout_kind": "ATENCAO",
+      "callout_text": "new Pilha() sem argumentos e sem argumento de tipo produz Pilha<unknown>. Compila, mas perde toda a proteção. Se não houver nada por onde inferir, escrever o tipo à mão não é opcional.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🗃️",
+          "text": "class Pilha<T> leva T a todos os membros de instância"
+        },
+        {
+          "icon": "🎯",
+          "text": "new Pilha<string>() fixa o tipo explicitamente"
+        },
+        {
+          "icon": "🔎",
+          "text": "new Pilha([3, 1, 4]) infere Pilha<number> pelo construtor"
+        },
+        {
+          "icon": "⚠️",
+          "text": "new Pilha() sem pistas cai em Pilha<unknown>"
+        }
+      ]
+    },
+    {
+      "heading": "O T da classe e o U do método",
+      "body": [
+        "Um método pode declarar os seus próprios parâmetros de tipo, e a classe nem precisa de ser genérica para isso. Numa classe comum, um método genérico comporta-se como uma função genérica qualquer: o tipo é resolvido em cada chamada e não deixa rasto na instância.",
+        "A distinção importa quando os dois convivem. O T de uma classe genérica é fixado uma vez, na criação da instância, e vale enquanto essa instância existir. O U de um método é fixado a cada chamada, e duas chamadas ao mesmo método na mesma instância podem resolver-se em tipos diferentes. É esse par que permite escrever um mapear que devolve uma caixa de outro tipo sem alterar a original."
+      ],
+      "code": "class Registo {\n  linhas: string[] = [];\n\n  anotar<T>(etiqueta: string, valor: T): T {\n    this.linhas.push(etiqueta + \"=\" + String(valor));\n    return valor;\n  }\n}\n\nconst registo = new Registo();\nconst porta = registo.anotar(\"porta\", 8080); // number\nconst ambiente = registo.anotar(\"ambiente\", \"producao\"); // string\n\nconsole.log(porta + 1); // 8081\nconsole.log(ambiente.toUpperCase()); // \"PRODUCAO\"\nconsole.log(registo.linhas.join(\" | \")); // \"porta=8080 | ambiente=producao\"\n\nclass Caixa<T> {\n  conteudo: T;\n\n  constructor(conteudo: T) {\n    this.conteudo = conteudo;\n  }\n\n  mapear<U>(transformar: (valor: T) => U): Caixa<U> {\n    return new Caixa(transformar(this.conteudo));\n  }\n}\n\nconst numero = new Caixa(42); // Caixa<number>: T fica fixo na instância\nconst emTexto = numero.mapear((n) => \"n\" + n); // Caixa<string>: U vem desta chamada\nconst grande = numero.mapear((n) => n > 10); // Caixa<boolean>: U vem daquela chamada\n\nconsole.log(emTexto.conteudo); // \"n42\"\nconsole.log(grande.conteudo); // true",
+      "callout_kind": "NOTA",
+      "callout_text": "Regra prática: se o tipo caracteriza o objeto durante toda a sua vida, é parâmetro da classe. Se muda de chamada para chamada, é parâmetro do método.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧮",
+          "text": "Classes não genéricas também têm métodos genéricos"
+        },
+        {
+          "icon": "📌",
+          "text": "O T da classe fixa-se uma vez, na instância"
+        },
+        {
+          "icon": "🔄",
+          "text": "O U do método fixa-se a cada chamada"
+        }
+      ]
+    },
+    {
+      "heading": "Membros estáticos não veem o T da classe",
+      "body": [
+        "Um parâmetro de tipo de classe existe por instância: cada new fixa o seu. Os membros estáticos não pertencem a nenhuma instância, pertencem à classe, que é uma só e é partilhada por todas. Não há, portanto, um T que um membro estático possa usar, e o compilador recusa a tentativa com uma mensagem clara.",
+        "A alternativa é simples e já conhecida da secção anterior: o membro estático declara o seu próprio parâmetro de tipo. Fica genérico na chamada, que é o que faz sentido para uma fábrica estática, e a inferência trata do resto."
+      ],
+      "code": "class Caixa<T> {\n  conteudo: T;\n\n  constructor(conteudo: T) {\n    this.conteudo = conteudo;\n  }\n\n  // @ts-expect-error um campo estático não pode usar o T da classe: T só existe por instância\n  static predefinido: T | undefined = undefined;\n\n  // @ts-expect-error o mesmo vale para métodos estáticos\n  static criar(valor: T): Caixa<T> {\n    return new Caixa(valor);\n  }\n\n  // a alternativa: o próprio método estático declara o seu parâmetro de tipo\n  static criarSeguro<U>(valor: U): Caixa<U> {\n    return new Caixa(valor);\n  }\n}\n\nconst quarenta = Caixa.criarSeguro(40); // Caixa<number>\nconst saudacao = Caixa.criarSeguro(\"olá\"); // Caixa<string>\n\nconsole.log(quarenta.conteudo + 2); // 42\nconsole.log(saudacao.conteudo.length); // 3",
+      "callout_kind": "ATENCAO",
+      "callout_text": "A mensagem do compilador é literal: membros estáticos não podem referir parâmetros de tipo da classe. Não é uma limitação temporária, é uma consequência de o estático existir uma única vez.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🚫",
+          "text": "static não pode referir o parâmetro de tipo da classe"
+        },
+        {
+          "icon": "👥",
+          "text": "O estático é um só; o T existe por instância"
+        },
+        {
+          "icon": "🛠️",
+          "text": "Solução: dar ao método estático o seu próprio tipo"
+        }
+      ]
+    },
+    {
+      "heading": "Onde fica o sinal de menor: tipos de função genéricos",
+      "body": [
+        "Esta é a distinção que mais confusão gera, e resume-se à posição dos sinais de menor e maior. Em type Comparador = <T>(a: T, b: T) => number, o parâmetro de tipo pertence à assinatura da função: o tipo já está completo e é a função que é genérica, resolvida em cada chamada. Em type Comparador<T> = (a: T, b: T) => number, o parâmetro pertence ao alias: o tipo é que está incompleto e pede um argumento, como Comparador<number>, e a função resultante já não tem nada de genérica.",
+        "A consequência prática é grande. Uma função genérica tem de servir para qualquer tipo, portanto o corpo não pode assumir nada sobre os argumentos: subtrair dois valores de tipo desconhecido não compila. Um alias parametrizado fixa o tipo antes de a função ser escrita, e o corpo trabalha à vontade com o que esse tipo oferece.",
+        "Na prática, a segunda forma é a que se quer quase sempre. A primeira só compensa quando a mesma função tem mesmo de funcionar para todos os tipos, o que costuma implicar tratá-los de forma opaca."
+      ],
+      "code": "type ComparadorGenerico = <T>(a: T, b: T) => number;\ntype ComparadorDe<T> = (a: T, b: T) => number;\n\n// a função é que é genérica: tem de servir para qualquer T, logo nada pode assumir sobre a e b\nconst porIgualdade: ComparadorGenerico = (a, b) => (a === b ? 0 : 1);\n\n// o tipo é que é parametrizado: cada uso fixa o T e o corpo já sabe com que trabalha\nconst porValor: ComparadorDe<number> = (a, b) => a - b;\nconst porComprimento: ComparadorDe<string> = (a, b) => a.length - b.length;\n\nconsole.log(porIgualdade(1, 1)); // 0\nconsole.log(porValor(3, 10)); // -7\nconsole.log(porComprimento(\"abc\", \"z\")); // 2\n\n// @ts-expect-error num ComparadorGenerico a e b podem ser de qualquer tipo: subtrair não compila\nconst invalido: ComparadorGenerico = (a, b) => a - b;\n\nfunction ordenar<T>(itens: readonly T[], comparar: ComparadorDe<T>): T[] {\n  return [...itens].sort(comparar);\n}\n\nconsole.log(ordenar([3, 1, 2], porValor).join(\",\")); // \"1,2,3\"\nconsole.log(ordenar([\"abc\", \"z\", \"de\"], porComprimento).join(\",\")); // \"z,de,abc\"",
+      "callout_kind": "DICA",
+      "callout_text": "Truque de leitura: se o <T> está antes dos parênteses dos parâmetros, quem é genérico é a função. Se está a seguir ao nome do alias, quem é genérico é o tipo.",
+      "table_headers": [
+        "Forma",
+        "Quem é genérico",
+        "Quando o T se fixa"
+      ],
+      "table_rows": [
+        [
+          "type Comparador = <T>(a: T, b: T) => number",
+          "A função",
+          "Em cada chamada, por inferência"
+        ],
+        [
+          "type Comparador<T> = (a: T, b: T) => number",
+          "O tipo",
+          "No uso do tipo, como Comparador<number>"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔍",
+          "text": "A posição do <T> muda tudo no significado"
+        },
+        {
+          "icon": "🧰",
+          "text": "<T> antes dos parênteses: função genérica na chamada"
+        },
+        {
+          "icon": "🏷️",
+          "text": "<T> no nome do alias: tipo parametrizado no uso"
+        },
+        {
+          "icon": "✅",
+          "text": "Na dúvida, o alias parametrizado é o que se quer"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Um par que troca de lados",
+      "difficulty": "Iniciante",
+      "statement": "Declare uma interface genérica Par com dois parâmetros de tipo, A e B, e duas propriedades: primeiro do tipo A e segundo do tipo B. Escreva depois a função trocar, genérica em A e B, que recebe um Par<A, B> e devolve um Par<B, A> com os valores invertidos. Crie um Par<string, number> com a etiqueta idade e o valor 41, troque-o e confirme, com dois console.log, que o compilador passou a tratar primeiro como number e segundo como string.",
+      "hint": "A ordem dos parâmetros de tipo no tipo de retorno é o que faz o trabalho todo: Par<B, A> não é o mesmo que Par<A, B>.",
+      "solution_code": "interface Par<A, B> {\n  primeiro: A;\n  segundo: B;\n}\n\nfunction trocar<A, B>(par: Par<A, B>): Par<B, A> {\n  return { primeiro: par.segundo, segundo: par.primeiro };\n}\n\nconst original: Par<string, number> = { primeiro: \"idade\", segundo: 41 };\nconst trocado = trocar(original); // Par<number, string>\n\nconsole.log(trocado.primeiro + 1); // 42\nconsole.log(trocado.segundo.toUpperCase()); // \"IDADE\"\n\n// @ts-expect-error depois de trocar, primeiro é number: já não é uma string\nconst rotulo: string = trocado.primeiro;",
+      "solution_explanation": "A interface Par declara dois parâmetros independentes e a função trocar limita-se a inverter a sua ordem no tipo de retorno. Como A e B são inferidos a partir do argumento, o resultado fica tipado como Par<number, string> sem nenhuma anotação explícita na chamada."
+    },
+    {
+      "title": "Uma opção que pode não ter valor",
+      "difficulty": "Intermedio",
+      "statement": "Escreva um type alias genérico Opcao<T> como união discriminada de dois membros: um com presente a true e uma propriedade valor do tipo T, outro apenas com presente a false. Acrescente a função algum, que embrulha um valor numa opção presente, a função valorOu, que devolve o valor da opção ou uma alternativa do mesmo tipo, e a função primeiroPar, que recebe um array de números só de leitura e devolve uma Opcao<number> com o primeiro número par encontrado. Demonstre os três casos com console.log e mostre, com um comentário de erro esperado, que a propriedade valor não existe no membro em que presente é false.",
+      "hint": "O membro ausente não precisa de propriedade valor nenhuma. É precisamente essa ausência que impede o acesso antes de estreitar por presente.",
+      "solution_code": "type Opcao<T> =\n  | { presente: true; valor: T }\n  | { presente: false };\n\nfunction algum<T>(valor: T): Opcao<T> {\n  return { presente: true, valor };\n}\n\nfunction valorOu<T>(opcao: Opcao<T>, alternativa: T): T {\n  return opcao.presente ? opcao.valor : alternativa;\n}\n\nfunction primeiroPar(numeros: readonly number[]): Opcao<number> {\n  const encontrado = numeros.find((n) => n % 2 === 0);\n  if (encontrado === undefined) {\n    return { presente: false };\n  }\n  return { presente: true, valor: encontrado };\n}\n\nconsole.log(valorOu(primeiroPar([1, 3, 6, 8]), -1)); // 6\nconsole.log(valorOu(primeiroPar([1, 3, 5]), -1)); // -1\nconsole.log(valorOu(algum(\"texto\"), \"vazio\")); // \"texto\"\n\nconst nada: Opcao<string> = { presente: false };\n// @ts-expect-error valor só existe no membro em que presente é true\nconst perdido = nada.valor;",
+      "solution_explanation": "Opcao<T> é uma união discriminada parametrizada: a propriedade presente serve de discriminante e valor só existe num dos membros. Em valorOu o estreitamento por opcao.presente dá acesso a valor com o tipo T concreto de cada uso, e fora desse ramo o compilador recusa o acesso."
+    },
+    {
+      "title": "Uma fila genérica com transformação",
+      "difficulty": "Intermedio",
+      "statement": "Implemente a classe genérica Fila<T>, com um campo itens do tipo T[] inicializado a partir de um parâmetro opcional do construtor, e os métodos entrar, que acrescenta ao fim, sair, que remove do início e devolve T ou undefined, espreitar, que devolve o primeiro sem remover, e tamanho, que devolve o número de elementos. Acrescente ainda o método mapear, com um parâmetro de tipo próprio U, que recebe uma função de T para U e devolve uma Fila<U> nova sem alterar a original. Crie uma fila a partir de três nomes, deixando o tipo ser inferido, e use mapear para obter uma fila dos seus comprimentos.",
+      "hint": "O parâmetro de tipo do mapear não pode ser o T da classe, porque o tipo de saída é outro. Declare-o na assinatura do método e deixe a inferência descobri-lo pela função recebida.",
+      "solution_code": "class Fila<T> {\n  itens: T[];\n\n  constructor(iniciais: T[] = []) {\n    this.itens = [...iniciais];\n  }\n\n  entrar(item: T): void {\n    this.itens.push(item);\n  }\n\n  sair(): T | undefined {\n    return this.itens.shift();\n  }\n\n  espreitar(): T | undefined {\n    return this.itens[0];\n  }\n\n  tamanho(): number {\n    return this.itens.length;\n  }\n\n  mapear<U>(transformar: (item: T) => U): Fila<U> {\n    return new Fila(this.itens.map(transformar));\n  }\n}\n\nconst nomes = new Fila([\"Ana\", \"Bruno\", \"Carla\"]); // Fila<string>\nnomes.entrar(\"Duarte\");\n\nconsole.log(nomes.espreitar()); // \"Ana\"\nconsole.log(nomes.sair()); // \"Ana\"\nconsole.log(nomes.tamanho()); // 3\n\nconst comprimentos = nomes.mapear((nome) => nome.length); // Fila<number>\nconsole.log(comprimentos.itens.join(\",\")); // \"5,5,6\"\n\n// @ts-expect-error a fila é de string: um number não entra\nnomes.entrar(1);",
+      "solution_explanation": "T é fixado na criação da fila, por inferência a partir do array passado ao construtor, e acompanha todos os métodos de instância. U pertence ao método mapear e é resolvido em cada chamada a partir do tipo de retorno da função recebida, o que permite passar de Fila<string> para Fila<number> sem perder rigor."
+    },
+    {
+      "title": "Uma tentativa que se encadeia",
+      "difficulty": "Avancado",
+      "statement": "Declare o alias genérico Resultado<T> como união discriminada com um membro ok a true e valor do tipo T, e outro com ok a false e erro do tipo string. Escreva depois a classe Tentativa<T>, que guarda um Resultado<T> num campo. A classe deve ter os métodos estáticos sucesso e falha, cada um com o seu próprio parâmetro de tipo, um método de instância mapear com um parâmetro de tipo U que transforma o valor em caso de sucesso e propaga o erro em caso de falha, e um método valorOu que devolve o valor ou uma alternativa. Inclua também, com um comentário de erro esperado, uma tentativa de escrever um método estático que use o T da classe, para deixar registada a razão pela qual os estáticos declaram os seus próprios tipos.",
+      "hint": "O mapear devolve Tentativa<U> nos dois ramos: no ramo de sucesso transforma o valor, no ramo de falha reencaminha a mensagem para uma falha já tipada em U.",
+      "solution_code": "type Resultado<T> =\n  | { ok: true; valor: T }\n  | { ok: false; erro: string };\n\nclass Tentativa<T> {\n  resultado: Resultado<T>;\n\n  constructor(resultado: Resultado<T>) {\n    this.resultado = resultado;\n  }\n\n  static sucesso<U>(valor: U): Tentativa<U> {\n    return new Tentativa<U>({ ok: true, valor });\n  }\n\n  static falha<U>(erro: string): Tentativa<U> {\n    return new Tentativa<U>({ ok: false, erro });\n  }\n\n  // @ts-expect-error um estático não pode usar o T da classe: tem de declarar o seu próprio\n  static vazia(): Tentativa<T> {\n    return Tentativa.falha(\"sem valor\");\n  }\n\n  mapear<U>(transformar: (valor: T) => U): Tentativa<U> {\n    return this.resultado.ok\n      ? Tentativa.sucesso(transformar(this.resultado.valor))\n      : Tentativa.falha<U>(this.resultado.erro);\n  }\n\n  valorOu(alternativa: T): T {\n    return this.resultado.ok ? this.resultado.valor : alternativa;\n  }\n}\n\nconst numero = Tentativa.sucesso(21); // Tentativa<number>\nconsole.log(numero.mapear((n) => n * 2).valorOu(0)); // 42\n\nconst falhado = Tentativa.falha<number>(\"sem ligação\");\nconsole.log(falhado.mapear((n) => n * 2).valorOu(-1)); // -1\n\nconsole.log(Tentativa.sucesso(\"api\").mapear((s) => s.length).valorOu(0)); // 3",
+      "solution_explanation": "As fábricas estáticas declaram o parâmetro U porque o T da classe não existe fora das instâncias, como mostra o membro marcado com o erro esperado. O mapear combina os dois níveis: lê o T da instância e produz uma Tentativa<U>, o que permite encadear transformações e deixar a falha atravessar a cadeia intacta."
+    }
+  ],
+  "summary": [
+    "Interfaces e type aliases aceitam parâmetros de tipo; o argumento é fornecido no uso, como Caixa<string>, e sem ele o tipo não está completo.",
+    "Um alias genérico combina-se naturalmente com uniões discriminadas: Resultado<T> descreve sucesso ou falha sem repetir o formato para cada tipo de valor.",
+    "Numa classe genérica o parâmetro de tipo é fixado na instanciação, explicitamente ou por inferência do construtor; sem pistas, cai em unknown.",
+    "Um método pode ter parâmetros de tipo próprios, mesmo em classes não genéricas: o da classe vive na instância, o do método vive na chamada.",
+    "Membros estáticos não podem usar o parâmetro de tipo da classe, porque existem uma única vez; a solução é darem-lhes um parâmetro de tipo próprio.",
+    "Em <T>(a: T, b: T) => number quem é genérico é a função; em Comparador<T> quem é genérico é o tipo, e essa posição muda o significado por completo."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 03",
+  "next_label": "Aula 03 → Constraints e Tipos por Omissão"
+}

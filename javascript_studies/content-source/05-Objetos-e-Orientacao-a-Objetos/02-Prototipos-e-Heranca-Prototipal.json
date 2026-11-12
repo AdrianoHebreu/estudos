@@ -1,0 +1,260 @@
+{
+  "module_num": "05",
+  "module_title": "Objetos e Orientação a Objetos",
+  "module_dir": "05-Objetos-e-Orientacao-a-Objetos",
+  "lesson_num": "02",
+  "lesson_slug": "Prototipos-e-Heranca-Prototipal",
+  "kind": "aula",
+  "title": "Protótipos e Herança Prototipal",
+  "filename_base": "02-Prototipos-e-Heranca-Prototipal",
+  "subtitle": "Como a herança em JavaScript funciona por baixo das classes, através de protótipos.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Perceber como a cadeia de protótipos determina a procura de propriedades em JavaScript.",
+    "Usar Object.getPrototypeOf e Object.setPrototypeOf para inspecionar e alterar protótipos.",
+    "Criar herança direta entre objetos com Object.create, sem recorrer a construtores.",
+    "Construir \"classes\" pré-ES6 com funções construtoras e o operador new.",
+    "Encadear protótipos entre funções construtoras para simular herança clássica.",
+    "Entender, passo a passo, o que o operador new faz internamente."
+  ],
+  "sections": [
+    {
+      "heading": "A cadeia de protótipos",
+      "body": [
+        "Em JavaScript, quase todos os objetos guardam uma ligação interna a outro objeto, chamada [[Prototype]], que funciona como um plano de reserva sempre que se tenta aceder a uma propriedade que o objeto não tem diretamente. Quando se escreve objeto.propriedade, o motor procura primeiro uma propriedade própria (own property) nesse objeto; se não a encontrar, segue a ligação [[Prototype]] para o objeto seguinte, e repete o processo até encontrar a propriedade ou até chegar a um objeto cujo protótipo é null, o que marca o fim da cadeia.",
+        "É importante distinguir dois conceitos que partilham nomes parecidos. A propriedade prototype é uma propriedade normal, que só existe em funções (nomeadamente nas usadas como construtoras) e em classes, e serve para definir qual será o [[Prototype]] das instâncias criadas a partir dessa função. Já __proto__ é um acessor herdado de Object.prototype que expõe [[Prototype]] para leitura e escrita direta em qualquer objeto; é um mecanismo legado, mantido por compatibilidade, e deve ser evitado a favor de Object.getPrototypeOf e Object.setPrototypeOf, tratados na secção seguinte."
+      ],
+      "code": "const animal = {\n  emiteSom() {\n    return `${this.nome} faz um som genérico`;\n  }\n};\n\nconst cao = Object.create(animal);\ncao.nome = \"Rex\";\n\nconsole.log(cao.emiteSom());                   // \"Rex faz um som genérico\" (herdado de animal)\nconsole.log(cao.hasOwnProperty(\"nome\"));       // true, propriedade própria\nconsole.log(cao.hasOwnProperty(\"emiteSom\"));   // false, vem da cadeia de protótipos\nconsole.log(Object.getPrototypeOf(cao) === animal); // true\n\n// no topo da cadeia está sempre Object.prototype, e a seguir null\nconsole.log(Object.getPrototypeOf(Object.getPrototypeOf(cao)) === Object.prototype); // true\nconsole.log(Object.getPrototypeOf(Object.prototype)); // null",
+      "callout_kind": "NOTA",
+      "callout_text": "No topo de quase todas as cadeias está Object.prototype; o protótipo de Object.prototype é null, o que marca sempre o fim da procura.",
+      "table_headers": [
+        "Conceito",
+        "O que é",
+        "Onde existe"
+      ],
+      "table_rows": [
+        [
+          "prototype",
+          "Propriedade normal que define o [[Prototype]] das instâncias criadas com new",
+          "Apenas em funções construtoras e classes"
+        ],
+        [
+          "[[Prototype]]",
+          "Ligação interna de um objeto ao seu protótipo, usada na procura de propriedades",
+          "Em todos os objetos, incluindo funções"
+        ],
+        [
+          "__proto__",
+          "Acessor legado que expõe [[Prototype]] para leitura e escrita",
+          "Herdado de Object.prototype; preferir Object.getPrototypeOf/setPrototypeOf"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔗",
+          "text": "Todo o objeto liga-se a um protótipo (ou a null)"
+        },
+        {
+          "icon": "🔍",
+          "text": "Propriedade não encontrada? Sobe-se a cadeia"
+        },
+        {
+          "icon": "🧬",
+          "text": ".prototype só existe em funções e classes"
+        },
+        {
+          "icon": "⚠️",
+          "text": "__proto__ é legado — use Object.getPrototypeOf"
+        }
+      ]
+    },
+    {
+      "heading": "Object.getPrototypeOf e Object.setPrototypeOf",
+      "body": [
+        "Object.getPrototypeOf(objeto) devolve o [[Prototype]] atual de um objeto, ou null se este estiver no topo da cadeia; é a forma padrão e sem ambiguidades de inspecionar de onde vêm as propriedades e métodos herdados. O método complementar, obj.isPrototypeOf(outro), permite confirmar se obj faz parte da cadeia de protótipos de outro, sem ter de a percorrer manualmente.",
+        "Object.setPrototypeOf(objeto, novoPrototipo) altera essa ligação depois de o objeto já existir, o que por vezes é útil, mas tem um custo real: os motores de JavaScript otimizam objetos assumindo que a sua forma e cadeia de protótipos são estáveis, e mudar o protótipo depois de criado invalida essas otimizações para aquele objeto e para todos os que partilham a sua forma. Sempre que for possível escolher o protótipo antecipadamente, Object.create, descrito a seguir, é a alternativa recomendada."
+      ],
+      "code": "const base = { saudacao: \"Olá\" };\nconst objeto = Object.create(base);\n\nconsole.log(Object.getPrototypeOf(objeto) === base); // true\nconsole.log(base.isPrototypeOf(objeto));             // true\n\nconst outraBase = { saudacao: \"Bom dia\" };\nObject.setPrototypeOf(objeto, outraBase);\n\nconsole.log(objeto.saudacao); // \"Bom dia\" — a cadeia foi trocada em runtime",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Object.setPrototypeOf é uma das operações mais lentas em JavaScript, porque obriga o motor a abandonar otimizações já feitas para a forma anterior do objeto. Evite-a em código que corre com frequência; prefira definir o protótipo logo na criação com Object.create.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📖",
+          "text": "getPrototypeOf lê o protótipo atual"
+        },
+        {
+          "icon": "🔄",
+          "text": "setPrototypeOf troca o protótipo em runtime"
+        },
+        {
+          "icon": "🐌",
+          "text": "setPrototypeOf é lento — evite em código quente"
+        },
+        {
+          "icon": "✅",
+          "text": "isPrototypeOf confirma presença na cadeia"
+        }
+      ]
+    },
+    {
+      "heading": "Object.create: herança direta sem construtores",
+      "body": [
+        "Object.create(protoObjeto) cria um objeto novo, vazio, cujo [[Prototype]] é definido logo na criação como protoObjeto, sem que seja preciso escrever um construtor ou uma classe. É a forma mais direta de expressar herança prototípica pura, por vezes chamada herança diferencial, um dos padrões originais de JavaScript, anterior à generalização das funções construtoras.",
+        "Um pormenor essencial deste modelo é que ler uma propriedade percorre a cadeia, mas escrever numa propriedade nunca o faz, mesmo que essa propriedade já exista mais acima na cadeia: a escrita cria sempre uma propriedade própria no objeto onde a atribuição acontece, deixando o protótipo original intacto. Object.create também aceita null como protótipo, produzindo um objeto sem qualquer herança, nem sequer de Object.prototype, o que é útil para estruturas do tipo dicionário que não devem ter métodos herdados, como toString, a interferir com as chaves guardadas."
+      ],
+      "code": "const contadorBase = {\n  valor: 0,\n  incrementar() {\n    this.valor += 1;\n    return this.valor;\n  }\n};\n\nconst contadorA = Object.create(contadorBase);\nconst contadorB = Object.create(contadorBase);\n\ncontadorA.incrementar();\ncontadorA.incrementar();\ncontadorB.incrementar();\n\nconsole.log(contadorA.valor);    // 2 — propriedade própria criada na primeira escrita\nconsole.log(contadorB.valor);    // 1\nconsole.log(contadorBase.valor); // 0, nunca foi alterado\n\n// objeto sem protótipo nenhum, útil como \"dicionário puro\"\nconst dicionario = Object.create(null);\ndicionario.chave = \"valor\";\nconsole.log(dicionario.toString); // undefined, não herda nada de Object.prototype",
+      "callout_kind": "DICA",
+      "callout_text": "Use Object.create(null) quando o objeto vai servir só para guardar pares chave-valor arbitrários; assim nenhuma chave pode colidir com métodos herdados como toString ou hasOwnProperty.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏗️",
+          "text": "Object.create(proto) cria herança direta"
+        },
+        {
+          "icon": "🚫",
+          "text": "Object.create(null) cria objeto sem herança nenhuma"
+        },
+        {
+          "icon": "🤝",
+          "text": "Escrever numa herdada cria sempre uma própria"
+        }
+      ]
+    },
+    {
+      "heading": "Funções construtoras: a forma pré-ES6 de criar \"classes\"",
+      "body": [
+        "Antes de o ES6 introduzir a palavra-chave class, a forma padrão de criar algo semelhante a uma classe em JavaScript era escrever uma função normal, por convenção com o nome começado por maiúscula, e invocá-la com o operador new. Dentro dessa função construtora, this refere-se à nova instância a ser criada, e qualquer propriedade atribuída a this, como this.nome = nome, torna-se uma propriedade própria dessa instância específica.",
+        "Os métodos, no entanto, não devem ser definidos dentro do construtor com this.metodo = function () {...}, porque isso recriaria uma função nova em cada instância, ocupando memória desnecessária. A prática correta é definir métodos em Construtor.prototype, uma única vez; como todas as instâncias partilham o mesmo [[Prototype]] (o mesmo objeto Construtor.prototype), todas acedem à mesma função através da cadeia, sem qualquer duplicação."
+      ],
+      "code": "function Pessoa(nome, idade) {\n  this.nome = nome;\n  this.idade = idade;\n}\n\n// métodos definem-se no prototype, não dentro do construtor:\nPessoa.prototype.apresentar = function () {\n  return `Sou ${this.nome} e tenho ${this.idade} anos`;\n};\n\nconst ana = new Pessoa(\"Ana\", 30);\nconst rui = new Pessoa(\"Rui\", 42);\n\nconsole.log(ana.apresentar());                  // \"Sou Ana e tenho 30 anos\"\nconsole.log(ana.apresentar === rui.apresentar); // true — o método é partilhado, não duplicado\nconsole.log(ana instanceof Pessoa);             // true\nconsole.log(Object.getPrototypeOf(ana) === Pessoa.prototype); // true",
+      "callout_kind": "DICA",
+      "callout_text": "Regra prática: se uma propriedade varia de instância para instância (como nome ou idade), atribua-a com this dentro do construtor; se for igual para todas (como um método), coloque-a em Construtor.prototype.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏭",
+          "text": "function Foo(){} + new = classe pré-ES6"
+        },
+        {
+          "icon": "🧩",
+          "text": "this dentro do construtor é a nova instância"
+        },
+        {
+          "icon": "♻️",
+          "text": "Métodos vivem no prototype, não no construtor"
+        },
+        {
+          "icon": "🆔",
+          "text": "instanceof confirma a cadeia de protótipos"
+        }
+      ]
+    },
+    {
+      "heading": "Herança entre construtores: encadear protótipos com Object.create",
+      "body": [
+        "Antes das classes com extends, encadear a herança entre duas funções construtoras exigia dois passos manuais. Primeiro, dentro da função construtora \"filha\", invocar a função \"pai\" com Pai.call(this, ...argumentos), para que a lógica de inicialização do pai corra com o this correto, ou seja, a nova instância do filho. Segundo, ligar Filho.prototype a um objeto cujo protótipo é Pai.prototype, tipicamente com Filho.prototype = Object.create(Pai.prototype), para que os métodos definidos em Pai.prototype fiquem acessíveis a partir de instâncias de Filho.",
+        "Esta substituição de Filho.prototype apaga a propriedade constructor que existiria por omissão, pelo que é boa prática repô-la manualmente com Filho.prototype.constructor = Filho logo a seguir, e sempre antes de acrescentar quaisquer métodos próprios a Filho.prototype. Este é exatamente o mecanismo que a palavra-chave extends automatiza nos bastidores, mas escrevê-lo à mão uma vez ajuda a perceber o que realmente acontece quando, mais adiante, se usar a sintaxe de classes."
+      ],
+      "code": "function Animal(nome) {\n  this.nome = nome;\n}\n\nAnimal.prototype.emiteSom = function () {\n  return `${this.nome} faz um som`;\n};\n\nfunction Cao(nome, raca) {\n  Animal.call(this, nome);   // chama o \"construtor pai\" com o this correto\n  this.raca = raca;\n}\n\n// liga a cadeia: Cao.prototype passa a herdar de Animal.prototype\nCao.prototype = Object.create(Animal.prototype);\nCao.prototype.constructor = Cao; // repõe a referência que Object.create apagou\n\nCao.prototype.latir = function () {\n  return `${this.nome} ladra: Woof!`;\n};\n\nconst bobi = new Cao(\"Bobi\", \"Labrador\");\n\nconsole.log(bobi.emiteSom());        // \"Bobi faz um som\" (herdado de Animal.prototype)\nconsole.log(bobi.latir());           // \"Bobi ladra: Woof!\" (próprio de Cao.prototype)\nconsole.log(bobi instanceof Cao);    // true\nconsole.log(bobi instanceof Animal); // true, porque a cadeia liga os dois prototypes",
+      "callout_kind": "NOTA",
+      "callout_text": "Esquecer de repor Filho.prototype.constructor = Filho não impede o código de funcionar, mas deixa instância.constructor a apontar incorretamente para Pai; vale sempre a pena confirmar essa referência logo depois de trocar o prototype.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔗",
+          "text": "Filho.prototype = Object.create(Pai.prototype)"
+        },
+        {
+          "icon": "📞",
+          "text": "Pai.call(this, ...) substitui o super() das classes"
+        },
+        {
+          "icon": "🛠️",
+          "text": "Repor .constructor depois de trocar o prototype"
+        }
+      ]
+    },
+    {
+      "heading": "Como o operador new funciona por baixo",
+      "body": [
+        "Quando se escreve new Construtor(argumentos), o motor de JavaScript executa, na prática, quatro passos. Primeiro, cria um objeto novo e vazio. Segundo, liga o [[Prototype]] desse objeto a Construtor.prototype, o equivalente a Object.create(Construtor.prototype). Terceiro, executa o corpo de Construtor com this a apontar para esse objeto novo, e com os argumentos fornecidos. Quarto, se Construtor devolver explicitamente um valor que seja um objeto, esse valor passa a ser o resultado da expressão new; em qualquer outro caso, incluindo quando não há return ou quando se devolve um primitivo, o resultado é o objeto criado no segundo passo.",
+        "Dentro do construtor está ainda disponível new.target, que referencia o próprio Construtor quando a função foi invocada com new, e é undefined quando é invocada como chamada normal; é o mecanismo que permite a uma função construtora detetar e recusar ser chamada sem new. Reproduzir estes passos manualmente, como no exemplo de código seguinte, é a forma mais direta de perceber que new não é magia da linguagem, mas sim um conjunto de operações também disponíveis através de Object.create e Function.prototype.apply."
+      ],
+      "code": "function meuNew(Construtor, ...args) {\n  // 1. cria um objeto cujo protótipo é Construtor.prototype\n  const instancia = Object.create(Construtor.prototype);\n\n  // 2. executa o construtor com \"this\" a apontar para essa instância\n  const resultado = Construtor.apply(instancia, args);\n\n  // 3. só um objeto devolvido explicitamente substitui a instância criada\n  return (typeof resultado === \"object\" && resultado !== null) ? resultado : instancia;\n}\n\nfunction Ponto(x, y) {\n  this.x = x;\n  this.y = y;\n}\n\nconst p1 = new Ponto(2, 3);\nconst p2 = meuNew(Ponto, 2, 3);\n\nconsole.log(p2.x, p2.y);                                // 2 3\nconsole.log(p2 instanceof Ponto);                       // true\nconsole.log(JSON.stringify(p1) === JSON.stringify(p2)); // true",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Experimente alterar Ponto para devolver explicitamente um objeto diferente com return { outraCoisa: true } e compare o resultado de new Ponto(...) com o de meuNew(Ponto, ...) para confirmar que ambos seguem a mesma regra.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🆕",
+          "text": "1. Cria objeto ligado a Construtor.prototype"
+        },
+        {
+          "icon": "▶️",
+          "text": "2. Executa o construtor com this = esse objeto"
+        },
+        {
+          "icon": "↩️",
+          "text": "3. Devolve-o, exceto se houver return de objeto"
+        },
+        {
+          "icon": "🎯",
+          "text": "new.target deteta se a função foi chamada com new"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Herança direta com Object.create",
+      "difficulty": "Iniciante",
+      "statement": "Crie um objeto veiculo com um método descrever() que devolve a string \"Este veículo tem ${this.rodas} rodas\". De seguida, usando Object.create, crie um objeto carro que herde de veiculo, adicione-lhe a propriedade própria rodas com o valor 4, e confirme com Object.getPrototypeOf que o protótipo de carro é o objeto veiculo. Por fim, chame carro.descrever() e mostre o resultado na consola.",
+      "hint": "Object.create(proto) cria um objeto novo cujo protótipo é proto; a propriedade rodas deve ser adicionada depois, diretamente no objeto carro.",
+      "solution_code": "const veiculo = {\n  descrever() {\n    return `Este veículo tem ${this.rodas} rodas`;\n  }\n};\n\nconst carro = Object.create(veiculo);\ncarro.rodas = 4;\n\nconsole.log(Object.getPrototypeOf(carro) === veiculo); // true\nconsole.log(carro.descrever()); // \"Este veículo tem 4 rodas\"",
+      "solution_explanation": "Object.create(veiculo) cria carro já ligado a veiculo na cadeia de protótipos, sem necessidade de construtor ou classe. O método descrever não existe em carro, por isso o motor sobe a cadeia até o encontrar em veiculo, mas this continua a referir-se a carro, daí ler corretamente this.rodas."
+    },
+    {
+      "title": "Construtor e métodos partilhados",
+      "difficulty": "Intermedio",
+      "statement": "Crie uma função construtora Produto que recebe nome e preco e os guarda como propriedades da instância. Adicione a Produto.prototype um método aplicarDesconto(percentagem) que devolve o preço com o desconto aplicado, sem alterar this.preco. Crie duas instâncias com new e confirme que ambas partilham exatamente a mesma função aplicarDesconto, usando o operador ===.",
+      "hint": "Métodos definidos em Produto.prototype existem uma única vez na memória e são acedidos pela cadeia de protótipos a partir de cada instância.",
+      "solution_code": "function Produto(nome, preco) {\n  this.nome = nome;\n  this.preco = preco;\n}\n\nProduto.prototype.aplicarDesconto = function (percentagem) {\n  return this.preco * (1 - percentagem / 100);\n};\n\nconst p1 = new Produto(\"Teclado\", 50);\nconst p2 = new Produto(\"Rato\", 20);\n\nconsole.log(p1.aplicarDesconto(10)); // 45\nconsole.log(p2.aplicarDesconto(25)); // 15\nconsole.log(p1.aplicarDesconto === p2.aplicarDesconto); // true",
+      "solution_explanation": "new Produto(...) cria um objeto novo, liga o seu protótipo a Produto.prototype e executa o construtor com this a apontar para esse objeto, o que torna nome e preco propriedades próprias de cada instância. Como aplicarDesconto vive apenas em Produto.prototype, as duas instâncias acedem exatamente à mesma função através da cadeia, em vez de cada uma ter a sua própria cópia."
+    },
+    {
+      "title": "Herança clássica entre construtores",
+      "difficulty": "Avancado",
+      "statement": "Crie uma função construtora FormaGeometrica que recebe cor e define this.cor, com um método no prototype chamado descreverCor() que devolve \"Cor: ${this.cor}\". Crie depois uma função construtora Circulo que recebe cor e raio, chama FormaGeometrica dentro de si com o this correto, guarda this.raio, e liga Circulo.prototype à cadeia de FormaGeometrica.prototype usando Object.create (sem usar a palavra-chave class). Adicione a Circulo.prototype um método calcularArea() que devolve Math.PI multiplicado pelo raio ao quadrado. No final, confirme com instanceof que uma instância de Circulo é simultaneamente instanceof Circulo e instanceof FormaGeometrica, e que consegue chamar tanto descreverCor() como calcularArea().",
+      "hint": "Depois de fazer Circulo.prototype = Object.create(FormaGeometrica.prototype), é preciso repor Circulo.prototype.constructor = Circulo antes de acrescentar novos métodos ao prototype.",
+      "solution_code": "function FormaGeometrica(cor) {\n  this.cor = cor;\n}\n\nFormaGeometrica.prototype.descreverCor = function () {\n  return `Cor: ${this.cor}`;\n};\n\nfunction Circulo(cor, raio) {\n  FormaGeometrica.call(this, cor);\n  this.raio = raio;\n}\n\nCirculo.prototype = Object.create(FormaGeometrica.prototype);\nCirculo.prototype.constructor = Circulo;\n\nCirculo.prototype.calcularArea = function () {\n  return Math.PI * this.raio ** 2;\n};\n\nconst c = new Circulo(\"vermelho\", 3);\n\nconsole.log(c.descreverCor());            // \"Cor: vermelho\"\nconsole.log(c.calcularArea().toFixed(2)); // \"28.27\"\nconsole.log(c instanceof Circulo);        // true\nconsole.log(c instanceof FormaGeometrica); // true",
+      "solution_explanation": "FormaGeometrica.call(this, cor) garante que a lógica do \"construtor pai\" corre com o this da instância de Circulo, tal como sucederia com um super(...) numa classe. Ligar Circulo.prototype a Object.create(FormaGeometrica.prototype) coloca FormaGeometrica.prototype na cadeia, o que faz instanceof reconhecer ambos os tipos e permite chamar métodos definidos em qualquer um dos dois níveis."
+    },
+    {
+      "title": "Reimplementar o operador new",
+      "difficulty": "Avancado",
+      "statement": "Implemente uma função meuNew(Construtor, ...args) que reproduza o comportamento do operador new: deve criar um novo objeto cujo protótipo seja Construtor.prototype, executar Construtor com this a apontar para esse objeto e com os argumentos fornecidos, e devolver o objeto explicitamente devolvido pelo construtor caso este devolva um objeto, ou o objeto criado caso contrário. Teste a sua implementação com uma função construtora simples Pessoa(nome), comparando o resultado de new Pessoa(\"Inês\") com o de meuNew(Pessoa, \"Inês\").",
+      "hint": "Object.create(Construtor.prototype) trata da ligação ao protótipo; Construtor.apply(instancia, args) trata da execução com o this correto.",
+      "solution_code": "function meuNew(Construtor, ...args) {\n  const instancia = Object.create(Construtor.prototype);\n  const resultado = Construtor.apply(instancia, args);\n  return (typeof resultado === \"object\" && resultado !== null) ? resultado : instancia;\n}\n\nfunction Pessoa(nome) {\n  this.nome = nome;\n}\n\nconst p1 = new Pessoa(\"Inês\");\nconst p2 = meuNew(Pessoa, \"Inês\");\n\nconsole.log(p2.nome);              // \"Inês\"\nconsole.log(p2 instanceof Pessoa); // true\nconsole.log(Object.getPrototypeOf(p1) === Object.getPrototypeOf(p2)); // true",
+      "solution_explanation": "A ligação ao protótipo é feita manualmente com Object.create, exatamente o mesmo passo que o motor executa internamente antes de correr o corpo da função construtora. A verificação final replica a regra real do new: só um valor devolvido explicitamente que seja um objeto substitui a instância criada; qualquer outro valor de retorno, incluindo undefined, o caso mais comum, é ignorado."
+    }
+  ],
+  "summary": [
+    "Todo o objeto em JavaScript tem uma ligação interna [[Prototype]] a outro objeto (ou a null), formando a cadeia de protótipos usada na procura de propriedades.",
+    "Object.getPrototypeOf lê essa ligação e Object.setPrototypeOf altera-a; mudar o protótipo depois da criação tem custo de performance, por isso Object.create é preferível.",
+    "Object.create(proto) cria herança direta entre objetos sem precisar de construtores nem classes; Object.create(null) cria objetos sem qualquer protótipo herdado.",
+    "Funções construtoras (function Foo(){} usadas com new) foram a forma de criar \"classes\" antes do ES6; métodos partilhados devem viver em Foo.prototype, nunca dentro do construtor.",
+    "Ligar Filho.prototype = Object.create(Pai.prototype), repondo depois o constructor, é o padrão clássico de herança entre construtores, hoje substituído por extends.",
+    "O operador new cria um objeto ligado a Construtor.prototype, executa o construtor com esse this, e devolve esse objeto a menos que o construtor devolva explicitamente outro objeto."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 03",
+  "next_label": "Aula 03 → Classes (ES6)",
+  "_stage": "revisao"
+}

@@ -1,0 +1,273 @@
+{
+  "module_num": "06",
+  "module_title": "Tipos Avançados",
+  "module_dir": "06-Tipos-Avancados",
+  "lesson_num": "02",
+  "lesson_slug": "Conditional-Types",
+  "kind": "aula",
+  "title": "Conditional Types",
+  "filename_base": "02-Conditional-Types",
+  "subtitle": "Um if ao nível dos tipos: ramos, distribuição por uniões e o papel de never",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Ler e escrever a sintaxe T extends U ? X : Y como um if avaliado pelo compilador",
+    "Perceber que o extends de um conditional significa é atribuível a, não herança",
+    "Explicar por que a condição fica adiada enquanto o parâmetro de tipo não for conhecido",
+    "Reconhecer a distribuição por uniões e desligá-la com o truque dos parênteses retos",
+    "Usar never para remover membros de uma união e evitar a armadilha da união vazia",
+    "Encadear conditionals e tipar um retorno que depende do tipo do argumento"
+  ],
+  "sections": [
+    {
+      "heading": "Um if ao nível dos tipos",
+      "body": [
+        "A sintaxe T extends U ? X : Y é um if que corre no compilador e não no programa. Se o tipo à esquerda do extends satisfizer o teste, o tipo resultante é X; caso contrário é Y. Nada disto existe em tempo de execução: o resultado da condição é um tipo, e o ficheiro compilado nem sequer o menciona.",
+        "O extends de um conditional não é herança. Lê-se é atribuível a: a pergunta é se qualquer valor do tipo da esquerda serve onde se espera o tipo da direita. É por isso que Utilizador extends Pessoa dá true quando Utilizador tem tudo o que Pessoa pede, mesmo sem classe nenhuma pelo meio, e que o literal \"abc\" passa no teste contra string.",
+        "Como um conditional não deixa rasto no código gerado, a maneira honesta de o verificar é atribuir um valor a uma constante tipada com ele. Se o tipo resolveu para o ramo esperado, a atribuição compila; se resolveu para o outro, o compilador reclama de imediato."
+      ],
+      "code": "type EhString<T> = T extends string ? \"sim\" : \"nao\";\n\nconst a: EhString<string> = \"sim\";\nconst b: EhString<number> = \"nao\";\nconst c: EhString<\"abc\"> = \"sim\"; // \"abc\" é atribuível a string\n\n// @ts-expect-error EhString<number> resolve para \"nao\", por isso \"sim\" não serve\nconst d: EhString<number> = \"sim\";\n\nconsole.log(a, b, c); // sim nao sim\n\ninterface Pessoa { nome: string }\ninterface Utilizador { nome: string; email: string }\n\ntype UtilizadorEPessoa = Utilizador extends Pessoa ? true : false; // true\ntype PessoaEUtilizador = Pessoa extends Utilizador ? true : false; // false\n\nconst t1: UtilizadorEPessoa = true;\nconst t2: PessoaEUtilizador = false;\nconsole.log(t1, t2); // true false",
+      "callout_kind": "NOTA",
+      "callout_text": "Os dois ramos podem ser qualquer tipo, não apenas literais de string. É comum devolver true e false, um objeto, ou o próprio T.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔀",
+          "text": "T extends U ? X : Y é um if avaliado pelo compilador"
+        },
+        {
+          "icon": "🧩",
+          "text": "Aqui extends significa é atribuível a, não herança"
+        },
+        {
+          "icon": "🔍",
+          "text": "Verifica-se atribuindo a uma constante tipada"
+        }
+      ]
+    },
+    {
+      "heading": "Enquanto T não for conhecido, a condição fica adiada",
+      "body": [
+        "Quando o argumento de tipo já está fixado, o compilador decide o ramo ali mesmo e passa a tratar o conditional como o tipo resultante. Dentro de uma função genérica é diferente: T ainda representa qualquer tipo possível, portanto a condição não pode ser resolvida e fica adiada.",
+        "Um conditional adiado é um tipo opaco. Não é nem um ramo nem o outro, e nada lhe é atribuível a não ser never. O corpo da função genérica que o declara como retorno bate sempre nesta parede, mesmo quando o código está manifestamente certo. Assim que T fica conhecido na chamada, o tipo resolve-se e quem chama vê o ramo exato."
+      ],
+      "code": "type Sinal<T> = T extends number ? \"numero\" : \"outro\";\n\nconst conhecido: Sinal<number> = \"numero\";\nconst tambemConhecido: Sinal<string> = \"outro\";\nconsole.log(conhecido, tambemConhecido); // numero outro\n\nfunction rotular<T>(valor: T): Sinal<T> {\n  // @ts-expect-error com T por resolver, Sinal<T> não aceita nenhum dos dois ramos\n  return typeof valor === \"number\" ? \"numero\" : \"outro\";\n}\n\nconst a = rotular(10);    // a: \"numero\"\nconst b = rotular(\"dez\"); // b: \"outro\"\nconst provaA: \"numero\" = a;\nconst provaB: \"outro\" = b;\nconsole.log(provaA, provaB); // numero outro",
+      "callout_kind": "ATENCAO",
+      "callout_text": "O erro dentro da função não é um defeito do tipo: é o compilador a dizer que não consegue provar o caso geral. A última secção mostra como se contorna.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⏳",
+          "text": "Com T por resolver, o conditional fica adiado"
+        },
+        {
+          "icon": "🚫",
+          "text": "Um conditional adiado não aceita nenhum dos ramos"
+        },
+        {
+          "icon": "✅",
+          "text": "Na chamada, T fica conhecido e o tipo resolve-se"
+        }
+      ]
+    },
+    {
+      "heading": "Conditionals distributivos sobre uniões",
+      "body": [
+        "Quando o tipo testado é um parâmetro de tipo nu, ou seja escrito sozinho à esquerda do extends, e recebe uma união, o conditional não testa a união inteira. Aplica-se a cada membro de cada vez e junta os resultados numa nova união. É por isso que a condição aplicada a string ou number devolve os dois ramos em vez de um.",
+        "Isto só acontece com um parâmetro de tipo nu. Uma união escrita diretamente à esquerda do extends é testada como um bloco único, e o resultado é um tipo só. A diferença entre as duas formas está na origem de metade das surpresas com conditional types.",
+        "A distribuição é a razão de ser da maior parte dos conditionals úteis: transforma um tipo que se aplica a um membro num tipo que se aplica a uma união inteira, membro a membro, sem escrever ciclo nenhum."
+      ],
+      "code": "type EhString<T> = T extends string ? \"sim\" : \"nao\";\n\ntype PelaUniao = EhString<string | number>; // \"sim\" | \"nao\"\nconst p1: PelaUniao = \"sim\";\nconst p2: PelaUniao = \"nao\";\n\ntype Direto = (string | number) extends string ? \"sim\" : \"nao\"; // \"nao\"\nconst d1: Direto = \"nao\";\n// @ts-expect-error Direto é apenas \"nao\": string | number não é atribuível a string\nconst d2: Direto = \"sim\";\n\nconsole.log(p1, p2, d1); // sim nao nao\n\ntype Caixa<T> = T extends unknown ? { valor: T } : never;\ntype CaixaSN = Caixa<string | number>; // { valor: string } | { valor: number }\n\nconst c1: CaixaSN = { valor: \"ola\" };\nconst c2: CaixaSN = { valor: 7 };\nconst misto: { valor: string | number } = { valor: \"ola\" };\n// @ts-expect-error o objeto tem valor: string | number e não corresponde a nenhum dos membros\nconst c3: CaixaSN = misto;\nconsole.log(c1, c2); // { valor: 'ola' } { valor: 7 }",
+      "callout_kind": "DICA",
+      "callout_text": "Nu quer dizer mesmo sozinho. T extends U distribui; T[number] extends U ou [T] extends [U] já não.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "➗",
+          "text": "Parâmetro de tipo nu: a condição corre membro a membro"
+        },
+        {
+          "icon": "📦",
+          "text": "O resultado é a união dos ramos de cada membro"
+        },
+        {
+          "icon": "🧱",
+          "text": "Uma união escrita à mão é testada como um bloco"
+        }
+      ]
+    },
+    {
+      "heading": "Desligar a distribuição, e a armadilha de never",
+      "body": [
+        "Para testar a união inteira de uma vez, envolvem-se os dois lados em parênteses retos: [T] extends [U]. O parâmetro deixa de estar nu, a distribuição não acontece e a pergunta passa a ser se toda a união é atribuível ao alvo. É o que se quer quando a resposta deve ser uma só, e não uma união de respostas.",
+        "O mesmo truque resolve a armadilha mais conhecida desta matéria. O tipo never é a união vazia: não tem membros. Um conditional distributivo sobre never não tem nada por onde distribuir, por isso nem chega a testar a condição e devolve never. Quem esperava ver o ramo falso recebe um tipo com que não se consegue fazer nada.",
+        "Com os parênteses retos o teste faz-se a never diretamente e, como never é atribuível a tudo, ganha o ramo verdadeiro. Vale a pena decidir de propósito qual dos dois comportamentos se quer, em vez de descobrir mais tarde que a união vazia apagou o tipo inteiro."
+      ],
+      "code": "type SoTexto<T> = T extends string ? true : false;            // distribui\ntype SoTextoInteiro<T> = [T] extends [string] ? true : false; // testa a união inteira\n\ntype A = SoTexto<string | number>;        // true | false, ou seja boolean\ntype B = SoTextoInteiro<string | number>; // false\ntype C = SoTextoInteiro<\"a\" | \"b\">;       // true\n\nconst a1: A = true;\nconst a2: A = false;\nconst b1: B = false;\n// @ts-expect-error B resolve para false e mais nada\nconst b2: B = true;\nconst c1: C = true;\n\ntype Vazio = SoTexto<never>; // never: a união vazia não tem membros para distribuir\n// @ts-expect-error nada é atribuível a never, nem sequer false\nconst v: Vazio = false;\n\ntype Cheio = SoTextoInteiro<never>; // true: never é atribuível a string\nconst cheio: Cheio = true;\n\nconsole.log(a1, a2, b1, c1, cheio); // true false false true true",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Se um tipo condicional estiver misteriosamente a dar never, a primeira suspeita é um argumento de tipo que colapsou para never algures antes.",
+      "table_headers": [
+        "Forma",
+        "O que testa",
+        "Com string ou number",
+        "Com never"
+      ],
+      "table_rows": [
+        [
+          "T extends string ? true : false",
+          "cada membro da união",
+          "true ou false",
+          "never"
+        ],
+        [
+          "[T] extends [string] ? true : false",
+          "a união inteira",
+          "false",
+          "true"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔒",
+          "text": "[T] extends [U] desliga a distribuição"
+        },
+        {
+          "icon": "🕳️",
+          "text": "never é a união vazia: distribuir sobre ela dá never"
+        },
+        {
+          "icon": "🎯",
+          "text": "Escolher de propósito entre membro a membro e bloco"
+        }
+      ]
+    },
+    {
+      "heading": "never como remover: filtrar uniões",
+      "body": [
+        "Dentro de uma distribuição, never tem um segundo papel, muito mais útil. Como a união final é a junção dos resultados de cada membro, um membro que produza never simplesmente desaparece: juntar never a uma união não lhe acrescenta nada. É esta a técnica para filtrar uniões.",
+        "Com ela escrevem-se dois tipos que aparecem em quase todo o código sério. Um devolve T quando o membro não corresponde ao alvo e never quando corresponde, o que remove os membros indicados. O outro faz o contrário e fica só com os membros que correspondem. Cada um cabe numa linha.",
+        "As uniões filtradas encaixam bem no narrowing já conhecido: depois de excluir os membros no código, o tipo estreitado coincide com o tipo filtrado e a função pode prometer o tipo mais restrito no retorno."
+      ],
+      "code": "type TirarDaUniao<T, U> = T extends U ? never : T;\ntype SoEstes<T, U> = T extends U ? T : never;\n\ntype Estado = \"rascunho\" | \"revisao\" | \"publicado\" | \"arquivado\";\n\ntype Editaveis = TirarDaUniao<Estado, \"publicado\" | \"arquivado\">; // \"rascunho\" | \"revisao\"\ntype Finais = SoEstes<Estado, \"publicado\" | \"arquivado\">;         // \"publicado\" | \"arquivado\"\n\nconst e1: Editaveis = \"rascunho\";\nconst e2: Editaveis = \"revisao\";\n// @ts-expect-error \"publicado\" foi removido da união\nconst e3: Editaveis = \"publicado\";\nconst f1: Finais = \"publicado\";\n\ntype SemNulos<T> = T extends null | undefined ? never : T;\ntype Nome = SemNulos<string | null | undefined>; // string\nconst nome: Nome = \"Ana\";\n\nfunction primeiroEditavel(estados: readonly Estado[]): Editaveis | undefined {\n  for (const estado of estados) {\n    if (estado !== \"publicado\" && estado !== \"arquivado\") return estado;\n  }\n  return undefined;\n}\n\nconsole.log(e1, e2, f1, nome); // rascunho revisao publicado Ana\nconsole.log(primeiroEditavel([\"publicado\", \"revisao\"])); // revisao\nconsole.log(primeiroEditavel([\"arquivado\"])); // undefined",
+      "callout_kind": "DICA",
+      "callout_text": "Um tipo destes vive melhor num ficheiro de tipos partilhado do que copiado em cada módulo: é uma linha que se escreve uma vez.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🗑️",
+          "text": "Numa distribuição, never faz o membro desaparecer"
+        },
+        {
+          "icon": "✂️",
+          "text": "T extends U ? never : T remove os membros indicados"
+        },
+        {
+          "icon": "🎣",
+          "text": "T extends U ? T : never fica só com esses membros"
+        }
+      ]
+    },
+    {
+      "heading": "Cadeias de conditionals",
+      "body": [
+        "Como o ramo falso pode ser outro conditional, encadeiam-se testes à vontade e obtém-se o equivalente a um else if. A escrita fica legível se cada teste ficar na sua linha, com o ramo final sem condição a servir de caso por omissão.",
+        "A ordem importa e não é cosmética: ganha o primeiro teste que passar. Os testes mais específicos vão primeiro, os mais largos depois. Um array tem de ser testado antes de qualquer teste que aceite objetos em geral, e uma função também, ou nunca chegam a ser alcançados.",
+        "Uma cadeia destas também distribui, porque o parâmetro continua nu em cada teste. Aplicada a uma união, devolve a união das respostas. Repare que boolean se comporta como a união de dois literais e distribui em dois membros que dão a mesma resposta."
+      ],
+      "code": "type NomeDoTipo<T> =\n  T extends string ? \"texto\" :\n  T extends number ? \"numero\" :\n  T extends boolean ? \"booleano\" :\n  T extends undefined ? \"indefinido\" :\n  T extends null ? \"nulo\" :\n  T extends (...args: never[]) => unknown ? \"funcao\" :\n  T extends readonly unknown[] ? \"lista\" :\n  \"objeto\";\n\nconst n1: NomeDoTipo<string> = \"texto\";\nconst n2: NomeDoTipo<number[]> = \"lista\";\nconst n3: NomeDoTipo<() => void> = \"funcao\";\nconst n4: NomeDoTipo<{ a: 1 }> = \"objeto\";\nconst n5: NomeDoTipo<null> = \"nulo\";\n\ntype Misto = NomeDoTipo<string | boolean>; // \"texto\" | \"booleano\"\nconst n6: Misto = \"texto\";\n// @ts-expect-error a união só contém \"texto\" e \"booleano\"\nconst n7: Misto = \"numero\";\n\nconsole.log(n1, n2, n3, n4, n5, n6); // texto lista funcao objeto nulo texto",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Experimente trocar a ordem dos testes do array e do objeto e veja a resposta para listas passar a objeto: a ordem é o próprio algoritmo.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🪜",
+          "text": "Um conditional no ramo falso é um else if"
+        },
+        {
+          "icon": "📐",
+          "text": "Ganha o primeiro teste que passa: do específico ao largo"
+        },
+        {
+          "icon": "🔁",
+          "text": "A cadeia continua a distribuir por uniões"
+        }
+      ]
+    },
+    {
+      "heading": "Um retorno que depende do argumento",
+      "body": [
+        "O caso prático mais comum é uma função cujo tipo de retorno muda conforme o que lhe entra. Declara-se um conditional sobre o parâmetro de tipo e quem chama passa a ver o tipo exato, sem asserções do seu lado e sem verificar nada à mão.",
+        "Dentro da função a história é outra, e convém ser honesto quanto a isso. Com T por resolver, o compilador não consegue provar que o valor produzido satisfaz o conditional e rejeita o retorno, mesmo depois de um typeof no corpo. Estreitar o parâmetro não estreita o tipo de retorno: são duas coisas separadas.",
+        "Restam duas saídas. Uma asserção no retorno, que neste caso tem de passar por unknown porque os dois tipos não se sobrepõem o suficiente para uma asserção direta. Ou declarar sobrecargas, com uma assinatura por caso concreto e a implementação mais larga escondida. Seja qual for a escolha, a garantia passa a ser de quem escreve a função, e vale a pena concentrá-la numa linha bem visível."
+      ],
+      "code": "type Repetido<T> = T extends string ? string[] : T extends number ? number[] : never;\n\nfunction repetir<T extends string | number>(valor: T, vezes: number): Repetido<T> {\n  // @ts-expect-error com T por resolver, Repetido<T> não aceita este array\n  return new Array<T>(vezes).fill(valor);\n}\n\nfunction repetirComAsercao<T extends string | number>(valor: T, vezes: number): Repetido<T> {\n  return new Array<T>(vezes).fill(valor) as unknown as Repetido<T>;\n}\n\nconst letras = repetirComAsercao(\"a\", 3); // letras: string[]\nconst numeros = repetirComAsercao(7, 2);  // numeros: number[]\n\nconsole.log(letras);  // [ 'a', 'a', 'a' ]\nconsole.log(numeros); // [ 7, 7 ]\nconsole.log(letras.join(\"-\")); // a-a-a",
+      "callout_kind": "ATENCAO",
+      "callout_text": "A asserção desliga a verificação naquele ponto. Se os ramos do conditional e os returns deixarem de corresponder, o compilador já não avisa.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎁",
+          "text": "Quem chama vê o tipo exato conforme o argumento"
+        },
+        {
+          "icon": "🧱",
+          "text": "No corpo, o conditional por resolver bloqueia o return"
+        },
+        {
+          "icon": "🛡️",
+          "text": "Saídas: asserção através de unknown ou sobrecargas"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Um conditional simples e verificável",
+      "difficulty": "Iniciante",
+      "statement": "Escreva um tipo EhLista<T> que resolva para true quando T for um array, incluindo arrays readonly e tuplas, e para false em qualquer outro caso. Prove o resultado com constantes tipadas para pelo menos quatro casos: um array de strings, um array readonly de números, uma string e uma tupla. Acrescente um caso que o compilador deva rejeitar, marcado com a anotação devida, e mostre o que acontece quando T é a união de um array com uma string.",
+      "hint": "Para apanhar arrays readonly e tuplas de uma vez, o alvo do teste tem de ser readonly unknown[]. Um objeto com uma propriedade length não é um array.",
+      "solution_code": "type EhLista<T> = T extends readonly unknown[] ? true : false;\n\nconst l1: EhLista<string[]> = true;\nconst l2: EhLista<readonly number[]> = true;\nconst l3: EhLista<string> = false;\nconst l4: EhLista<[number, number]> = true;\n\n// @ts-expect-error um objeto com length não é atribuível a readonly unknown[], logo dá false\nconst l5: EhLista<{ length: number }> = true;\n\ntype Mista = EhLista<string[] | string>; // true | false\nconst l6: Mista = true;\nconst l7: Mista = false;\n\nconsole.log(l1, l2, l3, l4, l6, l7); // true true false true true false",
+      "solution_explanation": "O alvo readonly unknown[] cobre arrays mutáveis, arrays readonly e tuplas, porque todos eles são atribuíveis a essa forma. Um objeto com length não é, e por isso cai no ramo falso. Na união, como T está nu, a condição distribui e o resultado é a união das duas respostas."
+    },
+    {
+      "title": "Remover chaves secretas de uma união",
+      "difficulty": "Intermedio",
+      "statement": "Uma união Chave tem os membros id, nome, email, passwordHash e tokenInterno, e os dois últimos formam a união Secreta. Escreva um tipo TirarDaUniao<T, U> que remova de T todos os membros atribuíveis a U e use-o para obter ChavePublica. Depois escreva um type predicate podeMostrar que estreite uma Chave para ChavePublica e filtre com ele um array de chaves, guardando o resultado num array de ChavePublica. Inclua uma atribuição que o compilador deva rejeitar, com a anotação devida.",
+      "hint": "O tipo pedido cabe numa linha, e o segredo está em devolver never no ramo verdadeiro. O método filter devolve o tipo estreitado quando recebe uma função com type predicate.",
+      "solution_code": "type TirarDaUniao<T, U> = T extends U ? never : T;\n\ntype Secreta = \"passwordHash\" | \"tokenInterno\";\ntype Chave = \"id\" | \"nome\" | \"email\" | Secreta;\ntype ChavePublica = TirarDaUniao<Chave, Secreta>; // \"id\" | \"nome\" | \"email\"\n\nfunction podeMostrar(chave: Chave): chave is ChavePublica {\n  return chave !== \"passwordHash\" && chave !== \"tokenInterno\";\n}\n\nconst chaves: Chave[] = [\"id\", \"passwordHash\", \"email\", \"tokenInterno\", \"nome\"];\nconst publicas: ChavePublica[] = chaves.filter(podeMostrar);\n\n// @ts-expect-error \"tokenInterno\" já não pertence a ChavePublica\nconst invalida: ChavePublica = \"tokenInterno\";\n\nconsole.log(publicas); // [ 'id', 'email', 'nome' ]",
+      "solution_explanation": "Como T está nu, a condição corre para cada membro da união: os que são atribuíveis a Secreta produzem never e desaparecem do resultado. O type predicate repete a mesma decisão em tempo de execução, o que permite ao filter devolver logo um array do tipo já filtrado."
+    },
+    {
+      "title": "Todos contra cada um",
+      "difficulty": "Intermedio",
+      "statement": "Escreva dois tipos com a mesma pergunta e comportamentos diferentes: TodosTexto<T>, que devolve true apenas se a união inteira for atribuível a string, e CadaUmTexto<T>, que responde membro a membro. Mostre com constantes tipadas o que cada um devolve para a união de dois literais de string, para a união de string com number e para never. Marque com a anotação devida o caso em que a atribuição tem de falhar.",
+      "hint": "Os parênteses retos dos dois lados do extends tiram o parâmetro do estado nu. Uma união vazia não tem membros por onde distribuir.",
+      "solution_code": "type TodosTexto<T> = [T] extends [string] ? true : false;\ntype CadaUmTexto<T> = T extends string ? true : false;\n\nconst a1: TodosTexto<\"a\" | \"b\"> = true;\nconst a2: TodosTexto<string | number> = false;\nconst a3: CadaUmTexto<string | number> = true;  // o resultado é true | false\nconst a4: CadaUmTexto<string | number> = false;\nconst a5: TodosTexto<never> = true;\n\n// @ts-expect-error CadaUmTexto<never> é never: distribuir pela união vazia não produz membro nenhum\nconst a6: CadaUmTexto<never> = true;\n\nconsole.log(a1, a2, a3, a4, a5); // true false true false true",
+      "solution_explanation": "A versão com parênteses retos testa a união como um bloco, por isso dá false quando um dos membros não é texto e true para never, que é atribuível a tudo. A versão distributiva devolve a união das respostas de cada membro e, sobre never, não produz resposta nenhuma: o resultado é never e nada lhe pode ser atribuído."
+    },
+    {
+      "title": "Conversor com retorno conforme o pedido",
+      "difficulty": "Avancado",
+      "statement": "Escreva um tipo ValorDe<T> que, para os literais texto, numero e booleano, resolva respetivamente para string, number e boolean, e para never em qualquer outro caso. Depois escreva uma função genérica converter que receba um desses três literais e uma string em bruto e devolva o valor convertido já com o tipo certo, sem que quem chama tenha de verificar nada. A conversão para número deve lançar um erro se a string não tiver forma de número, e a demonstração desse caso tem de ficar dentro de um try/catch. Mostre nas chamadas que o resultado já tem o tipo exato, usando um método de string, uma soma e uma comparação booleana.",
+      "hint": "O corpo não consegue convencer o compilador sozinho: cada return vai precisar de uma asserção, e uma asserção direta não chega porque os tipos não se sobrepõem. É a constraint no parâmetro de tipo que faz as chamadas inferirem o literal em vez de string.",
+      "solution_code": "type NomeDeTipo = \"texto\" | \"numero\" | \"booleano\";\n\ntype ValorDe<T> =\n  T extends \"texto\" ? string :\n  T extends \"numero\" ? number :\n  T extends \"booleano\" ? boolean :\n  never;\n\nfunction converter<T extends NomeDeTipo>(tipo: T, bruto: string): ValorDe<T> {\n  if (tipo === \"numero\") {\n    const n = Number(bruto);\n    if (Number.isNaN(n)) throw new Error(\"valor sem forma de número: \" + bruto);\n    return n as unknown as ValorDe<T>;\n  }\n  if (tipo === \"booleano\") {\n    return (bruto === \"true\") as unknown as ValorDe<T>;\n  }\n  return bruto as unknown as ValorDe<T>;\n}\n\nconst texto = converter(\"texto\", \"ola\");        // texto: string\nconst numero = converter(\"numero\", \"42\");       // numero: number\nconst booleano = converter(\"booleano\", \"true\"); // booleano: boolean\n\nconsole.log(texto.toUpperCase()); // OLA\nconsole.log(numero + 1);          // 43\nconsole.log(booleano === true);   // true\n\ntry {\n  converter(\"numero\", \"abc\");\n} catch (erro) {\n  console.log(erro instanceof Error ? erro.message : erro); // valor sem forma de número: abc\n}",
+      "solution_explanation": "A cadeia de conditionals liga cada literal ao tipo devolvido e a constraint garante que só entram os três valores previstos. No corpo, o conditional continua por resolver, por isso cada return passa por uma asserção através de unknown, que é a forma de assumir a responsabilidade quando os tipos não se sobrepõem. Quem chama não vê nada disto e recebe string, number ou boolean conforme o literal que passou."
+    }
+  ],
+  "summary": [
+    "T extends U ? X : Y é um if avaliado pelo compilador, e o extends significa é atribuível a",
+    "Com o parâmetro de tipo por resolver, a condição fica adiada e não aceita nenhum dos ramos",
+    "Um parâmetro de tipo nu distribui a condição por cada membro da união e junta os resultados",
+    "Os parênteses retos, [T] extends [U], desligam a distribuição e testam a união inteira",
+    "Sobre never a distribuição devolve never; dentro dela, never remove o membro e filtra a união",
+    "Um retorno condicional dá o tipo exato a quem chama, mas exige asserção ou sobrecarga no corpo"
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 03",
+  "next_label": "Aula 03 → Mapped Types"
+}

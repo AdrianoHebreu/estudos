@@ -1,0 +1,244 @@
+{
+  "module_num": "07",
+  "module_title": "Assincronismo",
+  "module_dir": "07-Assincronismo",
+  "lesson_num": "01",
+  "lesson_slug": "Event-Loop-Call-Stack-e-Filas-de-Tarefas",
+  "kind": "aula",
+  "title": "Event Loop, Call Stack e Filas de Tarefas",
+  "filename_base": "01-Event-Loop-Call-Stack-e-Filas-de-Tarefas",
+  "subtitle": "Como o JavaScript, sendo single-threaded, gere código assíncrono através do event loop",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Perceber porque é que JavaScript é uma linguagem single-threaded e o que isso implica na prática.",
+    "Entender o papel da call stack na execução do código síncrono.",
+    "Saber onde e como corre o código assíncrono, através das Web APIs e das APIs do Node.",
+    "Distinguir a fila de macrotasks da fila de microtasks e saber que exemplos pertencem a cada uma.",
+    "Prever com segurança a ordem de execução entre código síncrono, Promises e setTimeout.",
+    "Construir um modelo mental correto do funcionamento do event loop."
+  ],
+  "sections": [
+    {
+      "heading": "JavaScript é single-threaded: a call stack",
+      "body": [
+        "O motor de JavaScript, como o V8 usado no Chrome e no Node.js, executa código numa única thread principal. Em cada instante existe apenas um ponto de execução ativo: enquanto uma função está a correr, nenhuma outra instrução JavaScript pode correr em simultâneo nessa mesma thread. A estrutura que controla isto chama-se call stack, ou pilha de chamadas: sempre que uma função é invocada, é empilhado um novo registo no topo da stack, e quando essa função termina e devolve um valor, o registo é removido do topo.",
+        "A call stack funciona segundo o princípio LIFO, last in first out: a última função a entrar é sempre a primeira a sair. Se uma função chama outra, e essa chama mais outra, a stack vai crescendo até a função mais interna terminar, e só depois é que as funções exteriores conseguem também terminar. Enquanto a stack não estiver vazia, o motor não vai buscar nenhuma tarefa às filas assíncronas, e é precisamente esta regra que torna o resto do event loop previsível."
+      ],
+      "code": "function multiplicar(a, b) {\n  return a * b;\n}\n\nfunction calcularArea(largura, altura) {\n  return multiplicar(largura, altura);\n}\n\nconsole.log('Inicio do script');\nconst area = calcularArea(4, 5);\nconsole.log(`Area: ${area}`);\nconsole.log('Fim do script');\n\n// Ordem na call stack:\n// 1. Entra calcularArea(4, 5)\n// 2. Entra multiplicar(4, 5)\n// 3. Sai multiplicar, devolve 20\n// 4. Sai calcularArea, devolve 20\n// A stack fica sempre vazia entre cada linha sincrona do topo do script.",
+      "callout_kind": "NOTA",
+      "callout_text": "A call stack tem um limite de tamanho. Uma função recursiva sem caso de paragem esgota esse limite, e o motor lança um RangeError: Maximum call stack size exceeded.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧵",
+          "text": "JS tem uma única thread de execução"
+        },
+        {
+          "icon": "📚",
+          "text": "Call stack funciona como pilha LIFO"
+        },
+        {
+          "icon": "⛔",
+          "text": "Uma função bloqueia até terminar"
+        }
+      ]
+    },
+    {
+      "heading": "Onde corre o código assíncrono: Web APIs e APIs do Node",
+      "body": [
+        "O motor de JavaScript, por si só, não sabe esperar por um temporizador, por uma resposta de rede ou por um clique do utilizador; sabe apenas executar instruções de forma síncrona na call stack. Quem trata desse trabalho é o ambiente que envolve o motor: no browser chama-se Web APIs, como setTimeout, fetch, XMLHttpRequest ou addEventListener; no Node.js chama-se APIs do Node, muitas delas implementadas em cima da biblioteca libuv, que gere internamente threads do sistema operativo para operações de rede e de ficheiros.",
+        "Quando se chama setTimeout(callback, 1000), a função setTimeout apenas regista o temporizador junto do ambiente e devolve o controlo de imediato, sem a callback ficar à espera dentro da call stack. Passado o tempo indicado, o ambiente não executa a callback diretamente; coloca-a numa fila, para ser executada mais tarde pelo event loop, quando a call stack estiver vazia. É esta delegação que permite a uma linguagem single-threaded parecer que está a fazer várias coisas ao mesmo tempo."
+      ],
+      "code": "console.log('A');\n\nsetTimeout(() => {\n  console.log('C (callback do setTimeout)');\n}, 0);\n\nconsole.log('B');\n\n// Saida: A, B, C\n// setTimeout apenas agenda a callback e devolve o controlo de imediato;\n// nao bloqueia nem espera pelo temporizador.",
+      "callout_kind": "DICA",
+      "callout_text": "setTimeout(fn, 0) não executa a função imediatamente. Garante apenas um atraso mínimo; a função só entra na call stack depois de todo o código síncrono e de todas as microtasks pendentes terem terminado.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🌐",
+          "text": "Timers e rede vivem fora do motor JS"
+        },
+        {
+          "icon": "🔄",
+          "text": "Web APIs/Node tratam o trabalho assíncrono"
+        },
+        {
+          "icon": "📥",
+          "text": "Callback só volta quando estiver pronta"
+        }
+      ]
+    },
+    {
+      "heading": "A fila de macrotasks (task queue)",
+      "body": [
+        "A fila de macrotasks, também chamada task queue ou callback queue, guarda as callbacks que resultam de temporizadores como setTimeout e setInterval, de operações de I/O no Node como leitura de ficheiros ou pedidos de rede, e, no browser, de eventos como cliques ou submissão de formulários. O próprio script inicial, quando a página carrega ou o ficheiro Node arranca, é tratado como a primeira macrotask a ser executada.",
+        "Uma característica importante é que o event loop retira e executa apenas uma macrotask de cada vez, do início ao fim, antes de voltar a verificar as restantes filas. Duas chamadas a setTimeout com o mesmo atraso são executadas pela ordem em que foram agendadas, mas o atraso indicado é sempre um mínimo, nunca uma garantia exata: se a call stack ou a fila de microtasks estiverem ocupadas, a macrotask espera."
+      ],
+      "code": "setTimeout(() => console.log('primeiro macrotask'), 0);\nsetTimeout(() => console.log('segundo macrotask'), 0);\nconsole.log('codigo sincrono');\n\n// Saida: codigo sincrono, primeiro macrotask, segundo macrotask\n// Ambos os setTimeout tem o mesmo atraso, por isso correm pela ordem\n// em que foram agendados (FIFO).",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⏰",
+          "text": "setTimeout/setInterval entram aqui"
+        },
+        {
+          "icon": "🎟️",
+          "text": "Só uma macrotask por volta do loop"
+        },
+        {
+          "icon": "➡️",
+          "text": "Ordem FIFO entre macrotasks iguais"
+        }
+      ]
+    },
+    {
+      "heading": "A fila de microtasks (job queue)",
+      "body": [
+        "A fila de microtasks guarda tarefas de prioridade mais alta: as callbacks de then, catch e finally de Promises, as chamadas a queueMicrotask, e no browser também os callbacks de MutationObserver. Uma async function que usa await também gera microtasks: tudo o que vem depois de um await corre como continuação agendada nesta fila.",
+        "A diferença essencial para as macrotasks está na forma como o event loop trata esta fila: em vez de retirar apenas uma tarefa de cada vez, o motor esvazia a fila de microtasks por completo, incluindo microtasks que sejam agendadas por outras microtasks já em execução, antes de fazer seja o que for a seguir, seja renderizar o ecrã ou avançar para a próxima macrotask."
+      ],
+      "code": "console.log('1');\n\nPromise.resolve().then(() => console.log('3 (microtask)'));\n\nconsole.log('2');\n\n// Saida: 1, 2, 3\n// A callback do then so corre depois de todo o codigo sincrono terminar,\n// mas antes de qualquer macrotask.",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⚡",
+          "text": "Promises e queueMicrotask entram aqui"
+        },
+        {
+          "icon": "🧹",
+          "text": "Fila esvaziada por completo de cada vez"
+        },
+        {
+          "icon": "🥇",
+          "text": "Sempre antes da próxima macrotask"
+        }
+      ]
+    },
+    {
+      "heading": "O event loop: a ordem de execução",
+      "body": [
+        "O algoritmo do event loop pode resumir-se assim: o motor executa o código síncrono até a call stack ficar vazia; nesse momento, antes de mais nada, esvazia por completo a fila de microtasks; só depois disso é que vai buscar uma única macrotask à fila respetiva, executa-a até ao fim, o que pode gerar novas microtasks, que são de novo esvaziadas antes do passo seguinte, e repete o ciclo indefinidamente.",
+        "É esta regra, microtasks sempre antes da macrotask seguinte, sem exceção, que explica por que um Promise.resolve().then(callback) corre sempre antes de um setTimeout(callback, 0), mesmo que o setTimeout tenha sido escrito primeiro no código. O setTimeout, mesmo com atraso zero, só entra na fila de macrotasks; a Promise resolvida entra na fila de microtasks, que é sempre esvaziada em primeiro lugar assim que a stack fica livre."
+      ],
+      "code": "console.log('1: sincrono');\n\nsetTimeout(() => {\n  console.log('4: macrotask (setTimeout)');\n}, 0);\n\nPromise.resolve().then(() => {\n  console.log('3: microtask (promise)');\n});\n\nconsole.log('2: sincrono');\n\n// Saida: 1, 2, 3, 4",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Se uma microtask agendar sempre outra microtask, por exemplo uma função que se autoinvoca dentro de um then, a fila de microtasks nunca fica vazia. Nesse caso a próxima macrotask, como um setTimeout, e até a renderização do ecrã ficam bloqueadas indefinidamente. Este problema chama-se microtask starvation.",
+      "table_headers": [
+        "Aspeto",
+        "Microtasks",
+        "Macrotasks"
+      ],
+      "table_rows": [
+        [
+          "Exemplos",
+          "Promise.then/catch/finally, queueMicrotask, continuação de await",
+          "setTimeout, setInterval, eventos de I/O, eventos do DOM"
+        ],
+        [
+          "Quantas por ciclo",
+          "Todas as pendentes, até a fila ficar vazia",
+          "Apenas uma, depois volta a verificar as filas"
+        ],
+        [
+          "Prioridade face à outra fila",
+          "Sempre processada primeiro",
+          "Só depois de a fila de microtasks estar vazia"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔁",
+          "text": "Stack vazia → microtasks → 1 macrotask"
+        },
+        {
+          "icon": "🥇",
+          "text": "Promise.then ganha sempre a setTimeout(0)"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Microtasks a mais podem esfomear o loop"
+        }
+      ]
+    },
+    {
+      "heading": "Diagrama mental do event loop",
+      "body": [
+        "Vale a pena fixar um modelo mental simples com quatro peças: a call stack, onde corre o código síncrono; as Web APIs ou as APIs do Node, que tratam temporizadores, rede e eventos fora da stack; a fila de macrotasks e a fila de microtasks, onde ficam à espera as callbacks já prontas para correr; e o event loop, cujo único trabalho é perguntar continuamente se a call stack está vazia.",
+        "Sempre que a resposta é sim, o event loop esvazia primeiro toda a fila de microtasks, uma a uma, e só depois retira uma única tarefa da fila de macrotasks para a empurrar para a call stack. Este ciclo repete-se enquanto o programa tiver trabalho pendente nalguma das filas, e é ele que sustenta toda a assincronia do JavaScript sem nunca precisar de mais do que uma thread."
+      ],
+      "code": "// Pseudocodigo (sintaxe JS) do algoritmo do event loop, simplificado:\nfunction eventLoop() {\n  while (true) {\n    if (callStack.estaVazia()) {\n      while (!filaDeMicrotasks.estaVazia()) {\n        const microtask = filaDeMicrotasks.retirarPrimeira();\n        callStack.executar(microtask);\n      }\n\n      if (!filaDeMacrotasks.estaVazia()) {\n        const macrotask = filaDeMacrotasks.retirarPrimeira();\n        callStack.executar(macrotask);\n      }\n    }\n  }\n}\n\n// callStack e as filas nao existem como objetos acessiveis ao programador;\n// isto e apenas um modelo para raciocinar sobre a ordem de execucao.",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Abre a consola do browser ou o Node REPL, escreve um trecho com console.log, setTimeout e Promise.then misturados, e tenta prever a ordem de saída antes de correr o código. Repete com trechos cada vez mais complexos até acertares sempre.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🗺️",
+          "text": "Call stack, filas e event loop ligados"
+        },
+        {
+          "icon": "🔍",
+          "text": "Loop pergunta sempre: stack vazia?"
+        },
+        {
+          "icon": "🧪",
+          "text": "Testa e prevê antes de correr o código"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Prevê a ordem de execução",
+      "difficulty": "Iniciante",
+      "statement": "Considera o código seguinte:\n\nconsole.log('1');\nsetTimeout(() => console.log('2'), 0);\nconsole.log('3');\nPromise.resolve().then(() => console.log('4'));\nconsole.log('5');\n\nSem executar o código, escreve por escrito qual vai ser a ordem exata em que os números aparecem na consola, e explica numa frase porque é que o valor agendado pelo setTimeout aparece por último, apesar de estar escrito antes da Promise no código.",
+      "hint": "Lembra-te que há duas filas diferentes: uma para as Promises e outra para o setTimeout, e uma delas é sempre esvaziada primeiro, por completo, antes da outra sequer ser consultada.",
+      "solution_code": "console.log('1');\n\nsetTimeout(() => console.log('2'), 0);\n\nconsole.log('3');\n\nPromise.resolve().then(() => console.log('4'));\n\nconsole.log('5');\n\n// Ordem real na consola: 1, 3, 5, 4, 2\n// 1, 3 e 5 sao sincronos e correm de imediato, pela ordem em que aparecem no codigo.\n// 4 e uma microtask (callback de uma Promise): corre assim que a call stack\n// fica vazia, antes de qualquer macrotask.\n// 2 e uma macrotask (callback do setTimeout): so corre depois de a fila\n// de microtasks estar completamente vazia.",
+      "solution_explanation": "O código síncrono (1, 3, 5) corre sempre primeiro e por ordem, porque nunca sai da call stack enquanto está a executar. Só depois disso o event loop esvazia por completo a fila de microtasks (a callback da Promise, o 4), e apenas no fim vai buscar a macrotask do setTimeout (o 2), que fica sempre para último lugar."
+    },
+    {
+      "title": "Várias microtasks antes da macrotask",
+      "difficulty": "Intermedio",
+      "statement": "Escreve uma função chamada demonstrarPrioridade (sem parâmetros) que, ao ser invocada, produza na consola, exatamente por esta ordem, as strings 'inicio', 'microtask-a', 'microtask-b' e 'macrotask'. Regra do exercício: no código da função, tens de escrever a instrução que agenda 'macrotask' (com setTimeout, atraso 0) ANTES das duas instruções que agendam 'microtask-a' e 'microtask-b' (uma delas usando Promise.resolve().then, a outra usando queueMicrotask). Mesmo escrevendo o setTimeout primeiro no código, o resultado impresso na consola tem de respeitar a ordem pedida.",
+      "hint": "A ordem em que escreves as instruções no código não é a ordem em que elas necessariamente executam - pensa em que fila cada uma delas vai parar e qual dessas filas o event loop esvazia primeiro.",
+      "solution_code": "function demonstrarPrioridade() {\n  console.log('inicio');\n\n  setTimeout(() => {\n    console.log('macrotask');\n  }, 0);\n\n  Promise.resolve().then(() => {\n    console.log('microtask-a');\n  });\n\n  queueMicrotask(() => {\n    console.log('microtask-b');\n  });\n}\n\ndemonstrarPrioridade();\n\n// Saida: inicio, microtask-a, microtask-b, macrotask",
+      "solution_explanation": "Apesar de o setTimeout ser escrito primeiro, ele agenda uma macrotask, que só corre depois de a call stack ficar vazia e de a fila de microtasks estar completamente esvaziada. Como Promise.resolve().then e queueMicrotask agendam microtasks, ambas correm antes do setTimeout, pela ordem em que foram colocadas na fila."
+    },
+    {
+      "title": "Encadear microtasks dentro de microtasks",
+      "difficulty": "Intermedio",
+      "statement": "Considera o código seguinte:\n\nconsole.log('A');\n\nPromise.resolve()\n  .then(() => {\n    console.log('B');\n    return Promise.resolve();\n  })\n  .then(() => {\n    console.log('C');\n  });\n\nsetTimeout(() => {\n  console.log('D');\n}, 0);\n\nconsole.log('E');\n\nEscreve a ordem exata em que 'A', 'B', 'C', 'D' e 'E' vão aparecer na consola, e explica porque é que 'C' consegue aparecer antes de 'D', apesar de 'C' depender de uma segunda Promise que só é criada depois de 'B' já ter corrido.",
+      "hint": "Uma microtask pode agendar outra microtask; enquanto houver alguma microtask na fila (mesmo que tenha sido adicionada há poucos instantes), o event loop não avança para a macrotask do setTimeout.",
+      "solution_code": "console.log('A');\n\nPromise.resolve()\n  .then(() => {\n    console.log('B');\n    return Promise.resolve();\n  })\n  .then(() => {\n    console.log('C');\n  });\n\nsetTimeout(() => {\n  console.log('D');\n}, 0);\n\nconsole.log('E');\n\n// Ordem real: A, E, B, C, D",
+      "solution_explanation": "A e E correm logo por serem código síncrono. Depois, o event loop esvazia a fila de microtasks: o primeiro then imprime B e devolve uma nova Promise já resolvida, o que agenda de imediato uma nova microtask para o segundo then, ainda dentro da mesma fase de esvaziamento da fila. Só quando a fila de microtasks fica mesmo vazia (depois de C) é que o event loop vai buscar a macrotask D."
+    },
+    {
+      "title": "Microtask starvation: diagnosticar e corrigir",
+      "difficulty": "Avancado",
+      "statement": "O código seguinte tenta contar quantas vezes uma tarefa se repete e, ao fim de cerca de 100 milissegundos, mostrar esse total através de um setTimeout. Na prática, a mensagem do setTimeout nunca chega a aparecer:\n\nlet contador = 0;\n\nfunction repetir() {\n  contador++;\n  Promise.resolve().then(repetir);\n}\n\nrepetir();\n\nsetTimeout(() => {\n  console.log('Total de repeticoes:', contador);\n}, 100);\n\nExplica, em termos do event loop, porque é que o setTimeout nunca chega a executar, e reescreve o código de forma que o contador continue a aumentar indefinidamente, mas o setTimeout consiga mesmo assim executar ao fim de cerca de 100 milissegundos, mostrando o valor do contador nesse momento.",
+      "hint": "A fila de microtasks só é considerada vazia quando nenhuma microtask agenda outra; para a macrotask ter alguma vez oportunidade de correr, a continuação da tarefa tem de, de vez em quando, passar a ser agendada como macrotask em vez de microtask.",
+      "solution_code": "let contador = 0;\nconst LIMITE_DE_REPETICOES = 20000;\n\nfunction repetir() {\n  contador++;\n  if (contador >= LIMITE_DE_REPETICOES) {\n    return; // condicao de paragem: sem ela o programa nunca termina\n  }\n\n  if (contador % 1000 === 0) {\n    // A cada 1000 chamadas, agenda a continuacao como macrotask,\n    // devolvendo o controlo ao event loop.\n    setTimeout(repetir, 0);\n  } else {\n    Promise.resolve().then(repetir);\n  }\n}\n\nrepetir();\n\nsetTimeout(() => {\n  console.log('Total de repeticoes ao fim de ~100ms:', contador);\n}, 100);",
+      "solution_explanation": "No código original, cada microtask volta a agendar-se a si própria antes de a fila de microtasks alguma vez ficar vazia, pelo que o event loop nunca chega a verificar a fila de macrotasks e o setTimeout de monitorização fica bloqueado para sempre - isto é microtask starvation. A correção introduz pontos periódicos em que a continuação passa a ser agendada como macrotask (setTimeout) em vez de microtask, o que devolve o controlo ao event loop e permite que outras macrotasks pendentes, como o setTimeout de monitorização, finalmente executem."
+    }
+  ],
+  "summary": [
+    "JavaScript corre numa única thread: só uma instrução de cada vez ocupa a call stack.",
+    "Código assíncrono, como temporizadores, rede e eventos, é delegado às Web APIs ou às APIs do Node, fora da call stack.",
+    "Existem duas filas distintas: microtasks (Promises, queueMicrotask, continuação de await) e macrotasks (setTimeout, setInterval, I/O).",
+    "O event loop esvazia sempre toda a fila de microtasks antes de retirar a próxima macrotask.",
+    "É por isso que um Promise.resolve().then() corre sempre antes de um setTimeout(fn, 0), mesmo escrito depois no código.",
+    "Cadeias de microtasks que se auto-alimentam podem provocar microtask starvation e bloquear macrotasks e a renderização indefinidamente."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 02",
+  "next_label": "Aula 02 → Callbacks e Callback Hell",
+  "_stage": "autoria"
+}

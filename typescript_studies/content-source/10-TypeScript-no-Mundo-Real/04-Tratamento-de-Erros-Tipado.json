@@ -1,0 +1,342 @@
+{
+  "module_num": "10",
+  "module_title": "TypeScript no Mundo Real",
+  "module_dir": "10-TypeScript-no-Mundo-Real",
+  "lesson_num": "04",
+  "lesson_slug": "Tratamento-de-Erros-Tipado",
+  "kind": "aula",
+  "title": "Tratamento de Erros Tipado",
+  "filename_base": "04-Tratamento-de-Erros-Tipado",
+  "subtitle": "Do catch com unknown às classes de erro e ao padrão Resultado<T, E>",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Perceber porque é que o catch recebe unknown e o .catch de uma Promise recebe any",
+    "Estreitar um erro desconhecido com instanceof e uma função mensagemDe",
+    "Criar hierarquias de erros com campos tipados e usar a opção cause",
+    "Modelar erros de domínio com uniões discriminadas e switch exaustivo",
+    "Devolver erros no tipo de retorno com Resultado<T, E>, também em código assíncrono",
+    "Escolher entre lançar exceções e devolver um resultado"
+  ],
+  "sections": [
+    {
+      "heading": "O catch recebe unknown",
+      "body": [
+        "Em JavaScript pode lançar-se qualquer valor: throw \"texto\", throw 42, throw {}. Além disso, qualquer função chamada dentro do try pode lançar, incluindo código de bibliotecas. O TypeScript não tem forma de saber o que chega ao catch, por isso, com strict (que inclui useUnknownInCatchVariables, vista no Módulo 09), a variável do catch é unknown.",
+        "Também não é possível prometer ao compilador que só chegam objetos Error: catch (e: Error) é rejeitado com o erro TS1196, porque a única anotação permitida é any ou unknown. Anotar any é aceite, mas desliga toda a verificação.",
+        "Há uma inconsistência a conhecer: no .catch de uma Promise o parâmetro é any, mesmo em strict. A declaração em lib.es5.d.ts é catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): Promise<T | TResult>, e a flag só afeta o catch síncrono. A solução é anotar (motivo: unknown) à mão."
+      ],
+      "code": "// Em JavaScript pode lançar-se qualquer valor\nfunction arriscar(n: number): void {\n  if (n === 1) throw \"texto\";\n  if (n === 2) throw 42;\n  if (n === 3) throw {};\n  throw new Error(\"falhou\");\n}\n\ntry {\n  arriscar(1);\n} catch (e) {\n  // e: unknown (strict ativa useUnknownInCatchVariables)\n  // @ts-expect-error TS18046: 'e' is of type 'unknown'\n  console.log(e.message);\n}\n\ntry {\n  arriscar(2);\n// @ts-expect-error TS1196: a anotação do catch só pode ser any ou unknown\n} catch (e: Error) {\n  console.log(e.message);\n}\n\ntry {\n  arriscar(3);\n} catch (e: any) {\n  // permitido, mas desliga a verificação: e.message compila sem aviso\n  console.log(e.message);\n}\n\n// Na Promise o parâmetro do .catch é any (vem de lib.es5.d.ts)\nPromise.reject(new Error(\"rejeitada\")).catch((motivo) => {\n  // motivo: any, apesar do strict: um erro de escrita passa sem aviso\n  console.log(motivo.mesage); // undefined em runtime\n});\n\n// Anotar unknown à mão repõe a segurança\nPromise.reject(new Error(\"rejeitada\")).catch((motivo: unknown) => {\n  // @ts-expect-error TS18046: 'motivo' is of type 'unknown'\n  console.log(motivo.message);\n});",
+      "callout_kind": "ATENCAO",
+      "callout_text": "O TS1196 é um erro semântico e pode ser suprimido com @ts-expect-error na linha do catch, mas isso não muda nada: o valor continua a poder ser qualquer coisa. Num try/catch com await, o erro volta a ser unknown; só o callback do .catch fica com any.",
+      "table_headers": [
+        "Onde",
+        "Tipo do erro em strict",
+        "Anotação possível"
+      ],
+      "table_rows": [
+        [
+          "catch (e) síncrono ou com await",
+          "unknown",
+          "any ou unknown (outra dá TS1196)"
+        ],
+        [
+          "promessa.catch(motivo => ...)",
+          "any (reason: any na lib)",
+          "qualquer tipo; usar unknown"
+        ],
+        [
+          "then(ok, motivo => ...)",
+          "any",
+          "qualquer tipo; usar unknown"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🎲",
+          "text": "Em JS lança-se qualquer valor: texto, número, objeto"
+        },
+        {
+          "icon": "❓",
+          "text": "Em strict, a variável do catch é unknown"
+        },
+        {
+          "icon": "🚫",
+          "text": "catch (e: Error) dá TS1196: só any ou unknown"
+        },
+        {
+          "icon": "⚠️",
+          "text": "No .catch da Promise o parâmetro é any (lib.es5.d.ts)"
+        },
+        {
+          "icon": "🛡️",
+          "text": "Anotar (motivo: unknown) repõe a verificação"
+        }
+      ]
+    },
+    {
+      "heading": "Estreitar o erro",
+      "body": [
+        "Com unknown, o compilador obriga a verificar antes de usar. O caso comum é instanceof Error, que dá acesso a message, name e cause. Mas é preciso decidir o que fazer com valores que não são Error.",
+        "Uma função auxiliar mensagemDe(e: unknown): string concentra essa decisão num só sítio e evita repetir a mesma cadeia de verificações em cada catch. O operador in e o typeof estreitam também objetos simples com uma propriedade message."
+      ],
+      "code": "function mensagemDe(e: unknown): string {\n  if (e instanceof Error) return e.message;\n  if (typeof e === \"string\") return e;\n  if (typeof e === \"object\" && e !== null && \"message\" in e && typeof e.message === \"string\") {\n    return e.message;\n  }\n  return `valor lançado não reconhecido: ${String(e)}`;\n}\n\nconst lancamentos: (() => never)[] = [\n  () => { throw new Error(\"disco cheio\"); },\n  () => { throw \"sem permissão\"; },\n  () => { throw { message: \"objeto com message\" }; },\n  () => { throw 42; },\n];\n\nfor (const lancar of lancamentos) {\n  try {\n    lancar();\n  } catch (e) {\n    console.log(mensagemDe(e));\n  }\n}\n// disco cheio\n// sem permissão\n// objeto com message\n// valor lançado não reconhecido: 42",
+      "callout_kind": "DICA",
+      "callout_text": "String(e) nunca falha para valores primitivos e dá um texto legível para registos. Evite JSON.stringify como recurso universal: dá undefined para funções e lança com referências circulares.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔍",
+          "text": "instanceof Error dá acesso a message, name e cause"
+        },
+        {
+          "icon": "🧰",
+          "text": "mensagemDe(e: unknown): string centraliza a decisão"
+        },
+        {
+          "icon": "🧩",
+          "text": "typeof e in tratam textos e objetos com message"
+        },
+        {
+          "icon": "🪂",
+          "text": "Prever sempre um ramo para valores não reconhecidos"
+        }
+      ]
+    },
+    {
+      "heading": "Classes de erro próprias",
+      "body": [
+        "Uma subclasse de Error pode ter campos tipados, aqui declarados com parameter properties (Módulo 08). Uma classe base ErroApp define name a partir de new.target.name, para que cada subclasse fique com o nome certo sem o repetir. Numa cadeia de instanceof, as classes mais específicas vêm primeiro, porque um ErroValidacao também é ErroApp e Error.",
+        "Com target es2022, o instanceof funciona sem Object.setPrototypeOf(this, Nova.prototype): as classes são nativas e a herança de Error é correta. Esse truque só era necessário a compilar para ES5, onde a instância de uma subclasse de Error deixava de passar em instanceof e perdia os métodos da subclasse.",
+        "A opção cause (ES2022) liga um erro ao que o provocou: new Error(\"x\", { cause }). Nas declarações da lib, ErrorOptions tem cause?: unknown e a propriedade Error.cause também é unknown, pelo que precisa de estreitamento como qualquer outro erro."
+      ],
+      "code": "class ErroApp extends Error {\n  constructor(mensagem: string, options?: ErrorOptions) {\n    super(mensagem, options);\n    this.name = new.target.name;\n  }\n}\n\nclass ErroValidacao extends ErroApp {\n  constructor(\n    public readonly campo: string,\n    public readonly codigo: \"obrigatorio\" | \"formato\",\n  ) {\n    super(`campo ${campo} inválido (${codigo})`);\n  }\n}\n\nclass ErroNaoEncontrado extends ErroApp {\n  constructor(public readonly id: number, options?: ErrorOptions) {\n    super(`registo ${id} não existe`, options);\n  }\n}\n\nfunction tratar(e: unknown): string {\n  if (e instanceof ErroValidacao) return `${e.name}: ${e.campo} / ${e.codigo}`;\n  if (e instanceof ErroNaoEncontrado) return `${e.name}: id ${e.id}`;\n  if (e instanceof ErroApp) return `${e.name}: ${e.message}`;\n  if (e instanceof Error) return `Error genérico: ${e.message}`;\n  return \"valor não-Error\";\n}\n\nconst casos: unknown[] = [\n  new ErroValidacao(\"email\", \"formato\"),\n  new ErroNaoEncontrado(7),\n  new ErroApp(\"falha da aplicação\"),\n  new TypeError(\"x is not a function\"),\n  \"texto\",\n];\nfor (const c of casos) console.log(tratar(c));\n// ErroValidacao: email / formato\n// ErroNaoEncontrado: id 7\n// ErroApp: falha da aplicação\n// Error genérico: x is not a function\n// valor não-Error\n\n// A opção cause (ES2022) guarda o erro original\ntry {\n  try {\n    throw new Error(\"timeout na base de dados\");\n  } catch (original) {\n    throw new ErroNaoEncontrado(7, { cause: original });\n  }\n} catch (e) {\n  if (e instanceof Error) {\n    const causa = e.cause; // causa: unknown\n    console.log(e.message, \"<-\", causa instanceof Error ? causa.message : causa);\n  }\n}\n// registo 7 não existe <- timeout na base de dados",
+      "callout_kind": "NOTA",
+      "callout_text": "Verificado com TypeScript 5.9: a mesma classe compilada com target es5 dá false em instanceof da subclasse e o método da subclasse fica undefined. Com es2022 dá true sem setPrototypeOf.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏷️",
+          "text": "Subclasses de Error com campos tipados (campo, codigo)"
+        },
+        {
+          "icon": "🧬",
+          "text": "name = new.target.name dá o nome de cada subclasse"
+        },
+        {
+          "icon": "🪜",
+          "text": "Na cadeia de instanceof, o mais específico primeiro"
+        },
+        {
+          "icon": "✅",
+          "text": "Com es2022 não é preciso Object.setPrototypeOf"
+        },
+        {
+          "icon": "🔗",
+          "text": "new Error(msg, { cause }): cause é unknown"
+        }
+      ]
+    },
+    {
+      "heading": "Erros de domínio como união discriminada",
+      "body": [
+        "Nem todo o erro precisa de ser uma exceção. Os erros previstos de um domínio podem ser dados simples, descritos por uma união discriminada com um campo tipo. Cada variante leva só os campos de que precisa.",
+        "O switch com o ramo default que atribui a never (Módulo 04) garante que, ao acrescentar uma variante nova, todos os sítios que a tratam deixam de compilar até serem atualizados. É uma garantia que a cadeia de instanceof não dá."
+      ],
+      "code": "type ErroDominio =\n  | { tipo: \"rede\"; tentativas: number }\n  | { tipo: \"validacao\"; campo: string }\n  | { tipo: \"naoEncontrado\"; id: number };\n\nfunction descrever(erro: ErroDominio): string {\n  switch (erro.tipo) {\n    case \"rede\":\n      return `rede indisponível após ${erro.tentativas} tentativas`;\n    case \"validacao\":\n      return `campo inválido: ${erro.campo}`;\n    case \"naoEncontrado\":\n      return `não existe o registo ${erro.id}`;\n    default: {\n      const impossivel: never = erro;\n      return impossivel;\n    }\n  }\n}\n\nconst erros: ErroDominio[] = [\n  { tipo: \"rede\", tentativas: 3 },\n  { tipo: \"validacao\", campo: \"nif\" },\n  { tipo: \"naoEncontrado\", id: 12 },\n];\nfor (const e of erros) console.log(descrever(e));\n// rede indisponível após 3 tentativas\n// campo inválido: nif\n// não existe o registo 12",
+      "callout_kind": "DICA",
+      "callout_text": "Objetos simples não têm stack, são fáceis de serializar e de comparar em testes. Guarde as classes de erro para falhas que precisam de atravessar camadas como exceção.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🗂️",
+          "text": "Erros previstos como dados: { tipo: \"rede\" | ... }"
+        },
+        {
+          "icon": "🎯",
+          "text": "Cada variante tem só os campos de que precisa"
+        },
+        {
+          "icon": "🔒",
+          "text": "default com never torna o switch exaustivo"
+        },
+        {
+          "icon": "🆕",
+          "text": "Nova variante faz falhar a compilação onde falta tratar"
+        }
+      ]
+    },
+    {
+      "heading": "O padrão Resultado<T, E>",
+      "body": [
+        "Em vez de lançar, a função devolve um objeto que diz se correu bem: type Resultado<T, E> = { ok: true; valor: T } | { ok: false; erro: E }. O campo ok é o discriminante, e if (r.ok) estreita r para a variante com valor ou para a variante com erro.",
+        "As funções auxiliares ok() e falha() precisam de cuidado com a inferência. Sem anotação, return { ok: true, valor } é inferido como { ok: boolean; valor: T }, porque o literal true alarga para boolean numa propriedade de objeto, e o resultado deixa de ser atribuível a Resultado. Resolve-se com a anotação do tipo de retorno, como no exemplo, ou com ok: true as const."
+      ],
+      "code": "type Resultado<T, E> = { ok: true; valor: T } | { ok: false; erro: E };\n\n// Sem a anotação de retorno, { ok: true, valor } seria { ok: boolean; valor: T }\nfunction ok<T>(valor: T): { ok: true; valor: T } {\n  return { ok: true, valor };\n}\nfunction falha<E>(erro: E): { ok: false; erro: E } {\n  return { ok: false, erro };\n}\n\ntype ErroDivisao = \"divisaoPorZero\" | \"naoFinito\";\n\nfunction dividir(a: number, b: number): Resultado<number, ErroDivisao> {\n  if (b === 0) return falha(\"divisaoPorZero\");\n  const q = a / b;\n  if (!Number.isFinite(q)) return falha(\"naoFinito\");\n  return ok(q);\n}\n\nfor (const [a, b] of [[10, 4], [1, 0]] as const) {\n  const r = dividir(a, b);\n  if (r.ok) {\n    console.log(\"valor:\", r.valor); // r: { ok: true; valor: number }\n  } else {\n    console.log(\"erro:\", r.erro); // r: { ok: false; erro: ErroDivisao }\n  }\n}\n// valor: 2.5\n// erro: divisaoPorZero",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Medido com tsc: function ok<T>(valor: T) { return { ok: true, valor }; } tem retorno { ok: boolean; valor: T }. Com ok: true as const passa a { ok: true; valor: T }.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "Resultado<T, E> = { ok: true; valor } | { ok: false; erro }"
+        },
+        {
+          "icon": "🔀",
+          "text": "if (r.ok) estreita para valor ou para erro"
+        },
+        {
+          "icon": "📏",
+          "text": "Sem anotação, ok: true alarga para boolean"
+        },
+        {
+          "icon": "🛠️",
+          "text": "Anotar o retorno de ok()/falha() ou usar as const"
+        }
+      ]
+    },
+    {
+      "heading": "Resultado assíncrono e o envolvedor tentar",
+      "body": [
+        "Em código assíncrono o padrão é o mesmo, dentro de uma Promise: Promise<Resultado<T, E>>. Uma função que devolve este tipo nunca rejeita, pelo que quem a chama pode fazer await sem try/catch e sem risco de uma rejeição por tratar.",
+        "O envolvedor tentar(fn) faz a ponte entre os dois mundos: executa uma função que pode lançar, apanha a exceção uma única vez e converte-a em Resultado. Como o erro chega como unknown, tentar normaliza-o para Error antes de o devolver."
+      ],
+      "code": "type Resultado<T, E> = { ok: true; valor: T } | { ok: false; erro: E };\n\nasync function tentar<T>(fn: () => Promise<T>): Promise<Resultado<T, Error>> {\n  try {\n    return { ok: true, valor: await fn() };\n  } catch (e) {\n    const erro = e instanceof Error ? e : new Error(String(e));\n    return { ok: false, erro };\n  }\n}\n\n// Simulação local de um serviço remoto (sem rede)\nasync function obterPreco(codigo: string): Promise<number> {\n  if (codigo === \"A1\") return 19.9;\n  throw new Error(`produto ${codigo} indisponível`);\n}\n\nconst r1 = await tentar(() => obterPreco(\"A1\"));\nconst r2 = await tentar(() => obterPreco(\"Z9\"));\n\nfor (const r of [r1, r2]) {\n  if (r.ok) console.log(\"preço:\", r.valor);\n  else console.log(\"falhou:\", r.erro.message);\n}\n// preço: 19.9\n// falhou: produto Z9 indisponível",
+      "callout_kind": "NOTA",
+      "callout_text": "tentar só apanha o que a Promise rejeita dentro do await. Por isso recebe uma função () => Promise<T> e não a Promise já criada: assim, também um throw síncrono no início de fn é convertido.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⏳",
+          "text": "Promise<Resultado<T, E>> nunca rejeita"
+        },
+        {
+          "icon": "🌉",
+          "text": "tentar(fn) converte exceções em Resultado"
+        },
+        {
+          "icon": "🧹",
+          "text": "O unknown do catch é normalizado para Error uma vez"
+        },
+        {
+          "icon": "✨",
+          "text": "Quem chama usa await sem try/catch"
+        }
+      ]
+    },
+    {
+      "heading": "Não há throws nas assinaturas",
+      "body": [
+        "O TypeScript não tem checked exceptions: não existe uma cláusula throws na assinatura, e number é tudo o que o tipo de lerPortaOuLancar diz. O compilador não sabe, nem verifica, que ela pode lançar RangeError, e nada obriga quem a chama a tratar o erro.",
+        "O Resultado põe o erro no tipo de retorno, onde o compilador o vê. A escolha não é exclusiva: é comum usar Resultado para falhas previstas do domínio e deixar as exceções para erros de programação e situações irrecuperáveis."
+      ],
+      "code": "type Resultado<T, E> = { ok: true; valor: T } | { ok: false; erro: E };\n\n// A assinatura não revela que pode lançar\nfunction lerPortaOuLancar(texto: string): number {\n  const n = Number(texto);\n  if (!Number.isInteger(n)) throw new RangeError(`porta inválida: ${texto}`);\n  return n;\n}\n\n// Aqui o erro faz parte do tipo de retorno\nfunction lerPorta(texto: string): Resultado<number, \"naoInteiro\"> {\n  const n = Number(texto);\n  return Number.isInteger(n) ? { ok: true, valor: n } : { ok: false, erro: \"naoInteiro\" };\n}\n\ntry {\n  console.log(lerPortaOuLancar(\"abc\"));\n} catch (e) {\n  console.log(e instanceof RangeError ? e.message : \"outro erro\");\n}\nconst r = lerPorta(\"abc\");\nconsole.log(r.ok ? r.valor : r.erro);\n// porta inválida: abc\n// naoInteiro",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Escolher uma função que lance um erro previsto (por exemplo, dados inválidos do utilizador) e reescrevê-la para devolver Resultado. Contar quantos sítios que a chamam passam a ter de tratar o caso de erro.",
+      "table_headers": [
+        "Critério",
+        "Lançar exceção",
+        "Devolver Resultado"
+      ],
+      "table_rows": [
+        [
+          "Visível na assinatura",
+          "Não",
+          "Sim, no tipo de retorno"
+        ],
+        [
+          "Tipo do erro em quem trata",
+          "unknown",
+          "E, conhecido"
+        ],
+        [
+          "Obriga a tratar",
+          "Não",
+          "Sim, para chegar ao valor"
+        ],
+        [
+          "Propagação por várias camadas",
+          "Automática",
+          "Manual, camada a camada"
+        ],
+        [
+          "Custo e ruído",
+          "Baixo no caminho feliz",
+          "Um if em cada chamada"
+        ],
+        [
+          "Quando usar",
+          "Bugs, falhas irrecuperáveis, fronteiras",
+          "Falhas previstas do domínio"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🙈",
+          "text": "Sem checked exceptions: a assinatura não diz o que lança"
+        },
+        {
+          "icon": "👁️",
+          "text": "Resultado põe o erro no tipo de retorno"
+        },
+        {
+          "icon": "⚖️",
+          "text": "Lançar: bugs e falhas irrecuperáveis"
+        },
+        {
+          "icon": "📋",
+          "text": "Resultado: falhas previstas do domínio"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Descrever qualquer valor lançado",
+      "difficulty": "Iniciante",
+      "statement": "Escreva uma função descreverErro(e: unknown): string que devolva \"Nome: mensagem\" para objetos Error (por exemplo, \"TypeError: mau tipo\"), \"texto: ...\" para strings, \"número: ...\" para números e \"desconhecido\" para qualquer outro valor. Teste-a lançando new TypeError(\"mau tipo\"), \"ups\", 404 e null dentro de um try/catch.",
+      "hint": "Comece por instanceof Error e use typeof para os primitivos; o último return cobre o resto.",
+      "solution_code": "function descreverErro(e: unknown): string {\n  if (e instanceof Error) return `${e.name}: ${e.message}`;\n  if (typeof e === \"string\") return `texto: ${e}`;\n  if (typeof e === \"number\") return `número: ${e}`;\n  return \"desconhecido\";\n}\n\nconst testes: unknown[] = [new TypeError(\"mau tipo\"), \"ups\", 404, null];\nfor (const t of testes) {\n  try {\n    throw t;\n  } catch (e) {\n    console.log(descreverErro(e));\n  }\n}\n// TypeError: mau tipo\n// texto: ups\n// número: 404\n// desconhecido",
+      "solution_explanation": "O parâmetro unknown obriga a estreitar antes de usar. Cada verificação estreita e para um tipo concreto e o ramo final apanha valores como null, que também podem ser lançados."
+    },
+    {
+      "title": "Erro de saldo com campos tipados",
+      "difficulty": "Intermedio",
+      "statement": "Crie uma classe ErroSaldo que estenda Error, com os campos só de leitura saldo e pedido (números), name igual a \"ErroSaldo\" e um getter emFalta. Escreva levantar(saldo, valor) que lança RangeError se o valor não for positivo, ErroSaldo se exceder o saldo e caso contrário devolve o novo saldo. Chame-a com saldo 100 e valores 30, 150 e -5, tratando cada erro com instanceof.",
+      "hint": "Parameter properties declaram os campos no construtor. Verifique ErroSaldo antes de Error na cadeia.",
+      "solution_code": "class ErroSaldo extends Error {\n  constructor(\n    public readonly saldo: number,\n    public readonly pedido: number,\n  ) {\n    super(`saldo insuficiente: ${saldo} < ${pedido}`);\n    this.name = \"ErroSaldo\";\n  }\n  get emFalta(): number {\n    return this.pedido - this.saldo;\n  }\n}\n\nfunction levantar(saldo: number, valor: number): number {\n  if (valor <= 0) throw new RangeError(\"o valor tem de ser positivo\");\n  if (valor > saldo) throw new ErroSaldo(saldo, valor);\n  return saldo - valor;\n}\n\nfor (const valor of [30, 150, -5]) {\n  try {\n    console.log(\"novo saldo:\", levantar(100, valor));\n  } catch (e) {\n    if (e instanceof ErroSaldo) console.log(`${e.name}: faltam ${e.emFalta}`);\n    else if (e instanceof Error) console.log(`${e.name}: ${e.message}`);\n    else console.log(\"erro desconhecido\");\n  }\n}\n// novo saldo: 70\n// ErroSaldo: faltam 50\n// RangeError: o valor tem de ser positivo",
+      "solution_explanation": "Depois de e instanceof ErroSaldo, o compilador conhece emFalta, saldo e pedido. Com target es2022 não é preciso Object.setPrototypeOf para o instanceof funcionar."
+    },
+    {
+      "title": "Ler uma idade sem lançar",
+      "difficulty": "Intermedio",
+      "statement": "Defina Resultado<T, E> e uma união ErroIdade com as variantes vazio, naoNumero (com o texto recebido) e foraDoIntervalo (com o valor). Escreva lerIdade(texto: string): Resultado<number, ErroIdade>, que aceita inteiros de 0 a 130, e explicar(erro: ErroIdade): string com um switch exaustivo. Teste com \"42\", \"  \", \"doze\" e \"200\".",
+      "hint": "Use trim e Number.isInteger. No default do switch, atribua o erro a uma variável do tipo never.",
+      "solution_code": "type Resultado<T, E> = { ok: true; valor: T } | { ok: false; erro: E };\n\ntype ErroIdade =\n  | { tipo: \"vazio\" }\n  | { tipo: \"naoNumero\"; texto: string }\n  | { tipo: \"foraDoIntervalo\"; valor: number };\n\nfunction lerIdade(texto: string): Resultado<number, ErroIdade> {\n  const limpo = texto.trim();\n  if (limpo === \"\") return { ok: false, erro: { tipo: \"vazio\" } };\n  const n = Number(limpo);\n  if (!Number.isInteger(n)) return { ok: false, erro: { tipo: \"naoNumero\", texto: limpo } };\n  if (n < 0 || n > 130) return { ok: false, erro: { tipo: \"foraDoIntervalo\", valor: n } };\n  return { ok: true, valor: n };\n}\n\nfunction explicar(erro: ErroIdade): string {\n  switch (erro.tipo) {\n    case \"vazio\":\n      return \"a idade é obrigatória\";\n    case \"naoNumero\":\n      return `\"${erro.texto}\" não é um número inteiro`;\n    case \"foraDoIntervalo\":\n      return `${erro.valor} está fora de 0 a 130`;\n    default: {\n      const impossivel: never = erro;\n      return impossivel;\n    }\n  }\n}\n\nfor (const entrada of [\"42\", \"  \", \"doze\", \"200\"]) {\n  const r = lerIdade(entrada);\n  console.log(r.ok ? `idade ${r.valor}` : explicar(r.erro));\n}\n// idade 42\n// a idade é obrigatória\n// \"doze\" não é um número inteiro\n// 200 está fora de 0 a 130",
+      "solution_explanation": "Todos os erros possíveis estão no tipo de retorno, e quem chama tem de verificar r.ok para chegar ao valor. O never no default garante que uma variante nova em ErroIdade faz falhar a compilação de explicar."
+    },
+    {
+      "title": "tentar com conversão de erro",
+      "difficulty": "Avancado",
+      "statement": "Escreva uma função genérica tentarCom<T, E>(fn: () => Promise<T>, mapear: (e: unknown) => E): Promise<Resultado<T, E>> que nunca rejeita. Defina uma união ErroServico com as variantes rede (com mensagem) e desconhecido (com o valor original), e uma função paraErroServico que faça a conversão. Use-a com uma função local assíncrona obterStock que devolve 12 para \"A1\", lança new Error(\"ligação recusada\") para \"B2\" e lança o texto \"código estranho\" para os restantes.",
+      "hint": "O try/catch fica dentro de tentarCom, à volta do await fn(). E é inferido a partir do retorno de mapear.",
+      "solution_code": "type Resultado<T, E> = { ok: true; valor: T } | { ok: false; erro: E };\n\ntype ErroServico =\n  | { tipo: \"rede\"; mensagem: string }\n  | { tipo: \"desconhecido\"; valor: unknown };\n\nasync function tentarCom<T, E>(\n  fn: () => Promise<T>,\n  mapear: (e: unknown) => E,\n): Promise<Resultado<T, E>> {\n  try {\n    return { ok: true, valor: await fn() };\n  } catch (e) {\n    return { ok: false, erro: mapear(e) };\n  }\n}\n\nfunction paraErroServico(e: unknown): ErroServico {\n  if (e instanceof Error) return { tipo: \"rede\", mensagem: e.message };\n  return { tipo: \"desconhecido\", valor: e };\n}\n\n// Serviço simulado localmente\nasync function obterStock(codigo: string): Promise<number> {\n  if (codigo === \"A1\") return 12;\n  if (codigo === \"B2\") throw new Error(\"ligação recusada\");\n  throw \"código estranho\";\n}\n\nfor (const codigo of [\"A1\", \"B2\", \"C3\"]) {\n  const r = await tentarCom(() => obterStock(codigo), paraErroServico);\n  if (r.ok) {\n    console.log(`${codigo}: ${r.valor} unidades`);\n  } else if (r.erro.tipo === \"rede\") {\n    console.log(`${codigo}: falha de rede (${r.erro.mensagem})`);\n  } else {\n    console.log(`${codigo}: erro desconhecido (${String(r.erro.valor)})`);\n  }\n}\n// A1: 12 unidades\n// B2: falha de rede (ligação recusada)\n// C3: erro desconhecido (código estranho)",
+      "solution_explanation": "tentarCom isola o único catch e entrega o unknown a mapear, que o transforma num tipo de domínio. Quem chama estreita primeiro por r.ok e depois por r.erro.tipo, sem nenhum try/catch."
+    }
+  ],
+  "summary": [
+    "Em strict o catch recebe unknown; catch (e: Error) dá TS1196 e só any ou unknown são aceites",
+    "O .catch de uma Promise recebe any (reason: any em lib.es5.d.ts); anote unknown à mão",
+    "Estreite com instanceof Error e concentre a lógica numa função como mensagemDe",
+    "Subclasses de Error com campos tipados funcionam em es2022 sem setPrototypeOf; cause é unknown",
+    "Erros de domínio como união discriminada com switch exaustivo e never",
+    "Resultado<T, E> põe o erro no tipo de retorno, algo que o TypeScript não faz com exceções"
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para o Módulo 11",
+  "next_label": "Aula 01 → Migrar JavaScript para TypeScript"
+}

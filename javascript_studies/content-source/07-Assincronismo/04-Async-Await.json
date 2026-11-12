@@ -1,0 +1,230 @@
+{
+  "module_num": "07",
+  "module_title": "Assincronismo",
+  "module_dir": "07-Assincronismo",
+  "lesson_num": "04",
+  "lesson_slug": "Async-Await",
+  "kind": "aula",
+  "title": "async/await",
+  "filename_base": "04-Async-Await",
+  "subtitle": "Como await transforma promises em código sequencial, com erros e paralelismo sob controlo.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Perceber que async/await é açúcar sintático sobre Promises, e não um mecanismo assíncrono à parte.",
+    "Tratar erros assíncronos com try/catch/finally da mesma forma que se trata código síncrono.",
+    "Distinguir quando sequenciar awaits (um depende do outro) e quando paralelizar com Promise.all.",
+    "Usar top-level await em módulos ES para inicializações assíncronas.",
+    "Identificar e corrigir os erros mais comuns ao escrever código com async/await."
+  ],
+  "sections": [
+    {
+      "heading": "async/await como açúcar sintático sobre Promises",
+      "body": [
+        "Uma função declarada com async devolve sempre uma Promise, mesmo que dentro dela apenas se escreva um return normal. Se o valor devolvido não for já uma Promise, o JavaScript embrulha-o automaticamente numa Promise resolvida; se for lançada uma exceção dentro da função, essa Promise fica rejeitada com o erro correspondente. Dentro de uma função async, a palavra-chave await pode ser colocada antes de qualquer expressão que produza uma Promise, e faz com que a execução dessa função (só dessa função, não do programa inteiro) pare ali até a Promise ficar settled, devolvendo depois o valor resolvido ou lançando o valor de rejeição como uma exceção normal.",
+        "É importante perceber que await não bloqueia a thread principal nem o resto da aplicação: enquanto uma função async está à espera de um await, o motor de JavaScript continua a processar outras tarefas na fila de eventos, e só volta a essa função quando a Promise fica settled. Por baixo do capô, async/await não é mais do que uma forma de escrever cadeias de .then e .catch de maneira sequencial e legível; qualquer código com await pode, em teoria, ser reescrito com .then, mas fica normalmente mais difícil de seguir à medida que a lógica cresce."
+      ],
+      "code": "function obterUtilizadorPromise(id) {\n  return fetch(`/api/utilizadores/${id}`).then(res => res.json());\n}\n\nasync function mostrarUtilizador(id) {\n  const utilizador = await obterUtilizadorPromise(id);\n  console.log(utilizador.nome);\n}\n\nmostrarUtilizador(1);\n\n// Uma função async devolve sempre uma Promise\nasync function saudacao() {\n  return \"Olá\";\n}\n\nsaudacao().then(valor => console.log(valor)); // \"Olá\"",
+      "callout_kind": "NOTA",
+      "callout_text": "await só pode ser usado dentro de uma função async, ou no topo de um módulo ES com top-level await, como se vê mais à frente nesta aula.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🍬",
+          "text": "async/await é açúcar sintático sobre Promises"
+        },
+        {
+          "icon": "⏳",
+          "text": "await pausa a função até a Promise resolver"
+        },
+        {
+          "icon": "📦",
+          "text": "Uma função async devolve sempre uma Promise"
+        }
+      ]
+    },
+    {
+      "heading": "Tratamento de erros com try/catch",
+      "body": [
+        "Quando uma Promise usada com await é rejeitada, o await não devolve um valor: lança uma exceção no ponto onde está escrito, exatamente como aconteceria com throw em código síncrono. Isto permite envolver o código assíncrono num bloco try, e tratar o erro num bloco catch tal como se faria com qualquer exceção síncrona, incluindo capturar erros HTTP, falhas de rede ou erros lançados explicitamente com throw dentro da própria função.",
+        "O bloco finally continua a funcionar da mesma forma que em código síncrono, correndo sempre no final, quer tenha havido erro quer não, o que o torna útil para tarefas de limpeza como fechar ligações ou parar indicadores de carregamento. Um pormenor a não esquecer é que, se uma função async não capturar um erro internamente, esse erro não desaparece: a Promise devolvida pela própria função fica rejeitada, e quem a chamar tem de a tratar, seja com outro try/catch à volta do await, seja com um .catch() na chamada."
+      ],
+      "code": "async function carregarDados(url) {\n  try {\n    const resposta = await fetch(url);\n\n    if (!resposta.ok) {\n      throw new Error(`Erro HTTP: ${resposta.status}`);\n    }\n\n    const dados = await resposta.json();\n    return dados;\n  } catch (erro) {\n    console.error(\"Falha ao carregar dados:\", erro.message);\n    throw erro; // relança para quem chamou decidir o que fazer\n  } finally {\n    console.log(\"Pedido terminado\");\n  }\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Se uma função async não tratar o erro internamente com try/catch, a Promise que ela devolve fica rejeitada; quem a chama tem de tratar esse erro, com outro try/catch à volta do await ou com .catch().",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🛡️",
+          "text": "try/catch apanha erros lançados por await"
+        },
+        {
+          "icon": "🔁",
+          "text": "finally corre sempre, com erro ou sem erro"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Erro não apanhado rejeita a Promise da função"
+        }
+      ]
+    },
+    {
+      "heading": "Sequenciar awaits (execução em série)",
+      "body": [
+        "Quando se escrevem vários awaits seguidos dentro da mesma função, cada um só arranca depois do anterior estar completamente resolvido. Isto é o comportamento correto sempre que um passo precisa mesmo do resultado do passo anterior, por exemplo obter um utilizador e só depois, com o id desse utilizador, obter os seus posts. Mas quando as operações não dependem umas das outras, escrever await em série faz esperar sem necessidade: o tempo total acaba por ser a soma do tempo de cada operação, em vez do tempo apenas da mais lenta."
+      ],
+      "code": "function esperar(ms, valor) {\n  return new Promise(resolve => setTimeout(() => resolve(valor), ms));\n}\n\nasync function emSerie() {\n  console.time(\"serie\");\n  const a = await esperar(1000, \"A\"); // espera 1000ms\n  const b = await esperar(1000, \"B\"); // só arranca depois do anterior acabar\n  console.timeEnd(\"serie\"); // aproximadamente 2000ms\n  return [a, b];\n}",
+      "callout_kind": "DICA",
+      "callout_text": "Só faz sentido esperar em série quando um passo precisa mesmo do resultado do anterior; caso contrário, considera paralelizar com Promise.all, como se vê na secção seguinte.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🐢",
+          "text": "Awaits em série somam os tempos de espera"
+        },
+        {
+          "icon": "➡️",
+          "text": "Usar quando um passo depende do anterior"
+        }
+      ]
+    },
+    {
+      "heading": "Paralelizar com Promise.all",
+      "body": [
+        "Quando várias tarefas assíncronas são independentes entre si, o padrão correto é iniciá-las todas ao mesmo tempo e só depois esperar por todas em conjunto, em vez de esperar uma de cada vez. Promise.all recebe um array de Promises já iniciadas e devolve uma única Promise que resolve com um array de resultados, na mesma ordem em que as Promises foram passadas, assim que todas tiverem terminado.",
+        "Se qualquer uma das Promises passadas a Promise.all rejeitar, a Promise devolvida rejeita imediatamente com esse erro, mesmo que as restantes ainda estejam a decorrer, o que é adequado quando basta uma falha para invalidar o resultado conjunto. Quando, pelo contrário, se quer saber o resultado de todas as tarefas mesmo que algumas falhem, existe Promise.allSettled, que espera sempre por todas e devolve um array com o estado (cumprida ou rejeitada) e o valor ou erro de cada uma."
+      ],
+      "code": "function esperar(ms, valor) {\n  return new Promise(resolve => setTimeout(() => resolve(valor), ms));\n}\n\nasync function emParalelo() {\n  console.time(\"paralelo\");\n  const [a, b] = await Promise.all([\n    esperar(1000, \"A\"),\n    esperar(1000, \"B\"),\n  ]);\n  console.timeEnd(\"paralelo\"); // aproximadamente 1000ms\n  return [a, b];\n}",
+      "callout_kind": "DICA",
+      "callout_text": "Quando queres o resultado de todas as tarefas mesmo que algumas falhem, usa Promise.allSettled em vez de Promise.all.",
+      "table_headers": [
+        "Abordagem",
+        "Tempo total aproximado",
+        "Quando usar"
+      ],
+      "table_rows": [
+        [
+          "await em série (um a seguir ao outro)",
+          "soma do tempo de cada await",
+          "quando cada passo precisa do resultado do anterior"
+        ],
+        [
+          "Promise.all([...])",
+          "tempo da tarefa mais lenta",
+          "quando as tarefas são independentes entre si"
+        ],
+        [
+          "Promise.allSettled([...])",
+          "tempo da tarefa mais lenta",
+          "quando se quer todos os resultados, mesmo que alguns falhem"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "⚡",
+          "text": "Promise.all corre tudo ao mesmo tempo"
+        },
+        {
+          "icon": "🏁",
+          "text": "Tempo total = o da tarefa mais lenta"
+        },
+        {
+          "icon": "🎯",
+          "text": "Só para tarefas independentes entre si"
+        }
+      ]
+    },
+    {
+      "heading": "Top-level await em módulos ES",
+      "body": [
+        "Desde o ES2022, os módulos ECMAScript suportam top-level await, ou seja, a possibilidade de usar await diretamente no nível de topo de um módulo, fora de qualquer função async. Isto é útil para inicializações que dependem de operações assíncronas, como carregar configuração de um servidor antes do resto do módulo poder ser usado, ou fazer um import() dinâmico condicional logo no arranque do módulo.",
+        "Esta funcionalidade só está disponível em módulos ES, não em scripts comuns nem em CommonJS: no browser é preciso carregar o ficheiro com script type module, e no Node.js o ficheiro tem de ter a extensão .mjs, ou o projeto tem de ter \"type\": \"module\" no package.json. Um módulo que use top-level await faz com que qualquer outro módulo que o importe espere também pela resolução desse await antes de continuar, o que deve ser tido em conta para não atrasar desnecessariamente o arranque da aplicação."
+      ],
+      "code": "// configuracao.mjs\nconst resposta = await fetch(\"https://api.exemplo.com/configuracao\");\nexport const configuracao = await resposta.json();\n\nconsole.log(\"Configuração carregada:\", configuracao);\n\n// principal.mjs\nimport { configuracao } from \"./configuracao.mjs\";\n\nconsole.log(\"A usar configuração:\", configuracao);",
+      "callout_kind": "NOTA",
+      "callout_text": "Top-level await só funciona em módulos ES: no browser com script type module, no Node.js em ficheiros .mjs ou num projeto com type module no package.json.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🌐",
+          "text": "await direto no topo de um módulo ES"
+        },
+        {
+          "icon": "📄",
+          "text": "Precisa de .mjs ou type: module"
+        },
+        {
+          "icon": "🚫",
+          "text": "Não funciona em scripts normais nem CommonJS"
+        }
+      ]
+    },
+    {
+      "heading": "Erros comuns e más práticas",
+      "body": [
+        "O erro mais frequente é esquecer o await antes de uma chamada que devolve uma Promise. Como o JavaScript não avisa disto em tempo de execução, a variável fica simplesmente com o objeto Promise em vez do valor esperado, e o erro só aparece mais tarde, por exemplo ao tentar aceder a uma propriedade que não existe num objeto Promise, ou ao concatenar esse objeto numa string.",
+        "Outro erro comum é misturar .then com await sem necessidade, escrevendo algo como await promessa.then(valor => valor), quando bastaria await promessa. Isto não é tecnicamente incorreto, mas mistura dois estilos diferentes de lidar com Promises na mesma linha, tornando o código mais difícil de ler e de depurar. A recomendação é escolher um estilo por função: se a função é async, usar await de forma consistente, e reservar .then/.catch para os casos em que não se está dentro de uma função async."
+      ],
+      "code": "function obterUtilizadorPromise(id) {\n  return Promise.resolve({ id, nome: \"Ana\" });\n}\n\n// Erro: falta o await\nasync function comErro() {\n  const utilizador = obterUtilizadorPromise(1);\n  console.log(utilizador.nome); // undefined: \"utilizador\" é uma Promise\n}\n\n// Correto\nasync function correto() {\n  const utilizador = await obterUtilizadorPromise(1);\n  console.log(utilizador.nome); // \"Ana\"\n}\n\n// Mistura desnecessária de .then com await\nasync function misturaConfusa() {\n  const utilizador = await obterUtilizadorPromise(1).then(u => u);\n  return utilizador;\n}\n\n// Mais simples e consistente\nasync function maisClaro() {\n  const utilizador = await obterUtilizadorPromise(1);\n  return utilizador;\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Esquecer o await é um erro silencioso: o JavaScript não avisa, o código continua a correr e o valor errado (uma Promise) só se revela mais tarde, muitas vezes de forma confusa.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🙈",
+          "text": "Esquecer await deixa a variável como Promise"
+        },
+        {
+          "icon": "🌀",
+          "text": "Misturar .then com await confunde o código"
+        },
+        {
+          "icon": "🔍",
+          "text": "São bugs silenciosos: o JS não avisa do erro"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "De .then/.catch para async/await",
+      "difficulty": "Iniciante",
+      "statement": "Tens o código seguinte, que usa .then/.catch:\n\nfunction obterNumero() {\n  return new Promise((resolve, reject) => {\n    setTimeout(() => {\n      const numero = Math.random();\n      if (numero < 0.5) {\n        reject(new Error(\"Número demasiado baixo\"));\n      } else {\n        resolve(numero);\n      }\n    }, 500);\n  });\n}\n\nfunction mostrarNumero() {\n  obterNumero()\n    .then(numero => console.log(\"Número:\", numero))\n    .catch(erro => console.error(\"Erro:\", erro.message));\n}\n\nReescreve a função mostrarNumero usando async/await e try/catch, mantendo exatamente o mesmo comportamento (mesma mensagem em caso de sucesso, mesma mensagem em caso de erro). A função obterNumero não deve ser alterada.",
+      "hint": "Lembra-te que uma função que usa await tem de ser declarada com a palavra-chave async, e que o bloco catch do try/catch substitui o .catch() da promise.",
+      "solution_code": "function obterNumero() {\n  return new Promise((resolve, reject) => {\n    setTimeout(() => {\n      const numero = Math.random();\n      if (numero < 0.5) {\n        reject(new Error(\"Número demasiado baixo\"));\n      } else {\n        resolve(numero);\n      }\n    }, 500);\n  });\n}\n\nasync function mostrarNumero() {\n  try {\n    const numero = await obterNumero();\n    console.log(\"Número:\", numero);\n  } catch (erro) {\n    console.error(\"Erro:\", erro.message);\n  }\n}\n\nmostrarNumero();",
+      "solution_explanation": "Marcar a função como async permite usar await, que suspende a execução até a Promise de obterNumero resolver ou rejeitar. Uma rejeição transforma-se numa exceção lançada nesse ponto, apanhada pelo bloco catch, reproduzindo exatamente o comportamento do .then/.catch original."
+    },
+    {
+      "title": "Carregar página em paralelo",
+      "difficulty": "Intermedio",
+      "statement": "Tens duas funções auxiliares, independentes uma da outra:\n\nfunction obterUtilizador() {\n  return new Promise(resolve => setTimeout(() => resolve({ id: 1, nome: \"Ana\" }), 800));\n}\n\nfunction obterPosts() {\n  return new Promise(resolve => setTimeout(() => resolve([\"Post 1\", \"Post 2\"]), 800));\n}\n\nEscreve uma função async chamada carregarPagina que obtenha o utilizador e os posts em paralelo (não em série), e devolva um objeto { utilizador, posts }. O tempo total de execução deve rondar os 800ms, e não os 1600ms que resultariam de esperar por cada um separadamente.",
+      "hint": "Inicia as duas chamadas antes de esperar por qualquer resultado, e usa Promise.all para esperar pelas duas ao mesmo tempo.",
+      "solution_code": "function obterUtilizador() {\n  return new Promise(resolve => setTimeout(() => resolve({ id: 1, nome: \"Ana\" }), 800));\n}\n\nfunction obterPosts() {\n  return new Promise(resolve => setTimeout(() => resolve([\"Post 1\", \"Post 2\"]), 800));\n}\n\nasync function carregarPagina() {\n  const [utilizador, posts] = await Promise.all([\n    obterUtilizador(),\n    obterPosts(),\n  ]);\n  return { utilizador, posts };\n}\n\ncarregarPagina().then(pagina => console.log(pagina));",
+      "solution_explanation": "Promise.all recebe as duas Promises já iniciadas e espera por ambas em simultâneo, devolvendo um array com os dois resultados na mesma ordem. Como obterUtilizador e obterPosts não dependem uma da outra, o tempo total passa a ser o da mais lenta (≈800ms) em vez da soma das duas (≈1600ms)."
+    },
+    {
+      "title": "Corrigir três erros de async/await",
+      "difficulty": "Avancado",
+      "statement": "O código abaixo tem três problemas relacionados com async/await: (1) na função registarProduto falta um await, o que faz com que preco seja uma Promise em vez de um número, provocando um erro ao chamar preco.toFixed(2); (2) na função calcularTotal há uma mistura desnecessária de .then com await; (3) em calcularTotal, obterPreco e obterImposto são independentes mas estão a ser esperados em série, desperdiçando tempo. Corrige os três problemas, mantendo o resultado final igual.\n\nfunction obterPreco(produtoId) {\n  return new Promise(resolve => setTimeout(() => resolve(10 + produtoId), 400));\n}\n\nfunction obterImposto(produtoId) {\n  return new Promise(resolve => setTimeout(() => resolve(produtoId * 0.1), 400));\n}\n\nasync function registarProduto(produtoId) {\n  const preco = obterPreco(produtoId);\n  console.log(`A registar produto com preço ${preco.toFixed(2)}`);\n}\n\nasync function calcularTotal(produtoId) {\n  const preco = await obterPreco(produtoId).then(p => p);\n  const imposto = await obterImposto(produtoId);\n  return preco + imposto;\n}",
+      "hint": "Para paralelizar duas chamadas independentes usa Promise.all; para remover a mistura de .then com await basta um único await sobre a chamada direta; um await em falta costuma revelar-se porque a variável se comporta como uma Promise em vez do valor esperado.",
+      "solution_code": "function obterPreco(produtoId) {\n  return new Promise(resolve => setTimeout(() => resolve(10 + produtoId), 400));\n}\n\nfunction obterImposto(produtoId) {\n  return new Promise(resolve => setTimeout(() => resolve(produtoId * 0.1), 400));\n}\n\nasync function registarProduto(produtoId) {\n  const preco = await obterPreco(produtoId);\n  console.log(`A registar produto com preço ${preco.toFixed(2)}`);\n}\n\nasync function calcularTotal(produtoId) {\n  const [preco, imposto] = await Promise.all([\n    obterPreco(produtoId),\n    obterImposto(produtoId),\n  ]);\n  return preco + imposto;\n}\n\ncalcularTotal(5).then(total => console.log(\"Total:\", total));",
+      "solution_explanation": "Adicionar await em registarProduto garante que preco é o número resolvido e não a Promise; remover o .then redundante deixa o único await a desembrulhar o valor; e substituir os dois awaits sequenciais por Promise.all faz as duas chamadas independentes correrem em simultâneo, reduzindo o tempo total de cerca de 800ms para cerca de 400ms."
+    }
+  ],
+  "summary": [
+    "async/await é apenas uma forma mais legível de trabalhar com Promises: uma função async devolve sempre uma Promise, e await pausa essa função até a Promise resolver ou rejeitar.",
+    "Erros assíncronos apanham-se com try/catch à volta do await, tal como aconteceria com código síncrono; um erro não tratado dentro da função propaga-se como rejeição da Promise devolvida por ela.",
+    "Awaits em série (um a seguir ao outro) somam os tempos de espera; usar quando um passo depende do resultado do anterior.",
+    "Quando as operações são independentes, iniciar todas primeiro e usar Promise.all reduz o tempo total ao da tarefa mais lenta; Promise.allSettled serve quando se quer todos os resultados mesmo com falhas.",
+    "Top-level await (ES2022) permite usar await diretamente no topo de um módulo ES (ficheiros .mjs ou projeto com type module), sem precisar de o envolver numa função async.",
+    "Os erros mais comuns são esquecer o await (a variável fica com uma Promise em vez do valor) e misturar .then com await sem necessidade, o que torna o código mais difícil de ler."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 05",
+  "next_label": "Aula 05 → Fetch API e Consumo de Dados",
+  "_stage": "autoria"
+}

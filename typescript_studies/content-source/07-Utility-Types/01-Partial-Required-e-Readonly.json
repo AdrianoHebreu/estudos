@@ -1,0 +1,324 @@
+{
+  "module_num": "07",
+  "module_title": "Utility Types",
+  "module_dir": "07-Utility-Types",
+  "lesson_num": "01",
+  "lesson_slug": "Partial-Required-e-Readonly",
+  "kind": "aula",
+  "title": "Partial, Required e Readonly",
+  "filename_base": "01-Partial-Required-e-Readonly",
+  "subtitle": "Tornar opcional, tornar obrigatório e selar: três tipos que já vêm na caixa",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Perceber o que são os utility types e porque não precisam de import",
+    "Ler a definição real de Partial, Required e Readonly em lib.es5.d.ts",
+    "Ligar cada um ao mapped type equivalente escrito à mão no módulo anterior",
+    "Usar Partial em atualizações parciais sem cair na armadilha do objeto vazio",
+    "Saber o que o modificador -? do Required remove e o que não remove",
+    "Perceber que readonly é só compilação e que os três utilitários são rasos"
+  ],
+  "sections": [
+    {
+      "heading": "Tipos que já vêm na caixa",
+      "body": [
+        "O módulo anterior ensinou a mecânica toda: keyof, indexed access, conditional types e mapped types. Com essas peças escreveram-se transformações como TudoOpcional, TudoObrigatorio e TudoSoLeitura. O que ficou por dizer é que essas transformações já existem, prontas, na biblioteca padrão do TypeScript, e que se chamam Partial, Required e Readonly.",
+        "São tipos genéricos declarados no ficheiro lib.es5.d.ts, que faz parte da instalação do compilador. Estão no âmbito global: não se importam de lado nenhum, escrevem-se e funcionam. E cada um deles é literalmente uma linha de código que qualquer aluno deste curso já sabe escrever.",
+        "Por isso, o padrão deste módulo é sempre o mesmo: ver primeiro a definição real, reconhecer nela o mapped type do módulo anterior, e só depois usar o nome. Quem sabe a definição nunca precisa de decorar o comportamento, deduz-o."
+      ],
+      "code": "// A definição real, em lib.es5.d.ts, é uma linha:\n//   type Partial<T>  = { [P in keyof T]?: T[P] };\n//   type Required<T> = { [P in keyof T]-?: T[P] };\n//   type Readonly<T> = { readonly [P in keyof T]: T[P] };\n\n// O mesmo mapped type escrito à mão no módulo anterior:\ntype TudoOpcional<T> = { [K in keyof T]?: T[K] };\n\ninterface Livro {\n  titulo: string;\n  paginas: number;\n}\n\n// Os dois tipos são o mesmo tipo: o valor passa de um lado para o outro sem conversão.\nconst escrito: TudoOpcional<Livro> = { titulo: \"TypeScript de A a Z\" };\nconst daBiblioteca: Partial<Livro> = escrito;\nconst devolta: TudoOpcional<Livro> = daBiblioteca;\n\nconsole.log(devolta.titulo); // TypeScript de A a Z\nconsole.log(devolta.paginas); // undefined",
+      "callout_kind": "NOTA",
+      "callout_text": "A definição da biblioteca usa a letra P para a variável de chave e o curso usou K. O nome da variável de tipo não muda nada: são o mesmo tipo.",
+      "table_headers": [
+        "Utility type",
+        "Definição real",
+        "Nome usado no Módulo 06"
+      ],
+      "table_rows": [
+        [
+          "Partial<T>",
+          "{ [P in keyof T]?: T[P] }",
+          "TudoOpcional"
+        ],
+        [
+          "Required<T>",
+          "{ [P in keyof T]-?: T[P] }",
+          "TudoObrigatorio"
+        ],
+        [
+          "Readonly<T>",
+          "{ readonly [P in keyof T]: T[P] }",
+          "TudoSoLeitura"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "Vêm na biblioteca padrão, sem import nenhum"
+        },
+        {
+          "icon": "📝",
+          "text": "Cada um é um mapped type de uma linha"
+        },
+        {
+          "icon": "🔁",
+          "text": "O TudoOpcional do Módulo 06 é o Partial"
+        },
+        {
+          "icon": "🔍",
+          "text": "Ver a definição primeiro, usar o nome depois"
+        }
+      ]
+    },
+    {
+      "heading": "Partial: todas as propriedades passam a opcionais",
+      "body": [
+        "Partial<T> acrescenta o modificador ? a cada propriedade de T. O objeto resultante pode ter todas, algumas ou nenhuma das chaves originais, mas as que tiver continuam a ser verificadas com o tipo original.",
+        "O uso clássico é a atualização parcial: uma função recebe o registo atual e um segundo objeto só com os campos que mudaram. Sem Partial seria preciso escrever à mão uma interface paralela com tudo opcional, que ficaria dessincronizada da primeira vez que alguém acrescentasse uma propriedade ao original.",
+        "O segundo uso é a construção por etapas: começa-se com um objeto vazio e vai-se enchendo ao longo de várias linhas ou funções, até estar pronto para ser validado."
+      ],
+      "code": "interface Utilizador {\n  id: number;\n  nome: string;\n  email: string;\n  ativo: boolean;\n}\n\nfunction atualizar(atual: Utilizador, alteracoes: Partial<Utilizador>): Utilizador {\n  return { ...atual, ...alteracoes };\n}\n\nconst ana: Utilizador = { id: 1, nome: \"Ana\", email: \"ana@exemplo.pt\", ativo: true };\n\nconst anaNova = atualizar(ana, { email: \"ana.silva@exemplo.pt\" });\nconsole.log(anaNova.email); // ana.silva@exemplo.pt\nconsole.log(anaNova.nome); // Ana\n\n// Construção por etapas: começa vazio e vai enchendo.\nconst rascunho: Partial<Utilizador> = {};\nrascunho.nome = \"Rui\";\nrascunho.id = 2;\nconsole.log(rascunho.nome); // Rui\nconsole.log(rascunho.email); // undefined\n\n// @ts-expect-error o Partial torna opcionais as chaves que existem, não aceita chaves novas\natualizar(ana, { telemovel: \"912345678\" });",
+      "callout_kind": "DICA",
+      "callout_text": "Partial só mexe na obrigatoriedade das chaves que já existem. Uma chave que não pertença ao tipo original continua a ser recusada.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "❓",
+          "text": "Partial acrescenta ? a todas as propriedades"
+        },
+        {
+          "icon": "✏️",
+          "text": "Ideal para atualizações parciais de um registo"
+        },
+        {
+          "icon": "🧱",
+          "text": "Também serve para construir um objeto por etapas"
+        },
+        {
+          "icon": "🚫",
+          "text": "Continua a recusar chaves que não existem no tipo"
+        }
+      ]
+    },
+    {
+      "heading": "O que o Partial não garante",
+      "body": [
+        "Partial<T> não exige que sobre alguma coisa. O objeto vazio é um valor perfeitamente válido de Partial<T>, seja qual for o T. Uma função que receba um Partial e o aplique a um registo aceita, sem um único aviso, um pedido de atualização que não altera absolutamente nada.",
+        "É a consequência direta da definição: se todas as propriedades ficam com ?, nenhuma é obrigatória, e um objeto sem propriedades satisfaz o tipo. Não há maneira de exprimir com este utilitário a ideia de pelo menos uma. Quem precisar dessa garantia tem de a verificar em tempo de execução.",
+        "Na direção contrária o compilador já protege: um valor tipado como Partial<T> não é atribuível a T, porque as chaves podem faltar. Repare que a demonstração usa uma variável já tipada e não um literal escrito no sítio, porque um literal de objeto é verificado de outra forma."
+      ],
+      "code": "interface Encomenda {\n  id: number;\n  cliente: string;\n  total: number;\n}\n\nfunction aplicar(base: Encomenda, campos: Partial<Encomenda>): Encomenda {\n  return { ...base, ...campos };\n}\n\nconst original: Encomenda = { id: 7, cliente: \"Ana\", total: 100 };\n\n// O formulário não trouxe nada. O tipo aceita, o compilador cala-se.\nconst doFormulario: Partial<Encomenda> = {};\nconst resultado = aplicar(original, doFormulario);\nconsole.log(resultado.total); // 100\n\n// Quem quiser garantir que veio alguma coisa tem de o verificar em tempo de execução.\nfunction temAlgumCampo(campos: Partial<Encomenda>): boolean {\n  return Object.keys(campos).length > 0;\n}\nconsole.log(temAlgumCampo(doFormulario)); // false\nconsole.log(temAlgumCampo({ total: 90 })); // true\n\nconst parcial: Partial<Encomenda> = { id: 9 };\n// @ts-expect-error o caminho inverso não existe: um Partial não serve como Encomenda\nconst completa: Encomenda = parcial;\nconsole.log(completa.id); // 9",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Partial<T> aceita sempre o objeto vazio. Se a regra de negócio for pelo menos um campo, essa verificação tem de ser feita em código, não no tipo.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🕳️",
+          "text": "O objeto vazio satisfaz qualquer Partial<T>"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Partial não sabe exprimir pelo menos um campo"
+        },
+        {
+          "icon": "🧪",
+          "text": "Essa garantia faz-se em tempo de execução"
+        },
+        {
+          "icon": "↩️",
+          "text": "Um Partial<T> não é atribuível de volta a T"
+        }
+      ]
+    },
+    {
+      "heading": "Required: o inverso, com o modificador -?",
+      "body": [
+        "Required<T> é a operação simétrica: em vez de acrescentar ?, retira-o, com o modificador -?. Todas as propriedades opcionais de T passam a ser obrigatórias no tipo resultante.",
+        "Há um pormenor que vale a pena saber com exatidão, porque é muitas vezes descrito mal. O -? faz duas coisas ao mesmo tempo, mas só às propriedades que eram opcionais: tira-lhes o ? e tira-lhes o undefined do tipo do valor. Numa propriedade que já era obrigatória e cujo tipo foi escrito à mão como algo unido a undefined, o -? não tem ? nenhum que tirar, e o undefined fica: essa propriedade continua a aceitar undefined como valor.",
+        "Por outras palavras, Required garante a presença de todas as chaves. Garantir que nenhuma vale undefined é outra coisa, e depende de como o tipo original foi escrito."
+      ],
+      "code": "interface Definicoes {\n  tema?: string;\n  idioma?: string;\n  notificacoes: boolean | undefined;\n}\n\ntype DefinicoesCompletas = Required<Definicoes>;\n// tema: string\n// idioma: string\n// notificacoes: boolean | undefined\n\nconst d: DefinicoesCompletas = {\n  tema: \"escuro\",\n  idioma: \"pt-PT\",\n  notificacoes: undefined,\n};\nconsole.log(d.tema.length); // 6\n\n// @ts-expect-error tema era opcional, por isso o -? tirou-lhe também o undefined\nconst d2: DefinicoesCompletas = { tema: undefined, idioma: \"pt-PT\", notificacoes: true };\nconsole.log(d2.idioma); // pt-PT\n\n// @ts-expect-error com Required todas as chaves passam a ser obrigatórias\nconst d3: DefinicoesCompletas = { tema: \"claro\", idioma: \"pt-PT\" };\nconsole.log(d3.tema); // claro",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Uma propriedade declarada tema?: string fica string depois de Required. Uma declarada notificacoes: boolean | undefined continua boolean | undefined: o que muda é a obrigatoriedade da chave, não o tipo do valor.",
+      "table_headers": [
+        "Declaração no tipo original",
+        "Depois de Required",
+        "Aceita undefined como valor?"
+      ],
+      "table_rows": [
+        [
+          "tema?: string",
+          "tema: string",
+          "não"
+        ],
+        [
+          "tema?: string | undefined",
+          "tema: string",
+          "não"
+        ],
+        [
+          "notificacoes: boolean | undefined",
+          "notificacoes: boolean | undefined",
+          "sim"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "❗",
+          "text": "Required aplica -? e torna tudo obrigatório"
+        },
+        {
+          "icon": "🧹",
+          "text": "Em propriedades opcionais, o -? tira também o undefined"
+        },
+        {
+          "icon": "🪧",
+          "text": "Um undefined escrito à mão sobrevive ao Required"
+        },
+        {
+          "icon": "🔑",
+          "text": "Garante a presença da chave, não o valor definido"
+        }
+      ]
+    },
+    {
+      "heading": "Readonly: uma promessa que só o compilador vê",
+      "body": [
+        "Readonly<T> acrescenta a palavra readonly a cada propriedade. A partir daí, qualquer tentativa de atribuir a essa propriedade é recusada pelo compilador.",
+        "E é aí que acaba. A palavra readonly é uma anotação de tipo: desaparece na compilação, e o JavaScript emitido faz a atribuição como se nada fosse. Se a mesma referência estiver acessível através de uma variável sem a marca, a escrita passa por lá sem obstáculo nenhum. Não é um defeito, é o modelo do TypeScript, que nunca gera verificações em tempo de execução.",
+        "Para travar mesmo a escrita quando o programa corre, o instrumento é o Object.freeze do JavaScript. Em código de módulo, que corre sempre em modo estrito, a atribuição a um objeto congelado lança um TypeError."
+      ],
+      "code": "interface Ponto {\n  x: number;\n  y: number;\n}\n\nconst mutavel: Ponto = { x: 1, y: 2 };\nconst selado: Readonly<Ponto> = mutavel;\n\n// @ts-expect-error o compilador recusa a escrita numa propriedade readonly\nselado.x = 99;\n\n// A marca readonly desaparece na compilação: o JavaScript emitido faz a atribuição.\nconsole.log(mutavel.x); // 99\nconsole.log(selado.x); // 99\n\n// Para travar a escrita em tempo de execução é preciso Object.freeze.\nconst congelado: Readonly<Ponto> = Object.freeze({ x: 1, y: 2 });\ntry {\n  (congelado as Ponto).y = 50;\n} catch (erro) {\n  console.log(\"recusado em runtime\");\n}\nconsole.log(congelado.y); // 2",
+      "callout_kind": "ATENCAO",
+      "callout_text": "readonly protege contra enganos de quem escreve o código, não contra alterações em tempo de execução. Só Object.freeze faz a segunda coisa.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔒",
+          "text": "Readonly marca todas as propriedades como readonly"
+        },
+        {
+          "icon": "👻",
+          "text": "A marca desaparece no JavaScript emitido"
+        },
+        {
+          "icon": "🧊",
+          "text": "Object.freeze é o equivalente em tempo de execução"
+        },
+        {
+          "icon": "🧭",
+          "text": "Outra referência sem a marca escreve à vontade"
+        }
+      ]
+    },
+    {
+      "heading": "Os três são rasos",
+      "body": [
+        "A definição dos três percorre keyof T, ou seja, as chaves do primeiro nível, e mais nada. O que estiver dentro de um objeto aninhado fica exatamente como estava.",
+        "Em Readonly<T>, isso significa que a propriedade que aponta para o objeto interior não pode ser trocada, mas o conteúdo desse objeto continua a poder ser alterado à vontade. Em Partial<T>, significa que a propriedade aninhada pode faltar, mas se estiver presente tem de vir completa.",
+        "As versões profundas não existem na biblioteca padrão. Escrevem-se com um mapped type recursivo, exatamente como os do Módulo 06, e é isso que a Aula 04 deste módulo vai construir."
+      ],
+      "code": "interface Servidor {\n  host: string;\n  limites: { maxLigacoes: number };\n}\n\nconst base: Servidor = { host: \"localhost\", limites: { maxLigacoes: 10 } };\nconst so: Readonly<Servidor> = base;\n\n// @ts-expect-error host é readonly ao primeiro nível\nso.host = \"outro\";\n\n// limites é readonly, mas o objeto para onde aponta não é: isto compila.\nso.limites.maxLigacoes = 99;\nconsole.log(base.limites.maxLigacoes); // 99\n\n// O mesmo com Partial: o ? ficou-se pelo primeiro nível.\nconst p: Partial<Servidor> = { limites: { maxLigacoes: 1 } };\nconsole.log(p.host); // undefined\n\nconst q: Partial<Servidor> = {\n  // @ts-expect-error maxLigacoes continua obrigatória dentro de limites\n  limites: {},\n};\nconsole.log(q.limites); // {}",
+      "callout_kind": "NOTA",
+      "callout_text": "Não há DeepPartial nem DeepReadonly no TypeScript. São tipos recursivos escritos à mão, e ficam para a última aula deste módulo.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🪞",
+          "text": "Os três percorrem só keyof T, o primeiro nível"
+        },
+        {
+          "icon": "🧩",
+          "text": "Objetos aninhados ficam intocados"
+        },
+        {
+          "icon": "🔓",
+          "text": "Readonly não impede mexer no interior"
+        },
+        {
+          "icon": "🔮",
+          "text": "As versões profundas chegam na Aula 04"
+        }
+      ]
+    },
+    {
+      "heading": "Um caso real: valores por omissão selados",
+      "body": [
+        "O padrão mais comum em que os três se encontram é a configuração com valores por omissão. Entra um Partial, porque quem chama só indica o que quer mudar. Sai um Readonly, porque a configuração já resolvida não deve voltar a ser tocada. E o próprio conjunto de valores por omissão é um Readonly, para ninguém lhe mexer por engano.",
+        "O tipo original fica escrito uma única vez, com todas as propriedades obrigatórias e sem readonly nenhum. As três variantes saem dele por aplicação dos utilitários, e continuam sincronizadas se amanhã se acrescentar uma propriedade.",
+        "Há uma armadilha neste padrão, e vem outra vez do Partial: espalhar um objeto que tem uma propriedade explicitamente a undefined escreve esse undefined por cima do valor por omissão. O tipo não avisa, porque undefined é um valor válido para uma propriedade opcional."
+      ],
+      "code": "interface Opcoes {\n  baseUrl: string;\n  timeoutMs: number;\n  tentativas: number;\n}\n\nconst POR_OMISSAO: Readonly<Opcoes> = {\n  baseUrl: \"https://api.exemplo.pt\",\n  timeoutMs: 5000,\n  tentativas: 3,\n};\n\nfunction criarOpcoes(dadas: Partial<Opcoes> = {}): Readonly<Opcoes> {\n  return { ...POR_OMISSAO, ...dadas };\n}\n\nconst padrao = criarOpcoes();\nconsole.log(padrao.timeoutMs); // 5000\n\nconst rapido = criarOpcoes({ timeoutMs: 1000 });\nconsole.log(rapido.timeoutMs); // 1000\nconsole.log(rapido.baseUrl); // https://api.exemplo.pt\n\n// @ts-expect-error o resultado sai selado\nrapido.tentativas = 10;\n\n// Cuidado: undefined escrito à mão passa pelo Partial e apaga o valor por omissão.\nconst estragado = criarOpcoes({ timeoutMs: undefined });\nconsole.log(estragado.timeoutMs); // undefined",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Procure num projeto seu uma interface de opções duplicada em duas versões, uma completa e outra com tudo opcional. É quase sempre um Partial que faltou.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎛️",
+          "text": "Entra Partial, sai Readonly: o padrão da configuração"
+        },
+        {
+          "icon": "1️⃣",
+          "text": "O tipo escreve-se uma vez e as variantes derivam dele"
+        },
+        {
+          "icon": "💥",
+          "text": "Um undefined explícito apaga o valor por omissão"
+        },
+        {
+          "icon": "🧷",
+          "text": "Os valores por omissão também ficam selados"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Edição parcial de um artigo",
+      "difficulty": "Iniciante",
+      "statement": "Existe uma interface Artigo com as propriedades id (number), titulo (string), preco (number) e stock (number), todas obrigatórias. Escreva uma função editarArtigo que receba um Artigo e um segundo argumento com apenas os campos a alterar, e devolva um Artigo novo com as alterações aplicadas, sem modificar o original. O segundo argumento tem de aceitar qualquer subconjunto das propriedades de Artigo, incluindo nenhuma, mas tem de recusar chaves que não pertençam a Artigo. Demonstre com duas edições diferentes e mostre que o artigo de partida ficou intacto.",
+      "hint": "O tipo do segundo parâmetro é um utilitário de uma linha aplicado a Artigo. Para devolver um objeto novo, o espalhamento resolve tudo: primeiro o original, depois as alterações.",
+      "solution_code": "interface Artigo {\n  id: number;\n  titulo: string;\n  preco: number;\n  stock: number;\n}\n\nfunction editarArtigo(artigo: Artigo, alteracoes: Partial<Artigo>): Artigo {\n  return { ...artigo, ...alteracoes };\n}\n\nconst teclado: Artigo = { id: 1, titulo: \"Teclado\", preco: 49.9, stock: 12 };\n\nconst emSaldo = editarArtigo(teclado, { preco: 39.9 });\nconsole.log(emSaldo.preco); // 39.9\nconsole.log(emSaldo.titulo); // Teclado\n\nconst reposto = editarArtigo(teclado, { stock: 30, preco: 45 });\nconsole.log(reposto.stock); // 30\n\n// O original fica intacto porque a função devolve um objeto novo.\nconsole.log(teclado.preco); // 49.9",
+      "solution_explanation": "Partial<Artigo> descreve exatamente um subconjunto das propriedades de Artigo, por isso serve de tipo ao parâmetro das alterações sem obrigar a escrever uma segunda interface. O espalhamento por esta ordem faz com que as chaves presentes nas alterações substituam as do original e as ausentes fiquem como estavam. Como o resultado é um objeto literal novo, o artigo recebido nunca é modificado."
+    },
+    {
+      "title": "Normalizar um pedido de relatório",
+      "difficulty": "Intermedio",
+      "statement": "Uma interface PedidoRelatorio tem três propriedades, todas opcionais: formato (string), incluirGraficos (boolean) e maxLinhas (number). Escreva uma função normalizar que receba um PedidoRelatorio e devolva o mesmo conjunto de propriedades mas todas obrigatórias, preenchendo as que faltarem com pdf, false e 1000. O tipo de retorno tem de ser derivado de PedidoRelatorio, não escrito à mão. Mostre que, depois de normalizar, o compilador deixa usar o formato diretamente, sem verificar undefined.",
+      "hint": "O utilitário que aplica o modificador -? dá o tipo de retorno numa palavra. Para os valores por omissão, o operador de coalescência nula é o certo, porque só substitui quando o valor é null ou undefined.",
+      "solution_code": "interface PedidoRelatorio {\n  formato?: string;\n  incluirGraficos?: boolean;\n  maxLinhas?: number;\n}\n\nfunction normalizar(pedido: PedidoRelatorio): Required<PedidoRelatorio> {\n  return {\n    formato: pedido.formato ?? \"pdf\",\n    incluirGraficos: pedido.incluirGraficos ?? false,\n    maxLinhas: pedido.maxLinhas ?? 1000,\n  };\n}\n\nconst vazio = normalizar({});\nconsole.log(vazio.formato); // pdf\nconsole.log(vazio.maxLinhas); // 1000\nconsole.log(vazio.incluirGraficos); // false\n\nconst escolhido = normalizar({ formato: \"csv\", maxLinhas: 50 });\nconsole.log(escolhido.formato); // csv\nconsole.log(escolhido.maxLinhas); // 50\nconsole.log(escolhido.incluirGraficos); // false\n\n// Depois de Required, o compilador já não obriga a verificar undefined.\nconsole.log(escolhido.formato.toUpperCase()); // CSV",
+      "solution_explanation": "Required<PedidoRelatorio> aplica -? às três propriedades, tornando-as obrigatórias e retirando-lhes o undefined que o ? trazia. Como no tipo de partida todas eram opcionais e nenhuma tinha undefined escrito à mão, o resultado não aceita undefined em lado nenhum, e por isso a chamada a toUpperCase compila sem verificação prévia. Derivar o tipo de retorno em vez de o escrever mantém as duas versões sincronizadas se a interface mudar."
+    },
+    {
+      "title": "Até onde chega o Readonly",
+      "difficulty": "Intermedio",
+      "statement": "Uma interface Equipa tem nome (string) e treinador, que é um objeto com nome (string) e anos (number). Crie uma Equipa, guarde-a também numa variável tipada como Readonly<Equipa> e demonstre duas coisas: que o compilador recusa mudar o nome da equipa, e que aceita mudar os anos do treinador, alterando mesmo o objeto original. Depois escreva um tipo que proteja os dois níveis e prove que a segunda escrita passa a ser recusada. Marque cada erro esperado com o comentário próprio.",
+      "hint": "Readonly percorre keyof T e mais nada, por isso o valor da propriedade aninhada não é tocado. Para o segundo nível, aplique o mesmo utilitário outra vez, por dentro.",
+      "solution_code": "interface Equipa {\n  nome: string;\n  treinador: { nome: string; anos: number };\n}\n\nconst equipa: Equipa = {\n  nome: \"Azuis\",\n  treinador: { nome: \"Ana\", anos: 5 },\n};\n\nconst selada: Readonly<Equipa> = equipa;\n\n// @ts-expect-error o primeiro nível está protegido pelo compilador\nselada.nome = \"Verdes\";\n\n// O segundo nível não: isto compila e altera mesmo o objeto.\nselada.treinador.anos = 6;\nconsole.log(equipa.treinador.anos); // 6\n\n// Para proteger os dois níveis é preciso aplicar Readonly também por dentro.\ntype EquipaSelada = Readonly<{\n  nome: string;\n  treinador: Readonly<{ nome: string; anos: number }>;\n}>;\n\nconst mesmo: EquipaSelada = equipa;\n// @ts-expect-error agora também o segundo nível é recusado pelo compilador\nmesmo.treinador.anos = 7;\nconsole.log(equipa.treinador.anos); // 7",
+      "solution_explanation": "A primeira escrita é recusada porque nome ficou readonly no primeiro nível, mas a segunda compila: Readonly protegeu a propriedade treinador contra ser substituída, não o objeto para onde ela aponta. Aplicar Readonly também ao tipo interior fecha essa porta em tempo de compilação. O último console.log mostra 7 porque a linha anterior, apesar de assinalada como erro esperado, é emitida e executada na mesma, que é precisamente o ponto da aula."
+    },
+    {
+      "title": "Construtor de ligação por etapas",
+      "difficulty": "Avancado",
+      "statement": "Uma interface Ligacao tem host (string), porta (number) e utilizador (string). Escreva uma função construir que receba um array de passos, em que cada passo é uma função que recebe o que já foi acumulado e devolve os campos que acrescenta. A função acumula os resultados por ordem, verifica no fim que não falta nenhum campo e devolve a ligação selada contra escrita. A verificação tem de ser um type predicate que estreite o acumulado de parcial para completo, para que o retorno compile sem asserções de tipo. Se faltar algum campo, lance um erro. Demonstre um caso completo e um incompleto.",
+      "hint": "O predicado tem a forma parcial is Required<Ligacao>. O tipo de retorno combina o utilitário que sela com o tipo original. Depois do if que lança, o compilador já sabe que o acumulado está completo.",
+      "solution_code": "interface Ligacao {\n  host: string;\n  porta: number;\n  utilizador: string;\n}\n\nfunction estaCompleta(parcial: Partial<Ligacao>): parcial is Required<Ligacao> {\n  return (\n    parcial.host !== undefined &&\n    parcial.porta !== undefined &&\n    parcial.utilizador !== undefined\n  );\n}\n\ntype Passo = (atual: Partial<Ligacao>) => Partial<Ligacao>;\n\nfunction construir(passos: Passo[]): Readonly<Ligacao> {\n  let acumulado: Partial<Ligacao> = {};\n  for (const passo of passos) {\n    acumulado = { ...acumulado, ...passo(acumulado) };\n  }\n  if (!estaCompleta(acumulado)) {\n    throw new Error(\"Configuração incompleta\");\n  }\n  return acumulado;\n}\n\nconst ligacao = construir([\n  () => ({ host: \"db.exemplo.pt\" }),\n  () => ({ porta: 5432 }),\n  (atual) => ({ utilizador: atual.host === \"db.exemplo.pt\" ? \"admin\" : \"convidado\" }),\n]);\n\nconsole.log(ligacao.host); // db.exemplo.pt\nconsole.log(ligacao.utilizador); // admin\n\n// @ts-expect-error o resultado sai selado como Readonly\nligacao.porta = 1;\n\ntry {\n  construir([() => ({ host: \"so-isto\" })]);\n} catch (erro) {\n  console.log((erro as Error).message); // Configuração incompleta\n}",
+      "solution_explanation": "Required<Ligacao> é atribuível a Partial<Ligacao>, o que torna válido o type predicate e permite ao narrowing do Módulo 04 estreitar o acumulado depois do if que lança. Com o acumulado já estreitado, devolvê-lo como Readonly<Ligacao> compila sem asserção nenhuma, e a marca readonly impede quem chama de mexer no resultado. O caso incompleto está dentro de um try porque a função lança de propósito quando falta um campo."
+    }
+  ],
+  "summary": [
+    "Os utility types são tipos genéricos declarados em lib.es5.d.ts, globais e sem import: cada um é um mapped type de uma linha como os do Módulo 06.",
+    "Partial<T> acrescenta ? a todas as propriedades e é o TudoOpcional escrito à mão; aceita sempre o objeto vazio, o que nenhuma verificação de tipos apanha.",
+    "Required<T> aplica -? e torna tudo obrigatório; nas propriedades que eram opcionais remove também o undefined, mas um undefined escrito à mão numa propriedade já obrigatória sobrevive intacto.",
+    "Readonly<T> só existe em tempo de compilação: o JavaScript emitido faz a atribuição na mesma, e travar mesmo a escrita é trabalho do Object.freeze.",
+    "Os três percorrem apenas as chaves do primeiro nível; objetos aninhados ficam por proteger e as versões profundas só chegam na Aula 04.",
+    "O padrão típico junta os três: entra um Partial com o que quem chama quis mudar, junta-se aos valores por omissão selados e sai um Readonly."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 02",
+  "next_label": "Aula 02 → Pick, Omit e Record"
+}

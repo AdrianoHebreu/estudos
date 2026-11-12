@@ -1,0 +1,276 @@
+{
+  "module_num": "08",
+  "module_title": "Módulos e Ecossistema",
+  "module_dir": "08-Modulos-e-Ecossistema",
+  "lesson_num": "02",
+  "lesson_slug": "CommonJS-e-Node",
+  "kind": "aula",
+  "title": "CommonJS e Node.js",
+  "filename_base": "02-CommonJS-e-Node",
+  "subtitle": "O sistema de módulos original do Node.js: require, exports e a convivência com ES Modules",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Perceber como require(), module.exports e exports funcionam e se relacionam entre si.",
+    "Saber como o Node.js resolve e faz cache dos módulos ao longo de um processo.",
+    "Usar __dirname e __filename para construir caminhos de ficheiros de forma fiável.",
+    "Distinguir CommonJS de ES Modules quanto ao carregamento (síncrono/assíncrono) e à estrutura (dinâmica/estática).",
+    "Identificar, pela extensão do ficheiro e pelo package.json, que sistema de módulos o Node vai usar."
+  ],
+  "sections": [
+    {
+      "heading": "require() e module.exports: a base do CommonJS",
+      "body": [
+        "Em Node.js, cada ficheiro .js é tratado, por omissão, como um módulo CommonJS. Antes de executar o código do ficheiro, o Node envolve-o automaticamente numa função invisível que recebe cinco parâmetros: exports, require, module, __filename e __dirname. É por isso que se pode usar require() e module.exports em qualquer ficheiro sem os importar explicitamente; são injetados pelo próprio sistema de módulos, não são variáveis globais do JavaScript.",
+        "module é um objeto criado pelo Node para representar o módulo atual, e a propriedade module.exports é, por omissão, um objeto vazio. Tudo o que for atribuído a module.exports fica disponível para quem importar o ficheiro através de require(). Quando outro ficheiro chama require('./caminho'), o Node localiza o ficheiro, executa o seu código uma única vez, e devolve exatamente o valor guardado em module.exports nesse momento."
+      ],
+      "code": "// matematica.js\nfunction somar(a, b) {\n  return a + b;\n}\n\nfunction multiplicar(a, b) {\n  return a * b;\n}\n\nmodule.exports = { somar, multiplicar };\n\n// app.js\nconst { somar, multiplicar } = require('./matematica');\n\nconsole.log(somar(2, 3));       // 5\nconsole.log(multiplicar(2, 3)); // 6",
+      "callout_kind": "NOTA",
+      "callout_text": "module.exports pode ser qualquer valor: um objeto, uma função, uma classe ou até um número. Não está limitado a objetos com várias propriedades.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📦",
+          "text": "Cada ficheiro é um módulo CommonJS"
+        },
+        {
+          "icon": "🔧",
+          "text": "module.exports define o que é exportado"
+        },
+        {
+          "icon": "📥",
+          "text": "require() devolve module.exports do ficheiro"
+        }
+      ]
+    },
+    {
+      "heading": "exports vs module.exports: um erro comum",
+      "body": [
+        "exports é apenas uma variável local, criada pelo Node dentro da função wrapper do módulo, que aponta inicialmente para o mesmo objeto que module.exports. Por isso, escrever exports.somar = somar tem exatamente o mesmo efeito que escrever module.exports.somar = somar: ambos adicionam uma propriedade ao objeto que require() vai devolver.",
+        "O problema surge quando se tenta reatribuir exports diretamente, como em exports = { somar, multiplicar }. Essa instrução troca apenas o valor da variável local exports, sem alterar module.exports, que continua a apontar para o objeto original (normalmente vazio). O resultado é que require() continua a devolver esse objeto vazio, e quem tenta desestruturar funções a partir dele obtém undefined."
+      ],
+      "code": "// ERRADO: substitui só a referência local; module.exports fica intocado\nexports = {\n  somar(a, b) {\n    return a + b;\n  },\n};\n\n// CORRETO: atribui diretamente a module.exports\nmodule.exports = {\n  somar(a, b) {\n    return a + b;\n  },\n};",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Se precisar de substituir todo o objeto exportado (em vez de ir acrescentando propriedades), use sempre module.exports = ..., nunca exports = ....",
+      "table_headers": [
+        "Instrução",
+        "Efeito"
+      ],
+      "table_rows": [
+        [
+          "exports.nome = valor",
+          "Adiciona uma propriedade; funciona como esperado"
+        ],
+        [
+          "module.exports.nome = valor",
+          "Adiciona uma propriedade; funciona como esperado"
+        ],
+        [
+          "exports = { ... }",
+          "Substitui só a variável local; require() não vê a alteração"
+        ],
+        [
+          "module.exports = { ... }",
+          "Substitui o objeto exportado; require() vê a alteração"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "⚠️",
+          "text": "exports = {...} não altera o que é exportado"
+        },
+        {
+          "icon": "✅",
+          "text": "Use module.exports = {...} para substituir tudo"
+        }
+      ]
+    },
+    {
+      "heading": "Como o Node resolve e faz cache dos módulos",
+      "body": [
+        "Quando require() recebe um caminho relativo (a começar por ./ ou ../), o Node resolve-o a partir da pasta do ficheiro atual e tenta, por ordem, o caminho exato, depois com as extensões .js, .json e .node, e por fim, se for uma pasta, o seu ficheiro index. Quando recebe um nome sem caminho, como require('lodash'), o Node procura numa pasta node_modules a partir da pasta atual, subindo diretório a diretório até à raiz do sistema de ficheiros, ou, se o nome coincidir com um módulo nativo como fs ou path, usa diretamente esse módulo interno.",
+        "Depois de resolvido o caminho absoluto do ficheiro, o Node guarda o module.exports resultante numa cache interna, acessível em require.cache, indexada precisamente por esse caminho absoluto. Chamadas seguintes a require() para o mesmo ficheiro, mesmo vindas de módulos diferentes, não voltam a executar o código: devolvem de imediato o valor já guardado em cache. Isto significa que o estado interno de um módulo (variáveis definidas no seu âmbito de topo) é partilhado por todos os que o importam."
+      ],
+      "code": "const fs = require('fs');     // módulo nativo do Node\nconst path = require('path'); // módulo nativo do Node\n\nconst utilizadores = require('./utilizadores');  // ficheiro local, resolve para .js\nconst config = require('./config.json');         // ficheiros .json também são suportados\n\nconsole.log(Object.keys(require.cache).length > 0); // true, depois do primeiro require",
+      "callout_kind": "DICA",
+      "callout_text": "Para forçar a reexecução de um módulo (útil em testes), é preciso apagar manualmente a entrada correspondente de require.cache antes de voltar a chamar require().",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔍",
+          "text": "Caminhos relativos vs node_modules vs nativos"
+        },
+        {
+          "icon": "🗄️",
+          "text": "require.cache guarda módulos já executados"
+        },
+        {
+          "icon": "♻️",
+          "text": "Um módulo só executa uma vez por caminho"
+        }
+      ]
+    },
+    {
+      "heading": "__dirname e __filename",
+      "body": [
+        "__dirname e __filename são duas das variáveis que o Node injeta na função wrapper de cada módulo CommonJS. __filename contém o caminho absoluto do próprio ficheiro em execução, e __dirname contém o caminho absoluto da pasta que o contém. Nenhuma das duas é uma variável global do JavaScript; são específicas de cada módulo, e o seu valor muda consoante o ficheiro onde são lidas.",
+        "A utilidade mais comum destas variáveis é construir caminhos absolutos para outros ficheiros do projeto (dados, templates, ficheiros de configuração) sem depender da pasta a partir da qual o processo Node foi iniciado. Ao contrário de process.cwd(), que devolve a pasta de trabalho atual do processo e pode variar consoante de onde o comando node é executado, __dirname é sempre relativo à localização do próprio ficheiro no disco, o que torna o código mais previsível."
+      ],
+      "code": "const path = require('path');\nconst fs = require('fs');\n\nconsole.log(__filename); // ex.: C:\\projeto\\src\\relatorio.js\nconsole.log(__dirname);  // ex.: C:\\projeto\\src\n\nconst caminhoDados = path.join(__dirname, 'dados', 'clientes.json');\nconst clientes = JSON.parse(fs.readFileSync(caminhoDados, 'utf8'));",
+      "callout_kind": "NOTA",
+      "callout_text": "Em ES Modules, __dirname e __filename não existem diretamente; o equivalente constrói-se a partir de import.meta.url, como já foi visto na aula sobre ES Modules.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📁",
+          "text": "__dirname: pasta do ficheiro atual"
+        },
+        {
+          "icon": "📄",
+          "text": "__filename: caminho completo do ficheiro"
+        },
+        {
+          "icon": "🧭",
+          "text": "Diferente de process.cwd(), que muda com o cwd"
+        }
+      ]
+    },
+    {
+      "heading": "CommonJS vs ES Modules: síncrono/dinâmico contra assíncrono/estático",
+      "body": [
+        "A diferença mais visível entre CommonJS e ES Modules está na forma como carregam código. require() é uma chamada de função normal e síncrona: o Node lê o ficheiro, executa-o do princípio ao fim, e só depois continua a linha seguinte do código que chamou require(). Isto funciona bem em Node porque os ficheiros estão no disco local e a leitura é rápida. O import de ES Modules, pelo contrário, foi desenhado para funcionar também na Web, onde os módulos podem vir de um pedido de rede; por isso a resolução e o carregamento são assíncronos por definição, mesmo quando o Node os está a ler do disco.",
+        "A segunda diferença é estrutural: import e export são declarações estáticas, que têm de aparecer no topo do ficheiro com especificadores literais, e por isso podem ser analisadas antes de qualquer código correr; é isso que permite a ferramentas de build fazer tree-shaking e ao motor manter bindings vivos entre módulos. require(), em contraste, é apenas uma chamada de função como outra qualquer: pode aparecer dentro de um if, de um ciclo, dentro de uma função, ou receber um caminho construído dinamicamente em runtime, o que dá flexibilidade mas impede esse tipo de análise estática."
+      ],
+      "code": "// CommonJS: require pode ser condicional e dinâmico\nfunction carregarDriver(nome) {\n  // o caminho só é conhecido em tempo de execução\n  return require(`./drivers/${nome}`);\n}\n\nconst driver = carregarDriver(process.env.DRIVER ?? 'padrao');\n\n// ES Modules: import é sempre estático, resolvido antes do código correr\n// import driver from `./drivers/${nome}`; // isto não é válido em ESM",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [
+        "Aspeto",
+        "CommonJS",
+        "ES Modules"
+      ],
+      "table_rows": [
+        [
+          "Carregamento",
+          "Síncrono (require bloqueia até terminar)",
+          "Assíncrono por definição"
+        ],
+        [
+          "Estrutura",
+          "Dinâmico (require é uma função, pode ser condicional)",
+          "Estático (import/export só no topo do ficheiro)"
+        ],
+        [
+          "Análise antes de correr",
+          "Não é possível sem executar o código",
+          "Possível; permite tree-shaking"
+        ],
+        [
+          "Vínculo entre módulos",
+          "Cópia do valor no momento do require",
+          "Bindings vivos, atualizados automaticamente"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "⏱️",
+          "text": "require: síncrono; import: assíncrono"
+        },
+        {
+          "icon": "🧩",
+          "text": "require: dinâmico; import: estático"
+        },
+        {
+          "icon": "🌳",
+          "text": "Estático permite tree-shaking em bundlers"
+        }
+      ]
+    },
+    {
+      "heading": "Como o Node decide entre CommonJS e ESM",
+      "body": [
+        "Para ficheiros com extensão .js, o Node decide o sistema de módulos a usar consultando o campo \"type\" do package.json mais próximo, subindo a partir da pasta do ficheiro. Se esse campo tiver o valor \"module\", todos os ficheiros .js dessa pasta (e das subpastas, até encontrar outro package.json) são tratados como ES Modules; se tiver o valor \"commonjs\", ou se o campo não existir, esses ficheiros são tratados como CommonJS, que é o comportamento por omissão do Node.",
+        "As extensões .cjs e .mjs permitem contornar essa configuração ficheiro a ficheiro, sem depender do package.json: um ficheiro .cjs é sempre tratado como CommonJS, e um ficheiro .mjs é sempre tratado como ES Module, mesmo dentro de um projeto configurado com o \"type\" oposto. Isto é particularmente útil para scripts isolados, como um ficheiro de configuração ou um script de build, que precisam de um sistema de módulos diferente do resto do projeto, sem obrigar a mudar o \"type\" de todo o package.json."
+      ],
+      "code": "// package.json\n{\n  \"name\": \"meu-projeto\",\n  \"type\": \"module\"\n}\n\n// index.js -> tratado como ES Module (por causa do \"type\": \"module\")\nimport { somar } from './matematica.js';\nconsole.log(somar(2, 3));\n\n// legado.cjs -> tratado sempre como CommonJS, apesar do \"type\": \"module\"\nconst { multiplicar } = require('./matematica.cjs');\nconsole.log(multiplicar(2, 3));",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Experimente criar um pequeno projeto com \"type\": \"module\" no package.json e um único ficheiro utilitario.cjs que use require(); confirme que o Node não reclama, precisamente por causa da extensão .cjs.",
+      "table_headers": [
+        "Extensão / \"type\" no package.json",
+        "Sistema de módulos usado"
+      ],
+      "table_rows": [
+        [
+          ".cjs",
+          "CommonJS, sempre, independentemente do package.json"
+        ],
+        [
+          ".mjs",
+          "ES Modules, sempre, independentemente do package.json"
+        ],
+        [
+          ".js com \"type\": \"module\"",
+          "ES Modules"
+        ],
+        [
+          ".js com \"type\": \"commonjs\" ou sem o campo",
+          "CommonJS (comportamento por omissão)"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📋",
+          "text": "\"type\" no package.json define o padrão"
+        },
+        {
+          "icon": "🔒",
+          "text": ".cjs força CommonJS sempre"
+        },
+        {
+          "icon": "🔓",
+          "text": ".mjs força ESM sempre"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Módulo de utilizadores",
+      "difficulty": "Iniciante",
+      "statement": "Crie um ficheiro utilizadores.js que exporte, através de module.exports, duas funções: criarUtilizador(nome, idade), que devolve um objeto { nome, idade }, e listarNomes(utilizadores), que recebe um array de utilizadores e devolve um array só com os respetivos nomes. Depois, num ficheiro app.js, use require() para importar essas duas funções, crie um array com pelo menos três utilizadores criados com criarUtilizador, e imprima na consola o resultado de listarNomes aplicado a esse array.",
+      "hint": "Lembre-se que module.exports pode ser um único objeto com várias propriedades, e que require() devolve exatamente o valor guardado em module.exports no ficheiro importado.",
+      "solution_code": "// utilizadores.js\nfunction criarUtilizador(nome, idade) {\n  return { nome, idade };\n}\n\nfunction listarNomes(utilizadores) {\n  return utilizadores.map((u) => u.nome);\n}\n\nmodule.exports = { criarUtilizador, listarNomes };\n\n// app.js\nconst { criarUtilizador, listarNomes } = require('./utilizadores');\n\nconst utilizadores = [\n  criarUtilizador('Ana', 28),\n  criarUtilizador('Bruno', 34),\n  criarUtilizador('Carla', 22),\n];\n\nconsole.log(listarNomes(utilizadores));\n// ['Ana', 'Bruno', 'Carla']",
+      "solution_explanation": "module.exports é definido uma única vez em utilizadores.js como um objeto com as duas funções, e require('./utilizadores') devolve exatamente esse objeto. Isso permite desestruturar criarUtilizador e listarNomes diretamente no ficheiro que os consome, sem qualquer configuração adicional."
+    },
+    {
+      "title": "Corrigir o contador partido",
+      "difficulty": "Intermedio",
+      "statement": "O ficheiro contador.js seguinte pretende exportar duas funções, incrementar e obterValor, que partilham uma variável valor iniciada a 0, mas tem um problema: quando outro ficheiro faz require('./contador') e tenta chamar obterValor(), obtém o erro \"obterValor is not a function\". Código com o problema:\n\nlet valor = 0;\n\nexports = {\n  incrementar() {\n    valor++;\n  },\n  obterValor() {\n    return valor;\n  },\n};\n\nCorrija o ficheiro para que require('./contador') devolva corretamente as duas funções e o valor continue partilhado entre chamadas sucessivas de incrementar. Acrescente um comentário no código a explicar porque é que a versão original não funcionava.",
+      "hint": "exports começa por apontar para o mesmo objeto que module.exports, mas é só uma variável local; reatribuir exports diretamente não muda o que require() efetivamente devolve.",
+      "solution_code": "let valor = 0;\n\n// A atribuição direta a `exports` troca apenas a referência da variável\n// local `exports` para um novo objeto; o Node continua a devolver\n// `module.exports`, que ficou inalterado (o objeto vazio original).\n// Por isso, para substituir por completo o que é exportado, é preciso\n// atribuir diretamente a module.exports.\nmodule.exports = {\n  incrementar() {\n    valor++;\n  },\n  obterValor() {\n    return valor;\n  },\n};",
+      "solution_explanation": "exports e module.exports apontam inicialmente para o mesmo objeto, mas exports é apenas uma variável local dentro da função wrapper do módulo. Atribuir um novo objeto a exports quebra essa ligação e deixa module.exports (o que require() realmente devolve) inalterado, pelo que a correção passa por atribuir o novo objeto diretamente a module.exports."
+    },
+    {
+      "title": "Estado partilhado e cache de módulos",
+      "difficulty": "Avancado",
+      "statement": "Crie um módulo contadorPartilhado.js (CommonJS) com uma variável interna total = 0 e que exporte uma função incrementar(quantidade) que soma quantidade a total e devolve o novo valor. Crie depois dois ficheiros, moduloA.js e moduloB.js, que ambos façam require('./contadorPartilhado') e cada um chame incrementar(1) exatamente uma vez. Por fim, crie um ficheiro principal.js que faça require('./moduloA'), depois require('./moduloB'), e por último volte a fazer require('./contadorPartilhado') para chamar incrementar(0) e imprimir o resultado. Explique, num comentário no código de principal.js, porque o valor impresso é 2 (e não 0, nem um erro), apesar do módulo contadorPartilhado ser referenciado três vezes ao todo entre os três ficheiros.",
+      "hint": "O Node guarda cada módulo já executado numa cache interna, indexada pelo caminho absoluto e resolvido do ficheiro; pedidos seguintes de require() para esse mesmo caminho devolvem a mesma instância de module.exports, sem voltar a executar o código do módulo.",
+      "solution_code": "// contadorPartilhado.js\nlet total = 0;\n\nfunction incrementar(quantidade) {\n  total += quantidade;\n  return total;\n}\n\nmodule.exports = { incrementar };\n\n// moduloA.js\nconst { incrementar } = require('./contadorPartilhado');\nincrementar(1);\nmodule.exports = {};\n\n// moduloB.js\nconst { incrementar } = require('./contadorPartilhado');\nincrementar(1);\nmodule.exports = {};\n\n// principal.js\nrequire('./moduloA');\nrequire('./moduloB');\nconst { incrementar } = require('./contadorPartilhado');\n\n// O total impresso é 2: o Node resolve './contadorPartilhado' sempre para\n// o mesmo caminho absoluto e só executa esse ficheiro uma única vez (na\n// primeira vez que é pedido, dentro de moduloA.js). O module.exports\n// resultante fica guardado em require.cache, por isso moduloB.js e este\n// próprio ficheiro recebem, ao chamar require, a mesma instância de\n// incrementar, ligada à mesma variável `total` em memória, em vez de\n// recriarem um módulo novo com total a começar outra vez em 0.\nconsole.log(incrementar(0));\n// 2",
+      "solution_explanation": "Como o require.cache do Node guarda o module.exports de cada módulo indexado pelo caminho absoluto do ficheiro, contadorPartilhado.js só é executado uma vez; as três chamadas a require partilham a mesma instância da variável total, por isso o valor acumulado (2) é visível em qualquer ponto do programa que volte a importar o módulo."
+    }
+  ],
+  "summary": [
+    "Em CommonJS, cada ficheiro é um módulo; require() executa-o e devolve module.exports, que fica em cache pelo caminho absoluto do ficheiro.",
+    "exports é apenas um atalho para module.exports; reatribuir exports diretamente quebra essa ligação, pelo que substituir tudo exige module.exports = ....",
+    "O Node resolve require() por caminhos relativos, por node_modules ou por módulos nativos, e nunca volta a executar um módulo já carregado.",
+    "__dirname e __filename são variáveis de módulo, injetadas pelo wrapper do Node, com o caminho absoluto da pasta e do ficheiro atual respetivamente.",
+    "CommonJS é síncrono e dinâmico (require pode ser condicional); ES Modules é assíncrono e estático (import é analisável antes de correr, com bindings vivos).",
+    "O Node decide o sistema de módulos pela extensão do ficheiro (.cjs força CommonJS, .mjs força ESM) ou, para .js, pelo campo \"type\" do package.json mais próximo."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 03",
+  "next_label": "Aula 03 → NPM e Gestão de Pacotes",
+  "_stage": "autoria"
+}

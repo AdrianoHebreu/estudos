@@ -1,0 +1,310 @@
+{
+  "module_num": "07",
+  "module_title": "Assincronismo",
+  "module_dir": "07-Assincronismo",
+  "lesson_num": "03",
+  "lesson_slug": "Promises",
+  "kind": "aula",
+  "title": "Promises",
+  "filename_base": "03-Promises",
+  "subtitle": "Como representar, encadear e combinar operações assíncronas com Promises",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Distinguir os três estados de uma Promise (pending, fulfilled, rejected) e perceber porque são finais e imutáveis.",
+    "Construir Promises manualmente com o construtor new Promise e as funções resolve/reject.",
+    "Encadear operações assíncronas com .then, tratar erros com .catch e executar limpeza garantida com .finally.",
+    "Combinar várias Promises em paralelo com Promise.all e Promise.allSettled, conforme todas as tarefas sejam obrigatórias ou apenas informativas.",
+    "Escolher entre Promise.race e Promise.any consoante se pretenda a primeira resposta (sucesso ou erro) ou o primeiro sucesso."
+  ],
+  "sections": [
+    {
+      "heading": "Os três estados de uma Promise",
+      "body": [
+        "Uma Promise é um objeto que representa o resultado eventual de uma operação assíncrona, ainda antes de esse resultado existir. Em qualquer momento, uma Promise encontra-se exatamente num de três estados: pending (pendente, enquanto a operação ainda decorre), fulfilled (cumprida, quando a operação terminou com sucesso e existe um valor associado) ou rejected (rejeitada, quando a operação falhou e existe um motivo, tipicamente um erro, associado).",
+        "A transição só pode acontecer uma vez e num único sentido: de pending para fulfilled, ou de pending para rejected. Depois de uma Promise chegar a fulfilled ou rejected diz-se que está settled (estabilizada), e esse estado é definitivo — não existe forma de a fazer voltar a pending nem de trocar de fulfilled para rejected ou vice-versa. É essa garantia de imutabilidade que torna as Promises previsíveis e seguras para encadear."
+      ],
+      "code": "const promessa = new Promise((resolve) => {\n  setTimeout(() => resolve(\"dados carregados\"), 1000);\n});\n\nconsole.log(promessa); // Promise { <pending> }\n\npromessa.then((resultado) => {\n  console.log(resultado); // \"dados carregados\", passado 1 segundo\n});\n\n// Depois de resolvida, inspecionar a promessa mostraria:\n// Promise { 'dados carregados' }",
+      "callout_kind": "NOTA",
+      "callout_text": "O estado interno de uma Promise não é acedido diretamente por código — não existe promessa.estado. A única forma correta de reagir ao resultado é através de .then, .catch e .finally.",
+      "table_headers": [
+        "Estado",
+        "Significado",
+        "Pode transitar para"
+      ],
+      "table_rows": [
+        [
+          "pending",
+          "estado inicial; a operação ainda não terminou",
+          "fulfilled ou rejected"
+        ],
+        [
+          "fulfilled",
+          "a operação terminou com sucesso e tem um valor associado",
+          "nenhum — estado final"
+        ],
+        [
+          "rejected",
+          "a operação falhou e tem um motivo (erro) associado",
+          "nenhum — estado final"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔄",
+          "text": "pending: ainda a decorrer"
+        },
+        {
+          "icon": "✅",
+          "text": "fulfilled: sucesso com valor"
+        },
+        {
+          "icon": "❌",
+          "text": "rejected: falha com motivo"
+        },
+        {
+          "icon": "🔒",
+          "text": "estado final é sempre imutável"
+        }
+      ]
+    },
+    {
+      "heading": "Construir uma Promise com o construtor",
+      "body": [
+        "O construtor new Promise recebe uma função executora com dois parâmetros, resolve e reject, e essa função corre de forma síncrona e imediata assim que a Promise é criada. Chamar resolve(valor) transita a Promise para fulfilled com esse valor; chamar reject(motivo) transita-a para rejected com esse motivo. Este padrão é a forma habitual de envolver operações baseadas em callbacks (temporizadores, leitura de ficheiros, pedidos de rede) numa interface baseada em Promises.",
+        "Duas particularidades merecem atenção. Primeiro, se o código dentro do executor lançar uma exceção de forma síncrona (com throw), a Promise é automaticamente rejeitada com esse erro, sem ser preciso capturá-lo manualmente. Segundo, chamadas adicionais a resolve ou reject depois da primeira são simplesmente ignoradas — não geram erro, mas também não têm qualquer efeito, porque uma Promise só pode estabilizar uma vez."
+      ],
+      "code": "function esperar(ms, valor) {\n  return new Promise((resolve, reject) => {\n    if (ms < 0) {\n      reject(new Error(\"duração inválida\"));\n      return;\n    }\n    setTimeout(() => resolve(valor), ms);\n  });\n}\n\nesperar(500, \"concluído\")\n  .then((valor) => console.log(valor))\n  .catch((erro) => console.error(erro.message));",
+      "callout_kind": "ATENCAO",
+      "callout_text": "O executor corre de imediato, mesmo antes de se chamar .then. Escrever new Promise((resolve) => { resolve(1); resolve(2); }) resulta numa Promise fulfilled com 1 — a segunda chamada a resolve é ignorada.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🏗️",
+          "text": "executor corre de imediato"
+        },
+        {
+          "icon": "✅",
+          "text": "resolve(valor) → fulfilled"
+        },
+        {
+          "icon": "❌",
+          "text": "reject(erro) → rejected"
+        },
+        {
+          "icon": "♻️",
+          "text": "chamadas extra são ignoradas"
+        }
+      ]
+    },
+    {
+      "heading": "Encadeamento com then, catch e finally",
+      "body": [
+        "O método .then aceita até dois callbacks, um para o caso de sucesso e outro para o caso de rejeição, e devolve sempre uma nova Promise. Se o callback devolver um valor simples, a nova Promise resolve com esse valor; se devolver outra Promise, a cadeia espera automaticamente por ela antes de continuar. Isto permite encadear várias transformações sucessivas, cada uma a operar sobre o resultado da anterior.",
+        "O método .catch é açúcar sintático para .then(undefined, tratarErro) e apanha qualquer erro ou rejeição ocorrida em qualquer ponto anterior da cadeia, não apenas na chamada imediatamente antes dele. Se o callback do .catch não relançar o erro, a cadeia volta a ficar fulfilled a partir daí, com o valor que esse callback devolver.",
+        "Já .finally recebe um callback sem argumentos, que corre sempre, quer a cadeia acabe fulfilled quer rejected, e serve tipicamente para tarefas de limpeza (fechar uma ligação, esconder um indicador de carregamento). O valor ou erro original atravessa o .finally inalterado, a não ser que o próprio callback lance uma nova exceção."
+      ],
+      "code": "function obterUtilizador(id) {\n  return new Promise((resolve, reject) => {\n    setTimeout(() => {\n      if (id === 42) {\n        resolve({ id: 42, nome: \"Marta Silva\" });\n      } else {\n        reject(new Error(`Utilizador ${id} não encontrado`));\n      }\n    }, 300);\n  });\n}\n\nobterUtilizador(42)\n  .then((utilizador) => utilizador.nome)\n  .then((nome) => {\n    console.log(`Nome: ${nome}`);\n    return nome;\n  })\n  .catch((erro) => {\n    console.error(\"Falha ao obter utilizador:\", erro.message);\n    return \"Utilizador desconhecido\";\n  })\n  .finally(() => {\n    console.log(\"Pedido terminado\");\n  });",
+      "callout_kind": "DICA",
+      "callout_text": "Devolver um valor dentro de um .catch dá à cadeia uma forma de recuperar do erro com um valor por omissão; se em vez disso quiser propagar o erro para um .catch mais à frente, basta relançá-lo com throw erro.",
+      "table_headers": [
+        "Método",
+        "Quando executa",
+        "Recebe como argumento"
+      ],
+      "table_rows": [
+        [
+          ".then",
+          "quando a Promise anterior fica fulfilled (ou rejected, se passar dois callbacks)",
+          "o valor de sucesso"
+        ],
+        [
+          ".catch",
+          "quando qualquer ponto anterior da cadeia rejeita",
+          "o motivo do erro"
+        ],
+        [
+          ".finally",
+          "sempre, independentemente do resultado",
+          "nenhum argumento"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔗",
+          "text": ".then encadeia transformações"
+        },
+        {
+          "icon": "🧯",
+          "text": ".catch apanha erros a montante"
+        },
+        {
+          "icon": "🧹",
+          "text": ".finally corre sempre"
+        },
+        {
+          "icon": "↩️",
+          "text": "retornar num .then alimenta o seguinte"
+        }
+      ]
+    },
+    {
+      "heading": "Promise.all: todas ou nenhuma",
+      "body": [
+        "Promise.all recebe um iterável de Promises e devolve uma nova Promise que resolve com um array de resultados, na mesma ordem das promises originais, assim que todas tiverem sido fulfilled. As promises correm em paralelo, não em sequência, pelo que o tempo total aproxima-se do tempo da mais lenta, e não da soma de todos os tempos.",
+        "Se qualquer uma das promises rejeitar, Promise.all rejeita imediatamente com esse mesmo motivo, sem esperar pelas restantes — este comportamento chama-se fail-fast. As outras promises continuam a correr em segundo plano (não há forma de as cancelar), mas os seus resultados são simplesmente ignorados pela Promise.all. Este combinador é adequado quando todas as tarefas são obrigatórias para o resultado final fazer sentido."
+      ],
+      "code": "function esperar(ms, valor) {\n  return new Promise((resolve) => setTimeout(() => resolve(valor), ms));\n}\n\nconst p1 = esperar(300, \"A\");\nconst p2 = esperar(100, \"B\");\nconst p3 = esperar(200, \"C\");\n\nPromise.all([p1, p2, p3])\n  .then((resultados) => console.log(resultados)) // [\"A\", \"B\", \"C\"], ao fim de ~300ms\n  .catch((erro) => console.error(\"Uma das tarefas falhou:\", erro.message));",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Uma única rejeição basta para que Promise.all rejeite de imediato. Se precisar de saber o resultado de todas as tarefas, mesmo as que falham, use Promise.allSettled em vez de Promise.all.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⚡",
+          "text": "corre as Promises em paralelo"
+        },
+        {
+          "icon": "📦",
+          "text": "resolve com array na mesma ordem"
+        },
+        {
+          "icon": "💥",
+          "text": "rejeita ao primeiro erro (fail-fast)"
+        }
+      ]
+    },
+    {
+      "heading": "Promise.allSettled: o resultado de cada tarefa",
+      "body": [
+        "Promise.allSettled, introduzido no ES2020, também corre as promises em paralelo, mas espera que todas cheguem a um estado final antes de resolver — e nunca rejeita. O array devolvido tem, para cada promise original, um objeto descritivo: { status: 'fulfilled', value } quando teve sucesso, ou { status: 'rejected', reason } quando falhou.",
+        "Este combinador é a escolha certa quando as tarefas são independentes entre si e o objetivo é saber o desfecho de cada uma, sem que a falha de uma invalide as restantes — por exemplo, ao enviar notificações a vários destinatários ou ao consultar vários serviços auxiliares em simultâneo."
+      ],
+      "code": "function esperar(ms, valor) {\n  return new Promise((resolve) => setTimeout(() => resolve(valor), ms));\n}\n\nPromise.allSettled([\n  esperar(100, \"ok\"),\n  Promise.reject(new Error(\"falhou\")),\n  esperar(50, \"também ok\"),\n]).then((resultados) => {\n  resultados.forEach((r) => {\n    if (r.status === \"fulfilled\") {\n      console.log(\"sucesso:\", r.value);\n    } else {\n      console.log(\"falha:\", r.reason.message);\n    }\n  });\n});",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🕵️",
+          "text": "espera que todas terminem"
+        },
+        {
+          "icon": "📋",
+          "text": "devolve o status de cada uma"
+        },
+        {
+          "icon": "🚫",
+          "text": "nunca rejeita"
+        }
+      ]
+    },
+    {
+      "heading": "Promise.race e Promise.any: a primeira a responder",
+      "body": [
+        "Promise.race resolve ou rejeita logo que a primeira promise da lista atinja um estado final, seja com sucesso ou com erro — ganha quem chegar primeiro, independentemente do resultado. É a base de um padrão muito comum: impor um limite de tempo a uma operação, fazendo-a competir com uma promise de timeout que rejeita ao fim de um número fixo de milissegundos.",
+        "Promise.any, do ES2021, é mais seletivo: resolve com o valor da primeira promise que tiver sucesso, ignorando rejeições anteriores. Só rejeita se absolutamente todas as promises da lista rejeitarem, e nesse caso o erro entregue não é um erro simples, mas um AggregateError, cuja propriedade errors é um array com o motivo de cada rejeição individual. Este combinador serve bem cenários de fontes redundantes, em que basta que uma qualquer responda com sucesso."
+      ],
+      "code": "function esperar(ms, valor) {\n  return new Promise((resolve) => setTimeout(() => resolve(valor), ms));\n}\n\nfunction comTimeout(promessa, ms) {\n  const timeout = new Promise((_, reject) =>\n    setTimeout(() => reject(new Error(\"Tempo excedido\")), ms)\n  );\n  return Promise.race([promessa, timeout]);\n}\n\ncomTimeout(esperar(2000, \"dados\"), 1000)\n  .then((valor) => console.log(valor))\n  .catch((erro) => console.error(erro.message)); // \"Tempo excedido\"\n\nPromise.any([\n  Promise.reject(new Error(\"espelho 1 falhou\")),\n  esperar(150, \"resposta do espelho 2\"),\n  esperar(80, \"resposta do espelho 3\"),\n])\n  .then((primeiroSucesso) => console.log(primeiroSucesso)) // \"resposta do espelho 3\"\n  .catch((erro) => {\n    console.error(erro instanceof AggregateError, erro.errors);\n  });",
+      "callout_kind": "NOTA",
+      "callout_text": "AggregateError é o único caso, entre os quatro combinadores, em que o motivo de rejeição não é o erro original de uma promise, mas um agregado com todos os erros — útil precisamente para diagnosticar por que razão todas as fontes falharam.",
+      "table_headers": [
+        "Método",
+        "Resolve com",
+        "Rejeita quando",
+        "Uso típico"
+      ],
+      "table_rows": [
+        [
+          "Promise.all",
+          "array com todos os valores, na ordem original",
+          "assim que uma rejeitar (fail-fast)",
+          "todas as tarefas são obrigatórias"
+        ],
+        [
+          "Promise.allSettled",
+          "array de {status, value/reason} para todas",
+          "nunca rejeita",
+          "querer o resultado de cada tarefa, mesmo as que falham"
+        ],
+        [
+          "Promise.race",
+          "valor ou erro da primeira a estabilizar",
+          "se a primeira a estabilizar for uma rejeição",
+          "impor timeouts ou usar a resposta mais rápida"
+        ],
+        [
+          "Promise.any",
+          "valor da primeira a ser fulfilled",
+          "só se todas rejeitarem (AggregateError)",
+          "tentar várias fontes redundantes e ficar com a mais rápida que funcione"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🏁",
+          "text": "race: primeira a estabilizar, sucesso ou erro"
+        },
+        {
+          "icon": "⏱️",
+          "text": "race é a base de timeouts"
+        },
+        {
+          "icon": "🥇",
+          "text": "any: primeira a ter sucesso"
+        },
+        {
+          "icon": "📛",
+          "text": "any só rejeita se todas falharem"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Dividir com Promises",
+      "difficulty": "Iniciante",
+      "statement": "Escreva uma função dividirAsync(a, b) que devolve uma Promise. Essa Promise deve resolver com o resultado de a / b ao fim de 500ms (usando setTimeout), exceto quando b é igual a 0, caso em que deve rejeitar com new Error('Divisão por zero'), sem esperar pelo setTimeout. Teste a função chamando dividirAsync(10, 2).then(...).catch(...) e dividirAsync(5, 0).then(...).catch(...), imprimindo o resultado ou a mensagem de erro em cada caso.",
+      "hint": "Pode chamar reject de forma síncrona, ainda dentro do executor e sem passar pelo setTimeout, assim que detetar que b é 0; só a resolução com sucesso precisa de esperar pelo setTimeout.",
+      "solution_code": "function dividirAsync(a, b) {\n  return new Promise((resolve, reject) => {\n    if (b === 0) {\n      reject(new Error(\"Divisão por zero\"));\n      return;\n    }\n    setTimeout(() => resolve(a / b), 500);\n  });\n}\n\ndividirAsync(10, 2)\n  .then((resultado) => console.log(\"Resultado:\", resultado))\n  .catch((erro) => console.error(\"Erro:\", erro.message));\n\ndividirAsync(5, 0)\n  .then((resultado) => console.log(\"Resultado:\", resultado))\n  .catch((erro) => console.error(\"Erro:\", erro.message));",
+      "solution_explanation": "A rejeição por divisão por zero é imediata e síncrona, evitando esperar 500ms por um erro já conhecido antes de agendar qualquer temporizador. Nos restantes casos, resolve só é chamado dentro do callback do setTimeout, pelo que a Promise permanece pending até esse momento."
+    },
+    {
+      "title": "Preço com desconto e limpeza final",
+      "difficulty": "Intermedio",
+      "statement": "Tem disponível esta função: function obterPreco(produtoId) { return new Promise((resolve, reject) => { if (produtoId < 1) { reject(new Error('ID de produto inválido')); return; } setTimeout(() => resolve(produtoId * 25), 300); }); } Escreva código que: chama obterPreco(3); no primeiro .then aplica um desconto de 10% ao valor recebido, devolvendo o novo valor; num segundo .then imprime o preço final formatado como 'Preço final: X€'; num .catch trata qualquer erro imprimindo um aviso e devolvendo 0 como preço por omissão; e usa .finally para imprimir 'Pedido de preço concluído', independentemente do que aconteça antes.",
+      "hint": "O valor devolvido dentro de um .then passa automaticamente para o .then seguinte na mesma cadeia, sem ser preciso criar uma nova Promise só para calcular o desconto.",
+      "solution_code": "function obterPreco(produtoId) {\n  return new Promise((resolve, reject) => {\n    if (produtoId < 1) {\n      reject(new Error(\"ID de produto inválido\"));\n      return;\n    }\n    setTimeout(() => resolve(produtoId * 25), 300);\n  });\n}\n\nobterPreco(3)\n  .then((preco) => preco * 0.9)\n  .then((precoComDesconto) => {\n    console.log(`Preço final: ${precoComDesconto}€`);\n  })\n  .catch((erro) => {\n    console.warn(\"Não foi possível obter o preço:\", erro.message);\n    return 0;\n  })\n  .finally(() => {\n    console.log(\"Pedido de preço concluído\");\n  });",
+      "solution_explanation": "O primeiro .then recebe o preço original (75, já que 3 * 25) e devolve-o multiplicado por 0.9, ou seja 67.5, valor que é entregue automaticamente ao .then seguinte, que o formata e imprime como 'Preço final: 67.5€'. O .catch só seria acionado se obterPreco rejeitasse, e o .finally corre sempre no fim da cadeia, seja qual for o caminho seguido."
+    },
+    {
+      "title": "Dados de produto sem falhas em cascata",
+      "difficulty": "Avancado",
+      "statement": "Tem disponíveis estas três funções, já implementadas: function verificarStock(produtoId) { return new Promise((resolve) => setTimeout(() => resolve(produtoId % 2 === 0), 200)); } function calcularPortes(produtoId) { return new Promise((resolve) => setTimeout(() => resolve(produtoId * 2), 150)); } function verificarStockPromocional(produtoId) { return new Promise((_, reject) => setTimeout(() => reject(new Error('Serviço promocional indisponível')), 100)); } Escreva uma função carregarDadosProduto(produtoId) que devolve uma Promise, chamando as três funções em simultâneo através de Promise.allSettled, e que resolve com um objeto { stock, portes, promocao } em que cada propriedade tem o valor obtido quando a promessa correspondente teve sucesso, ou null quando essa promessa falhou. A falha de uma das chamadas não pode impedir o processamento das outras. Teste com carregarDadosProduto(4).then(dados => console.log(dados)).",
+      "hint": "Promise.allSettled devolve um array na mesma ordem das promises originais, em que cada elemento tem uma propriedade status igual a 'fulfilled' ou 'rejected', e consoante o caso uma propriedade value ou reason.",
+      "solution_code": "function verificarStock(produtoId) {\n  return new Promise((resolve) => {\n    setTimeout(() => resolve(produtoId % 2 === 0), 200);\n  });\n}\n\nfunction calcularPortes(produtoId) {\n  return new Promise((resolve) => {\n    setTimeout(() => resolve(produtoId * 2), 150);\n  });\n}\n\nfunction verificarStockPromocional(produtoId) {\n  return new Promise((_, reject) => {\n    setTimeout(() => reject(new Error(\"Serviço promocional indisponível\")), 100);\n  });\n}\n\nfunction carregarDadosProduto(produtoId) {\n  return Promise.allSettled([\n    verificarStock(produtoId),\n    calcularPortes(produtoId),\n    verificarStockPromocional(produtoId),\n  ]).then(([stockResult, portesResult, promocaoResult]) => ({\n    stock: stockResult.status === \"fulfilled\" ? stockResult.value : null,\n    portes: portesResult.status === \"fulfilled\" ? portesResult.value : null,\n    promocao: promocaoResult.status === \"fulfilled\" ? promocaoResult.value : null,\n  }));\n}\n\ncarregarDadosProduto(4).then((dados) => console.log(dados));\n// { stock: true, portes: 8, promocao: null }",
+      "solution_explanation": "Promise.allSettled espera que as três promessas cheguem a um estado final sem nunca rejeitar globalmente, o que permite tratar cada resultado de forma independente através da propriedade status. Com produtoId igual a 4, verificarStock resolve com true (4 % 2 === 0) e calcularPortes resolve com 8 (4 * 2); como verificarStockPromocional rejeita sempre, o campo promocao fica null, sem que isso afete os valores de stock e portes obtidos com sucesso."
+    },
+    {
+      "title": "Espelho mais rápido com timeout",
+      "difficulty": "Avancado",
+      "statement": "Tem três funções, mirrorA(), mirrorB() e mirrorC(), que simulam pedir a mesma informação a três servidores espelho diferentes: cada uma devolve uma Promise que pode resolver com uma string ou rejeitar após um atraso distinto. Escreva uma função obterDadosMaisRapidos() que usa Promise.any para obter a resposta do primeiro espelho que tiver sucesso; se todos os espelhos falharem, deve imprimir cada erro individual (a partir da propriedade errors do AggregateError recebido) e propagar o erro. Depois escreva uma função genérica e reutilizável obterComTimeout(promessa, limiteMs), baseada em Promise.race, que rejeita com new Error('Tempo excedido') caso a promessa recebida não estabilize dentro de limiteMs. Use-a para envolver a chamada a obterDadosMaisRapidos() com um limite de 500ms, tratando o resultado final com .then/.catch.",
+      "hint": "Promise.any só rejeita quando todas as promises da lista rejeitarem; nesse caso, o erro entregue ao catch é um AggregateError cuja propriedade errors é um array com o motivo de cada rejeição, pela mesma ordem da lista original.",
+      "solution_code": "function mirrorA() {\n  return new Promise((resolve, reject) => {\n    setTimeout(() => reject(new Error(\"mirrorA indisponível\")), 120);\n  });\n}\n\nfunction mirrorB() {\n  return new Promise((resolve) => {\n    setTimeout(() => resolve(\"resposta do mirrorB\"), 200);\n  });\n}\n\nfunction mirrorC() {\n  return new Promise((resolve, reject) => {\n    setTimeout(() => reject(new Error(\"mirrorC indisponível\")), 80);\n  });\n}\n\nfunction obterDadosMaisRapidos() {\n  return Promise.any([mirrorA(), mirrorB(), mirrorC()]).catch((erro) => {\n    console.error(\"Todos os espelhos falharam:\");\n    erro.errors.forEach((motivo, indice) => {\n      console.error(`  espelho ${indice}: ${motivo.message}`);\n    });\n    throw erro;\n  });\n}\n\nfunction obterComTimeout(promessa, limiteMs) {\n  const timeout = new Promise((_, reject) => {\n    setTimeout(() => reject(new Error(\"Tempo excedido\")), limiteMs);\n  });\n  return Promise.race([promessa, timeout]);\n}\n\nobterComTimeout(obterDadosMaisRapidos(), 500)\n  .then((resposta) => console.log(\"Resposta:\", resposta))\n  .catch((erro) => console.error(\"Falha final:\", erro.message));\n// \"Resposta: resposta do mirrorB\"",
+      "solution_explanation": "mirrorC rejeita ao fim de 80ms e mirrorA ao fim de 120ms, mas Promise.any ignora essas rejeições e continua à espera de um sucesso; mirrorB resolve ao fim de 200ms, pelo que obterDadosMaisRapidos devolve 'resposta do mirrorB' nesse instante, sem que o catch chegue a ser acionado. Como 200ms fica bem dentro do limite de 500ms, obterComTimeout deixa esse resultado passar antes de a promessa de timeout rejeitar. Promise.race é usado de forma genérica para impor um limite de tempo a qualquer promessa, fazendo-a competir com uma promessa de timeout que rejeita ao fim de limiteMs."
+    }
+  ],
+  "summary": [
+    "Uma Promise representa um valor futuro e só transita de pending para fulfilled ou para rejected, nunca ao contrário — uma vez settled, o estado é definitivo.",
+    "O construtor new Promise(executor) corre o executor de imediato; resolve e reject definem o resultado final, e chamadas repetidas a qualquer um deles depois da primeira são ignoradas.",
+    ".then encadeia transformações sucessivas, .catch apanha erros de qualquer ponto anterior da cadeia, e .finally corre sempre, sirva a Promise fulfilled ou rejected.",
+    "Promise.all é fail-fast e exige que todas as tarefas tenham sucesso; Promise.allSettled nunca rejeita e devolve o desfecho de cada tarefa individualmente.",
+    "Promise.race decide pela primeira Promise a estabilizar, sucesso ou erro, sendo a base de padrões de timeout; Promise.any decide pela primeira a ter sucesso e só rejeita, com um AggregateError, se todas falharem.",
+    "Escolher o combinador certo depende de saber se as tarefas são todas obrigatórias, todas meramente informativas, ou concorrentes entre si."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 04",
+  "next_label": "Aula 04 → async/await",
+  "_stage": "revisao"
+}

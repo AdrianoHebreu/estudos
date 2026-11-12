@@ -1,0 +1,259 @@
+{
+  "module_num": "07",
+  "module_title": "Utility Types",
+  "module_dir": "07-Utility-Types",
+  "lesson_num": "02",
+  "lesson_slug": "Pick-Omit-e-Record",
+  "kind": "aula",
+  "title": "Pick, Omit e Record",
+  "filename_base": "02-Pick-Omit-e-Record",
+  "subtitle": "Escolher chaves, retirar chaves e construir dicionários com três linhas da biblioteca",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Ler as definições reais de Pick, Omit e Record e ligá-las aos mapped types do Módulo 06",
+    "Usar Pick para derivar um tipo com um subconjunto de chaves, verificado em compilação",
+    "Reconhecer a assimetria do Omit: o segundo parâmetro não está preso às chaves do tipo",
+    "Escrever um Omit estrito próprio, com o constraint que falta ao da biblioteca",
+    "Distinguir Record com uma união de literais de Record com string, e o que isso muda no acesso",
+    "Combinar os três para derivar formulários, respostas públicas e índices por identificador"
+  ],
+  "sections": [
+    {
+      "heading": "Três definições de uma linha",
+      "body": [
+        "O Módulo 06 ensinou toda a mecânica desta aula sem lhe dar nomes: o mapped type ApenasEstas, que percorria uma união de chaves recebida como parâmetro; o SemEstas, que deixava algumas de fora; e o Dicionario, que criava uma propriedade por cada membro de uma união. Esses três tipos já existem na biblioteca padrão do TypeScript e chamam-se Pick, Omit e Record. Não há magia nenhuma: são literalmente as mesmas linhas.",
+        "As definições que a biblioteca usa são estas. Pick recebe um tipo e uma união de chaves desse tipo, e mapeia só essas: type Pick<T, K extends keyof T> = { [P in K]: T[P] }. Omit não mapeia nada de novo, delega em Pick sobre as chaves que sobram: type Omit<T, K extends keyof any> = Pick<T, Exclude<keyof T, K>>. Record cria uma propriedade do tipo T por cada chave da união K: type Record<K extends keyof any, T> = { [P in K]: T }.",
+        "O Exclude que aparece na definição de Omit é ele próprio um utility type, tratado na Aula 04 deste módulo. Por agora basta saber que remove de uma união os membros que aparecem na outra. Vale a pena reparar desde já numa diferença que domina metade desta aula: o constraint do segundo parâmetro de Pick é keyof T, mas o de Omit é keyof any."
+      ],
+      "code": "interface Livro {\n  id: number;\n  titulo: string;\n  isbn: string;\n  paginas: number;\n}\n\n// As definições reais da biblioteca padrão, copiadas tal e qual\ntype MeuPick<T, K extends keyof T> = { [P in K]: T[P] };\ntype MeuOmit<T, K extends keyof any> = MeuPick<T, Exclude<keyof T, K>>;\ntype MeuRecord<K extends keyof any, T> = { [P in K]: T };\n\ntype Resumo = MeuPick<Livro, \"id\" | \"titulo\">;\nconst resumo: Resumo = { id: 1, titulo: \"Os Maias\" };\nconsole.log(resumo.titulo); // Os Maias\n\ntype Publico = MeuOmit<Livro, \"isbn\">;\nconst publico: Publico = { id: 2, titulo: \"Peregrinação\", paginas: 480 };\nconsole.log(publico.paginas); // 480\n\ntype PorIdioma = MeuRecord<\"pt\" | \"en\", string>;\nconst saudacao: PorIdioma = { pt: \"Olá\", en: \"Hello\" };\nconsole.log(saudacao.pt); // Olá\n\n// Os tipos da biblioteca aceitam exatamente os mesmos valores\nconst resumoLib: Pick<Livro, \"id\" | \"titulo\"> = resumo;\nconst publicoLib: Omit<Livro, \"isbn\"> = publico;\nconst saudacaoLib: Record<\"pt\" | \"en\", string> = saudacao;\nconsole.log(resumoLib.id, publicoLib.titulo, saudacaoLib.en); // 1 Peregrinação Hello",
+      "callout_kind": "NOTA",
+      "callout_text": "Estes tipos não se importam de lado nenhum: vivem no ficheiro lib.es5.d.ts que acompanha o compilador e estão sempre disponíveis, como Array ou Promise.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📐",
+          "text": "Pick, Omit e Record são mapped types de uma linha"
+        },
+        {
+          "icon": "🔗",
+          "text": "São o ApenasEstas, o SemEstas e o Dicionario do Módulo 06"
+        },
+        {
+          "icon": "📦",
+          "text": "Vivem na biblioteca padrão e não se importam"
+        }
+      ]
+    },
+    {
+      "heading": "Pick: escolher chaves com rede",
+      "body": [
+        "Pick serve para derivar um tipo mais pequeno a partir de um maior, nomeando o que fica. O caso típico é uma listagem: a tabela no ecrã mostra três colunas de uma entidade que tem quinze propriedades, e o tipo da linha deve dizer exatamente isso, em vez de repetir à mão as três propriedades e ficar a apodrecer quando o tipo de origem mudar.",
+        "O constraint K extends keyof T é o que torna Pick útil em vez de perigoso. Quem escrever uma chave que não existe no tipo de origem, ou mantiver uma chave depois de ela ter sido renomeada no tipo original, recebe um erro no sítio onde o tipo é construído, e não trezentas linhas à frente. Isto vale para uma chave isolada e para cada membro de uma união de chaves.",
+        "Há um detalhe que o Módulo 06 já preparou: o compilador reconhece que as chaves de Pick vêm de T e transporta os modificadores de cada propriedade. Uma propriedade opcional continua opcional no tipo derivado, e uma propriedade readonly continua readonly. O exemplo abaixo confirma as duas coisas no compilador."
+      ],
+      "code": "interface Encomenda {\n  readonly id: number;\n  cliente: string;\n  nota?: string;\n  morada: string;\n  total: number;\n}\n\ntype LinhaDeLista = Pick<Encomenda, \"id\" | \"cliente\" | \"nota\">;\n\nconst linha: LinhaDeLista = { id: 10, cliente: \"Ana\" };\nconsole.log(linha.cliente); // Ana\nconsole.log(linha.nota); // undefined\n\nfunction resumir(l: LinhaDeLista): string {\n  return l.id + \" - \" + l.cliente + (l.nota ? \" (\" + l.nota + \")\" : \"\");\n}\nconsole.log(resumir(linha)); // 10 - Ana\nconsole.log(resumir({ id: 11, cliente: \"Rui\", nota: \"urgente\" })); // 11 - Rui (urgente)\n\n// @ts-expect-error morada ficou de fora do Pick: a propriedade não existe\nconsole.log(linha.morada);\n\n// @ts-expect-error readonly viajou com a chave: id continua só de leitura\nlinha.id = 12;\n\n// @ts-expect-error K extends keyof T rejeita uma chave que Encomenda não tem\ntype Invalida = Pick<Encomenda, \"desconto\">;",
+      "callout_kind": "DICA",
+      "callout_text": "Quando a lista de chaves a escolher for maior do que a lista a deixar de fora, o tipo certo é provavelmente o Omit. São complementares e lê-se melhor o que for mais curto.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "✅",
+          "text": "K extends keyof T rejeita chaves que não existem"
+        },
+        {
+          "icon": "🔒",
+          "text": "readonly e ? viajam com a chave escolhida"
+        },
+        {
+          "icon": "📋",
+          "text": "Ideal para tipos de linha de listagem"
+        }
+      ]
+    },
+    {
+      "heading": "Omit e a chave que nunca chega a ser verificada",
+      "body": [
+        "Omit é o complemento de Pick: nomeia-se o que sai e fica todo o resto. O uso clássico é produzir a versão pública de uma entidade, sem os campos que nunca devem atravessar a fronteira da aplicação. Como é construído por cima de Pick, herda o mesmo comportamento quanto aos modificadores: o readonly e o ponto de interrogação das chaves que sobrevivem chegam intactos ao tipo derivado.",
+        "Onde Omit se afasta de Pick é no constraint do segundo parâmetro. A definição diz K extends keyof any, e keyof any é string, number ou symbol. Qualquer chave imaginável satisfaz esse constraint, exista ela ou não no tipo T. O resultado prático é brutal: escrever palavraPass em vez de palavraPasse não produz erro nenhum. O tipo derivado fica igual ao original, com o campo sensível lá dentro, e o código continua a compilar como se estivesse tudo bem.",
+        "Isto não é um descuido do compilador, é uma decisão deliberada da biblioteca: permite usar Omit sobre tipos genéricos ainda não resolvidos e sobre uniões, onde exigir keyof T seria demasiado restritivo. O preço paga-o quem escreve mal uma chave, ou quem renomeia uma propriedade e esquece o Omit que a mencionava. O compilador não diz nada, e esse silêncio é o ponto mais importante desta aula."
+      ],
+      "code": "interface Conta {\n  readonly id: number;\n  email: string;\n  telefone?: string;\n  palavraPasse: string;\n}\n\ntype ContaPublica = Omit<Conta, \"palavraPasse\">;\n\nconst publica: ContaPublica = { id: 1, email: \"ana@exemplo.pt\" };\nconsole.log(publica.email); // ana@exemplo.pt\n\n// @ts-expect-error palavraPasse deixou de existir neste tipo\nconsole.log(publica.palavraPasse);\n\n// @ts-expect-error readonly sobreviveu à passagem por Pick\npublica.id = 2;\n\n// O segundo parâmetro é keyof any: uma chave mal escrita passa em silêncio\ntype ContaEnganosa = Omit<Conta, \"palavraPass\">;\n\nconst enganosa: ContaEnganosa = {\n  id: 3,\n  email: \"rui@exemplo.pt\",\n  palavraPasse: \"segredo\",\n};\nconsole.log(enganosa.palavraPasse); // segredo",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Um Omit que deixou de remover o que devia não produz erro nenhum. Fica igual ao tipo de origem e passa despercebido até ao dia em que um campo sensível aparece numa resposta.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "✂️",
+          "text": "Omit nomeia o que sai e mantém todo o resto"
+        },
+        {
+          "icon": "⚠️",
+          "text": "O segundo parâmetro é keyof any, não keyof T"
+        },
+        {
+          "icon": "🤐",
+          "text": "Uma chave mal escrita compila e não remove nada"
+        }
+      ]
+    },
+    {
+      "heading": "Um Omit estrito escrito de raiz",
+      "body": [
+        "A correção cabe numa linha e usa apenas o que o Módulo 06 já ensinou: declara-se um tipo próprio com o constraint que falta e delega-se no Omit da biblioteca. O constraint K extends keyof T é verificado antes de o Omit ser sequer expandido, por isso a chave errada é apanhada logo na instanciação do tipo.",
+        "O resultado é idêntico ao do Omit normal em todos os casos corretos, incluindo a preservação do readonly e das propriedades opcionais, porque por baixo continua a ser o mesmo Pick. Muda apenas o que acontece quando a chave está errada: em vez de silêncio, um erro na linha onde o tipo é construído. Quem preferir escrever o corpo em vez de delegar pode usar diretamente Pick<T, Exclude<keyof T, K>>, que é a definição da biblioteca com o constraint apertado.",
+        "Vale a pena guardar este tipo num ficheiro de utilitários do projeto e usá-lo por omissão. O custo é uma linha; o benefício é que renomear uma propriedade passa a partir todos os sítios que a escondiam, que é exatamente o que se quer que aconteça."
+      ],
+      "code": "interface Artigo {\n  readonly id: number;\n  titulo: string;\n  corpo: string;\n  rascunho: boolean;\n}\n\n// Uma linha: o mesmo Omit, mas com o constraint que a biblioteca não põe\ntype OmitEstrito<T, K extends keyof T> = Omit<T, K>;\n\ntype ArtigoPublicado = OmitEstrito<Artigo, \"rascunho\">;\n\nconst artigo: ArtigoPublicado = { id: 1, titulo: \"Utility Types\", corpo: \"texto\" };\nconsole.log(artigo.titulo); // Utility Types\n\n// @ts-expect-error o constraint apanha a chave mal escrita em compilação\ntype Errado = OmitEstrito<Artigo, \"rascunhos\">;\n\n// A versão da biblioteca aceita a mesma chave mal escrita e não remove nada\ntype Silencioso = Omit<Artigo, \"rascunhos\">;\nconst aindaComRascunho: Silencioso = {\n  id: 2,\n  titulo: \"Esboço\",\n  corpo: \"texto\",\n  rascunho: true,\n};\nconsole.log(aindaComRascunho.rascunho); // true",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Procure no projeto todos os Omit existentes e troque um deles pela versão estrita. Se algum passar a dar erro, acaba de encontrar um campo que julgava estar escondido e não estava.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🛡️",
+          "text": "OmitEstrito<T, K extends keyof T> = Omit<T, K>"
+        },
+        {
+          "icon": "📏",
+          "text": "Mesmo resultado, com a chave verificada"
+        },
+        {
+          "icon": "🧰",
+          "text": "Vale a pena guardá-lo nos utilitários do projeto"
+        }
+      ]
+    },
+    {
+      "heading": "Record: de uma união de chaves a um objeto",
+      "body": [
+        "Record é o Dicionario do Módulo 06 com outro nome, e a ordem dos parâmetros é a que surpreende quem vem de Pick e de Omit: primeiro as chaves, depois o valor. O constraint K extends keyof any diz que as chaves podem ser string, number ou symbol, os únicos tipos que uma propriedade de objeto aceita em JavaScript.",
+        "O que muda tudo é o que está na posição das chaves. Com uma união de literais, como pendente, enviada e entregue, o tipo resultante tem exatamente essas três propriedades, todas obrigatórias: falta uma e o compilador queixa-se, e acrescentar um estado novo à união parte imediatamente todos os objetos que já existiam. É a forma mais barata de garantir exaustividade sobre uma união.",
+        "Com string na posição das chaves, o resultado é uma index signature: qualquer chave é aceite e o acesso devolve o tipo do valor, mesmo para uma chave que nunca foi escrita. O tipo diz number e o valor em execução é undefined, o que é uma mentira confortável e uma fonte de erros. Existe uma opção do compilador chamada noUncheckedIndexedAccess que passa a acrescentar undefined ao tipo destes acessos, obrigando a verificar antes de usar; a configuração do compilador é assunto do Módulo 09."
+      ],
+      "code": "type Estado = \"pendente\" | \"enviada\" | \"entregue\";\n\ntype Etiquetas = Record<Estado, string>;\n\nconst etiquetas: Etiquetas = {\n  pendente: \"À espera\",\n  enviada: \"A caminho\",\n  entregue: \"Entregue\",\n};\nconsole.log(etiquetas.enviada); // A caminho\n\n// @ts-expect-error faltar uma chave da união é erro: Record é exaustivo\nconst incompletas: Etiquetas = { pendente: \"À espera\", enviada: \"A caminho\" };\nconsole.log(incompletas.pendente); // À espera\n\n// Com string na posição das chaves nasce uma index signature\nconst contagens: Record<string, number> = { pendente: 2 };\nconst quantas = contagens.entregue;\nconsole.log(quantas); // undefined, apesar de o tipo dizer number\n\n// keyof any é string | number | symbol, por isso number também serve\nconst porIndice: Record<number, string> = { 0: \"zero\", 1: \"um\" };\nconsole.log(porIndice[1]); // um",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Record<string, T> não verifica nada no acesso: contagens.entregue tem tipo number mesmo quando a chave nunca existiu. Sem noUncheckedIndexedAccess, o undefined só aparece em execução.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🗝️",
+          "text": "Record<K, T>: primeiro as chaves, depois o valor"
+        },
+        {
+          "icon": "🎯",
+          "text": "União de literais gera chaves obrigatórias e exaustivas"
+        },
+        {
+          "icon": "🕳️",
+          "text": "Record<string, T> é uma index signature sem rede"
+        }
+      ]
+    },
+    {
+      "heading": "Os três a trabalhar juntos",
+      "body": [
+        "Na prática estes três tipos aparecem quase sempre em conjunto à volta da mesma entidade. Pick define o que entra pela fronteira de fora, tipicamente um formulário, onde o identificador e a data de criação não vêm de quem preenche. Omit define o que sai, escondendo os campos que não devem ser serializados. Record indexa o que ficou, transformando uma lista num mapa por identificador ou por categoria.",
+        "A vantagem sobre escrever os três tipos à mão é haver uma única fonte de verdade. Acrescentar um campo à entidade obriga a decidir de que lado ele cai, e renomear um campo parte os sítios certos, desde que o Omit seja o estrito. O tipo das chaves de um Record pode ele próprio ser derivado, com o indexed access do Módulo 06, como acontece no exercício final.",
+        "A tabela em baixo resume o que cada um recebe e o que devolve, para quando a dúvida for apenas qual deles escolher."
+      ],
+      "code": "interface Utilizador {\n  readonly id: string;\n  nome: string;\n  email: string;\n  palavraPasse: string;\n  criadoEm: string;\n}\n\ntype FormularioRegisto = Pick<Utilizador, \"nome\" | \"email\" | \"palavraPasse\">;\ntype UtilizadorPublico = Omit<Utilizador, \"palavraPasse\">;\ntype IndicePorId = Record<string, UtilizadorPublico>;\n\nfunction registar(\n  form: FormularioRegisto,\n  id: string,\n  criadoEm: string\n): UtilizadorPublico {\n  return { id, nome: form.nome, email: form.email, criadoEm };\n}\n\nconst indice: IndicePorId = {};\nconst criado = registar(\n  { nome: \"Ana\", email: \"ana@exemplo.pt\", palavraPasse: \"1234\" },\n  \"u1\",\n  \"2024-03-01\"\n);\nindice[criado.id] = criado;\n\nconsole.log(indice[\"u1\"].nome); // Ana\nconsole.log(Object.keys(indice).length); // 1\n\n// @ts-expect-error o tipo público já não tem palavraPasse\nconsole.log(indice[\"u1\"].palavraPasse);",
+      "callout_kind": "DICA",
+      "callout_text": "Regra prática: Pick quando se sabe o que fica, Omit quando se sabe o que sai, Record quando o tipo das chaves é conhecido e o valor é sempre o mesmo.",
+      "table_headers": [
+        "Utility type",
+        "Recebe",
+        "Devolve",
+        "Quando escolher"
+      ],
+      "table_rows": [
+        [
+          "Pick<T, K>",
+          "Um tipo T e uma união de chaves, com K extends keyof T",
+          "Um objeto só com as chaves nomeadas, modificadores incluídos",
+          "Quando a lista do que fica é curta e a verificação da chave importa"
+        ],
+        [
+          "Omit<T, K>",
+          "Um tipo T e uma união de chaves, com K extends keyof any",
+          "Um objeto com todas as chaves de T menos as nomeadas",
+          "Quando a lista do que sai é curta, de preferência na versão estrita"
+        ],
+        [
+          "Record<K, T>",
+          "Uma união de chaves com K extends keyof any e um tipo de valor T",
+          "Um objeto com uma propriedade de tipo T por cada chave de K",
+          "Quando todas as propriedades têm o mesmo tipo de valor"
+        ],
+        [
+          "OmitEstrito<T, K>",
+          "Um tipo T e uma união de chaves, com K extends keyof T",
+          "O mesmo que Omit, mas com a chave verificada em compilação",
+          "Sempre que se queira que uma chave mal escrita dê erro"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📥",
+          "text": "Pick para o que entra: o formulário"
+        },
+        {
+          "icon": "📤",
+          "text": "Omit para o que sai: a resposta pública"
+        },
+        {
+          "icon": "🗂️",
+          "text": "Record para indexar por id ou por categoria"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Cartão de produto com Pick",
+      "difficulty": "Iniciante",
+      "statement": "Declare a interface Produto com id do tipo number marcado como readonly, nome do tipo string, preco do tipo number, custoInterno do tipo number e fornecedor do tipo string. Derive com Pick o tipo CartaoProduto, apenas com id, nome e preco. Crie uma constante desse tipo, escreva a função etiqueta, que recebe um CartaoProduto e devolve uma string com o nome e o preço com duas casas decimais, e demonstre com dois comentários ts-expect-error que custoInterno já não existe no tipo derivado e que Pick recusa uma chave que Produto não tem.",
+      "hint": "A lista de chaves passada a Pick é uma união de literais de string, separada por barras verticais. O segundo comentário ts-expect-error vai na linha imediatamente anterior à declaração do tipo inválido, porque é aí que o compilador reporta o erro.",
+      "solution_code": "interface Produto {\n  readonly id: number;\n  nome: string;\n  preco: number;\n  custoInterno: number;\n  fornecedor: string;\n}\n\ntype CartaoProduto = Pick<Produto, \"id\" | \"nome\" | \"preco\">;\n\nconst cartao: CartaoProduto = { id: 1, nome: \"Teclado\", preco: 49.9 };\n\nfunction etiqueta(c: CartaoProduto): string {\n  return c.nome + \" - \" + c.preco.toFixed(2) + \" EUR\";\n}\n\nconsole.log(etiqueta(cartao)); // Teclado - 49.90 EUR\n\n// @ts-expect-error custoInterno não foi escolhido: não existe em CartaoProduto\nconsole.log(cartao.custoInterno);\n\n// @ts-expect-error K extends keyof T rejeita uma chave inexistente em Produto\ntype Errado = Pick<Produto, \"margem\">;",
+      "solution_explanation": "Pick nomeia as três chaves que ficam e produz um objeto só com elas. O constraint K extends keyof T faz com que a chave margem, que Produto não tem, seja um erro na própria declaração do tipo. O acesso a custoInterno falha porque essa propriedade não foi escolhida e não existe no tipo derivado."
+    },
+    {
+      "title": "Tabela de pontuações com Record",
+      "difficulty": "Iniciante",
+      "statement": "Declare a união Nivel com os literais baixo, medio e alto. Crie com Record o tipo Pontuacoes, que associa a cada nível um number, e preencha uma constante com os três valores. Escreva a função pontuar, que recebe um Nivel e devolve a pontuação correspondente. Demonstre com ts-expect-error que faltar uma das chaves é erro e mostre a seguir que um Record com string na posição das chaves devolve o tipo do valor mesmo para uma chave que nunca foi escrita.",
+      "hint": "Em Record as chaves vêm primeiro e o tipo do valor a seguir, ao contrário de Pick e de Omit, onde o tipo vem primeiro. Indexar com uma variável do tipo da união é seguro porque todas essas chaves existem obrigatoriamente.",
+      "solution_code": "type Nivel = \"baixo\" | \"medio\" | \"alto\";\n\ntype Pontuacoes = Record<Nivel, number>;\n\nconst pontuacoes: Pontuacoes = { baixo: 1, medio: 5, alto: 10 };\n\nfunction pontuar(nivel: Nivel): number {\n  return pontuacoes[nivel];\n}\n\nconsole.log(pontuar(\"medio\")); // 5\nconsole.log(pontuar(\"alto\")); // 10\n\n// @ts-expect-error falta a chave alto: Record com união de literais é exaustivo\nconst incompletas: Pontuacoes = { baixo: 1, medio: 5 };\nconsole.log(incompletas.baixo); // 1\n\nconst aberto: Record<string, number> = { baixo: 1 };\nconsole.log(aberto.inexistente); // undefined, apesar de o tipo prometer number",
+      "solution_explanation": "Com uma união de literais, Record produz um objeto exaustivo: as três chaves são obrigatórias e faltar uma é erro de compilação, o que permite à função pontuar indexar sem verificar nada. Com string na posição das chaves o tipo passa a ser uma index signature, e o acesso a uma chave inexistente devolve undefined em execução apesar de o tipo prometer number."
+    },
+    {
+      "title": "A armadilha do Omit e a sua correção",
+      "difficulty": "Intermedio",
+      "statement": "Declare a interface Sessao com id readonly do tipo string, utilizador do tipo string, token do tipo string e expiraEm do tipo string. Crie o tipo SessaoSegura com Omit e a chave escrita de propósito com uma gralha, como tokn, e demonstre que o tipo resultante ainda aceita a propriedade token. Declare a seguir o tipo OmitEstrito numa linha, com o constraint K extends keyof T, use-o para criar SessaoPublica sem token, e demonstre com ts-expect-error que o acesso a token falha e que a mesma chave mal escrita passa agora a dar erro.",
+      "hint": "OmitEstrito não precisa de corpo novo: pode delegar no Omit da biblioteca e limitar-se a apertar o constraint do segundo parâmetro. O erro da chave mal escrita aparece na linha onde o tipo genérico é instanciado.",
+      "solution_code": "interface Sessao {\n  readonly id: string;\n  utilizador: string;\n  token: string;\n  expiraEm: string;\n}\n\ntype OmitEstrito<T, K extends keyof T> = Omit<T, K>;\n\n// A chave está mal escrita, mas keyof any aceita-a e nada é removido\ntype SessaoSegura = Omit<Sessao, \"tokn\">;\n\nconst fuga: SessaoSegura = {\n  id: \"s1\",\n  utilizador: \"ana\",\n  token: \"abc123\",\n  expiraEm: \"2024-05-01\",\n};\nconsole.log(fuga.token); // abc123\n\ntype SessaoPublica = OmitEstrito<Sessao, \"token\">;\n\nconst segura: SessaoPublica = {\n  id: \"s2\",\n  utilizador: \"rui\",\n  expiraEm: \"2024-05-02\",\n};\nconsole.log(segura.utilizador); // rui\n\n// @ts-expect-error token foi mesmo removida deste tipo\nconsole.log(segura.token);\n\n// @ts-expect-error o constraint K extends keyof T apanha a chave mal escrita\ntype Apanhado = OmitEstrito<Sessao, \"tokn\">;",
+      "solution_explanation": "Como o segundo parâmetro de Omit é keyof any, a chave tokn satisfaz o constraint sem existir em Sessao, e o Exclude acaba por não retirar nada: SessaoSegura fica igual a Sessao, com o token lá dentro. O OmitEstrito de uma linha exige K extends keyof T e transforma a mesma gralha num erro de compilação, mantendo exatamente o mesmo resultado nos casos corretos."
+    },
+    {
+      "title": "Formulário, resposta pública e índice por categoria",
+      "difficulty": "Avancado",
+      "statement": "Declare a interface Funcionario com id readonly do tipo string, nome e email do tipo string, salario do tipo number e departamento com a união de literais engenharia, vendas e suporte. Usando os três utility types, derive FormularioFuncionario com Pick, apenas com nome, email e departamento; FuncionarioPublico com um OmitEstrito próprio que retire salario; e PorDepartamento com Record, cujas chaves saem do próprio tipo do campo departamento e cujos valores são arrays de FuncionarioPublico. Escreva a função criar, que constrói um Funcionario a partir do formulário, de um id e de um salário; a função publicar, que devolve a versão sem salario; e a função agrupar, que recebe um array de Funcionario e devolve o objeto agrupado. Termine com um ts-expect-error a provar que o salário já não está acessível no resultado.",
+      "hint": "O tipo das chaves do Record pode ser obtido com um indexed access sobre a interface, na forma Funcionario seguido do nome do campo entre parênteses retos e aspas. Para remover uma propriedade em tempo de execução serve a desestruturação com rest, que produz um objeto sem a chave extraída.",
+      "solution_code": "interface Funcionario {\n  readonly id: string;\n  nome: string;\n  email: string;\n  salario: number;\n  departamento: \"engenharia\" | \"vendas\" | \"suporte\";\n}\n\ntype OmitEstrito<T, K extends keyof T> = Omit<T, K>;\n\ntype FormularioFuncionario = Pick<Funcionario, \"nome\" | \"email\" | \"departamento\">;\ntype FuncionarioPublico = OmitEstrito<Funcionario, \"salario\">;\ntype PorDepartamento = Record<Funcionario[\"departamento\"], FuncionarioPublico[]>;\n\nfunction criar(form: FormularioFuncionario, id: string, salario: number): Funcionario {\n  return { id, salario, ...form };\n}\n\nfunction publicar(f: Funcionario): FuncionarioPublico {\n  const { salario: _, ...resto } = f;\n  return resto;\n}\n\nfunction agrupar(lista: Funcionario[]): PorDepartamento {\n  const grupos: PorDepartamento = { engenharia: [], vendas: [], suporte: [] };\n  for (const f of lista) {\n    grupos[f.departamento].push(publicar(f));\n  }\n  return grupos;\n}\n\nconst equipa: Funcionario[] = [\n  criar({ nome: \"Ana\", email: \"ana@exemplo.pt\", departamento: \"engenharia\" }, \"f1\", 3000),\n  criar({ nome: \"Rui\", email: \"rui@exemplo.pt\", departamento: \"vendas\" }, \"f2\", 2500),\n];\n\nconst grupos = agrupar(equipa);\nconsole.log(grupos.engenharia.length); // 1\nconsole.log(grupos.suporte.length); // 0\nconsole.log(grupos.vendas[0].nome); // Rui\n\n// @ts-expect-error o tipo público já não tem salario\nconsole.log(grupos.vendas[0].salario);",
+      "solution_explanation": "Pick define a fronteira de entrada, sem id nem salario, e o OmitEstrito define a de saída, garantindo que uma gralha no nome do campo daria erro. As chaves do Record vêm do indexed access sobre o próprio campo departamento, por isso acrescentar um departamento à união obriga imediatamente a inicializar o grupo correspondente. A desestruturação com rest é o espelho, em execução, do que o Omit faz ao nível dos tipos."
+    }
+  ],
+  "summary": [
+    "Pick, Omit e Record são mapped types de uma linha, do mesmo género dos que o Módulo 06 mandou escrever à mão.",
+    "Pick recebe T e uma união de chaves com o constraint K extends keyof T, por isso uma chave inexistente é um erro de compilação.",
+    "Omit recebe K extends keyof any e não keyof T: uma chave mal escrita compila em silêncio e não remove nada.",
+    "Como ambos passam por Pick, os modificadores readonly e opcional das chaves que sobrevivem são preservados.",
+    "Record com uma união de literais produz chaves obrigatórias e exaustivas; Record com string é uma index signature que promete o valor mesmo onde ele não existe.",
+    "Os três compõem-se: Pick isola o que entra, Omit esconde o que não deve sair e Record indexa o resultado."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 03",
+  "next_label": "Aula 03 → ReturnType, Parameters e Awaited"
+}

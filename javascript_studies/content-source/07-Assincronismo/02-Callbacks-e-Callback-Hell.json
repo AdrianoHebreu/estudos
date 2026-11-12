@@ -1,0 +1,218 @@
+{
+  "module_num": "07",
+  "module_title": "Assincronismo",
+  "module_dir": "07-Assincronismo",
+  "lesson_num": "02",
+  "lesson_slug": "Callbacks-e-Callback-Hell",
+  "kind": "aula",
+  "title": "Callbacks e Callback Hell",
+  "filename_base": "02-Callbacks-e-Callback-Hell",
+  "subtitle": "Como o JavaScript lidava com tarefas assíncronas antes das Promises — e os seus limites.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Compreender o que é uma função de callback e o seu papel como mecanismo original de assincronismo em JavaScript.",
+    "Aplicar corretamente o padrão error-first callback usado no Node.js e em muitas APIs assíncronas.",
+    "Reconhecer a callback hell (pyramid of doom) e identificar o código que a origina.",
+    "Analisar os problemas reais do callback hell: erros repetidos, inversão de controlo e dificuldade de composição.",
+    "Perceber por que motivo estas limitações levaram à criação das Promises."
+  ],
+  "sections": [
+    {
+      "heading": "Callbacks: o mecanismo original do assincronismo",
+      "body": [
+        "Como já foi visto na aula sobre o event loop, o JavaScript executa código num único fluxo e não pode ficar bloqueado à espera do resultado de uma operação demorada, como um temporizador, um clique do utilizador ou a leitura de um ficheiro. A solução original da linguagem para lidar com isto foi simples: passar uma função como argumento a outra função, para que essa função seja invocada mais tarde, quando a operação terminar. A essa função passada como argumento chama-se callback. Não existe nenhuma sintaxe especial envolvida, é apenas uma função tratada como um valor, tal como as vistas no módulo sobre funções.",
+        "É importante distinguir dois usos do termo. Um callback síncrono, como o que se passa a array.forEach ou array.map, é executado de imediato, ainda dentro da mesma chamada da função que o recebeu. Um callback assíncrono, como o que se passa a setTimeout, a um listener de eventos ou a uma operação de leitura de ficheiros, só é invocado mais tarde, depois de o código atual terminar. É este segundo tipo que interessa nesta aula: antes de o ECMAScript 2015 introduzir as Promises, era a única ferramenta disponível para trabalhar com assincronismo em JavaScript."
+      ],
+      "code": "// Callback síncrono: executado de imediato, dentro da própria chamada\n[1, 2, 3].forEach((numero) => console.log(numero * 2));\n\nconsole.log(\"Início do script\");\n\n// Callback assíncrono: só é invocado mais tarde, passado 1 segundo\nsetTimeout(() => {\n  console.log(\"Executado passado 1 segundo\");\n}, 1000);\n\nconsole.log(\"Fim do script\");\n\n// Ordem no consola:\n// 2, 4, 6                          (síncrono, imediato)\n// \"Início do script\"\n// \"Fim do script\"\n// \"Executado passado 1 segundo\"    (só depois, passado o atraso)",
+      "callout_kind": "NOTA",
+      "callout_text": "Um callback síncrono, como o de array.map, é executado imediatamente, sem sair da chamada atual. Só os callbacks assíncronos, invocados mais tarde pelo motor JavaScript, dão origem aos temas discutidos nesta aula.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📞",
+          "text": "Callback: função chamada mais tarde"
+        },
+        {
+          "icon": "⏱️",
+          "text": "setTimeout usa um callback assíncrono"
+        },
+        {
+          "icon": "🧵",
+          "text": "JS não bloqueia à espera do resultado"
+        }
+      ]
+    },
+    {
+      "heading": "O padrão error-first callback (estilo Node.js)",
+      "body": [
+        "Quando uma função assíncrona pode falhar, por exemplo uma leitura de ficheiro ou um pedido de rede, é preciso comunicar esse erro ao código que a chamou. Como o callback é invocado fora do bloco try onde a chamada original foi feita, um throw dentro do callback não seria capturado por esse try/catch. A solução adotada pelo Node.js, e replicada por inúmeras bibliotecas, é a convenção error-first: o callback recebe sempre o erro como primeiro argumento, null quando tudo corre bem, e o resultado como segundo argumento, só relevante quando não há erro.",
+        "Esta convenção não é imposta pela linguagem, é apenas um contrato entre quem escreve a função assíncrona e quem a utiliza. Por isso é fundamental verificar sempre o primeiro argumento antes de usar o segundo: se o erro não for null e o código continuar a tentar usar os dados, o resultado costuma ser uma exceção inesperada, como tentar aceder a uma propriedade de undefined."
+      ],
+      "code": "import { readFile } from \"node:fs\";\n\nreadFile(\"dados.json\", \"utf8\", (erro, conteudo) => {\n  if (erro) {\n    console.error(\"Falha ao ler o ficheiro:\", erro.message);\n    return;\n  }\n  console.log(\"Conteúdo lido:\", conteudo);\n});\n\n// A mesma convenção aplicada a uma função própria\nfunction obterUtilizador(id, callback) {\n  setTimeout(() => {\n    if (typeof id !== \"number\") {\n      callback(new Error(\"id inválido\"));\n      return;\n    }\n    callback(null, { id, nome: \"Ana Silva\" });\n  }, 500);\n}\n\nobterUtilizador(1, (erro, utilizador) => {\n  if (erro) {\n    console.error(erro.message);\n    return;\n  }\n  console.log(utilizador);\n});",
+      "callout_kind": "DICA",
+      "callout_text": "Verifique sempre o erro em primeiro lugar e saia da função com return antes de usar o segundo argumento. Esquecer esta verificação é a causa mais comum de bugs difíceis de depurar em código com callbacks.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🚦",
+          "text": "1º argumento: erro (ou null)"
+        },
+        {
+          "icon": "📦",
+          "text": "2º argumento: dados, só sem erro"
+        },
+        {
+          "icon": "🟢",
+          "text": "Convenção usada em todo o Node.js"
+        }
+      ]
+    },
+    {
+      "heading": "Callback hell: quando os callbacks se aninham",
+      "body": [
+        "Quando uma operação assíncrona depende do resultado de outra, a forma natural de a escrever com callbacks é colocar a segunda chamada dentro do callback da primeira. Se houver uma terceira operação dependente da segunda, o mesmo raciocínio leva a um terceiro nível de aninhamento, e assim sucessivamente. O resultado é um bloco de código que cresce para a direita a cada novo passo, com a forma de uma pirâmide invertida, o que levou a comunidade a batizar este padrão de callback hell ou pyramid of doom.",
+        "O exemplo seguinte simula uma sequência típica: buscar um utilizador, depois os posts desse utilizador, depois os comentários do primeiro post. Cada função segue o padrão error-first apresentado na secção anterior, e cada nível repete a mesma verificação de erro."
+      ],
+      "code": "function buscarUtilizador(id, callback) {\n  setTimeout(() => callback(null, { id, nome: \"Ana Silva\" }), 300);\n}\n\nfunction buscarPosts(utilizadorId, callback) {\n  setTimeout(() => callback(null, [{ id: 10, titulo: \"Primeiro post\" }]), 300);\n}\n\nfunction buscarComentarios(postId, callback) {\n  setTimeout(() => callback(null, [\"Ótimo artigo!\", \"Concordo.\"]), 300);\n}\n\nbuscarUtilizador(1, (erro, utilizador) => {\n  if (erro) {\n    console.error(erro);\n    return;\n  }\n  buscarPosts(utilizador.id, (erro, posts) => {\n    if (erro) {\n      console.error(erro);\n      return;\n    }\n    buscarComentarios(posts[0].id, (erro, comentarios) => {\n      if (erro) {\n        console.error(erro);\n        return;\n      }\n      console.log(`Utilizador: ${utilizador.nome}`);\n      console.log(`Post: ${posts[0].titulo}`);\n      console.log(`Comentários: ${comentarios.join(\", \")}`);\n    });\n  });\n});",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Repare como cada novo passo assíncrono acrescenta um nível de indentação e repete o mesmo bloco if (erro). Mais de dois ou três níveis de aninhamento como este é um sinal claro de que o código precisa de ser reestruturado.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔺",
+          "text": "Callbacks dentro de callbacks dentro de callbacks"
+        },
+        {
+          "icon": "📐",
+          "text": "Indentação cresce a cada passo assíncrono"
+        },
+        {
+          "icon": "😵",
+          "text": "Conhecido como \"pyramid of doom\""
+        }
+      ]
+    },
+    {
+      "heading": "Porque é que a callback hell é um problema real",
+      "body": [
+        "O aninhamento excessivo não é apenas uma questão estética. Torna o código difícil de ler e de alterar, já que mudar a ordem dos passos obriga a mexer em vários níveis; obriga a repetir o tratamento de erros em cada nível, e basta esquecer uma verificação para um erro passar despercebido; e cria uma inversão de controlo, porque ao passar o callback para buscarPosts ou buscarComentarios confia-se que essa função o vai invocar exatamente uma vez, com os argumentos corretos, sem que quem chama tenha forma de o garantir.",
+        "Há ainda um problema menos visível, mas real: nem todas as APIs assíncronas invocam o callback de forma consistente. Algumas chamam-no sempre de forma assíncrona, colocando-o na fila de tarefas; outras podem chamá-lo de forma síncrona quando o resultado já está disponível, por exemplo por vir de uma cache. Esta inconsistência pode alterar a ordem em que o código é executado consoante as circunstâncias, produzindo bugs difíceis de reproduzir.",
+        "Por fim, compor várias operações assíncronas, por exemplo executar três pedidos em paralelo e só continuar quando todos terminarem, exige geri-lo manualmente com contadores e variáveis de estado, porque não existe nenhum mecanismo nativo para isso apenas com callbacks."
+      ],
+      "code": "// Inversão de controlo: confiamos que \"apiInstavel\" invoca\n// o callback exatamente uma vez. Se tiver um bug, nada o impede\n// de o chamar mais do que uma vez.\nfunction apiInstavel(callback) {\n  callback(null, \"primeira resposta\");\n  callback(null, \"segunda resposta\"); // nunca deveria acontecer\n}\n\nlet jaProcessado = false;\n\napiInstavel((erro, resposta) => {\n  if (jaProcessado) {\n    console.error(\"O callback foi invocado mais do que uma vez!\");\n    return;\n  }\n  jaProcessado = true;\n  console.log(\"Resposta:\", resposta);\n});",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [
+        "Problema",
+        "Consequência prática"
+      ],
+      "table_rows": [
+        [
+          "Aninhamento profundo",
+          "Cada nova operação dependente acrescenta um nível de indentação, tornando o código difícil de ler"
+        ],
+        [
+          "Tratamento de erros repetido",
+          "É preciso verificar o erro em cada nível manualmente; esquecer uma verificação silencia falhas"
+        ],
+        [
+          "Inversão de controlo",
+          "Confia-se que a função externa invoca o callback exatamente uma vez, com os argumentos certos"
+        ],
+        [
+          "Composição difícil",
+          "Executar operações em paralelo ou agregar vários resultados exige contadores e flags manuais"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔁",
+          "text": "Erro tratado repetidamente em cada nível"
+        },
+        {
+          "icon": "🎲",
+          "text": "Inversão de controlo: confia-se na API externa"
+        },
+        {
+          "icon": "🧩",
+          "text": "Compor operações em paralelo é complicado"
+        }
+      ]
+    },
+    {
+      "heading": "O caminho até às Promises",
+      "body": [
+        "As limitações descritas na secção anterior, sobretudo a dificuldade de ler código profundamente aninhado, a repetição do tratamento de erros e a falta de garantias sobre como e quantas vezes um callback é invocado, motivaram a comunidade JavaScript, e mais tarde o próprio ECMAScript, a propor uma alternativa estrutural. Essa alternativa, formalizada no ECMAScript 2015, é a Promise: um objeto que representa o resultado, ainda não disponível, de uma operação assíncrona, com um contrato bem definido sobre como e quando esse resultado é entregue.",
+        "Uma Promise resolve diretamente os problemas mais visíveis da callback hell: em vez de aninhar callbacks, encadeiam-se chamadas, o que mantém o código plano em vez de crescer para a direita; em vez de repetir a verificação do erro em cada nível, existe um único canal de erro que se propaga automaticamente até ao tratamento mais próximo; e o próprio motor de JavaScript garante que uma Promise só é resolvida ou rejeitada uma única vez, eliminando a inversão de controlo descrita antes. A sintaxe e a API completa das Promises são o tema da próxima aula deste módulo."
+      ],
+      "code": "// Pré-visualização: a mesma sequência da secção anterior, escrita com\n// Promises (tema da próxima aula). Note a ausência de aninhamento crescente.\nbuscarUtilizadorComPromise(1)\n  .then((utilizador) => buscarPostsComPromise(utilizador.id))\n  .then((posts) => buscarComentariosComPromise(posts[0].id))\n  .then((comentarios) => console.log(comentarios))\n  .catch((erro) => console.error(erro));",
+      "callout_kind": "NOTA",
+      "callout_text": "Esta secção mostra apenas a motivação. A sintaxe de then, catch e a criação de Promises próprias são explicadas em detalhe na próxima aula deste módulo.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🚀",
+          "text": "Motivou a criação das Promises (ES2015)"
+        },
+        {
+          "icon": "⛓️",
+          "text": "Promises encadeiam em vez de aninhar"
+        },
+        {
+          "icon": "🎯",
+          "text": "Um único canal para tratar erros"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Função assíncrona com callback error-first",
+      "difficulty": "Iniciante",
+      "statement": "Escreva uma função chamada validarIdade(idade, callback) que simula uma validação assíncrona usando setTimeout com um atraso de 300 milissegundos. Se idade não for um número (use typeof e Number.isNaN para validar), o callback deve ser invocado com um Error apropriado como primeiro argumento. Caso contrário, o callback deve ser invocado com null como primeiro argumento e, como segundo argumento, a string \"maior de idade\" se idade for maior ou igual a 18, ou \"menor de idade\" caso contrário. Teste a função chamando-a pelo menos duas vezes com valores diferentes (um válido e um inválido), tratando sempre o erro antes de usar o resultado.",
+      "hint": "Lembre-se de que no padrão error-first o segundo argumento do callback só deve ser lido quando o primeiro (o erro) for null; use typeof e Number.isNaN para validar que idade é mesmo um número.",
+      "solution_code": "function validarIdade(idade, callback) {\n  setTimeout(() => {\n    if (typeof idade !== \"number\" || Number.isNaN(idade)) {\n      callback(new Error(\"idade deve ser um número\"));\n      return;\n    }\n    if (idade >= 18) {\n      callback(null, \"maior de idade\");\n    } else {\n      callback(null, \"menor de idade\");\n    }\n  }, 300);\n}\n\nvalidarIdade(20, (erro, resultado) => {\n  if (erro) {\n    console.error(erro.message);\n    return;\n  }\n  console.log(resultado); // \"maior de idade\"\n});\n\nvalidarIdade(\"abc\", (erro, resultado) => {\n  if (erro) {\n    console.error(erro.message); // \"idade deve ser um número\"\n    return;\n  }\n  console.log(resultado);\n});",
+      "solution_explanation": "A função usa setTimeout para simular trabalho assíncrono e segue a convenção error-first: chama o callback com um Error como primeiro argumento quando a validação falha, ou com null seguido do resultado quando tudo corre bem. Cada chamada trata o erro antes de tentar usar o segundo argumento."
+    },
+    {
+      "title": "Encadear três operações assíncronas",
+      "difficulty": "Intermedio",
+      "statement": "Tem as seguintes três funções assíncronas, já implementadas, que seguem o padrão error-first: function buscarProduto(id, callback) { setTimeout(() => callback(null, { id, nome: 'Teclado mecânico', preco: 60 }), 200); } function verificarStock(produtoId, callback) { setTimeout(() => callback(null, { produtoId, disponivel: true }), 200); } function calcularPortes(produtoId, callback) { setTimeout(() => callback(null, 5), 200); } Escreva o código, necessariamente com callbacks aninhados, que: primeiro busca o produto com id 42; depois verifica o stock desse produto; depois calcula os portes de envio; e no fim imprime uma frase com o nome do produto, se está disponível e o valor total a pagar (preço mais portes). Trate o erro em cada nível, interrompendo a cadeia e imprimindo uma mensagem de erro caso algum passo falhe.",
+      "hint": "Cada chamada às três funções depende do resultado da anterior, por isso tem de invocar a função seguinte de dentro do callback da anterior — é exatamente a estrutura de pirâmide vista nesta aula.",
+      "solution_code": "function buscarProduto(id, callback) {\n  setTimeout(() => callback(null, { id, nome: \"Teclado mecânico\", preco: 60 }), 200);\n}\n\nfunction verificarStock(produtoId, callback) {\n  setTimeout(() => callback(null, { produtoId, disponivel: true }), 200);\n}\n\nfunction calcularPortes(produtoId, callback) {\n  setTimeout(() => callback(null, 5), 200);\n}\n\nbuscarProduto(42, (erro, produto) => {\n  if (erro) {\n    console.error(\"Erro ao buscar produto:\", erro.message);\n    return;\n  }\n  verificarStock(produto.id, (erro, stock) => {\n    if (erro) {\n      console.error(\"Erro ao verificar stock:\", erro.message);\n      return;\n    }\n    calcularPortes(produto.id, (erro, portes) => {\n      if (erro) {\n        console.error(\"Erro ao calcular portes:\", erro.message);\n        return;\n      }\n      const total = produto.preco + portes;\n      const disponibilidade = stock.disponivel ? \"disponível\" : \"indisponível\";\n      console.log(`${produto.nome} está ${disponibilidade}. Total a pagar: ${total}€`);\n    });\n  });\n});",
+      "solution_explanation": "Cada chamada só pode ser feita depois de se conhecer o resultado da anterior, por isso as três funções ficam aninhadas dentro dos respetivos callbacks, formando a pirâmide típica desta aula. O erro é verificado em cada nível antes de se avançar, garantindo que a cadeia para assim que algo falha."
+    },
+    {
+      "title": "Reduzir a pirâmide com funções nomeadas",
+      "difficulty": "Avancado",
+      "statement": "Tem as três funções assíncronas seguintes, que seguem o padrão error-first (as mesmas do exercício anterior): function buscarProduto(id, callback) { setTimeout(() => callback(null, { id, nome: 'Teclado mecânico', preco: 60 }), 200); } function verificarStock(produtoId, callback) { setTimeout(() => callback(null, { produtoId, disponivel: true }), 200); } function calcularPortes(produtoId, callback) { setTimeout(() => callback(null, 5), 200); } E tem também a lógica em pirâmide do exercício anterior, que busca o produto 42, depois verifica o stock, depois calcula os portes, e no fim imprime uma frase com o nome do produto, a disponibilidade e o total a pagar. Reescreva essa lógica eliminando o aninhamento crescente: extraia cada passo para uma função nomeada e independente, declarada no nível de topo (não dentro de outra função), passando de função em função os dados acumulados até esse ponto como argumentos extra. O comportamento final tem de se manter exatamente igual, incluindo a interrupção da cadeia assim que ocorrer um erro.",
+      "hint": "Em vez de definir cada callback dentro do anterior, declare cada passo como uma função separada no nível de topo do ficheiro e passe os dados acumulados (produto, stock, portes) como argumentos extra para a função seguinte.",
+      "solution_code": "function buscarProduto(id, callback) {\n  setTimeout(() => callback(null, { id, nome: \"Teclado mecânico\", preco: 60 }), 200);\n}\n\nfunction verificarStock(produtoId, callback) {\n  setTimeout(() => callback(null, { produtoId, disponivel: true }), 200);\n}\n\nfunction calcularPortes(produtoId, callback) {\n  setTimeout(() => callback(null, 5), 200);\n}\n\nfunction tratarErro(erro, mensagem) {\n  console.error(mensagem, erro.message);\n}\n\nfunction passo1() {\n  buscarProduto(42, aposBuscarProduto);\n}\n\nfunction aposBuscarProduto(erro, produto) {\n  if (erro) {\n    tratarErro(erro, \"Erro ao buscar produto:\");\n    return;\n  }\n  verificarStock(produto.id, (erro, stock) => aposVerificarStock(erro, produto, stock));\n}\n\nfunction aposVerificarStock(erro, produto, stock) {\n  if (erro) {\n    tratarErro(erro, \"Erro ao verificar stock:\");\n    return;\n  }\n  calcularPortes(produto.id, (erro, portes) => aposCalcularPortes(erro, produto, stock, portes));\n}\n\nfunction aposCalcularPortes(erro, produto, stock, portes) {\n  if (erro) {\n    tratarErro(erro, \"Erro ao calcular portes:\");\n    return;\n  }\n  const total = produto.preco + portes;\n  const disponibilidade = stock.disponivel ? \"disponível\" : \"indisponível\";\n  console.log(`${produto.nome} está ${disponibilidade}. Total a pagar: ${total}€`);\n}\n\npasso1();",
+      "solution_explanation": "Extrair cada etapa para uma função de topo quebra a pirâmide de indentação, tornando o fluxo mais fácil de seguir, já que cada função só trata do troço da cadeia que lhe compete. No entanto, ainda é preciso passar manualmente os dados acumulados de função em função e repetir o tratamento de erro em cada uma — é exatamente essa limitação que as Promises resolvem, como se verá na próxima aula."
+    },
+    {
+      "title": "Executar operações assíncronas em paralelo com callbacks",
+      "difficulty": "Avancado",
+      "statement": "Escreva uma função buscarTudoEmParalelo(callback) que dispara ao mesmo tempo, sem esperar que uma termine para começar a outra, três chamadas à função seguinte, já implementada, para os ids 1, 2 e 3: function buscarProduto(id, callback) { setTimeout(() => callback(null, { id, nome: `Produto ${id}` }), Math.random() * 300); } Quando as três chamadas tiverem terminado com sucesso, buscarTudoEmParalelo deve invocar o seu próprio callback uma única vez, com null como erro e um array com os três produtos, na ordem dos ids 1, 2, 3 (mesmo que as respostas cheguem por outra ordem, já que o atraso é aleatório). Se qualquer uma das três chamadas devolver um erro, o callback final deve ser invocado imediatamente com esse erro, e nenhuma resposta que chegue depois (sucesso ou erro) pode provocar uma segunda invocação do callback final.",
+      "hint": "Precisa de uma variável que conte quantas respostas já chegaram com sucesso e de uma flag booleana que, assim que ficar verdadeira por causa de um erro, faça as restantes respostas serem ignoradas.",
+      "solution_code": "function buscarProduto(id, callback) {\n  setTimeout(() => callback(null, { id, nome: `Produto ${id}` }), Math.random() * 300);\n}\n\nfunction buscarTudoEmParalelo(callback) {\n  const ids = [1, 2, 3];\n  const resultados = new Array(ids.length);\n  let concluidos = 0;\n  let falhou = false;\n\n  ids.forEach((id, indice) => {\n    buscarProduto(id, (erro, produto) => {\n      if (falhou) {\n        return; // callback final já foi chamado com erro, ignorar respostas tardias\n      }\n      if (erro) {\n        falhou = true;\n        callback(erro);\n        return;\n      }\n      resultados[indice] = produto;\n      concluidos++;\n      if (concluidos === ids.length) {\n        callback(null, resultados);\n      }\n    });\n  });\n}\n\nbuscarTudoEmParalelo((erro, produtos) => {\n  if (erro) {\n    console.error(\"Falha ao buscar produtos:\", erro.message);\n    return;\n  }\n  console.log(produtos);\n});",
+      "solution_explanation": "Como as três chamadas são disparadas de imediato e terminam em momentos imprevisíveis, é preciso um contador manual (concluidos) para saber quando todas terminaram e guardar cada resultado no índice certo, mais uma flag (falhou) que garante que o callback final é invocado uma única vez. Esta gestão manual do estado da composição é precisamente um dos problemas que, mais tarde, Promise.all resolve de forma nativa."
+    }
+  ],
+  "summary": [
+    "Um callback é uma função passada como argumento para ser invocada quando uma operação, normalmente assíncrona, terminar.",
+    "O padrão error-first, erro como primeiro parâmetro e null quando não há erro, é a convenção usada no Node.js e em muitas APIs de callback.",
+    "Encadear várias operações assíncronas dependentes leva a callbacks aninhados dentro de callbacks, a chamada callback hell ou pyramid of doom.",
+    "Além da leitura difícil, a callback hell traz tratamento de erros repetido, inversão de controlo e dificuldade em compor operações como executá-las em paralelo.",
+    "Técnicas como extrair funções nomeadas atenuam a indentação, mas não resolvem os problemas de fundo.",
+    "Estas limitações motivaram a introdução das Promises no ECMAScript 2015, que trazem uma forma estruturada e encadeável de lidar com assincronismo."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 03",
+  "next_label": "Aula 03 → Promises",
+  "_stage": "autoria"
+}

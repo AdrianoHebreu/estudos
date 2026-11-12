@@ -1,0 +1,490 @@
+{
+  "module_num": "13",
+  "module_title": "Objetos Nativos e Utilitários",
+  "module_dir": "13-Objetos-Nativos-e-Utilitarios",
+  "lesson_num": "03",
+  "lesson_slug": "Math-e-Number",
+  "kind": "aula",
+  "title": "Math e Number",
+  "filename_base": "03-Math-e-Number",
+  "subtitle": "Vírgula flutuante, arredondamento, aleatoriedade e conversão fiável de texto em número",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Explicar porque 0.1 + 0.2 não dá 0.3 e comparar decimais com uma tolerância em vez de igualdade estrita.",
+    "Escolher entre Math.round, Math.floor, Math.ceil e Math.trunc, sabendo como reagem a números negativos.",
+    "Formatar números com toFixed sem cair nas suas armadilhas de arredondamento e de tipo.",
+    "Gerar números aleatórios corretos, incluindo inteiros num intervalo fechado.",
+    "Usar os métodos e constantes mais úteis de Math: abs, min, max, pow, sqrt, hypot, sign, PI e E.",
+    "Aplicar Number.MAX_SAFE_INTEGER, EPSILON, isInteger, isSafeInteger, isNaN e isFinite, e converter texto em número com o método certo."
+  ],
+  "sections": [
+    {
+      "heading": "Porque 0.1 + 0.2 não dá 0.3",
+      "body": [
+        "Todos os números do tipo Number em JavaScript são guardados no formato de vírgula flutuante de dupla precisão definido pela norma IEEE 754: 64 bits divididos entre sinal, expoente e uma mantissa de 52 bits. Isto significa que um número é sempre representado como uma fração binária, ou seja, uma soma de potências de dois. Tal como na base 10 não conseguimos escrever 1/3 com um número finito de algarismos, na base 2 não conseguimos escrever 0.1 com um número finito de bits. O valor que o motor guarda é o double mais próximo de 0.1, que na realidade vale 0.1000000000000000055511151231257827.",
+        "Quando somamos dois valores que já são aproximações, os pequenos erros acumulam-se e tornam-se visíveis: 0.1 + 0.2 produz 0.30000000000000004, que é um número diferente do double mais próximo de 0.3. Por isso a comparação com igualdade estrita falha. Isto não é um defeito do JavaScript, é o comportamento de praticamente todas as linguagens que usam IEEE 754, incluindo Java, C, Python ou Ruby.",
+        "A solução prática é nunca comparar dois resultados de cálculos decimais com o operador de igualdade estrita. Em vez disso, verifica-se se a diferença absoluta entre eles é menor do que uma tolerância aceitável, chamada epsilon. Para valores pequenos e próximos de 1, Number.EPSILON serve de referência; para valores de grandeza arbitrária, convém escalar a tolerância pela magnitude dos operandos. E quando o que está em causa é dinheiro, a melhor estratégia é outra: trabalhar com inteiros (cêntimos) e só converter para euros na apresentação."
+      ],
+      "code": "console.log(0.1 + 0.2);           // 0.30000000000000004\nconsole.log(0.1 + 0.2 === 0.3);   // false\nconsole.log(0.1 + 0.7);           // 0.7999999999999999\nconsole.log(0.2 + 0.4);           // 0.6000000000000001\n\n// O valor realmente guardado para 0.1, com 20 casas:\nconsole.log((0.1).toFixed(20));   // 0.10000000000000000555\n\n// A menor diferença representável entre 1 e o double seguinte:\nconsole.log(Number.EPSILON);      // 2.220446049250313e-16\n\nfunction quaseIgual(a, b, tolerancia = Number.EPSILON) {\n  return Math.abs(a - b) <= tolerancia * Math.max(1, Math.abs(a), Math.abs(b));\n}\n\nconsole.log(quaseIgual(0.1 + 0.2, 0.3));   // true\nconsole.log(quaseIgual(0.1 + 0.7, 0.8));   // true\nconsole.log(quaseIgual(0.3, 0.30000001));  // false",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Nunca use o operador de igualdade estrita entre resultados de contas com decimais. Compare sempre com uma tolerância, ou faça as contas em inteiros.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔢",
+          "text": "Todo o Number é um double IEEE 754 de 64 bits"
+        },
+        {
+          "icon": "⚠️",
+          "text": "0.1 + 0.2 dá 0.30000000000000004"
+        },
+        {
+          "icon": "📏",
+          "text": "Compare com tolerância, não com igualdade estrita"
+        },
+        {
+          "icon": "💶",
+          "text": "Para dinheiro, calcule em cêntimos inteiros"
+        }
+      ]
+    },
+    {
+      "heading": "Arredondar: round, floor, ceil e trunc",
+      "body": [
+        "O Math oferece quatro formas de transformar um número com casas decimais num inteiro, e a diferença entre elas só fica realmente clara com valores negativos. Math.round arredonda para o inteiro mais próximo, mas os empates vão sempre para cima, isto é, na direção de mais infinito; por isso Math.round(2.5) dá 3 e Math.round(-2.5) dá -2, e não -3 como muita gente espera. Math.floor arredonda sempre para baixo, na direção de menos infinito, o que torna Math.floor(-2.5) igual a -3. Math.ceil faz o oposto, arredonda sempre para cima. Math.trunc limita-se a deitar fora a parte decimal, sem olhar para o sinal, pelo que Math.trunc(-2.5) dá -2, igual a Math.ceil neste caso e diferente de Math.floor.",
+        "A regra prática é simples: com números positivos, floor e trunc coincidem; com números negativos, deixam de coincidir e é aí que nascem os erros. Se quiser apenas descartar a parte decimal, use Math.trunc, que é explícito quanto à intenção. Se precisa mesmo do maior inteiro menor ou igual ao valor, use Math.floor. Para índices de arrays calculados a partir de Math.random, use Math.floor, porque o valor nunca é negativo e a intenção é clara.",
+        "Vale ainda a pena reparar que Math.round(-0.5) e Math.trunc(-0.9) devolvem menos zero. É um valor que se comporta como zero em quase todas as comparações, mas que Object.is distingue de zero positivo e que pode aparecer de forma inesperada ao formatar resultados."
+      ],
+      "code": "for (const n of [2.5, -2.5, 2.4, -2.4]) {\n  console.log(n, Math.round(n), Math.floor(n), Math.ceil(n), Math.trunc(n));\n}\n// 2.5 3 2 3 2\n// -2.5 -2 -3 -2 -2\n// 2.4 2 2 3 2\n// -2.4 -2 -3 -2 -2\n\nconsole.log(Math.round(3.5), Math.round(-3.5));  // 4 -3\n\n// Menos zero aparece com valores entre -1 e 0:\nconsole.log(Math.trunc(-0.9), Math.floor(-0.9)); // -0 -1\nconsole.log(Object.is(Math.round(-0.5), -0));    // true\n\n// Arredondar a um número de casas decimais, devolvendo um Number:\nfunction arredondarPara(valor, casas) {\n  const fator = 10 ** casas;\n  return Math.round(valor * fator) / fator;\n}\n\nconsole.log(arredondarPara(3.14159, 2));  // 3.14\nconsole.log(arredondarPara(2.5, 0));      // 3",
+      "callout_kind": "DICA",
+      "callout_text": "Quando o valor pode ser negativo, decida conscientemente entre Math.trunc (corta a parte decimal) e Math.floor (vai sempre para baixo). Não são a mesma coisa.",
+      "table_headers": [
+        "Valor",
+        "Math.round",
+        "Math.floor",
+        "Math.ceil",
+        "Math.trunc"
+      ],
+      "table_rows": [
+        [
+          "2.5",
+          "3",
+          "2",
+          "3",
+          "2"
+        ],
+        [
+          "-2.5",
+          "-2",
+          "-3",
+          "-2",
+          "-2"
+        ],
+        [
+          "2.4",
+          "2",
+          "2",
+          "3",
+          "2"
+        ],
+        [
+          "-2.4",
+          "-2",
+          "-3",
+          "-2",
+          "-2"
+        ],
+        [
+          "-0.9",
+          "-1",
+          "-1",
+          "-0",
+          "-0"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔄",
+          "text": "round: empates vão para cima (+Infinity)"
+        },
+        {
+          "icon": "⬇️",
+          "text": "floor: sempre para baixo, mesmo nos negativos"
+        },
+        {
+          "icon": "✂️",
+          "text": "trunc: corta a parte decimal, ignora o sinal"
+        },
+        {
+          "icon": "🧨",
+          "text": "Math.round(-2.5) é -2, não -3"
+        }
+      ]
+    },
+    {
+      "heading": "toFixed: formatar com casas decimais",
+      "body": [
+        "O método toFixed de Number formata um valor com um número fixo de casas decimais e devolve uma string, não um número. Este detalhe é a origem de muitos erros: somar dois resultados de toFixed concatena texto em vez de somar valores. Se precisar de voltar a ter um número, converta explicitamente com Number() ou com o operador unário mais. Em contrapartida, toFixed acrescenta zeros à direita, o que é exatamente o que se quer ao mostrar preços: o valor 5 formatado com duas casas dá a string 5.00.",
+        "O arredondamento de toFixed é por vezes surpreendente, e a causa é a mesma da primeira secção. O literal 1.005 não vale exatamente 1.005 em memória, vale um pouco menos, por isso formatar com duas casas dá 1.00 e não 1.01. O mesmo acontece com 2.675, que dá 2.67. Já 2.5 formatado com zero casas dá 3, porque 2.5 é exatamente representável e, havendo empate, a especificação manda escolher o candidato maior em valor absoluto. Note que, ao contrário de Math.round, toFixed trata o sinal em separado, pelo que o valor -2.5 formatado com zero casas dá -3 enquanto Math.round(-2.5) dá -2.",
+        "Para apresentar números ao utilizador com separadores de milhares, símbolo de moeda ou convenções locais, toFixed rapidamente fica curto. Essa é a função de Intl.NumberFormat, tema da próxima aula. Use toFixed para casos simples e internos, e Intl para tudo o que é mostrado a pessoas."
+      ],
+      "code": "const preco = 12.3456;\n\nconsole.log(preco.toFixed(2));         // 12.35\nconsole.log(typeof preco.toFixed(2));  // string\nconsole.log(Number(preco.toFixed(2))); // 12.35\n\n// Concatena em vez de somar, porque são strings:\nconsole.log((1.5).toFixed(2) + (2.5).toFixed(2)); // 1.502.50\n\n// Zeros à direita são acrescentados:\nconsole.log((5).toFixed(2));      // 5.00\nconsole.log((1234.5).toFixed(2)); // 1234.50\nconsole.log((0.0004).toFixed(2)); // 0.00\n\n// Arredondamentos surpreendentes:\nconsole.log((1.005).toFixed(2));  // 1.00\nconsole.log((2.675).toFixed(2));  // 2.67\nconsole.log((1.45).toFixed(1));   // 1.4\n\n// toFixed e Math.round discordam nos empates negativos:\nconsole.log((2.5).toFixed(0));    // 3\nconsole.log((-2.5).toFixed(0));   // -3\nconsole.log(Math.round(-2.5));    // -2",
+      "callout_kind": "ATENCAO",
+      "callout_text": "toFixed devolve sempre uma string. Se o resultado vai entrar noutra conta, converta-o de volta com Number().",
+      "table_headers": [
+        "Expressão",
+        "Resultado",
+        "Tipo"
+      ],
+      "table_rows": [
+        [
+          "(12.3456).toFixed(2)",
+          "12.35",
+          "string"
+        ],
+        [
+          "(5).toFixed(2)",
+          "5.00",
+          "string"
+        ],
+        [
+          "(1.005).toFixed(2)",
+          "1.00",
+          "string"
+        ],
+        [
+          "(-2.5).toFixed(0)",
+          "-3",
+          "string"
+        ],
+        [
+          "Number((12.3456).toFixed(2))",
+          "12.35",
+          "number"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧵",
+          "text": "toFixed devolve string, nunca number"
+        },
+        {
+          "icon": "0️⃣",
+          "text": "Acrescenta zeros à direita: (5).toFixed(2) dá 5.00"
+        },
+        {
+          "icon": "🤨",
+          "text": "(1.005).toFixed(2) dá 1.00, não 1.01"
+        },
+        {
+          "icon": "🌍",
+          "text": "Para mostrar ao utilizador, prefira Intl.NumberFormat"
+        }
+      ]
+    },
+    {
+      "heading": "Math.random e números aleatórios",
+      "body": [
+        "Math.random devolve um número em vírgula flutuante no intervalo [0, 1), ou seja, pode dar zero mas nunca dá exatamente um. A partir daí constrói-se tudo o resto por multiplicação e deslocamento. Para obter um inteiro entre min e max, com ambos os extremos incluídos, a fórmula correta é multiplicar o aleatório pelo número de valores possíveis, que é max menos min mais um, aplicar Math.floor e somar min.",
+        "O erro clássico é usar Math.round em vez de Math.floor. Com Math.round, os dois extremos do intervalo ficam com metade da probabilidade dos restantes valores, porque cada um deles só recebe metade de uma faixa de largura um. É um enviesamento silencioso, que não dá erro nenhum e que só aparece quando alguém conta as frequências. Use sempre Math.floor.",
+        "Math.random é adequado para jogos, animações, amostragens e testes, mas não é criptograficamente seguro: a sequência é gerada por um algoritmo determinista e não deve ser usada para senhas, chaves, tokens de sessão ou identificadores que precisem de ser imprevisíveis. Para esses casos existe a Web Crypto API, com crypto.getRandomValues e crypto.randomUUID, disponível tanto no navegador como no Node moderno."
+      ],
+      "code": "console.log(Math.random()); // um número em [0, 1)\n\nfunction inteiroAleatorio(min, max) {\n  return Math.floor(Math.random() * (max - min + 1)) + min;\n}\n\nconsole.log(inteiroAleatorio(1, 6));   // um inteiro entre 1 e 6\nconsole.log(inteiroAleatorio(0, 100)); // um inteiro entre 0 e 100\n\nfunction elementoAleatorio(lista) {\n  return lista[Math.floor(Math.random() * lista.length)];\n}\n\nconsole.log(elementoAleatorio(['norte', 'sul', 'este', 'oeste']));\n// um dos quatro pontos cardeais\n\n// Número real num intervalo, útil para animações:\nfunction realAleatorio(min, max) {\n  return Math.random() * (max - min) + min;\n}\n\nconsole.log(realAleatorio(1.5, 2.5)); // um real entre 1.5 e 2.5",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Math.random não serve para segurança. Para tokens, senhas ou identificadores imprevisíveis use crypto.getRandomValues ou crypto.randomUUID.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎲",
+          "text": "Math.random devolve um valor em [0, 1)"
+        },
+        {
+          "icon": "🧮",
+          "text": "Inteiro no intervalo fechado: use Math.floor, não round"
+        },
+        {
+          "icon": "🚫",
+          "text": "Math.round enviesa os extremos do intervalo"
+        },
+        {
+          "icon": "🔐",
+          "text": "Para segurança, use a Web Crypto API"
+        }
+      ]
+    },
+    {
+      "heading": "O resto do objeto Math",
+      "body": [
+        "Math é um objeto estático, não um construtor: nunca se escreve new Math. Agrupa funções matemáticas e constantes que se usam diretamente. Math.abs devolve o valor absoluto. Math.min e Math.max recebem uma lista de argumentos, e não um array, pelo que para aplicar a uma coleção se usa o operador de propagação. Chamados sem argumentos devolvem infinito positivo e infinito negativo respetivamente, o que é coerente como elemento neutro mas apanha muita gente desprevenida ao passar um array vazio. Basta um NaN no meio dos argumentos para o resultado ser NaN.",
+        "Math.pow(base, expoente) faz o mesmo que o operador de exponenciação, que se escreve com dois asteriscos. Hoje prefere-se o operador, mais legível, com dois pormenores a reter: ele é associativo à direita, pelo que dois elevado a três elevado a dois vale 512 e não 64, como se vê no exemplo em código; e não se pode aplicar diretamente a uma expressão com menos unário à esquerda, sendo obrigatório envolver o número negativo em parênteses, sob pena de erro de sintaxe.",
+        "Math.sqrt calcula a raiz quadrada e Math.hypot calcula a raiz da soma dos quadrados dos argumentos, ou seja, a distância euclidiana, com melhor comportamento numérico do que fazer a conta à mão. Math.sign devolve -1, 0 ou 1 conforme o sinal. Por fim, Math.PI e Math.E dão as constantes pi e o número de Euler com a precisão máxima de um double."
+      ],
+      "code": "console.log(Math.abs(-7.5));            // 7.5\nconsole.log(Math.min(3, 1, 2));         // 1\nconsole.log(Math.max(3, 1, 2));         // 3\n\nconst temperaturas = [12.4, 18.9, 7.1, 21.3];\nconsole.log(Math.min(...temperaturas)); // 7.1\nconsole.log(Math.max(...temperaturas)); // 21.3\n\nconsole.log(Math.max());                // -Infinity\nconsole.log(Math.min());                // Infinity\nconsole.log(Math.max(1, NaN));          // NaN\n\nconsole.log(Math.pow(2, 10), 2 ** 10);  // 1024 1024\nconsole.log(2 ** 3 ** 2);               // 512 (associativo à direita)\nconsole.log((-2) ** 2);                 // 4 (os parênteses são obrigatórios)\n\nconsole.log(Math.sqrt(144));            // 12\nconsole.log(Math.hypot(3, 4));          // 5\nconsole.log(Math.sign(-42), Math.sign(0), Math.sign(3)); // -1 0 1\n\nconsole.log(Math.PI);                   // 3.141592653589793\nconsole.log(Math.E);                    // 2.718281828459045\nconsole.log((Math.PI * 3 ** 2).toFixed(2)); // 28.27 (área do círculo r=3)",
+      "callout_kind": "NOTA",
+      "callout_text": "Math.max e Math.min com spread falham em arrays muito grandes (dezenas de milhares de elementos) por excesso de argumentos na pilha. Nesses casos use reduce.",
+      "table_headers": [
+        "Método",
+        "O que faz",
+        "Exemplo",
+        "Resultado"
+      ],
+      "table_rows": [
+        [
+          "Math.abs",
+          "valor absoluto",
+          "Math.abs(-7.5)",
+          "7.5"
+        ],
+        [
+          "Math.max",
+          "maior dos argumentos",
+          "Math.max(...[1, 9, 4])",
+          "9"
+        ],
+        [
+          "Math.sqrt",
+          "raiz quadrada",
+          "Math.sqrt(144)",
+          "12"
+        ],
+        [
+          "Math.hypot",
+          "distância euclidiana",
+          "Math.hypot(3, 4)",
+          "5"
+        ],
+        [
+          "Math.sign",
+          "sinal do número",
+          "Math.sign(-42)",
+          "-1"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "📐",
+          "text": "Math é estático: nunca se faz new Math"
+        },
+        {
+          "icon": "📊",
+          "text": "Math.max(...array) para o máximo de uma coleção"
+        },
+        {
+          "icon": "♾️",
+          "text": "Math.max() sem argumentos dá -Infinity"
+        },
+        {
+          "icon": "🧭",
+          "text": "Math.hypot(3, 4) dá 5 sem perda de precisão"
+        }
+      ]
+    },
+    {
+      "heading": "Number: limites, EPSILON e verificações",
+      "body": [
+        "O construtor Number transporta um conjunto de propriedades e métodos estáticos que descrevem os limites do formato. Number.MAX_SAFE_INTEGER vale 9007199254740991, que é dois elevado a 53 menos um, e Number.MIN_SAFE_INTEGER é o seu simétrico. Um inteiro diz-se seguro quando é representável exatamente e nenhum outro inteiro partilha a mesma representação. Acima desse limite a mantissa de 52 bits deixa de chegar para distinguir inteiros consecutivos: os literais 9007199254740992 e 9007199254740993 são o mesmo double, e por isso comparam como iguais. É por isto que identificadores vindos de uma base de dados devem viajar como string ou BigInt, nunca como Number.",
+        "Number.EPSILON é a diferença entre 1 e o menor double maior do que 1, e serve de unidade de referência para tolerâncias. Number.isInteger indica se o valor é um número sem parte decimal, sem fazer qualquer conversão, pelo que a string com o texto 5 devolve falso. Number.isSafeInteger acrescenta a verificação de que o inteiro cai dentro do intervalo seguro.",
+        "A diferença mais importante desta secção é entre os métodos de Number e as funções globais com o mesmo nome. As globais isNaN e isFinite convertem o argumento para número antes de testar, o que produz respostas erradas: a string vazia converte-se em zero, e por isso isNaN da string vazia devolve falso, enquanto isNaN do texto abc devolve verdadeiro apesar de esse texto não ser sequer um número. Number.isNaN e Number.isFinite não fazem conversão nenhuma: devolvem verdadeiro apenas para valores que já são do tipo number e cumprem a condição. Na prática, use sempre as versões de Number e esqueça as globais."
+      ],
+      "code": "console.log(Number.MAX_SAFE_INTEGER); // 9007199254740991\nconsole.log(Number.MIN_SAFE_INTEGER); // -9007199254740991\n\n// Acima do limite, inteiros diferentes colapsam no mesmo double:\nconsole.log(9007199254740992 === 9007199254740993);                     // true\nconsole.log(Number.MAX_SAFE_INTEGER + 1 === Number.MAX_SAFE_INTEGER + 2); // true\n\nconsole.log(Number.isInteger(5));    // true\nconsole.log(Number.isInteger(5.5));  // false\nconsole.log(Number.isInteger('5'));  // false (não converte)\n\nconsole.log(Number.isSafeInteger(2 ** 53 - 1)); // true\nconsole.log(Number.isSafeInteger(2 ** 53));     // false\n\n// Globais fazem coerção; as de Number não:\nconsole.log(isNaN('abc'), Number.isNaN('abc'));           // true false\nconsole.log(isNaN(''), Number.isNaN(''));                 // false false\nconsole.log(isNaN(undefined), Number.isNaN(undefined));   // true false\nconsole.log(isFinite('42'), Number.isFinite('42'));       // true false\nconsole.log(isFinite(null), Number.isFinite(null));       // true false",
+      "callout_kind": "DICA",
+      "callout_text": "Regra simples: use sempre Number.isNaN e Number.isFinite. As funções globais isNaN e isFinite existem apenas por compatibilidade histórica.",
+      "table_headers": [
+        "Valor",
+        "isNaN (global)",
+        "Number.isNaN",
+        "isFinite (global)",
+        "Number.isFinite"
+      ],
+      "table_rows": [
+        [
+          "'abc'",
+          "true",
+          "false",
+          "false",
+          "false"
+        ],
+        [
+          "''",
+          "false",
+          "false",
+          "true",
+          "false"
+        ],
+        [
+          "'42'",
+          "false",
+          "false",
+          "true",
+          "false"
+        ],
+        [
+          "null",
+          "false",
+          "false",
+          "true",
+          "false"
+        ],
+        [
+          "NaN",
+          "true",
+          "true",
+          "false",
+          "false"
+        ],
+        [
+          "42",
+          "false",
+          "false",
+          "true",
+          "true"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧱",
+          "text": "Inteiro seguro até 9007199254740991"
+        },
+        {
+          "icon": "🆔",
+          "text": "IDs grandes viajam como string ou BigInt"
+        },
+        {
+          "icon": "🔍",
+          "text": "Number.isInteger não converte strings"
+        },
+        {
+          "icon": "✅",
+          "text": "Prefira Number.isNaN e Number.isFinite às globais"
+        }
+      ]
+    },
+    {
+      "heading": "Converter texto em número",
+      "body": [
+        "Existem quatro formas correntes de transformar texto em número, e escolher mal é uma fonte constante de bugs. Number() e o operador unário mais são equivalentes e fazem uma conversão estrita: ou a string inteira representa um número válido, ou o resultado é NaN. Toleram espaços à volta, aceitam notação científica e prefixos hexadecimais, e convertem a string vazia e o valor null em zero, o que convém não esquecer ao validar formulários.",
+        "parseInt e parseFloat fazem uma leitura tolerante: percorrem a string desde o início e param no primeiro carácter que não encaixa, devolvendo o que conseguiram ler até aí. Por isso o texto 42px dá 42, e o texto px42 dá NaN por não começar por um algarismo. O segundo argumento de parseInt é a base, e deve ser sempre indicado explicitamente: escrever parseInt(valor, 10) documenta a intenção e protege contra strings com prefixo hexadecimal. Há ainda uma armadilha conhecida, que é passar um número a parseInt: o argumento é primeiro convertido em string, e um valor muito pequeno como 0.0000005 torna-se o texto 5e-7, do qual parseInt lê apenas o 5.",
+        "A escolha resume-se a isto. Se o texto deve ser inteiramente um número, use Number() e valide o resultado com Number.isFinite. Se está a extrair um número do início de uma string que também contém unidades, como um valor lido de uma folha de estilos, use parseInt com base explícita ou parseFloat. O operador unário mais é conciso e útil em expressões curtas, mas em código partilhado Number() é mais legível."
+      ],
+      "code": "console.log(Number('42'), Number('3.14'), Number('  7  ')); // 42 3.14 7\nconsole.log(Number(''), Number(null), Number(undefined));   // 0 0 NaN\nconsole.log(Number('42px'));                                // NaN\nconsole.log(Number('0x1F'), Number('1e3'));                 // 31 1000\n\nconsole.log(parseInt('42px', 10), parseInt('px42', 10));    // 42 NaN\nconsole.log(parseInt('1e3', 10), parseFloat('1e3'));        // 1 1000\nconsole.log(parseInt('ff', 16), parseInt('101', 2));        // 255 5\nconsole.log(parseFloat('3.14 metros'));                     // 3.14\n\n// Armadilha: o número é convertido em string primeiro\nconsole.log(parseInt(0.0000005, 10)); // 5 (porque a string é 5e-7)\n\nconsole.log(+'42', +'', +'abc');      // 42 0 NaN\n\n// Validação estrita e reutilizável:\nfunction paraNumeroValido(texto) {\n  if (typeof texto !== 'string' || texto.trim() === '') return null;\n  const n = Number(texto);\n  return Number.isFinite(n) ? n : null;\n}\n\nconsole.log(paraNumeroValido('19.99')); // 19.99\nconsole.log(paraNumeroValido('19,99')); // null\nconsole.log(paraNumeroValido('   '));   // null",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Percorra um formulário do seu projeto e substitua cada conversão implícita por Number() seguido de Number.isFinite. Vai encontrar casos em que a string vazia passava como zero.",
+      "table_headers": [
+        "Entrada",
+        "Number(x)",
+        "parseInt(x, 10)",
+        "parseFloat(x)",
+        "+x"
+      ],
+      "table_rows": [
+        [
+          "'42'",
+          "42",
+          "42",
+          "42",
+          "42"
+        ],
+        [
+          "'42px'",
+          "NaN",
+          "42",
+          "42",
+          "NaN"
+        ],
+        [
+          "''",
+          "0",
+          "NaN",
+          "NaN",
+          "0"
+        ],
+        [
+          "'1e3'",
+          "1000",
+          "1",
+          "1000",
+          "1000"
+        ],
+        [
+          "null",
+          "0",
+          "NaN",
+          "NaN",
+          "0"
+        ],
+        [
+          "true",
+          "1",
+          "NaN",
+          "NaN",
+          "1"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🎯",
+          "text": "Number() é estrito: tudo ou NaN"
+        },
+        {
+          "icon": "🪚",
+          "text": "parseInt e parseFloat leem só o início"
+        },
+        {
+          "icon": "🔟",
+          "text": "Indique sempre a base: parseInt(x, 10)"
+        },
+        {
+          "icon": "🕳️",
+          "text": "Number('') e Number(null) dão 0, não NaN"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Comparar decimais com tolerância",
+      "difficulty": "Iniciante",
+      "statement": "Escreva a função saoQuaseIguais(a, b, tolerancia) que devolve true quando a diferença absoluta entre os dois números é menor ou igual à tolerância, e false caso contrário. A tolerância tem um valor por omissão de 1e-9. Demonstre no final que 0.1 + 0.2 === 0.3 é falso, mas que a sua função considera os dois valores iguais, e mostre também dois casos em que a função devolve false.",
+      "hint": "Precisa de Math.abs para obter a diferença sem sinal e de um parâmetro com valor por omissão na assinatura da função.",
+      "solution_code": "function saoQuaseIguais(a, b, tolerancia = 1e-9) {\n  return Math.abs(a - b) <= tolerancia;\n}\n\nconsole.log(0.1 + 0.2 === 0.3);              // false\nconsole.log(saoQuaseIguais(0.1 + 0.2, 0.3)); // true\nconsole.log(saoQuaseIguais(0.1 + 0.7, 0.8)); // true\nconsole.log(saoQuaseIguais(1.0000001, 1));   // false\nconsole.log(saoQuaseIguais(0.3, 0.4));       // false",
+      "solution_explanation": "A diferença entre 0.1 + 0.2 e 0.3 é da ordem de 1e-17, muito abaixo da tolerância de 1e-9, por isso a função considera os valores iguais. Já uma diferença de 1e-7, como entre 1.0000001 e 1, ultrapassa a tolerância e é corretamente assinalada. Usar Math.abs evita ter de tratar em separado os casos em que a é maior ou menor do que b."
+    },
+    {
+      "title": "Um dado honesto",
+      "difficulty": "Intermedio",
+      "statement": "Implemente inteiroAleatorio(min, max) que devolve um inteiro aleatório com ambos os extremos incluídos. A função deve lançar TypeError se min ou max não forem inteiros e RangeError se min for maior do que max. Implemente depois contarLancamentos(n), que lança n vezes um dado de seis faces e devolve um objeto com a frequência de cada face. Execute com sessenta mil lançamentos, mostre as frequências e confirme que a soma delas é igual a n.",
+      "hint": "Number.isInteger valida os argumentos sem fazer coerção. Para as frequências, comece com um objeto que já tem as seis chaves a zero e incremente a chave correspondente a cada lançamento.",
+      "solution_code": "function inteiroAleatorio(min, max) {\n  if (!Number.isInteger(min) || !Number.isInteger(max)) {\n    throw new TypeError('min e max têm de ser inteiros');\n  }\n  if (min > max) {\n    throw new RangeError('min não pode ser maior do que max');\n  }\n  return Math.floor(Math.random() * (max - min + 1)) + min;\n}\n\nfunction contarLancamentos(n) {\n  const contagem = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };\n  for (let i = 0; i < n; i += 1) {\n    contagem[inteiroAleatorio(1, 6)] += 1;\n  }\n  return contagem;\n}\n\nconst frequencias = contarLancamentos(60000);\nconsole.log(frequencias); // seis faces, cada uma perto de 10000\n\nconst total = Object.values(frequencias).reduce((a, b) => a + b, 0);\nconsole.log(total); // 60000\n\ntry {\n  inteiroAleatorio(1.5, 6);\n} catch (erro) {\n  console.log(erro.name); // TypeError\n}\n\ntry {\n  inteiroAleatorio(6, 1);\n} catch (erro) {\n  console.log(erro.name); // RangeError\n}",
+      "solution_explanation": "A expressão max menos min mais um conta quantos valores existem no intervalo fechado, e Math.floor distribui-os uniformemente porque Math.random nunca chega a um. Com sessenta mil lançamentos cada face aparece cerca de dez mil vezes, o que mostra que não há enviesamento. Se tivesse usado Math.round em vez de Math.floor, as faces 1 e 6 apareceriam cerca de metade das vezes das restantes."
+    },
+    {
+      "title": "Conversor robusto de texto para número",
+      "difficulty": "Intermedio",
+      "statement": "Escreva paraNumero(valor) que devolve um número ou null. Deve aceitar números finitos tal como estão, aceitar strings no formato português com vírgula decimal e espaços a separar milhares, como o texto 1 234,56, e devolver null para tudo o resto: strings vazias ou só com espaços, texto que não represente um número, booleanos, null, arrays e valores não finitos como NaN e Infinity. Teste com pelo menos oito entradas diferentes.",
+      "hint": "Trate primeiro o caso em que o valor já é um número e depois rejeite tudo o que não for string. Sobre a string, limpe os espaços e troque a vírgula pelo ponto antes de chamar Number.",
+      "solution_code": "function paraNumero(valor) {\n  if (typeof valor === 'number') {\n    return Number.isFinite(valor) ? valor : null;\n  }\n  if (typeof valor !== 'string') {\n    return null;\n  }\n\n  const limpo = valor.trim().replace(/\\s/g, '').replace(',', '.');\n  if (limpo === '') {\n    return null;\n  }\n\n  const numero = Number(limpo);\n  return Number.isFinite(numero) ? numero : null;\n}\n\nconsole.log(paraNumero('1 234,56')); // 1234.56\nconsole.log(paraNumero(' 42 '));     // 42\nconsole.log(paraNumero('-3,5'));     // -3.5\nconsole.log(paraNumero(7.5));        // 7.5\nconsole.log(paraNumero('42px'));     // null\nconsole.log(paraNumero(''));         // null\nconsole.log(paraNumero(null));       // null\nconsole.log(paraNumero(true));       // null\nconsole.log(paraNumero([]));         // null\nconsole.log(paraNumero(NaN));        // null\nconsole.log(paraNumero(Infinity));   // null",
+      "solution_explanation": "A verificação com typeof é o que impede que null, um booleano ou um array cheguem a Number e se convertam silenciosamente em zero ou em um. Depois de normalizar a string, Number faz a conversão estrita e Number.isFinite rejeita de uma só vez NaN, Infinity e -Infinity. O resultado é uma função que devolve sempre ou um número utilizável ou null, sem estados ambíguos."
+    },
+    {
+      "title": "Carrinho de compras sem erros de vírgula flutuante",
+      "difficulty": "Avancado",
+      "statement": "Crie calcularCarrinho(itens), em que cada item é um objeto com nome, preco em euros e quantidade. Converta cada preço para cêntimos inteiros com Math.round, lançando RangeError se o resultado não for um inteiro seguro, some tudo em cêntimos, calcule o IVA a 23 por cento arredondando ao cêntimo e devolva um objeto com subtotalCentimos, ivaCentimos, totalCentimos e totalFormatado, este último uma string com duas casas decimais. Teste com um teclado a 19.99 euros vezes dois, um rato a 9.95 euros e três cabos a 0.1 euros, e compare o subtotal com a soma feita diretamente em euros.",
+      "hint": "Toda a aritmética deve acontecer em inteiros. O único ponto onde volta a haver divisão é na formatação final, já depois de todos os arredondamentos estarem decididos.",
+      "solution_code": "const TAXA_IVA = 0.23;\n\nfunction euroParaCentimos(euros) {\n  const centimos = Math.round(euros * 100);\n  if (!Number.isSafeInteger(centimos)) {\n    throw new RangeError('valor fora do intervalo de inteiros seguros');\n  }\n  return centimos;\n}\n\nfunction formatarEuros(centimos) {\n  return `${(centimos / 100).toFixed(2)} EUR`;\n}\n\nfunction calcularCarrinho(itens) {\n  const subtotalCentimos = itens.reduce(\n    (total, item) => total + euroParaCentimos(item.preco) * item.quantidade,\n    0\n  );\n  const ivaCentimos = Math.round(subtotalCentimos * TAXA_IVA);\n  const totalCentimos = subtotalCentimos + ivaCentimos;\n\n  return {\n    subtotalCentimos,\n    ivaCentimos,\n    totalCentimos,\n    totalFormatado: formatarEuros(totalCentimos)\n  };\n}\n\nconst carrinho = [\n  { nome: 'Teclado', preco: 19.99, quantidade: 2 },\n  { nome: 'Rato', preco: 9.95, quantidade: 1 },\n  { nome: 'Cabo', preco: 0.1, quantidade: 3 }\n];\n\nconsole.log(calcularCarrinho(carrinho));\n// { subtotalCentimos: 5023, ivaCentimos: 1155,\n//   totalCentimos: 6178, totalFormatado: '61.78 EUR' }\n\n// A mesma soma feita diretamente em euros já perde precisão:\nconsole.log(19.99 * 2 + 9.95 + 0.1 * 3); // 50.22999999999999",
+      "solution_explanation": "Ao converter cada preço para cêntimos logo à entrada, todas as somas e multiplicações passam a ser feitas entre inteiros, onde não existe erro de representação enquanto se ficar dentro do intervalo seguro. O único arredondamento com margem de decisão é o do IVA, feito uma vez só sobre o subtotal. A soma equivalente em euros devolve 50.22999999999999, o que mostra bem a diferença de fiabilidade entre as duas abordagens."
+    }
+  ],
+  "summary": [
+    "Todo o Number é um double IEEE 754, por isso 0.1 + 0.2 dá 0.30000000000000004 e decimais devem ser comparados com uma tolerância, nunca com igualdade estrita.",
+    "Math.round arredonda empates para cima, Math.floor vai sempre para baixo e Math.trunc corta a parte decimal, o que os torna diferentes com números negativos: -2.5 dá -2, -3 e -2 respetivamente.",
+    "toFixed devolve uma string, acrescenta zeros à direita e arredonda a partir do valor realmente guardado, o que explica resultados como 1.00 para 1.005.",
+    "Para um inteiro aleatório num intervalo fechado, multiplique Math.random pelo número de valores possíveis, aplique Math.floor e some o mínimo; nunca use Math.random para fins de segurança.",
+    "Number.MAX_SAFE_INTEGER marca o limite acima do qual inteiros consecutivos deixam de ser distinguíveis; Number.isSafeInteger verifica-o e identificadores grandes devem usar string ou BigInt.",
+    "Use sempre Number.isNaN e Number.isFinite em vez das funções globais, e escolha Number() para conversões estritas e parseInt com base explícita ou parseFloat para ler números no início de uma string."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 04",
+  "next_label": "Aula 04 → Intl: Internacionalização"
+}

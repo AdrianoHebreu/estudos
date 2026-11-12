@@ -1,0 +1,243 @@
+{
+  "module_num": "02",
+  "module_title": "Estruturas de Controlo",
+  "module_dir": "02-Estruturas-de-Controlo",
+  "lesson_num": "03",
+  "lesson_slug": "Loops-for-while-e-do-while",
+  "kind": "aula",
+  "title": "Loops: for, while e do...while",
+  "filename_base": "03-Loops-for-while-e-do-while",
+  "subtitle": "Domine os tres ciclos classicos do JavaScript e escreva repeticoes seguras e eficientes.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Escrever ciclos for com inicializacao, condicao e incremento adequados a cada caso.",
+    "Usar while para repetir um bloco enquanto uma condicao se mantiver verdadeira.",
+    "Aplicar do...while quando o bloco tem de correr pelo menos uma vez antes de qualquer verificacao.",
+    "Identificar as causas mais comuns de loops infinitos e evita-las.",
+    "Aplicar boas praticas basicas de performance em ciclos."
+  ],
+  "sections": [
+    {
+      "heading": "O ciclo for: a anatomia completa",
+      "body": [
+        "O ciclo for classico organiza num so sitio as tres partes que controlam uma repeticao: a inicializacao, executada uma unica vez antes de a primeira iteracao comecar; a condicao, avaliada antes de cada iteracao e que decide se o ciclo continua; e a instrucao de atualizacao, executada no final de cada iteracao, normalmente para incrementar ou decrementar um contador. Esta estrutura compacta torna o for a escolha natural sempre que se sabe, a partida, quantas vezes ou entre que limites o bloco deve repetir-se.",
+        "Qualquer uma das tres partes pode ser omitida, desde que os dois pontos e virgula se mantenham, e e possivel declarar e atualizar mais do que uma variavel na mesma instrucao, separando-as por virgulas. O for tambem se presta tanto a contagens crescentes como decrescentes, bastando ajustar a condicao e a atualizacao em conformidade."
+      ],
+      "code": "// Ciclo for classico: soma dos primeiros 5 numeros inteiros\nlet soma = 0;\nfor (let i = 1; i <= 5; i++) {\n  soma += i;\n}\nconsole.log(soma); // 15\n\n// Contagem decrescente\nfor (let i = 5; i > 0; i--) {\n  console.log(`Faltam ${i} segundos`);\n}\n\n// Multiplas variaveis na mesma instrucao for\nfor (let i = 0, j = 10; i < j; i++, j--) {\n  console.log(i, j);\n}",
+      "callout_kind": "NOTA",
+      "callout_text": "As tres partes do for sao opcionais, mas os dois separadores ponto e virgula tem sempre de la estar; por isso for (;;) e uma instrucao sintaticamente valida. E um caso especial, tratado mais adiante nesta aula, na seccao sobre loops infinitos.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔁",
+          "text": "for junta inicializacao, condicao e incremento"
+        },
+        {
+          "icon": "🔢",
+          "text": "Ideal quando se sabe o numero de iteracoes"
+        },
+        {
+          "icon": "↕️",
+          "text": "Conta para cima, para baixo ou com varias variaveis"
+        }
+      ]
+    },
+    {
+      "heading": "O ciclo while: repetir enquanto for verdade",
+      "body": [
+        "O while avalia a condicao antes de cada iteracao e repete o bloco enquanto essa condicao for verdadeira, sem impor nenhuma estrutura de contador. E o ciclo indicado quando nao se sabe antecipadamente quantas repeticoes vao ser necessarias, mas existe uma condicao clara que, mais cedo ou mais tarde, deixa de se verificar.",
+        "Como o while nao obriga a nenhuma inicializacao nem atualizacao automatica, a responsabilidade de garantir que a condicao se torna falsa esta inteiramente no codigo dentro do bloco: se nada ali alterar o valor testado na condicao, o ciclo nunca termina."
+      ],
+      "code": "let saldo = 100;\nconst custoPorJogada = 15;\nlet jogadas = 0;\n\nwhile (saldo >= custoPorJogada) {\n  saldo -= custoPorJogada;\n  jogadas++;\n}\n\nconsole.log(`Foram possiveis ${jogadas} jogadas`);\nconsole.log(`Sobrou um saldo de ${saldo}`);",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔄",
+          "text": "while testa a condicao antes de cada volta"
+        },
+        {
+          "icon": "❓",
+          "text": "Usa-se quando o numero de iteracoes e imprevisivel"
+        },
+        {
+          "icon": "⚖️",
+          "text": "A condicao tem de poder tornar-se falsa"
+        }
+      ]
+    },
+    {
+      "heading": "O ciclo do...while: garantir a primeira execucao",
+      "body": [
+        "O do...while tem uma diferenca estrutural simples mas importante em relacao ao while: o corpo do ciclo e executado primeiro, e so depois a condicao e avaliada, no fim de cada iteracao. Na pratica, isto garante que o bloco corre sempre pelo menos uma vez, mesmo que a condicao ja comece falsa antes de a primeira execucao acontecer.",
+        "Este comportamento torna o do...while adequado a situacoes em que a acao tem de acontecer antes de haver alguma coisa para testar, como pedir um valor e so depois verificar se e valido, ou tentar uma operacao e so depois decidir se vale a pena repeti-la. Note-se ainda a sintaxe: ao contrario do for e do while, o do...while termina com um ponto e virgula obrigatorio depois do while(condicao)."
+      ],
+      "code": "// Diferenca fundamental: o do...while executa o bloco pelo menos uma vez,\n// mesmo que a condicao seja falsa logo a partida\nlet x = 10;\n\nwhile (x < 5) {\n  console.log(\"Isto nunca e impresso, porque a condicao ja comeca falsa\");\n}\n\ndo {\n  console.log(\"Isto e impresso uma vez, porque o do...while testa a condicao so no fim\");\n} while (x < 5);\n\n// Caso pratico: pedir um PIN ate acertar ou esgotar as tentativas\nconst pinCorreto = \"1234\";\nconst tentativasDoUtilizador = [\"0000\", \"1111\", \"1234\"];\nlet tentativas = 0;\nlet pin;\n\ndo {\n  pin = tentativasDoUtilizador[tentativas];\n  tentativas++;\n} while (pin !== pinCorreto && tentativas < tentativasDoUtilizador.length);\n\nif (pin === pinCorreto) {\n  console.log(`Acesso concedido na tentativa ${tentativas}`);\n} else {\n  console.log(\"Acesso bloqueado\");\n}",
+      "callout_kind": "NOTA",
+      "callout_text": "Repare no ponto e virgula obrigatorio no final de do { ... } while (condicao); - e a unica das tres estruturas de ciclo que termina desta forma. Esquece-lo e um erro de sintaxe comum.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "▶️",
+          "text": "do...while executa o bloco pelo menos uma vez"
+        },
+        {
+          "icon": "🔚",
+          "text": "So testa a condicao no fim da iteracao"
+        },
+        {
+          "icon": "🔑",
+          "text": "Util em validacoes e tentativas de acesso"
+        }
+      ]
+    },
+    {
+      "heading": "for, while ou do...while: qual escolher",
+      "body": [
+        "Os tres ciclos sao, do ponto de vista computacional, intermutaveis: qualquer repeticao escrita com for pode ser reescrita com while, e vice-versa. A escolha entre eles e, por isso, sobretudo uma questao de comunicar a intencao com clareza a quem vai ler o codigo mais tarde, incluindo o proprio autor.",
+        "Como regra pratica, use for quando o numero de iteracoes ou os limites da contagem sao conhecidos a partida; use while quando a repeticao depende de uma condicao externa cujo numero de verificacoes nao e previsivel; e reserve o do...while para os casos, menos frequentes, em que a primeira execucao tem mesmo de acontecer antes de qualquer verificacao."
+      ],
+      "code": "// As duas formas seguintes produzem o mesmo numero de iteracoes (0, 1 e 2)\nfor (let i = 0; i < 3; i++) {\n  console.log(\"for:\", i);\n}\n\nlet i = 0;\nwhile (i < 3) {\n  console.log(\"while:\", i);\n  i++;\n}",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Pegue num dos exemplos desta aula escrito com for e reescreva-o com while, e vice-versa, para sentir na pratica a equivalencia entre os dois.",
+      "table_headers": [
+        "Cenario",
+        "Ciclo recomendado",
+        "Motivo"
+      ],
+      "table_rows": [
+        [
+          "Numero de iteracoes conhecido a partida (ex.: percorrer indices 0 a 9)",
+          "for",
+          "Reune inicializacao, condicao e incremento num so sitio"
+        ],
+        [
+          "Repeticao depende de uma condicao externa, numero de voltas imprevisivel",
+          "while",
+          "Testa a condicao antes de cada iteracao, sem forcar um contador"
+        ],
+        [
+          "O bloco tem de correr pelo menos uma vez antes de qualquer verificacao",
+          "do...while",
+          "Testa a condicao so no fim da primeira execucao"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧭",
+          "text": "Escolha o ciclo pela intencao, nao por habito"
+        },
+        {
+          "icon": "🔀",
+          "text": "for, while e do...while sao interconvertiveis"
+        }
+      ]
+    },
+    {
+      "heading": "Loops infinitos: como surgem e como evita-los",
+      "body": [
+        "Um loop infinito acontece quando a condicao de um while, de um do...while ou de um for nunca se torna falsa. As causas mais comuns sao esquecer a instrucao que atualiza a variavel testada na condicao, atualizar uma variavel diferente da que e avaliada, ou construir uma condicao com um erro logico, como um decremento numa contagem que deveria crescer.",
+        "Nem todo o ciclo sem uma condicao de paragem obvia e um erro: escrever while (true) ou for (;;) e uma tecnica legitima quando se pretende repetir indefinidamente ate que uma verificacao interna decida sair, atraves da instrucao break. A instrucao break, estudada em detalhe na proxima aula, e o mecanismo que transforma um ciclo aparentemente infinito num ciclo controlado, com uma saida explicita."
+      ],
+      "code": "// ERRO COMUM: esquecer de atualizar a variavel de controlo\n// (este bloco, se descomentado, nunca para)\n// let i = 0;\n// while (i < 5) {\n//   console.log(i);\n// }\n\n// Correto: o incremento garante que a condicao acaba por ser falsa\nlet i = 0;\nwhile (i < 5) {\n  console.log(i);\n  i++;\n}\n\n// Loop infinito intencional, com saida controlada por break\n// (break sera explicado em detalhe na proxima aula; aqui serve\n// apenas para sair de um while (true) quando a condicao de sucesso se verificar)\nlet tentativa = 0;\n\nwhile (true) {\n  tentativa++;\n  const sucesso = tentativa >= 3;\n\n  if (sucesso) {\n    console.log(`Sucesso na tentativa ${tentativa}`);\n    break;\n  }\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Um loop infinito nao tratado pode travar o separador do browser ou bloquear o processo Node.js ate ser forcado a terminar. Ao escrever ou testar um ciclo novo, confirme sempre, antes de o correr, que existe um caminho claro para a condicao se tornar falsa, ou um break alcancavel.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "♾️",
+          "text": "Loop infinito: a condicao nunca fica falsa"
+        },
+        {
+          "icon": "🐛",
+          "text": "Causa comum: esquecer de atualizar o contador"
+        },
+        {
+          "icon": "🛑",
+          "text": "break sai de um while (true) de forma controlada"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Pode travar o separador ou o processo Node.js"
+        }
+      ]
+    },
+    {
+      "heading": "Performance basica em ciclos",
+      "body": [
+        "Em ciclos que correm um numero muito grande de vezes, pequenos custos repetidos em cada iteracao acumulam-se. Duas praticas simples ajudam: evitar recalcular, dentro do corpo do ciclo, valores que nao dependem do indice ou da iteracao atual, e guardar antecipadamente, numa variavel, resultados que seriam lidos ou calculados repetidamente sem necessidade, como o comprimento de um array usado na condicao.",
+        "Estes cuidados so fazem diferenca mensuravel em ciclos verdadeiramente grandes ou executados com muita frequencia; em codigo comum, a legibilidade deve vir sempre primeiro, e qualquer otimizacao deve ser confirmada por medicao real, nunca por suposicao."
+      ],
+      "code": "const precos = [45, 120, 78, 300, 15, 999, 60, 210, 5, 88];\n\n// Menos eficiente: le precos.length e recalcula um valor fixo em cada iteracao\nlet contagemMau = 0;\nfor (let i = 0; i < precos.length; i++) {\n  const limite = 50 * 2; // resultado sempre igual a 100, nao depende de i\n  if (precos[i] > limite) {\n    contagemMau++;\n  }\n}\n\n// Mais eficiente: guarda o comprimento e o valor fixo uma unica vez, antes do ciclo\nconst total = precos.length;\nconst limite = 50 * 2;\nlet contagemBom = 0;\nfor (let i = 0; i < total; i++) {\n  if (precos[i] > limite) {\n    contagemBom++;\n  }\n}\n\nconsole.log(contagemBom); // 4",
+      "callout_kind": "DICA",
+      "callout_text": "Nao otimize ciclos as cegas. Escreva primeiro o codigo mais claro e correto; so vale a pena aplicar estas tecnicas depois de identificar, com medicoes, que um ciclo especifico e de facto um ponto lento do programa.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "⚡",
+          "text": "Nao recalcule dentro do ciclo o que nao muda"
+        },
+        {
+          "icon": "📏",
+          "text": "Guarde o length antes de um ciclo grande"
+        },
+        {
+          "icon": "🧪",
+          "text": "Meca antes de otimizar; a clareza vem primeiro"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Tabuada com for",
+      "difficulty": "Iniciante",
+      "statement": "Escreva um programa que, usando um ciclo for classico, imprima na consola a tabuada de multiplicar do numero 7, do 1 ao 10, no formato \"7 x 1 = 7\", \"7 x 2 = 14\", e assim sucessivamente ate \"7 x 10 = 70\".",
+      "hint": "Pense nas tres partes do for: por onde comeca o contador, ate onde vai a condicao, e como o contador avanca a cada iteracao.",
+      "solution_code": "const numero = 7;\n\nfor (let i = 1; i <= 10; i++) {\n  console.log(`${numero} x ${i} = ${numero * i}`);\n}",
+      "solution_explanation": "O ciclo for inicializa i a 1, repete enquanto i for menor ou igual a 10 e incrementa i em cada volta, multiplicando numero por i em cada iteracao para produzir cada linha da tabuada."
+    },
+    {
+      "title": "Levantamentos ate esgotar o saldo",
+      "difficulty": "Intermedio",
+      "statement": "Uma conta bancaria comeca com um saldo de 250. Todas as semanas faz-se um levantamento fixo de 40. Usando um ciclo while, calcule quantas semanas completas de levantamento sao possiveis antes de o saldo deixar de ser suficiente para um levantamento inteiro, e imprima na consola esse numero de semanas e o saldo final que sobra.",
+      "hint": "A condicao do while deve verificar, antes de cada levantamento, se o saldo ainda chega para mais um levantamento completo.",
+      "solution_code": "let saldo = 250;\nconst levantamento = 40;\nlet semanas = 0;\n\nwhile (saldo >= levantamento) {\n  saldo -= levantamento;\n  semanas++;\n}\n\nconsole.log(`Semanas de levantamento possiveis: ${semanas}`);\nconsole.log(`Saldo final: ${saldo}`);",
+      "solution_explanation": "O while verifica antes de cada iteracao se o saldo ainda chega para outro levantamento; assim que o saldo cai abaixo de 40 a condicao torna-se falsa e o ciclo para sozinho, sem necessidade de break."
+    },
+    {
+      "title": "Simulacao de dado com limite de tentativas",
+      "difficulty": "Avancado",
+      "statement": "Simule o lancamento repetido de um dado de 6 faces usando um ciclo do...while, ate sair o numero 6 ou ate se atingirem 10 lancamentos, o que ocorrer primeiro. Em cada lancamento, gere um numero inteiro aleatorio entre 1 e 6 com a expressao Math.floor(Math.random() * 6) + 1. No final, imprima na consola quantos lancamentos foram feitos e se o 6 saiu dentro do limite ou nao.",
+      "hint": "O do...while tem de lancar o dado pelo menos uma vez antes de qualquer verificacao; combine as duas condicoes de paragem (saiu 6, ou atingiu-se o limite) com && na condicao do ciclo.",
+      "solution_code": "let resultado;\nlet lancamentos = 0;\nconst maximoLancamentos = 10;\n\ndo {\n  resultado = Math.floor(Math.random() * 6) + 1;\n  lancamentos++;\n} while (resultado !== 6 && lancamentos < maximoLancamentos);\n\nif (resultado === 6) {\n  console.log(`Saiu um 6 ao fim de ${lancamentos} lancamento(s)`);\n} else {\n  console.log(`Nao saiu um 6 nos ${maximoLancamentos} lancamentos permitidos`);\n}",
+      "solution_explanation": "O do...while garante que o dado e lancado pelo menos uma vez antes de qualquer teste. A condicao composta faz o ciclo parar assim que sai um 6 ou quando se esgotam as tentativas, evitando um loop infinito mesmo que o 6 nunca apareca."
+    },
+    {
+      "title": "Depurar e otimizar um ciclo com bug",
+      "difficulty": "Avancado",
+      "statement": "O codigo seguinte deveria percorrer o array precos e contar quantos precos sao superiores a 100, mas contem um erro que o transforma num ciclo infinito:\n\nconst precos = [50, 120, 80, 200, 99, 150];\nlet contagem = 0;\n\nfor (let i = 0; i < precos.length; i--) {\n  if (precos[i] > 100) {\n    contagem++;\n  }\n}\n\nconsole.log(contagem);\n\nCorrija o erro, mantendo um ciclo for classico e a mesma logica de contagem, e depois melhore a performance garantindo que o comprimento do array so e lido uma vez, antes de o ciclo comecar.",
+      "hint": "Compare com atencao a direcao da condicao (i < precos.length) com a instrucao de atualizacao do contador; uma delas esta a afastar i do valor que faria a condicao parar.",
+      "solution_code": "const precos = [50, 120, 80, 200, 99, 150];\nconst total = precos.length; // comprimento lido uma unica vez, antes do ciclo\nlet contagem = 0;\n\nfor (let i = 0; i < total; i++) {\n  if (precos[i] > 100) {\n    contagem++;\n  }\n}\n\nconsole.log(contagem); // 3",
+      "solution_explanation": "O erro estava em i-- em vez de i++: como i comeca em 0 e o decremento o afasta ainda mais de precos.length, a condicao i < precos.length nunca se torna falsa, criando um ciclo infinito. A correcao troca o decremento pelo incremento e move a leitura de precos.length para uma constante total antes do ciclo, evitando reler essa propriedade em cada iteracao."
+    }
+  ],
+  "summary": [
+    "O for reune inicializacao, condicao e incremento numa unica instrucao; e a escolha natural quando o numero de iteracoes e conhecido a partida.",
+    "O while testa a condicao antes de cada iteracao e serve para repetir enquanto algo se mantiver verdadeiro, sem numero de voltas definido.",
+    "O do...while testa a condicao no fim, garantindo que o bloco corre pelo menos uma vez, mesmo que a condicao comece falsa.",
+    "Um loop infinito surge quando nada dentro do ciclo altera, na direcao certa, a variavel avaliada na condicao.",
+    "Um while (true) ou for (;;) so e seguro quando existe um break alcancavel que garanta a saida.",
+    "Em ciclos grandes, evite recalcular valores fixos dentro do corpo e guarde antecipadamente leituras repetidas, mas so otimize depois de confirmar que e necessario."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 04",
+  "next_label": "Aula 04 → for...of, for...in e Iteração",
+  "_stage": "revisao"
+}

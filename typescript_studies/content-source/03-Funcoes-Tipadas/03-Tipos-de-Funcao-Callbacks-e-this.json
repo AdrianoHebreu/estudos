@@ -1,0 +1,361 @@
+{
+  "module_num": "03",
+  "module_title": "Funções Tipadas",
+  "module_dir": "03-Funcoes-Tipadas",
+  "lesson_num": "03",
+  "lesson_slug": "Tipos-de-Funcao-Callbacks-e-this",
+  "kind": "aula",
+  "title": "Tipos de Função, Callbacks e this",
+  "filename_base": "03-Tipos-de-Funcao-Callbacks-e-this",
+  "subtitle": "A seta que descreve uma função, os callbacks e o this como parâmetro fantasma",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Escrever o tipo de uma função com a sintaxe da seta",
+    "Dar nome a esse tipo com type alias ou com uma call signature",
+    "Tipar funções que recebem outras funções como argumento",
+    "Perceber porque menos parâmetros é aceite e mais é erro",
+    "Ler a compatibilidade de parâmetros e de retornos entre funções",
+    "Declarar o tipo de this e apanhar contextos de chamada errados"
+  ],
+  "sections": [
+    {
+      "heading": "O tipo de uma função escreve-se com uma seta",
+      "body": [
+        "Em TypeScript uma função é um valor como outro qualquer, e por isso tem um tipo. Esse tipo escreve-se com a lista de parâmetros entre parênteses, uma seta, e o tipo do que a função devolve. Ler em voz alta ajuda: o tipo (a: number, b: number) => number diz recebe dois números e devolve um número. Repare que a seta aqui não é a arrow function do JavaScript, é sintaxe de tipos, e aparece também em sítios onde nenhuma arrow function existe.",
+        "Os nomes dos parâmetros dentro do tipo são obrigatórios para o compilador conseguir ler a sintaxe, mas não têm significado nenhum na verificação. Só a ordem e os tipos contam. São documentação que aparece no editor, e a implementação pode chamar-lhes outra coisa sem qualquer consequência.",
+        "Quando o tipo da função está declarado do lado esquerdo, a implementação do lado direito recebe-o por contexto e dispensa anotar os parâmetros um a um. É a inferência contextual a trabalhar a favor de quem escreve: o contrato é declarado uma vez, não duas."
+      ],
+      "code": "// O tipo de uma função: parâmetros à esquerda, seta, tipo de retorno à direita\nlet somar: (a: number, b: number) => number;\nsomar = (x, y) => x + y; // x e y já são number por contexto, sem anotar\nconsole.log(somar(2, 3)); // 5\n\n// Os nomes dos parâmetros dentro do tipo são documentação e não têm de coincidir\nconst subtrair: (minuendo: number, subtraendo: number) => number = (a, b) => a - b;\nconsole.log(subtrair(9, 4)); // 5\n\n// Sem valor de retorno, o tipo de retorno é void\nconst registar: (mensagem: string) => void = (m) => {\n  console.log(m.toUpperCase());\n};\nregistar(\"pronto\"); // PRONTO\n\n// Um tipo de função é um tipo de primeira classe: guarda-se num array como outro qualquer\nconst operacoes: ((a: number, b: number) => number)[] = [somar, subtrair];\nconsole.log(operacoes[0](10, 5)); // 15\n\n// @ts-expect-error o retorno declarado é number e a função devolve string\nconst errada: (a: number) => number = (a) => `valor ${a}`;\nconsole.log(typeof errada); // \"function\"",
+      "callout_kind": "NOTA",
+      "callout_text": "Um tipo de função é um tipo de primeira classe. Pode guardá-lo num array, devolvê-lo de outra função, pô-lo numa propriedade de objeto ou uni-lo com null numa união. Onde cabe um tipo, cabe um tipo de função.",
+      "table_headers": [
+        "Tipo escrito",
+        "Significado"
+      ],
+      "table_rows": [
+        [
+          "() => void",
+          "Não recebe nada e não devolve nada de útil"
+        ],
+        [
+          "(n: number) => string",
+          "Recebe um número e devolve uma string"
+        ],
+        [
+          "(a: string, b?: string) => boolean",
+          "O segundo parâmetro é opcional"
+        ],
+        [
+          "() => () => number",
+          "Devolve outra função, que devolve um número"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "➡️",
+          "text": "Parâmetros, seta, tipo de retorno: é toda a sintaxe"
+        },
+        {
+          "icon": "🏷️",
+          "text": "Os nomes no tipo são documentação, só a ordem conta"
+        },
+        {
+          "icon": "🪄",
+          "text": "Declarado o tipo, os parâmetros vêm por contexto"
+        }
+      ]
+    },
+    {
+      "heading": "Dar nome ao tipo: type alias ou call signature",
+      "body": [
+        "Repetir (a: number, b: number) => number em cinco sítios é convidar a divergências. Um type alias resolve isso numa linha e é a forma mais usada para tipos de função: o nome passa a aparecer nas mensagens de erro e nas sugestões do editor, o que torna tudo mais legível do que a assinatura crua.",
+        "A alternativa é uma interface com uma call signature: dentro das chavetas escreve-se uma assinatura sem nome, com dois pontos em vez de seta. Descreve exatamente a mesma coisa. Faz sentido quando a função não é só uma função: quando também transporta propriedades, como um contador com um total, uma função de tradução com uma lista de idiomas, ou um middleware com metadados. A interface consegue descrever a chamada e as propriedades no mesmo tipo; um alias só o consegue com uma interseção mais desajeitada.",
+        "A regra prática é curta. Se é apenas uma função, use um type alias. Se a função é também um objeto com propriedades, ou se precisa que outros declarem mais assinaturas sobre o mesmo nome, use uma interface. A discussão geral entre interface e type já foi feita no módulo 02 e aplica-se aqui sem alterações."
+      ],
+      "code": "// Com type alias: a forma mais direta e a mais usada\ntype Comparador = (a: number, b: number) => number;\n\nconst crescente: Comparador = (a, b) => a - b;\nconsole.log([3, 1, 2].sort(crescente)); // [1, 2, 3]\n\n// Com interface e call signature: a assinatura sem nome dentro das chavetas\ninterface Validador {\n  (valor: string): boolean;\n}\n\nconst naoVazio: Validador = (valor) => valor.trim().length > 0;\nconsole.log(naoVazio(\"   \")); // false\n\n// A interface compensa quando a função também transporta propriedades\ninterface Acumulador {\n  (passo: number): number;\n  total: number;\n}\n\nconst acumular: Acumulador = Object.assign(\n  (passo: number): number => {\n    acumular.total += passo;\n    return acumular.total;\n  },\n  { total: 0 }\n);\n\nconsole.log(acumular(5)); // 5\nconsole.log(acumular(3)); // 8\nconsole.log(acumular.total); // 8",
+      "callout_kind": "DICA",
+      "callout_text": "Ao tipar um callback que vai ser usado em vários sítios, dê-lhe um nome. Uma assinatura como aoTerminar: AoTerminar lê-se de imediato; a mesma coisa escrita por extenso no meio de outros três parâmetros obriga a parar e a decifrar.",
+      "table_headers": [
+        "Forma",
+        "Escrita",
+        "Quando compensa"
+      ],
+      "table_rows": [
+        [
+          "Type alias",
+          "type F = (a: number) => string",
+          "O caso normal: a função é só uma função"
+        ],
+        [
+          "Call signature",
+          "interface F { (a: number): string }",
+          "A função também tem propriedades ou sobrecargas"
+        ],
+        [
+          "Propriedade de objeto",
+          "{ aoClicar: (e: string) => void }",
+          "Um callback dentro de um objeto de opções"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔖",
+          "text": "Um type alias é a forma normal de nomear uma função"
+        },
+        {
+          "icon": "📦",
+          "text": "A call signature serve funções com propriedades"
+        },
+        {
+          "icon": "🧭",
+          "text": "O nome aparece nos erros e no editor, e isso vale muito"
+        }
+      ]
+    },
+    {
+      "heading": "Tipar callbacks",
+      "body": [
+        "Um callback não tem sintaxe própria: é apenas um parâmetro cujo tipo é um tipo de função. Toda a diferença está em que, a partir do momento em que a assinatura declara o que o callback recebe e devolve, o compilador impõe esse contrato dos dois lados. Quem implementa a função de ordem superior não pode chamar o callback com os argumentos errados, e quem a usa não pode passar um callback com a forma errada.",
+        "O ganho maior é a inferência contextual. Como o tipo do parâmetro já diz o que o callback recebe, a função passada no local da chamada não precisa de anotar nada: os parâmetros aparecem já tipados no editor. É este pormenor que faz a diferença entre uma API agradável e uma API em que se anota tudo à mão.",
+        "Vale a pena distinguir dois retornos. Um callback declarado com retorno void aceita funções que devolvem seja o que for, porque quem chama ignora o resultado. Um callback declarado com retorno concreto, como boolean, obriga mesmo a devolvê-lo. Callbacks que preservam o tipo do que recebem, como os de um map genérico, exigem genéricos e são o tema do módulo 05."
+      ],
+      "code": "// Um callback é apenas um parâmetro cujo tipo é um tipo de função\nfunction repetir(vezes: number, acao: (indice: number) => void): void {\n  for (let i = 0; i < vezes; i++) {\n    acao(i);\n  }\n}\n\nrepetir(3, (i) => console.log(`passo ${i}`)); // passo 0, passo 1, passo 2\n\n// @ts-expect-error o callback recebe um number, e não uma string\nrepetir(2, (texto: string) => console.log(texto));\n\n// Dar nome ao tipo do callback deixa a assinatura legível\ntype AoFalhar = (erro: Error, tentativa: number) => void;\n\nfunction comRetentativa(\n  operacao: () => string,\n  aoFalhar: AoFalhar,\n  limite: number\n): string | null {\n  for (let tentativa = 1; tentativa <= limite; tentativa++) {\n    try {\n      return operacao();\n    } catch (erro) {\n      aoFalhar(erro instanceof Error ? erro : new Error(String(erro)), tentativa);\n    }\n  }\n  return null;\n}\n\nconst resultado = comRetentativa(\n  () => \"ok\",\n  (erro, tentativa) => console.log(tentativa, erro.message), // tipos vêm de AoFalhar\n  3\n);\nconsole.log(resultado); // \"ok\"",
+      "callout_kind": "DICA",
+      "callout_text": "Ponha o callback em último lugar na lista de parâmetros. Além de ser a convenção do JavaScript, permite escrever a função inline sem que o resto da chamada fique espalhado depois de um bloco de várias linhas.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔁",
+          "text": "Um callback é só um parâmetro com tipo de função"
+        },
+        {
+          "icon": "✨",
+          "text": "O contexto tipa os parâmetros do callback sozinho"
+        },
+        {
+          "icon": "🧪",
+          "text": "Retorno void aceita tudo; retorno concreto exige o valor"
+        }
+      ]
+    },
+    {
+      "heading": "Menos parâmetros é aceite, mais é erro",
+      "body": [
+        "Esta é a regra que mais surpreende quem chega ao TypeScript. Uma função que declara menos parâmetros do que o tipo esperado é atribuível na mesma. Onde se espera (evento: string, hora: number) => void, uma função que só recebe o evento serve, e uma que não recebe nada também.",
+        "O motivo é simples quando se pensa do lado de quem chama. Quem chama passa sempre os dois argumentos, porque foi isso que o tipo prometeu; a função recebida é que decide ignorar o segundo. Em JavaScript, ignorar argumentos é legal e não tem custo nenhum, e o resultado da chamada continua a ser o que se esperava. Nada pode correr mal.",
+        "O inverso é que é perigoso e por isso é recusado. Uma função que declara três parâmetros onde se esperam dois vai encontrar o terceiro a undefined em todas as chamadas, porque ninguém lho passa. O compilador rejeita-a. É esta assimetria que faz funcionar o padrão mais comum de todo o JavaScript moderno: o callback do map e do forEach recebe valor, índice e array, e quase toda a gente escreve só o valor."
+      ],
+      "code": "type Ouvinte = (evento: string, hora: number) => void;\n\n// Menos parâmetros é aceite: quem chama passa os dois na mesma, a função é que os ignora\nconst comAmbos: Ouvinte = (evento, hora) => console.log(evento, hora);\nconst soEvento: Ouvinte = (evento) => console.log(evento);\nconst semNada: Ouvinte = () => console.log(\"aconteceu alguma coisa\");\n\ncomAmbos(\"clique\", 1000);\nsoEvento(\"clique\", 1000); // \"clique\"\nsemNada(\"clique\", 1000); // \"aconteceu alguma coisa\"\n\n// @ts-expect-error mais parâmetros do que os que quem chama vai passar\nconst aMais: Ouvinte = (evento, hora, origem) => console.log(evento, hora, origem);\nconsole.log(typeof aMais); // \"function\"\n\n// É esta regra que faz funcionar o padrão do map e do forEach\nconst nomes = [\"ana\", \"bruno\"];\nconsole.log(nomes.map((n) => n.toUpperCase())); // [\"ANA\", \"BRUNO\"]\nconsole.log(nomes.map((n, i) => `${i}: ${n}`)); // [\"0: ana\", \"1: bruno\"]\n\n// Passar uma função já existente funciona por causa da mesma regra\nconsole.log([\"1\", \"2\", \"3\"].map(Number)); // [1, 2, 3]\n\n// E é também por causa dela que esta armadilha clássica compila sem queixas\nconsole.log([\"1\", \"2\", \"3\"].map(parseInt)); // [1, NaN, NaN]",
+      "callout_kind": "ATENCAO",
+      "callout_text": "A mesma regra explica a armadilha de escrever map(parseInt) sobre um array de strings. O parseInt aceita um segundo parâmetro opcional, o radix, e por isso é atribuível ao callback do map, que lhe passa o índice nesse lugar. O resultado é 1, NaN, NaN e o compilador não tem como avisar. Escreva map(Number) ou map((s) => parseInt(s, 10)).",
+      "table_headers": [
+        "Tipo esperado",
+        "Função dada",
+        "Resultado"
+      ],
+      "table_rows": [
+        [
+          "(a: string, b: number) => void",
+          "(a: string) => void",
+          "Aceite: os argumentos a mais são ignorados"
+        ],
+        [
+          "(a: string, b: number) => void",
+          "() => void",
+          "Aceite: ignora tudo"
+        ],
+        [
+          "(a: string) => void",
+          "(a: string, b: number) => void",
+          "Erro: b nunca seria passado"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "✂️",
+          "text": "Menos parâmetros é seguro: a função ignora o resto"
+        },
+        {
+          "icon": "🚫",
+          "text": "Mais parâmetros é erro: ficariam sempre undefined"
+        },
+        {
+          "icon": "🗺️",
+          "text": "É o que permite escrever map((x) => ...) sem o índice"
+        }
+      ]
+    },
+    {
+      "heading": "Compatibilidade de parâmetros e de retornos",
+      "body": [
+        "Além da contagem, o compilador compara os tipos. No retorno a regra é intuitiva: pode devolver-se mais específico do que o prometido. Se o contrato diz que devolve um Animal e a função devolve um Cao, quem chama recebe algo que é um Animal e fica servido. O contrário falha, porque quem recebe contava com propriedades que não vêm.",
+        "Nos parâmetros a regra é ao contrário, e é aí que a intuição costuma tropeçar. Uma função que aceita qualquer Animal serve onde se espera uma que trate de Caes, porque vai receber sempre Caes e sabe lidar com menos do que lhe dão. O inverso é que é inseguro: uma função que exige um Cao, colocada onde se espera uma que aceita qualquer Animal, seria chamada com um Gato e iria ler uma propriedade que não existe.",
+        "Esta verificação nos parâmetros é precisamente o que a opção strictFunctionTypes liga, e ela vem incluída no modo strict. Há uma exceção deliberada, herdada de código antigo: assinaturas escritas com sintaxe de método, como tratar(c: Animal): void dentro de uma interface, continuam a ser verificadas de forma frouxa e aceitam os dois sentidos. Escreva o mesmo com a sintaxe de propriedade e seta, tratar: (c: Animal) => void, e passa a ter a verificação rigorosa. As opções do compilador são tratadas em detalhe no módulo 09."
+      ],
+      "code": "interface Animal {\n  nome: string;\n}\ninterface Cao extends Animal {\n  raca: string;\n}\n\n// Retorno: devolver mais do que o prometido é seguro e é aceite\nconst produzCao: () => Animal = (): Cao => ({ nome: \"Rex\", raca: \"Beagle\" });\nconsole.log(produzCao().nome); // \"Rex\"\n\n// @ts-expect-error devolver menos do que o prometido falta ao contrato\nconst produzPouco: () => Cao = (): Animal => ({ nome: \"Bolinhas\" });\nconsole.log(typeof produzPouco); // \"function\"\n\n// Parâmetros: aceitar mais do que o contrato dá é seguro\ntype TrataCao = (c: Cao) => void;\nconst trataQualquerAnimal: TrataCao = (a: Animal) => console.log(a.nome);\ntrataQualquerAnimal({ nome: \"Rex\", raca: \"Beagle\" }); // \"Rex\"\n\n// @ts-expect-error com strictFunctionTypes, exigir mais do que o contrato dá é recusado\nconst exigeDemais: (a: Animal) => void = (c: Cao) => console.log(c.raca);\nconsole.log(typeof exigeDemais); // \"function\"\n\n// A regra é mais frouxa em métodos declarados com sintaxe de método\ninterface Caixa {\n  tratar(c: Animal): void;\n}\nconst caixa: Caixa = {\n  tratar(c: Cao) {\n    console.log(c.raca);\n  },\n};\ncaixa.tratar({ nome: \"Rex\", raca: \"Beagle\" } as Cao); // \"Beagle\"",
+      "callout_kind": "NOTA",
+      "callout_text": "Se quer o rigor máximo em callbacks declarados dentro de interfaces, prefira a forma de propriedade com seta em vez da forma de método. É a mesma coisa em runtime, mas só a primeira beneficia do strictFunctionTypes.",
+      "table_headers": [
+        "Posição",
+        "Sentido permitido",
+        "Exemplo aceite"
+      ],
+      "table_rows": [
+        [
+          "Retorno",
+          "Mais específico do que o prometido",
+          "() => Cao serve onde se espera () => Animal"
+        ],
+        [
+          "Parâmetro",
+          "Mais geral do que o prometido",
+          "(a: Animal) => void serve onde se espera (c: Cao) => void"
+        ],
+        [
+          "Método de interface",
+          "Os dois sentidos, por compatibilidade",
+          "tratar(c: Animal) aceita uma implementação com Cao"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "⬆️",
+          "text": "No retorno pode dar mais do que prometeu"
+        },
+        {
+          "icon": "⬇️",
+          "text": "No parâmetro pode aceitar mais do que lhe dão"
+        },
+        {
+          "icon": "⚙️",
+          "text": "strictFunctionTypes impõe isto, e vem no strict"
+        }
+      ]
+    },
+    {
+      "heading": "O parâmetro this",
+      "body": [
+        "O TypeScript permite declarar o tipo de this escrevendo-o como primeiro parâmetro da função, antes de todos os outros. É um parâmetro fantasma: não existe em runtime, não conta para a contagem de argumentos, desaparece por completo na compilação e não pode ser lido pelo nome. Serve exclusivamente para o compilador validar o contexto em que a função é chamada.",
+        "O que ele apanha é o género de bug que em JavaScript só aparece em produção. Arrancar um método do objeto e passá-lo como callback, chamá-lo com call ou apply sobre o contexto errado, ou guardá-lo numa variável e invocá-lo solto: em todos estes casos o this deixa de ser o que se pensava e, sem esta declaração, o compilador não tem como saber. Com ela, a chamada passa a ser um erro de compilação.",
+        "Sem parâmetro this declarado, e com a opção noImplicitThis do modo strict ligada, o compilador recusa-se a adivinhar dentro de funções soltas e assinala o this como implicitamente any. Nas classes, o this dos métodos é inferido automaticamente a partir da própria classe e raramente é preciso declarar nada; esse caso é o tema do módulo 08."
+      ],
+      "code": "// O parâmetro this vem primeiro e não conta como argumento\nfunction descrever(this: { nome: string }, prefixo: string): string {\n  return `${prefixo} ${this.nome}`;\n}\n\nconst pessoa = { nome: \"Ana\", descrever };\nconsole.log(pessoa.descrever(\"Olá,\")); // \"Olá, Ana\"\n\n// @ts-expect-error o contexto passado ao call não tem a propriedade nome\nconsole.log(descrever.call({ idade: 30 }, \"Olá,\"));\n\n// Em métodos de interface funciona da mesma maneira\ninterface Botao {\n  etiqueta: string;\n  aoClicar(this: Botao, evento: string): void;\n}\n\nconst guardar: Botao = {\n  etiqueta: \"Guardar\",\n  aoClicar(evento) {\n    console.log(`${this.etiqueta}: ${evento}`); // this é Botao\n  },\n};\n\nguardar.aoClicar(\"clique\"); // \"Guardar: clique\"\n\n// Arrancar o método do objeto perde o contexto, e o compilador apanha-o\nconst solta = guardar.aoClicar;\n// @ts-expect-error sem objeto à esquerda, o this seria undefined\nsolta(\"clique\");",
+      "callout_kind": "ATENCAO",
+      "callout_text": "O parâmetro this é apenas do compilador e desaparece no JavaScript gerado. Ninguém lhe passa um valor: descrever(pessoa, \"Olá\") não é uma chamada válida. Quem fornece o this é sempre o objeto à esquerda do ponto, ou o call, o apply e o bind.",
+      "table_headers": [
+        "Forma de chamada",
+        "O que this vale",
+        "O compilador verifica?"
+      ],
+      "table_rows": [
+        [
+          "objeto.metodo()",
+          "O objeto à esquerda do ponto",
+          "Sim, contra o tipo declarado"
+        ],
+        [
+          "fn.call(ctx) ou fn.apply(ctx)",
+          "O contexto passado",
+          "Sim, com strictBindCallApply"
+        ],
+        [
+          "const f = obj.metodo; f()",
+          "undefined em modo estrito",
+          "Sim, e é erro"
+        ],
+        [
+          "obj.metodo.bind(obj)",
+          "O objeto fixado pelo bind",
+          "Sim, e fica seguro"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "👻",
+          "text": "this é um parâmetro fantasma: só existe no compilador"
+        },
+        {
+          "icon": "🎯",
+          "text": "Valida o contexto de quem chama, não a implementação"
+        },
+        {
+          "icon": "🧯",
+          "text": "Apanha o método arrancado do objeto, o bug clássico"
+        }
+      ]
+    },
+    {
+      "heading": "Arrow functions e o this léxico, do lado dos tipos",
+      "body": [
+        "Uma arrow function não tem this próprio, e a consequência no sistema de tipos é direta: não pode declarar um parâmetro this, e tentá-lo é erro de sintaxe. Não há nada a tipar, porque não há nada a receber.",
+        "O que existe é herança. Dentro de um método, uma arrow usa o this do método envolvente, e o TypeScript trata o tipo da mesma maneira: se o método declarou this como Carrinho, dentro da arrow o this continua a ser Carrinho, com todas as propriedades acessíveis e verificadas. É por isso que passar uma arrow como callback dentro de um método funciona sem qualquer truque, enquanto com uma function tradicional o this se perde.",
+        "E o compilador diz-lho na cara. Dentro de uma function passada a um forEach, o this não tem tipo nenhum conhecido e o noImplicitThis, que faz parte do strict, transforma isso num erro. Deixa de ser preciso descobrir em produção que o this era undefined: a arrow é a correção, e o tipo confirma-o."
+      ],
+      "code": "// @ts-expect-error uma arrow function não tem this próprio, logo não pode declará-lo\nconst semSentido = (this: { nome: string }, prefixo: string) => prefixo;\nconsole.log(typeof semSentido); // \"function\"\n\n// Dentro de um método, a arrow herda o this e o tipo vem junto, sem gambiarras\ninterface Carrinho {\n  total: number;\n  precos: number[];\n  somar(this: Carrinho): number;\n}\n\nconst carrinho: Carrinho = {\n  total: 0,\n  precos: [10, 20, 5],\n  somar() {\n    this.precos.forEach((p) => {\n      this.total += p; // this continua a ser Carrinho\n    });\n    return this.total;\n  },\n};\n\nconsole.log(carrinho.somar()); // 35\n\n// Com function, o this deixa de ser o objeto e o compilador recusa-se a adivinhar\ninterface Registo {\n  prefixo: string;\n  imprimir(this: Registo, linhas: string[]): void;\n}\n\nconst registo: Registo = {\n  prefixo: \"log\",\n  imprimir(linhas) {\n    linhas.forEach(function (linha) {\n      // @ts-expect-error aqui o this é implicitamente any, proibido em modo strict\n      console.log(this.prefixo, linha);\n    });\n  },\n};\n\nregisto.imprimir([\"arrancou\"]);",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Pegue num objeto seu com métodos que usam this, declare o parâmetro this em cada um e compile. Repare em quantos sítios passa o método como callback sem o ligar ao objeto, e corrija-os com uma arrow ou com bind.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🚀",
+          "text": "Uma arrow não pode declarar um parâmetro this"
+        },
+        {
+          "icon": "🧬",
+          "text": "Herda o this do método e o tipo vem junto"
+        },
+        {
+          "icon": "🛑",
+          "text": "Com function, o this fica any implícito e o strict recusa"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Dois nomes para o mesmo contrato",
+      "difficulty": "Iniciante",
+      "statement": "Defina um type alias Formatador que descreva uma função que recebe um number e devolve uma string. Crie duas implementações, euros, que formate o valor com duas casas decimais seguido do símbolo do euro, e percentagem, que multiplique por cem e mostre uma casa decimal com o símbolo de percentagem. Guarde as duas num array de Formatador e aplique cada uma ao valor 0.25. Depois defina uma interface Predicado com uma call signature que receba um number e devolva boolean, implemente positivo e use-a com filter. Por fim, mostre com o comentário de erro esperado que um Formatador não pode devolver um número.",
+      "hint": "O type alias escreve-se com seta; a call signature escreve-se dentro de chavetas, com dois pontos em vez de seta e sem nome antes dos parênteses. Para formatar casas decimais use toFixed.",
+      "solution_code": "type Formatador = (valor: number) => string;\n\nconst euros: Formatador = (valor) => `${valor.toFixed(2)} €`;\nconst percentagem: Formatador = (valor) => `${(valor * 100).toFixed(1)}%`;\n\nconst formatadores: Formatador[] = [euros, percentagem];\nfor (const formatar of formatadores) {\n  console.log(formatar(0.25)); // \"0.25 €\" e depois \"25.0%\"\n}\n\ninterface Predicado {\n  (valor: number): boolean;\n}\n\nconst positivo: Predicado = (valor) => valor > 0;\nconsole.log([-2, 3, 0, 7].filter(positivo)); // [3, 7]\n\n// @ts-expect-error o Formatador tem de devolver string\nconst invalido: Formatador = (valor) => valor * 2;\nconsole.log(typeof invalido); // \"function\"",
+      "solution_explanation": "O type alias e a interface com call signature descrevem exatamente o mesmo contrato, e a escolha entre eles é de estilo enquanto a função for só uma função. Nas duas implementações não foi preciso anotar o parâmetro valor, porque o tipo declarado à esquerda o fornece por contexto. A última linha confirma que o tipo de retorno faz parte do contrato e não é negociável."
+    },
+    {
+      "title": "Uma função que recebe funções",
+      "difficulty": "Intermedio",
+      "statement": "Defina os tipos Teste, uma função de number para boolean, e Transformacao, de number para number. Escreva uma função aplicarSe que receba um array de números, um Teste e uma Transformacao, e devolva um array novo em que os valores aprovados pelo teste aparecem transformados e os restantes ficam iguais. Use-a para multiplicar por dez apenas os números pares de 1, 2, 3 e 4. Marque com o comentário de erro esperado uma chamada em que o teste devolve um número em vez de um booleano. Depois escreva uma segunda função comAviso que percorra os valores e chame um callback com o valor e o índice sempre que o teste passar, e chame-a com um callback que use só o valor.",
+      "hint": "Dentro de aplicarSe use o operador ternário sobre o resultado do teste. Em comAviso, o forEach já lhe dá valor e índice. Repare que o callback que passa pode declarar menos parâmetros do que os que recebe.",
+      "solution_code": "type Teste = (valor: number) => boolean;\ntype Transformacao = (valor: number) => number;\n\nfunction aplicarSe(\n  valores: number[],\n  teste: Teste,\n  transformar: Transformacao\n): number[] {\n  const saida: number[] = [];\n  for (const valor of valores) {\n    saida.push(teste(valor) ? transformar(valor) : valor);\n  }\n  return saida;\n}\n\nconsole.log(\n  aplicarSe(\n    [1, 2, 3, 4],\n    (v) => v % 2 === 0,\n    (v) => v * 10\n  )\n); // [1, 20, 3, 40]\n\n// @ts-expect-error o teste tem de devolver boolean, e não number\nconsole.log(aplicarSe([1, 2], (v) => v, (v) => v));\n\nfunction comAviso(\n  valores: number[],\n  teste: Teste,\n  aoAceitar: (valor: number, indice: number) => void\n): void {\n  valores.forEach((valor, indice) => {\n    if (teste(valor)) {\n      aoAceitar(valor, indice);\n    }\n  });\n}\n\ncomAviso(\n  [5, 12, 8],\n  (v) => v > 6,\n  (v) => console.log(`aceite: ${v}`) // ignora o índice, e isso é permitido\n); // \"aceite: 12\" e depois \"aceite: 8\"",
+      "solution_explanation": "Nomear os tipos dos callbacks deixa a assinatura de aplicarSe legível, e a inferência contextual faz com que nas chamadas o parâmetro v já venha tipado como number sem qualquer anotação. A chamada marcada falha porque o contrato de Teste exige boolean e um number não serve. No fim, o callback de comAviso ignora o índice, e isso é aceite porque quem chama continua a passá-lo na mesma."
+    },
+    {
+      "title": "Ouvintes com assinaturas diferentes",
+      "difficulty": "Intermedio",
+      "statement": "Defina um tipo Ouvinte que descreva uma função que recebe evento, dados e hora, os dois primeiros strings e o terceiro um number, e não devolve nada. Crie um array de ouvintes, uma função subscrever que lhe acrescente um ouvinte e uma função emitir que percorra a lista e chame cada ouvinte com o evento, os dados e uma hora fixa. Subscreva quatro ouvintes que declarem, respetivamente, zero, um, dois e três parâmetros, e emita um evento. Por fim, marque com o comentário de erro esperado a subscrição de um ouvinte com quatro parâmetros e explique porquê.",
+      "hint": "Não precisa de anotar os parâmetros dos ouvintes que subscreve: o tipo do parâmetro de subscrever fornece-os. O quarto parâmetro seria sempre undefined porque emitir só passa três argumentos.",
+      "solution_code": "type Ouvinte = (evento: string, dados: string, hora: number) => void;\n\nconst ouvintes: Ouvinte[] = [];\n\nfunction subscrever(ouvinte: Ouvinte): void {\n  ouvintes.push(ouvinte);\n}\n\nfunction emitir(evento: string, dados: string): void {\n  const hora = 1700000000000;\n  for (const ouvinte of ouvintes) {\n    ouvinte(evento, dados, hora);\n  }\n}\n\nsubscrever(() => console.log(\"aconteceu alguma coisa\"));\nsubscrever((evento) => console.log(evento));\nsubscrever((evento, dados) => console.log(evento, dados));\nsubscrever((evento, dados, hora) => console.log(evento, dados, hora));\n\nemitir(\"guardar\", \"id=7\");\n// \"aconteceu alguma coisa\"\n// \"guardar\"\n// \"guardar id=7\"\n// \"guardar id=7 1700000000000\"\n\n// @ts-expect-error quatro parâmetros e quem emite só passa três\nsubscrever((evento, dados, hora, origem) =>\n  console.log(evento, dados, hora, origem)\n);",
+      "solution_explanation": "Os quatro ouvintes válidos mostram que declarar menos parâmetros do que o tipo esperado é sempre aceite: emitir passa sempre os três argumentos e cada ouvinte ignora os que não declarou. O quinto é recusado porque o quarto parâmetro nunca seria preenchido e o compilador prefere avisar a deixar passar um undefined silencioso. É esta mesma regra que permite escrever callbacks curtos em map, filter e forEach."
+    },
+    {
+      "title": "Um cronómetro com o this tipado",
+      "difficulty": "Avancado",
+      "statement": "Defina uma interface Cronometro com uma propriedade etiqueta do tipo string, uma propriedade marcas do tipo array de números, e três métodos que declarem explicitamente o tipo de this: marcar, que recebe milissegundos e os acrescenta às marcas, total, que soma todas as marcas usando um forEach com arrow function, e resumo, que devolve uma string com a etiqueta, o número de marcas e o total. Crie um objeto do tipo Cronometro, registe duas marcas e imprima o resumo. Depois obtenha uma versão do método marcar já ligada ao objeto com bind e use-a. Por fim, dentro de uma função que nunca chega a ser chamada, demonstre com comentários de erro esperado os dois casos que o parâmetro this apanha: chamar resumo com call sobre um contexto incompleto, e invocar marcar depois de o arrancar do objeto.",
+      "hint": "O parâmetro this vem sempre em primeiro lugar na assinatura e não conta como argumento, por isso marcar continua a ser chamado com um só valor. A arrow dentro de total herda o this do método e não precisa de nada. Ponha as demonstrações de erro dentro de uma função nunca chamada, para que o código continue a correr até ao fim.",
+      "solution_code": "interface Cronometro {\n  etiqueta: string;\n  marcas: number[];\n  marcar(this: Cronometro, ms: number): void;\n  total(this: Cronometro): number;\n  resumo(this: Cronometro): string;\n}\n\nconst cronometro: Cronometro = {\n  etiqueta: \"arranque\",\n  marcas: [],\n  marcar(ms) {\n    this.marcas.push(ms);\n  },\n  total() {\n    let soma = 0;\n    this.marcas.forEach((m) => {\n      soma += m; // a arrow herda o this e o seu tipo\n    });\n    return soma;\n  },\n  resumo() {\n    return `${this.etiqueta}: ${this.marcas.length} marcas, ${this.total()} ms`;\n  },\n};\n\ncronometro.marcar(120);\ncronometro.marcar(80);\nconsole.log(cronometro.resumo()); // \"arranque: 2 marcas, 200 ms\"\n\n// bind fixa o contexto e devolve uma função segura de passar por aí\nconst marcarLigado = cronometro.marcar.bind(cronometro);\nmarcarLigado(50);\nconsole.log(cronometro.resumo()); // \"arranque: 3 marcas, 250 ms\"\n\n// Nunca chamada: existe só para mostrar os dois erros que o this apanha\nfunction demonstrarErros(): void {\n  // @ts-expect-error o contexto passado não tem marcas nem os métodos de Cronometro\n  cronometro.resumo.call({ etiqueta: \"outro\" });\n\n  const solto = cronometro.marcar;\n  // @ts-expect-error arrancado do objeto, o this seria undefined\n  solto(50);\n}\n\nconsole.log(typeof demonstrarErros); // \"function\"",
+      "solution_explanation": "Declarar this como primeiro parâmetro transforma uma suposição num contrato verificado: o compilador passa a saber que resumo só pode ser chamado sobre algo que seja mesmo um Cronometro. A arrow dentro de total herda o this do método envolvente, com o tipo incluído, e é por isso que soma sem qualquer bind. As duas linhas marcadas são exatamente os bugs que em JavaScript só aparecem em execução, e o bind mostra a correção que devolve uma função segura de passar por aí."
+    }
+  ],
+  "summary": [
+    "O tipo de uma função escreve-se com parâmetros, seta e tipo de retorno, e é um tipo de primeira classe.",
+    "Um type alias nomeia esse tipo; uma interface com call signature serve quando a função também tem propriedades.",
+    "Tipar um callback é só dar um tipo de função a um parâmetro, e a inferência contextual tipa o resto.",
+    "Uma função com menos parâmetros é sempre atribuível; com mais parâmetros é erro, porque nunca seriam passados.",
+    "No retorno pode dar mais do que prometeu; no parâmetro pode aceitar mais do que lhe dão, e o strictFunctionTypes impõe-no.",
+    "O parâmetro this é um parâmetro fantasma que valida o contexto de chamada, e arrow functions não o podem declarar."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 04",
+  "next_label": "Aula 04 → Sobrecargas de Função"
+}

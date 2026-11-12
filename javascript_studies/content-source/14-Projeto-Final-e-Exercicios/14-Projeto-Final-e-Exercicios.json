@@ -1,0 +1,300 @@
+{
+  "module_num": "14",
+  "module_title": "Projeto Final e Exercícios Consolidados",
+  "module_dir": "14-Projeto-Final-e-Exercicios",
+  "lesson_num": "",
+  "lesson_slug": "",
+  "kind": "projeto",
+  "title": "Projeto Final e Exercícios Consolidados",
+  "filename_base": "14-Projeto-Final-e-Exercicios",
+  "subtitle": "Construa um Gestor de Tarefas e aplique tudo o que aprendeu ao longo do curso.",
+  "objectives_label": "Este módulo inclui:",
+  "objectives": [
+    "Integrar num único projeto real os conceitos de variáveis, funções, classes, arrays, assincronismo, módulos e tratamento de erros estudados ao longo de todo o curso.",
+    "Modelar dados com classes, campos privados e as estruturas Map e Set, escolhendo cada uma pelo problema concreto que resolve.",
+    "Organizar uma aplicação em módulos ES com responsabilidades separadas: modelo, erros, persistência e serviços.",
+    "Construir uma hierarquia de erros personalizados e usá-la em conjunto com async/await para tratar falhas de forma precisa.",
+    "Simular operações de rede com Promises, atrasos e falhas aleatórias, preparando-se para trabalhar com APIs reais."
+  ],
+  "sections": [
+    {
+      "heading": "O Projeto: Gestor de Tarefas",
+      "body": [
+        "Este módulo propõe um projeto final que junta, num único código, praticamente tudo o que foi estudado ao longo do curso: variáveis e tipos, estruturas de controlo, funções e closures, arrays e coleções, classes e objetos, assincronismo com Promises e async/await, módulos ES e tratamento de erros. O produto a construir é um Gestor de Tarefas, uma aplicação simples de gestão de afazeres, com título, descrição, prioridade, etiquetas e estado de conclusão para cada tarefa.",
+        "A aplicação pode correr no browser, guardando os dados em localStorage, ou em Node.js, guardando os dados num ficheiro JSON local; a lógica de negócio, ou seja, o modelo e as validações, é exatamente a mesma nos dois casos, e apenas a camada de armazenamento muda, o que é já em si um exercício de separação de responsabilidades.",
+        "Além das operações locais, o projeto inclui uma operação de sincronização que simula um pedido a um servidor remoto: uma função que devolve uma Promise, demora algum tempo a resolver e pode falhar aleatoriamente, obrigando a lidar com sucesso e insucesso da mesma forma que aconteceria com uma chamada fetch real."
+      ],
+      "code": "// Visão geral do que o projeto final deve permitir fazer:\nconst manager = new TaskManager();\n\nconst tarefa = manager.add({ title: 'Estudar assincronismo', priority: 'alta', tags: ['estudo'] });\nmanager.toggle(tarefa.id);\n\nconst pendentes = manager.list({ apenasPendentes: true });\n\ntry {\n  await manager.sincronizar();\n} catch (erro) {\n  console.error('Falha ao sincronizar:', erro.message);\n}",
+      "callout_kind": "NOTA",
+      "callout_text": "Este projeto é deliberadamente pequeno em requisitos, mas grande em conceitos: o objetivo não é a quantidade de funcionalidades, mas usar corretamente cada conceito do curso num contexto real e coerente.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📝",
+          "text": "Projeto final: Gestor de Tarefas"
+        },
+        {
+          "icon": "🧩",
+          "text": "Junta todo o curso num só código"
+        },
+        {
+          "icon": "💾",
+          "text": "Persistência em localStorage ou JSON"
+        },
+        {
+          "icon": "🌐",
+          "text": "Sincronização remota simulada"
+        }
+      ]
+    },
+    {
+      "heading": "Requisitos Funcionais",
+      "body": [
+        "Os requisitos funcionais definem o comportamento mínimo esperado da aplicação, independentemente da tecnologia de interface escolhida, seja consola, HTML simples ou testes automáticos. Cada requisito deve poder ser verificado de forma objetiva, chamando a função ou método correspondente e observando o resultado ou o erro lançado.",
+        "Note-se que os requisitos seguintes cobrem tanto o caminho feliz, ou seja, criar, listar, concluir e remover tarefas, como os casos de erro, como uma tarefa inexistente, dados inválidos ou falha de armazenamento, porque um sistema só está completo quando lida bem também com aquilo que corre mal."
+      ],
+      "code": "",
+      "callout_kind": "NONE",
+      "callout_text": "",
+      "table_headers": [
+        "Requisito",
+        "Descrição"
+      ],
+      "table_rows": [
+        [
+          "Criar tarefa",
+          "Adicionar uma nova tarefa com título obrigatório, descrição, prioridade e etiquetas opcionais."
+        ],
+        [
+          "Listar tarefas",
+          "Listar todas as tarefas ou apenas as pendentes, com possibilidade de ordenação."
+        ],
+        [
+          "Concluir ou reabrir tarefa",
+          "Alternar o estado done de uma tarefa existente através do seu id."
+        ],
+        [
+          "Remover tarefa",
+          "Eliminar uma tarefa pelo id, lançando um erro quando esta não existe."
+        ],
+        [
+          "Persistir dados",
+          "Guardar e carregar as tarefas em localStorage no browser, ou num ficheiro JSON em Node."
+        ],
+        [
+          "Sincronizar remotamente",
+          "Simular o envio dos dados a um servidor através de uma Promise com atraso, que pode falhar."
+        ],
+        [
+          "Tratar erros",
+          "Distinguir erros de validação, de tarefa não encontrada e de armazenamento, cada um com a sua classe."
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "✅",
+          "text": "CRUD completo de tarefas"
+        },
+        {
+          "icon": "🔍",
+          "text": "Listagem com filtros e ordenação"
+        },
+        {
+          "icon": "⚠️",
+          "text": "Erros tratados como requisito"
+        }
+      ]
+    },
+    {
+      "heading": "Arquitetura Sugerida",
+      "body": [
+        "Uma boa organização de ficheiros torna o projeto mais fácil de perceber e de testar, e reflete diretamente os módulos ES já estudados anteriormente: cada ficheiro exporta apenas o que é necessário e importa apenas aquilo de que depende, evitando um único ficheiro monolítico com tudo misturado.",
+        "A sugestão é separar o projeto em cinco áreas: os modelos de dados, Task e TaskManager, as classes de erro personalizadas, a camada de persistência que sabe guardar e carregar tarefas, a camada de serviço que simula a rede, e um ponto de entrada que junta tudo e demonstra o funcionamento da aplicação."
+      ],
+      "code": "// Estrutura de pastas sugerida\n// src/\n//   models/\n//     Task.js            -> classe Task (dados e validações da entidade)\n//     TaskManager.js      -> classe TaskManager (coleção e regras de negócio)\n//   errors/\n//     TaskErrors.js        -> TaskError, ValidationError, TaskNotFoundError, StorageError\n//   storage/\n//     storage.js           -> loadTasks / saveTasks (localStorage ou fs/promises)\n//   services/\n//     network.js           -> simulateRequest (Promise com atraso e falhas simuladas)\n//   index.js                -> ponto de entrada que junta tudo\n\nimport { TaskManager } from './models/TaskManager.js';\nimport { loadTasks, saveTasks } from './storage/storage.js';\nimport { TaskNotFoundError, ValidationError, StorageError } from './errors/TaskErrors.js';",
+      "callout_kind": "DICA",
+      "callout_text": "Comece por escrever cada módulo isoladamente e testá-lo sozinho, por exemplo criando algumas tarefas e imprimindo-as na consola, antes de os ligar todos no index.js; é mais fácil encontrar um erro num módulo pequeno do que numa aplicação inteira já montada.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📁",
+          "text": "Um ficheiro, uma responsabilidade"
+        },
+        {
+          "icon": "🔗",
+          "text": "Módulos ligados por import/export"
+        },
+        {
+          "icon": "🧪",
+          "text": "Cada módulo testável isoladamente"
+        }
+      ]
+    },
+    {
+      "heading": "Modelo de Dados e Erros Personalizados",
+      "body": [
+        "O modelo de dados assenta em duas classes: Task, que representa uma única tarefa e valida os seus próprios dados no construtor, e TaskManager, que gere a coleção completa. Em vez de um array simples, o TaskManager guarda as tarefas numa Map indexada pelo id, o que torna a procura, atualização e remoção de uma tarefa específica uma operação direta, sem percorrer toda a coleção; as etiquetas de cada tarefa, por sua vez, são guardadas num Set, porque não interessa a ordem nem repetir a mesma etiqueta duas vezes.",
+        "Em vez de lançar Error genéricos, o projeto define uma pequena hierarquia que estende Error: ValidationError para dados inválidos, TaskNotFoundError para operações sobre um id inexistente, e StorageError para falhas ao guardar ou sincronizar dados. Esta distinção permite ao código que consome o TaskManager decidir, com instanceof, como reagir a cada tipo de problema, em vez de interpretar mensagens de texto."
+      ],
+      "code": "class TaskError extends Error {\n  constructor(message, options) {\n    super(message, options);\n    this.name = this.constructor.name;\n  }\n}\n\nclass ValidationError extends TaskError {}\n\nclass TaskNotFoundError extends TaskError {\n  constructor(id) {\n    super(`Tarefa com id \"${id}\" não foi encontrada.`);\n    this.id = id;\n  }\n}\n\nclass StorageError extends TaskError {}\n\nlet proximoId = 1;\n\nclass Task {\n  #createdAt = new Date();\n\n  constructor({ title, description = '', priority = 'normal', tags = [] }) {\n    if (!title) throw new ValidationError('O título da tarefa é obrigatório.');\n    this.id = String(proximoId++);\n    this.title = title;\n    this.description = description;\n    this.priority = priority;\n    this.tags = new Set(tags);\n    this.done = false;\n  }\n\n  get createdAt() {\n    return this.#createdAt;\n  }\n}\n\nclass TaskManager {\n  #tasks = new Map();\n\n  add(dados) {\n    const tarefa = new Task(dados);\n    this.#tasks.set(tarefa.id, tarefa);\n    return tarefa;\n  }\n\n  getById(id) {\n    const tarefa = this.#tasks.get(id);\n    if (!tarefa) throw new TaskNotFoundError(id);\n    return tarefa;\n  }\n}",
+      "callout_kind": "DICA",
+      "callout_text": "O campo privado #createdAt, só acessível dentro da classe, combinado com o getter público createdAt, é um bom exemplo de encapsulamento: o valor pode ser lido de fora, mas nunca reatribuído diretamente.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🗂️",
+          "text": "Map indexa tarefas por id"
+        },
+        {
+          "icon": "🏷️",
+          "text": "Set guarda etiquetas sem duplicados"
+        },
+        {
+          "icon": "🚫",
+          "text": "Erros próprios em vez de Error genérico"
+        }
+      ]
+    },
+    {
+      "heading": "Persistência e Operações Assíncronas Simuladas",
+      "body": [
+        "A camada de persistência isola o resto da aplicação da forma concreta como os dados são guardados: no browser, isso significa ler e escrever uma cadeia de texto JSON em localStorage; em Node.js, seria equivalente ler e escrever um ficheiro com o módulo fs/promises. Em qualquer dos casos, qualquer falha, por exemplo armazenamento cheio ou permissões negadas, deve ser capturada e relançada como um StorageError, para que quem chama a função não precise de conhecer detalhes de localStorage nem do sistema de ficheiros.",
+        "A operação de sincronização remota é simulada com uma função que devolve uma Promise: usa setTimeout para simular latência de rede e, com uma certa probabilidade, rejeita a Promise para simular uma falha de ligação. O TaskManager consome esta função com async/await dentro de um bloco try/catch, exatamente como faria com uma chamada fetch real a uma API verdadeira."
+      ],
+      "code": "const CHAVE_ARMAZENAMENTO = 'gestor-tarefas:v1';\n\nfunction loadTasks() {\n  try {\n    const dados = localStorage.getItem(CHAVE_ARMAZENAMENTO);\n    return dados ? JSON.parse(dados) : [];\n  } catch (erro) {\n    throw new StorageError('Não foi possível ler as tarefas guardadas.', { cause: erro });\n  }\n}\n\nfunction saveTasks(tarefas) {\n  try {\n    localStorage.setItem(CHAVE_ARMAZENAMENTO, JSON.stringify(tarefas));\n  } catch (erro) {\n    throw new StorageError('Não foi possível guardar as tarefas.', { cause: erro });\n  }\n}\n\nfunction simulateRequest(payload, { delay = 400, failRate = 0.15 } = {}) {\n  return new Promise((resolve, reject) => {\n    setTimeout(() => {\n      if (Math.random() < failRate) {\n        reject(new StorageError('Falha simulada ao sincronizar com o servidor.'));\n      } else {\n        resolve(payload);\n      }\n    }, delay);\n  });\n}\n\nasync function sincronizarTarefas(manager) {\n  const dados = manager.list().map((tarefa) => tarefa.toJSON?.() ?? tarefa);\n  try {\n    const resposta = await simulateRequest(dados);\n    saveTasks(resposta);\n    return resposta;\n  } catch (erro) {\n    if (erro instanceof StorageError) {\n      console.error('Sincronização falhou:', erro.message);\n    }\n    throw erro;\n  }\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "localStorage.getItem devolve null quando a chave não existe, e é fácil esquecer esse caso; validar sempre o resultado antes de o passar a JSON.parse evita bugs silenciosos difíceis de detetar mais tarde.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "💾",
+          "text": "loadTasks/saveTasks isolam o armazenamento"
+        },
+        {
+          "icon": "⏱️",
+          "text": "simulateRequest imita latência de rede"
+        },
+        {
+          "icon": "🔁",
+          "text": "async/await e try/catch tratam falhas"
+        }
+      ]
+    },
+    {
+      "heading": "Passo a Passo: Milestones do Projeto",
+      "body": [
+        "Numa primeira fase, comece pelo núcleo sem qualquer persistência ou assincronismo: crie os ficheiros do modelo, escreva a classe Task com as suas validações, escreva a classe TaskManager com operações add, getById, remove e list a funcionar apenas em memória, num Map, e confirme tudo isto com pequenos testes manuais na consola antes de continuar.",
+        "Na segunda fase, introduza a hierarquia de erros personalizados e substitua qualquer throw new Error genérico por ValidationError, TaskNotFoundError ou StorageError conforme o caso, e escreva a camada de armazenamento com loadTasks e saveTasks, testando-a isoladamente com dados de exemplo antes de a ligar ao TaskManager.",
+        "Na terceira fase, adicione a função simulateRequest e o método sincronizar do TaskManager, convertendo-o para usar async/await, e trate cuidadosamente tanto o caso de sucesso como o de falha simulada; aproveite também para acrescentar filtros e ordenação ao método list, usando destructuring nos parâmetros e funções auxiliares puras.",
+        "Na quarta e última fase, junte tudo num ficheiro index.js, escreva um pequeno cenário de demonstração que crie, liste, conclua, sincronize e remova tarefas, confirme que cada requisito funcional da tabela anterior está coberto, e só depois considere avançar para os desafios extra propostos no fim desta unidade."
+      ],
+      "code": "",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Não tente escrever o projeto inteiro de uma só vez. Termine e teste cada fase isoladamente antes de avançar para a seguinte: é assim que se trabalha em projetos reais.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "1️⃣",
+          "text": "Modelo em memória primeiro"
+        },
+        {
+          "icon": "2️⃣",
+          "text": "Erros e persistência a seguir"
+        },
+        {
+          "icon": "3️⃣",
+          "text": "Assincronismo e filtros depois"
+        },
+        {
+          "icon": "4️⃣",
+          "text": "Integração final e validação"
+        }
+      ]
+    },
+    {
+      "heading": "Código de Arranque",
+      "body": [
+        "O código seguinte é um esqueleto funcional e completo do projeto, organizado como se cada bloco fosse um ficheiro separado dentro da estrutura de pastas sugerida anteriormente; pode dividir os blocos pelos ficheiros correspondentes, respeitando os caminhos usados nos import, e a aplicação já corre de imediato.",
+        "A partir daqui, o trabalho é essencialmente completar o que falta face à tabela de requisitos funcionais: ligar loadTasks à inicialização da aplicação para recuperar tarefas guardadas anteriormente, reforçar as validações em Task, e acrescentar os testes ou a interface que preferir. Use este código de arranque como ponto de partida honesto, não como solução final."
+      ],
+      "code": "// ==============================\n// ficheiro: src/errors/TaskErrors.js\n// ==============================\nexport class TaskError extends Error {\n  constructor(message, options) {\n    super(message, options);\n    this.name = this.constructor.name;\n  }\n}\n\nexport class ValidationError extends TaskError {}\n\nexport class TaskNotFoundError extends TaskError {\n  constructor(id) {\n    super(`Tarefa com id \"${id}\" não foi encontrada.`);\n    this.id = id;\n  }\n}\n\nexport class StorageError extends TaskError {}\n\n// ==============================\n// ficheiro: src/models/Task.js\n// ==============================\nimport { ValidationError } from '../errors/TaskErrors.js';\n\nlet proximoId = 1;\n\nexport class Task {\n  #createdAt;\n\n  constructor({ title, description = '', priority = 'normal', tags = [] }) {\n    if (!title || typeof title !== 'string') {\n      throw new ValidationError('O título da tarefa é obrigatório.');\n    }\n    this.id = String(proximoId++);\n    this.title = title;\n    this.description = description;\n    this.priority = priority;\n    this.tags = new Set(tags);\n    this.done = false;\n    this.#createdAt = new Date();\n  }\n\n  get createdAt() {\n    return this.#createdAt;\n  }\n\n  toggle() {\n    this.done = !this.done;\n    return this.done;\n  }\n\n  toJSON() {\n    const { id, title, description, priority, done } = this;\n    return {\n      id, title, description, priority, done,\n      tags: [...this.tags],\n      createdAt: this.#createdAt.toISOString(),\n    };\n  }\n}\n\n// ==============================\n// ficheiro: src/services/network.js\n// simula um pedido de rede com atraso e falhas ocasionais\n// ==============================\nimport { StorageError } from '../errors/TaskErrors.js';\n\nexport function simulateRequest(payload, { delay = 400, failRate = 0.1 } = {}) {\n  return new Promise((resolve, reject) => {\n    setTimeout(() => {\n      if (Math.random() < failRate) {\n        reject(new StorageError('Falha simulada de rede ao sincronizar tarefas.'));\n        return;\n      }\n      resolve(payload);\n    }, delay);\n  });\n}\n\n// ==============================\n// ficheiro: src/storage/storage.js\n// abstrai localStorage no browser (em Node, substituir por fs/promises)\n// ==============================\nimport { StorageError } from '../errors/TaskErrors.js';\n\nconst STORAGE_KEY = 'gestor-tarefas:v1';\n\nexport function loadTasks() {\n  try {\n    const raw = localStorage.getItem(STORAGE_KEY);\n    return raw ? JSON.parse(raw) : [];\n  } catch (erro) {\n    throw new StorageError('Não foi possível ler as tarefas guardadas.', { cause: erro });\n  }\n}\n\nexport function saveTasks(tasks) {\n  try {\n    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));\n  } catch (erro) {\n    throw new StorageError('Não foi possível guardar as tarefas.', { cause: erro });\n  }\n}\n\n// ==============================\n// ficheiro: src/models/TaskManager.js\n// ==============================\nimport { Task } from './Task.js';\nimport { TaskNotFoundError } from '../errors/TaskErrors.js';\nimport { simulateRequest } from '../services/network.js';\n\nexport class TaskManager {\n  #tasks = new Map();\n\n  add(dados) {\n    const tarefa = new Task(dados);\n    this.#tasks.set(tarefa.id, tarefa);\n    return tarefa;\n  }\n\n  getById(id) {\n    const tarefa = this.#tasks.get(id);\n    if (!tarefa) throw new TaskNotFoundError(id);\n    return tarefa;\n  }\n\n  toggle(id) {\n    const tarefa = this.getById(id);\n    tarefa.toggle();\n    return tarefa;\n  }\n\n  remove(id) {\n    if (!this.#tasks.delete(id)) throw new TaskNotFoundError(id);\n  }\n\n  list({ apenasPendentes = false } = {}) {\n    const todas = [...this.#tasks.values()];\n    return apenasPendentes ? todas.filter(({ done }) => !done) : todas;\n  }\n\n  async sincronizar() {\n    const dados = this.list().map((tarefa) => tarefa.toJSON());\n    return simulateRequest(dados);\n  }\n}\n\n// ==============================\n// ficheiro: src/index.js (ponto de entrada)\n// ==============================\nimport { TaskManager } from './models/TaskManager.js';\nimport { saveTasks } from './storage/storage.js';\nimport { StorageError } from './errors/TaskErrors.js';\n\nasync function principal() {\n  const manager = new TaskManager();\n\n  manager.add({ title: 'Rever Módulo 12', priority: 'alta', tags: ['estudo'] });\n  manager.add({ title: 'Praticar closures', priority: 'normal', tags: ['estudo', 'js'] });\n\n  try {\n    const resultado = await manager.sincronizar();\n    console.log('Sincronizado com sucesso:', resultado);\n    saveTasks(resultado);\n  } catch (erro) {\n    if (erro instanceof StorageError) {\n      console.error('Erro de sincronização/armazenamento:', erro.message);\n    } else {\n      throw erro;\n    }\n  }\n}\n\nprincipal();",
+      "callout_kind": "NOTA",
+      "callout_text": "Este código já importa e exporta módulos como ficheiros distintos; para testes rápidos num único ficheiro pode colar os blocos por ordem e remover as linhas import e export, mas para o projeto final a divisão em módulos é o que se pretende praticar.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🚀",
+          "text": "Esqueleto completo e funcional"
+        },
+        {
+          "icon": "📦",
+          "text": "Cinco módulos prontos a dividir em ficheiros"
+        },
+        {
+          "icon": "🧵",
+          "text": "Une classes, Map/Set, erros e async/await"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Validação de Prioridade",
+      "difficulty": "Iniciante",
+      "statement": "No projeto Gestor de Tarefas apresentado nesta unidade, o construtor de Task aceita qualquer valor de texto para priority, sem qualquer verificação. Escreva uma função validarPrioridade(prioridade) que aceite apenas os valores \"baixa\", \"normal\" ou \"alta\" e devolva a prioridade recebida quando é válida, ou lance um ValidationError com uma mensagem clara caso contrário. De seguida, altere o construtor de Task para chamar esta função antes de guardar this.priority.",
+      "hint": "Guarde os valores permitidos num Set e use o método has() para verificar a pertença em vez de vários if encadeados.",
+      "solution_code": "class TaskError extends Error {\n  constructor(message, options) {\n    super(message, options);\n    this.name = this.constructor.name;\n  }\n}\nclass ValidationError extends TaskError {}\n\nconst PRIORIDADES_VALIDAS = new Set(['baixa', 'normal', 'alta']);\n\nfunction validarPrioridade(prioridade) {\n  if (!PRIORIDADES_VALIDAS.has(prioridade)) {\n    throw new ValidationError(\n      `Prioridade \"${prioridade}\" inválida. Use: ${[...PRIORIDADES_VALIDAS].join(', ')}.`\n    );\n  }\n  return prioridade;\n}\n\nclass Task {\n  constructor({ title, description = '', priority = 'normal', tags = [] }) {\n    if (!title) throw new ValidationError('O título da tarefa é obrigatório.');\n    this.title = title;\n    this.description = description;\n    this.priority = validarPrioridade(priority);\n    this.tags = new Set(tags);\n    this.done = false;\n  }\n}\n\n// new Task({ title: 'Estudar', priority: 'urgente' }) lança ValidationError",
+      "solution_explanation": "O Set garante uma verificação de pertença rápida e legível, evitando comparações repetidas com o operador ===. A validação foi isolada numa função pura e reutilizável, e o erro lançado é uma instância da hierarquia própria do projeto, permitindo tratamento específico com instanceof em vez de comparar mensagens de texto."
+    },
+    {
+      "title": "Filtro por Etiquetas com Closures",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função createFilterByTag(tasks) que, dado um array de tarefas (cada uma com uma propriedade tags do tipo Set), devolva outra função capaz de receber o nome de uma etiqueta e devolver apenas as tarefas que a contêm. Essa função devolvida deve poder ser chamada várias vezes com etiquetas diferentes sobre a mesma lista original, sem voltar a percorrer o array do zero em cada chamada.",
+      "hint": "Dentro de createFilterByTag construa, uma única vez, uma Map<string, Task[]> que associa cada etiqueta às tarefas que a têm; a função devolvida deve apenas consultar essa Map.",
+      "solution_code": "function createFilterByTag(tasks) {\n  const indice = new Map();\n\n  for (const tarefa of tasks) {\n    for (const tag of tarefa.tags) {\n      if (!indice.has(tag)) indice.set(tag, []);\n      indice.get(tag).push(tarefa);\n    }\n  }\n\n  return function filtrarPorTag(tag) {\n    return indice.get(tag) ?? [];\n  };\n}\n\n// Utilização:\nconst filtrar = createFilterByTag(manager.list());\nconst tarefasDeEstudo = filtrar('estudo');\nconst tarefasDeJs = filtrar('js');",
+      "solution_explanation": "A closure retém a variável indice construída apenas uma vez, no momento da criação da função, evitando reprocessar o array em cada filtragem posterior. A Map transforma cada pesquisa seguinte por etiqueta numa operação direta, em vez de um filter que percorreria sempre todo o array."
+    },
+    {
+      "title": "Ordenação Configurável de Tarefas",
+      "difficulty": "Intermedio",
+      "statement": "Estenda o método list do TaskManager para aceitar uma opção ordenarPor, que pode valer \"prioridade\" ou \"data\". Implemente uma função pura ordenarTarefas(tarefas, criterio) que devolve uma nova cópia do array ordenada, sem alterar o array original, ordenando por prioridade (alta primeiro) usando um mapa de pesos, ou por data de criação (mais antiga primeiro).",
+      "hint": "O método sort() ordena e devolve o próprio array, mutando-o; para não mutar o array recebido, ordene sempre sobre uma cópia feita com o operador de espalhamento.",
+      "solution_code": "const PESO_PRIORIDADE = new Map([\n  ['baixa', 0],\n  ['normal', 1],\n  ['alta', 2],\n]);\n\nfunction ordenarTarefas(tarefas, criterio = 'data') {\n  const copia = [...tarefas];\n\n  if (criterio === 'prioridade') {\n    return copia.sort((a, b) => PESO_PRIORIDADE.get(b.priority) - PESO_PRIORIDADE.get(a.priority));\n  }\n  if (criterio === 'data') {\n    return copia.sort((a, b) => a.createdAt - b.createdAt);\n  }\n  throw new ValidationError(`Critério de ordenação \"${criterio}\" desconhecido.`);\n}\n\n// dentro de TaskManager:\nlist({ apenasPendentes = false, ordenarPor } = {}) {\n  let resultado = [...this.tasksMap.values()];\n  if (apenasPendentes) resultado = resultado.filter(({ done }) => !done);\n  if (ordenarPor) resultado = ordenarTarefas(resultado, ordenarPor);\n  return resultado;\n}",
+      "solution_explanation": "A cópia feita com [...tarefas] garante que ordenarTarefas é uma função pura, sem efeitos secundários sobre os dados do gestor. A Map de pesos converte um critério textual numa comparação numérica simples, tornando o comparador do sort curto e legível."
+    },
+    {
+      "title": "Nova Tentativa com Backoff Exponencial",
+      "difficulty": "Avancado",
+      "statement": "O método sincronizar() do TaskManager pode rejeitar com um StorageError, simulando uma rede instável. Implemente uma função assíncrona sincronizarComRetries(manager, tentativasMaximas = 3) que chame manager.sincronizar(), e em caso de StorageError espere um tempo crescente em backoff exponencial (200ms, depois 400ms, depois 800ms, e assim sucessivamente) antes de repetir, até ao número máximo de tentativas. Se todas as tentativas falharem, deve lançar o último erro capturado; qualquer outro tipo de erro deve ser propagado imediatamente, sem retry.",
+      "hint": "Use um ciclo for com um try/catch dentro; guarde o erro capturado numa variável declarada fora do try, para o poder lançar depois do ciclo terminar.",
+      "solution_code": "function esperar(ms) {\n  return new Promise((resolve) => setTimeout(resolve, ms));\n}\n\nasync function sincronizarComRetries(manager, tentativasMaximas = 3) {\n  let ultimoErro;\n\n  for (let tentativa = 1; tentativa <= tentativasMaximas; tentativa++) {\n    try {\n      return await manager.sincronizar();\n    } catch (erro) {\n      if (!(erro instanceof StorageError)) throw erro;\n      ultimoErro = erro;\n      const atraso = 200 * 2 ** (tentativa - 1);\n      console.warn(`Tentativa ${tentativa} falhou. Nova tentativa em ${atraso}ms.`);\n      await esperar(atraso);\n    }\n  }\n\n  throw ultimoErro;\n}",
+      "solution_explanation": "O ciclo for combinado com await dentro de um try/catch permite repetir uma operação assíncrona de forma sequencial e controlada, sem empilhar callbacks. O atraso cresce exponencialmente com 200 * 2 ** (tentativa - 1), e só os erros da classe StorageError são retentados; qualquer outro erro sai imediatamente do ciclo."
+    },
+    {
+      "title": "Sistema de Eventos (Pub/Sub) para o TaskManager",
+      "difficulty": "Avancado",
+      "statement": "Implemente uma classe EventBus com os métodos on(evento, callback), que regista um subscritor e devolve uma função para o remover, e emit(evento, dados), que notifica todos os subscritores desse evento. Internamente, use uma Map em que cada chave é o nome do evento e o valor é um Set de funções subscritoras. Depois, integre um EventBus privado no TaskManager de forma que adicionar, remover ou alternar uma tarefa emita, respetivamente, os eventos \"tarefa:adicionada\", \"tarefa:removida\" e \"tarefa:alterada\", e registe um subscritor que, ao ouvir qualquer um destes eventos, guarde automaticamente o estado atual das tarefas com saveTasks.",
+      "hint": "Um Set evita registar o mesmo subscritor duas vezes; para o remover mais tarde basta chamar set.delete(callback) com a referência original da função.",
+      "solution_code": "class EventBus {\n  #ouvintes = new Map();\n\n  on(evento, callback) {\n    if (!this.#ouvintes.has(evento)) this.#ouvintes.set(evento, new Set());\n    this.#ouvintes.get(evento).add(callback);\n    return () => this.#ouvintes.get(evento)?.delete(callback);\n  }\n\n  emit(evento, dados) {\n    for (const callback of this.#ouvintes.get(evento) ?? []) {\n      callback(dados);\n    }\n  }\n}\n\nclass TaskManager {\n  #tasks = new Map();\n  #bus = new EventBus();\n\n  on(evento, callback) {\n    return this.#bus.on(evento, callback);\n  }\n\n  add(dados) {\n    const tarefa = new Task(dados);\n    this.#tasks.set(tarefa.id, tarefa);\n    this.#bus.emit('tarefa:adicionada', tarefa);\n    return tarefa;\n  }\n\n  remove(id) {\n    const tarefa = this.getById(id);\n    this.#tasks.delete(id);\n    this.#bus.emit('tarefa:removida', tarefa);\n  }\n\n  toggle(id) {\n    const tarefa = this.getById(id);\n    tarefa.toggle();\n    this.#bus.emit('tarefa:alterada', tarefa);\n    return tarefa;\n  }\n\n  getById(id) {\n    const tarefa = this.#tasks.get(id);\n    if (!tarefa) throw new TaskNotFoundError(id);\n    return tarefa;\n  }\n\n  list() {\n    return [...this.#tasks.values()];\n  }\n}\n\nconst manager = new TaskManager();\nfor (const evento of ['tarefa:adicionada', 'tarefa:removida', 'tarefa:alterada']) {\n  manager.on(evento, () => saveTasks(manager.list().map((t) => t.toJSON())));\n}",
+      "solution_explanation": "A Map associa cada nome de evento a um Set de callbacks, o que impede registar o mesmo subscritor duas vezes e permite remoção eficiente através da função devolvida por on. Este padrão observer desacopla a lógica de negócio da persistência: o TaskManager anuncia apenas que algo mudou, sem saber como nem onde os dados são guardados."
+    }
+  ],
+  "summary": [
+    "O projeto final combina classes, Map/Set, closures, destructuring, módulos ES, async/await e erros personalizados num único código coerente.",
+    "Separar responsabilidades em ficheiros distintos, modelo, erros, armazenamento e serviços, torna o código mais fácil de testar e manter.",
+    "Uma função simulateRequest baseada em Promise, com atraso e falhas aleatórias, prepara para lidar depois com pedidos de rede reais via fetch.",
+    "Classes de erro específicas, como ValidationError, TaskNotFoundError e StorageError, tornam o tratamento de exceções mais preciso do que usar Error genérico.",
+    "Construir o projeto em fases, primeiro o modelo em memória, depois erros e persistência, depois assincronismo, é mais eficaz do que tentar tudo de uma vez.",
+    "Os exercícios extra, validação, filtros com closures, ordenação, retries e eventos, são desafios opcionais para aprofundar o que já foi construído."
+  ],
+  "summary_label": "Resumo",
+  "closing_message": "Vamos continuar para o Módulo 15",
+  "next_label": "Módulo 15 → Cheat Sheet — Referência Rápida",
+  "_stage": "autoria"
+}

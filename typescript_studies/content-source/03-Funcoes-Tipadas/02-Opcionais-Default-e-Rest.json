@@ -1,0 +1,316 @@
+{
+  "module_num": "03",
+  "module_title": "Funções Tipadas",
+  "module_dir": "03-Funcoes-Tipadas",
+  "lesson_num": "02",
+  "lesson_slug": "Opcionais-Default-e-Rest",
+  "kind": "aula",
+  "title": "Parâmetros Opcionais, Default e Rest",
+  "filename_base": "02-Opcionais-Default-e-Rest",
+  "subtitle": "Do ponto de interrogação ao rest tipado com tupla: assinaturas flexíveis e seguras",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Marcar parâmetros como opcionais e tratar o undefined que isso traz",
+    "Dar valores por omissão e perceber o tipo que daí resulta",
+    "Escolher entre ponto de interrogação e valor por omissão com critério",
+    "Tipar rest parameters como array e respeitar as suas regras",
+    "Exigir número e ordem de argumentos com um rest tipado por tupla",
+    "Escrever um objeto de opções com valores por omissão"
+  ],
+  "sections": [
+    {
+      "heading": "Parâmetros opcionais com o ponto de interrogação",
+      "body": [
+        "Um ponto de interrogação a seguir ao nome do parâmetro diz ao compilador que esse argumento pode faltar na chamada. É a mesma notação das propriedades opcionais de objeto, vista na aula 03 do módulo 02, e o efeito é equivalente: a chamada deixa de o exigir.",
+        "O que muitas pessoas não esperam é a consequência dentro da função. O tipo do parâmetro passa a ser a união do tipo declarado com undefined. Escrever titulo?: string cria uma variável do tipo string | undefined, e o compilador recusa qualquer utilização que só faça sentido numa string. Isto não é chatice: é o compilador a lembrar que existe um caminho de execução em que o valor não chegou.",
+        "Há ainda uma regra de posição herdada do próprio JavaScript. Como os argumentos se associam por ordem, um parâmetro obrigatório nunca pode vir depois de um opcional. Se aparecesse, não haveria maneira de omitir o opcional sem omitir também o obrigatório, e o compilador rejeita a assinatura logo na declaração."
+      ],
+      "code": "// O ponto de interrogação torna o parâmetro dispensável na chamada\nfunction saudar(nome: string, titulo?: string): string {\n  // aqui dentro, titulo é string | undefined\n  if (titulo === undefined) {\n    return `Olá, ${nome}`;\n  }\n  return `Olá, ${titulo} ${nome}`;\n}\n\nconsole.log(saudar(\"Ana\")); // \"Olá, Ana\"\nconsole.log(saudar(\"Ana\", \"Dra.\")); // \"Olá, Dra. Ana\"\nconsole.log(saudar(\"Ana\", undefined)); // \"Olá, Ana\"\n\n// Usar o valor sem verificar é exatamente o que o compilador impede\nfunction emMaiusculas(titulo?: string): string {\n  // @ts-expect-error titulo é string | undefined e undefined não tem toUpperCase\n  return titulo.toUpperCase();\n}\n\n// @ts-expect-error um parâmetro obrigatório não pode vir depois de um opcional\nfunction ordemErrada(titulo?: string, nome: string): string {\n  return `${titulo} ${nome}`;\n}\n\nconsole.log(emMaiusculas(\"dra.\"), ordemErrada(\"dra.\", \"Ana\"));",
+      "callout_kind": "NOTA",
+      "callout_text": "O ponto de interrogação não é o mesmo que anotar o tipo como string | undefined à mão. Um parâmetro anotado assim continua obrigatório na chamada: quem chama tem de passar undefined explicitamente. O ponto de interrogação faz as duas coisas ao mesmo tempo, alarga o tipo e torna o argumento dispensável.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "❓",
+          "text": "O ? torna o argumento dispensável na chamada"
+        },
+        {
+          "icon": "🌫️",
+          "text": "Dentro da função o tipo passa a incluir undefined"
+        },
+        {
+          "icon": "➡️",
+          "text": "Os opcionais têm de vir depois dos obrigatórios"
+        }
+      ]
+    },
+    {
+      "heading": "Valores por omissão: o tipo vem do valor",
+      "body": [
+        "Quando se dá um valor por omissão a um parâmetro, o TypeScript infere o tipo a partir desse valor e a anotação passa a ser dispensável. Escrever vezes = 2 basta para o parâmetro ficar com o tipo number, tal como const vezes = 2 numa variável. Ao mesmo tempo, o parâmetro deixa de ser obrigatório na chamada.",
+        "A diferença decisiva face ao ponto de interrogação está no tipo dentro do corpo. Como o valor por omissão dispara sempre que o argumento não chega, o parâmetro nunca pode ser undefined lá dentro, e o tipo não inclui undefined. Não há nada a verificar antes de usar.",
+        "A inferência a partir do valor por omissão alarga os literais: lado = \"esquerda\" produz string, não o literal \"esquerda\". Se quer restringir os valores aceites, anote o tipo e dê o valor por omissão na mesma linha. A anotação também é necessária quando o valor por omissão não diz o suficiente, como um array vazio, que sozinho daria never[]."
+      ],
+      "code": "// O tipo vem do valor por omissão: vezes é number, sem anotação nenhuma\nfunction repetir(texto: string, vezes = 2): string {\n  return texto.repeat(vezes);\n}\n\nconsole.log(repetir(\"ab\")); // \"abab\"\nconsole.log(repetir(\"ab\", 3)); // \"ababab\"\nconsole.log(repetir(\"ab\", undefined)); // \"abab\"\n\n// @ts-expect-error o tipo inferido a partir de 2 é number\nconsole.log(repetir(\"ab\", \"3\"));\n\n// A inferência alarga o literal: lado fica string, e não \"esquerda\"\nfunction alinhar(texto: string, lado = \"esquerda\"): string {\n  return `${lado}:${texto}`;\n}\nconsole.log(alinhar(\"oi\", \"direita\")); // \"direita:oi\"\nconsole.log(alinhar(\"oi\", \"qualquer coisa\")); // nada o impede\n\n// Para restringir, anote: a anotação e o valor por omissão convivem\nfunction alinharEstrito(\n  texto: string,\n  lado: \"esquerda\" | \"direita\" = \"esquerda\",\n): string {\n  return `${lado}:${texto}`;\n}\nconsole.log(alinharEstrito(\"oi\")); // \"esquerda:oi\"\n// @ts-expect-error \"centro\" não pertence à união anotada\nconsole.log(alinharEstrito(\"oi\", \"centro\"));\n\n// A anotação também é precisa quando o valor por omissão é vago\nfunction juntar(partes: string[] = [], ligacao = \"-\"): string {\n  return partes.join(ligacao);\n}\nconsole.log(juntar([\"a\", \"b\"])); // \"a-b\"",
+      "callout_kind": "DICA",
+      "callout_text": "Não anote o tipo quando o valor por omissão já o diz com precisão: vezes = 2 é mais limpo do que vezes: number = 2 e significa exatamente o mesmo. Anote quando quiser um tipo mais estreito do que o inferido, como uma união de literais, ou mais largo, como um array com um tipo de elemento concreto.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎁",
+          "text": "O valor por omissão infere o tipo do parâmetro"
+        },
+        {
+          "icon": "🛡️",
+          "text": "Dentro da função o tipo nunca inclui undefined"
+        },
+        {
+          "icon": "✍️",
+          "text": "Anote quando quiser um tipo mais estreito que o inferido"
+        }
+      ]
+    },
+    {
+      "heading": "Opcional ou valor por omissão: a comparação",
+      "body": [
+        "Vistos de fora, os dois mecanismos parecem iguais: ambos permitem chamar a função sem esse argumento e ambos aceitam undefined explícito. O editor mostra até a mesma assinatura para os dois casos, com o parâmetro marcado como opcional. A escolha faz-se pelo que acontece dentro da função e pelo que significa a ausência do valor.",
+        "Com o ponto de interrogação, a ausência do valor é informação: a função fica a saber que ninguém decidiu nada e pode reagir a isso, ao custo de ter de tratar undefined em todos os caminhos. Com valor por omissão, a ausência é imediatamente substituída por uma decisão tomada por si, e o corpo fica mais simples porque trabalha sempre com um valor concreto.",
+        "Repare num ponto que apanha muita gente desprevenida: passar undefined explicitamente a um parâmetro com valor por omissão dispara o valor por omissão. O JavaScript não distingue um argumento em falta de um argumento undefined, e por isso os dois casos dão o mesmo resultado. Já null não dispara nada, porque é um valor como outro qualquer. Finalmente, os dois mecanismos não se podem combinar no mesmo parâmetro."
+      ],
+      "code": "function comInterrogacao(valor?: number): number {\n  // valor: number | undefined, tem de ser tratado\n  return (valor ?? 0) * 2;\n}\n\nfunction comOmissao(valor = 0): number {\n  // valor: number, já não pode ser undefined\n  return valor * 2;\n}\n\n// Vistas de fora, as duas assinaturas são iguais: (valor?: number) => number\nconsole.log(comInterrogacao(), comInterrogacao(undefined), comInterrogacao(5)); // 0 0 10\nconsole.log(comOmissao(), comOmissao(undefined), comOmissao(5)); // 0 0 10\n\n// A diferença está dentro do corpo\nfunction triplo(valor?: number): number {\n  // @ts-expect-error valor pode ser undefined e undefined não se multiplica\n  return valor * 3;\n}\nfunction triploSeguro(valor = 1): number {\n  return valor * 3; // nenhuma verificação é necessária\n}\nconsole.log(triplo(2), triploSeguro());\n\n// @ts-expect-error os dois mecanismos excluem-se: ou ? ou valor por omissão\nfunction ambos(valor?: number = 0): number {\n  return valor;\n}\nconsole.log(ambos());",
+      "callout_kind": "DICA",
+      "callout_text": "A regra prática: se consegue nomear um valor razoável para quando o argumento falta, use um valor por omissão e poupe verificações ao corpo inteiro. Se a ausência tem um significado próprio que a função precisa de distinguir, use o ponto de interrogação e trate o undefined uma vez, logo no início.",
+      "table_headers": [
+        "Aspeto",
+        "Com ponto de interrogação",
+        "Com valor por omissão"
+      ],
+      "table_rows": [
+        [
+          "Escrita",
+          "valor?: number",
+          "valor = 0, ou valor: number = 0"
+        ],
+        [
+          "Anotação do tipo",
+          "Obrigatória",
+          "Dispensável, é inferida do valor"
+        ],
+        [
+          "Tipo dentro da função",
+          "number | undefined",
+          "number"
+        ],
+        [
+          "Chamar sem o argumento",
+          "valor fica undefined",
+          "valor fica 0"
+        ],
+        [
+          "Passar undefined explícito",
+          "valor fica undefined",
+          "valor fica 0, o valor por omissão dispara"
+        ],
+        [
+          "Passar null explícito",
+          "Erro: null não pertence ao tipo",
+          "Erro: null não pertence ao tipo"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🪞",
+          "text": "De fora as duas assinaturas são indistinguíveis"
+        },
+        {
+          "icon": "🔬",
+          "text": "A diferença está no tipo dentro do corpo"
+        },
+        {
+          "icon": "🎯",
+          "text": "undefined explícito dispara o valor por omissão"
+        }
+      ]
+    },
+    {
+      "heading": "Valor por omissão antes de um parâmetro obrigatório",
+      "body": [
+        "A regra de posição dos opcionais não se aplica aos parâmetros com valor por omissão: o compilador aceita que venham antes de parâmetros obrigatórios. Isso é possível porque nenhum deles é verdadeiramente opcional na chamada. A assinatura continua a exigir todos os argumentos até ao último obrigatório.",
+        "O resultado é uma função com um número fixo de argumentos em que um deles pode ser undefined. Para aproveitar o valor por omissão, quem chama tem de passar undefined nessa posição, à mão. Funciona, mas produz chamadas que ninguém percebe à primeira leitura, e que se partem em silêncio se um dia a ordem dos parâmetros mudar.",
+        "Por isso a convenção é simples e vale a pena segui-la sem exceções: primeiro os parâmetros obrigatórios, depois os que têm valor por omissão, depois os opcionais. Quando começa a sentir vontade de furar esta ordem, normalmente o que a função pede é um objeto de opções, que é o tema da última secção."
+      ],
+      "code": "// Permitido: o valor por omissão vem antes de um parâmetro obrigatório\nfunction rotular(separador = \" - \", texto: string): string {\n  return `${separador}${texto}`;\n}\n\n// Mas a posição continua a ser obrigatória: são sempre dois argumentos\n// @ts-expect-error esperava 2 argumentos e só recebeu 1\nconsole.log(rotular(\"olá\"));\n\n// A única forma de aproveitar o valor por omissão é passar undefined à mão\nconsole.log(rotular(undefined, \"olá\")); // \" - olá\"\nconsole.log(rotular(\" | \", \"olá\")); // \" | olá\"\n\n// A versão que se deve escrever: opcionais e com valor por omissão no fim\nfunction rotularBem(texto: string, separador = \" - \"): string {\n  return `${separador}${texto}`;\n}\nconsole.log(rotularBem(\"olá\")); // \" - olá\"",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Ver undefined escrito numa chamada é quase sempre sinal de que a ordem dos parâmetros está errada. Antes de aceitar essa chamada, tente reordenar a assinatura ou agrupar os parâmetros acessórios num objeto de opções.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔄",
+          "text": "Um default pode vir antes de um obrigatório"
+        },
+        {
+          "icon": "🕳️",
+          "text": "Mas obriga a escrever undefined na chamada"
+        },
+        {
+          "icon": "📏",
+          "text": "Ordem certa: obrigatórios, defaults, opcionais"
+        }
+      ]
+    },
+    {
+      "heading": "Rest parameters tipados como array",
+      "body": [
+        "Um rest parameter recolhe todos os argumentos restantes num array verdadeiro. Como o que a função recebe é um array, o tipo que se anota é o tipo do array e não o tipo de cada argumento: escreve-se valores: number[] e não valores: number. Anotar o tipo do elemento é o erro mais comum aqui, e o compilador assinala-o de imediato.",
+        "Da anotação decorrem as duas regras da forma. O rest tem de ser o último parâmetro da lista, porque recolhe tudo o que sobra e nada pode sobrar depois dele. E o seu tipo tem de ser um array ou uma tupla, porque é isso que existe dentro da função.",
+        "Do lado de quem chama, um rest aceita zero ou mais argumentos, incluindo nenhum, o que obriga a pensar no caso do array vazio. Também aceita o espalhamento de um array com o operador de três pontos, coisa que uma lista de parâmetros fixos não aceita, porque o compilador não sabe quantos elementos esse array tem."
+      ],
+      "code": "// O rest recolhe o que sobrar; o tipo é o do array, não o do elemento\nfunction somar(...valores: number[]): number {\n  return valores.reduce((total, valor) => total + valor, 0);\n}\nconsole.log(somar()); // 0\nconsole.log(somar(1, 2, 3)); // 6\n\n// Pode vir depois de parâmetros normais, desde que fique em último\nfunction registar(nivel: string, ...mensagens: string[]): string {\n  return `[${nivel}] ${mensagens.join(\" | \")}`;\n}\nconsole.log(registar(\"info\", \"arrancou\", \"pronto\")); // \"[info] arrancou | pronto\"\n\n// Espalhar um array na chamada funciona porque o rest aceita qualquer número\nconst medidas: number[] = [1, 2, 3, 4];\nconsole.log(somar(...medidas)); // 10\n\n// @ts-expect-error o rest tem de ser o último parâmetro da lista\nfunction depoisDoRest(...partes: string[], fim: string): string {\n  return `${partes.join(\"\")}${fim}`;\n}\n\n// @ts-expect-error o tipo de um rest tem de ser um array ou uma tupla\nfunction restEscalar(...partes: string): string {\n  return partes;\n}",
+      "callout_kind": "NOTA",
+      "callout_text": "Dentro da função, o rest é um array normal e mutável, com todos os métodos habituais. Não é o objeto arguments do JavaScript antigo: tem tipo, funciona em arrow functions e contém apenas os argumentos que sobraram, não todos.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "📥",
+          "text": "O rest anota-se com o tipo do array, não do elemento"
+        },
+        {
+          "icon": "🔚",
+          "text": "Tem de ser sempre o último parâmetro"
+        },
+        {
+          "icon": "0️⃣",
+          "text": "Aceita zero argumentos: trate o array vazio"
+        }
+      ]
+    },
+    {
+      "heading": "Rest tipado com uma tupla",
+      "body": [
+        "O tipo de um rest não tem de ser um array homogéneo: pode ser uma tupla. E aí acontece algo que muda por completo o que se consegue exprimir numa assinatura. Uma tupla fixa o número de elementos e o tipo de cada posição, e o compilador traduz isso para a lista de argumentos: passa a exigir exatamente esse número de argumentos, com esses tipos, por essa ordem.",
+        "Na prática, escrever o rest com tupla é uma forma alternativa de declarar os parâmetros, com duas vantagens. Os nomes da tupla aparecem nas sugestões do editor tal como nomes de parâmetros, e a lista inteira de parâmetros passa a ser um tipo que se pode nomear, reutilizar e transformar. É assim que estão tipadas as assinaturas variádicas das bibliotecas mais cuidadas.",
+        "Tudo o que uma tupla admite passa a valer para a lista de argumentos. Um elemento opcional torna esse argumento dispensável; um rest no fim da tupla permite um começo fixo seguido de um número livre de argumentos, o que é a forma de exigir pelo menos um argumento numa lista variável. As tuplas foram dadas na aula 03 do módulo 01."
+      ],
+      "code": "type Cor = \"vermelho\" | \"verde\" | \"azul\";\n\n// Rest tipado com tupla: número, ordem e tipos fixos, com nomes nas sugestões\nfunction desenhar(...args: [x: number, y: number, cor: Cor]): string {\n  const [x, y, cor] = args;\n  return `(${x}, ${y}) em ${cor}`;\n}\nconsole.log(desenhar(10, 20, \"azul\")); // \"(10, 20) em azul\"\n\n// @ts-expect-error a tupla exige exatamente três argumentos\ndesenhar(10, 20);\n\n// @ts-expect-error a terceira posição só aceita os literais de Cor\ndesenhar(10, 20, \"roxo\");\n\n// Espalhar uma tupla na chamada encaixa posição a posição\nconst ponto: [number, number, Cor] = [1, 2, \"verde\"];\nconsole.log(desenhar(...ponto)); // \"(1, 2) em verde\"\n\n// A tupla também admite opcionais e um rest final\nfunction mover(...args: [x: number, y: number, z?: number]): number {\n  const [x, y, z = 0] = args;\n  return x + y + z;\n}\nconsole.log(mover(1, 2), mover(1, 2, 3)); // 3 6\n\nfunction notificar(\n  ...args: [assunto: string, primeiro: string, ...outros: string[]]\n): string {\n  const [assunto, ...destinatarios] = args;\n  return `${assunto} -> ${destinatarios.join(\", \")}`;\n}\nconsole.log(notificar(\"Reunião\", \"ana@ex.pt\")); // \"Reunião -> ana@ex.pt\"",
+      "callout_kind": "DICA",
+      "callout_text": "A tupla com rest no fim resolve um problema que o rest simples não resolve: exigir no mínimo um argumento. Com valores: string[] a chamada sem argumentos passa; com args: [primeiro: string, ...outros: string[]] o compilador recusa-a.",
+      "table_headers": [
+        "Tipo do rest",
+        "Argumentos aceites",
+        "Verificação"
+      ],
+      "table_rows": [
+        [
+          "...v: number[]",
+          "Zero ou mais",
+          "Todos do mesmo tipo"
+        ],
+        [
+          "...v: [number, number]",
+          "Exatamente dois",
+          "Um tipo por posição"
+        ],
+        [
+          "...v: [number, number?]",
+          "Dois ou três",
+          "Um tipo por posição, o último dispensável"
+        ],
+        [
+          "...v: [string, ...string[]]",
+          "Um ou mais",
+          "Primeiro fixo, cauda livre do mesmo tipo"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🧩",
+          "text": "Uma tupla no rest fixa número, ordem e tipos"
+        },
+        {
+          "icon": "🏷️",
+          "text": "Os nomes da tupla aparecem como nomes de parâmetros"
+        },
+        {
+          "icon": "➕",
+          "text": "Tupla com rest final exige pelo menos um argumento"
+        }
+      ]
+    },
+    {
+      "heading": "Destructuring de parâmetros e o objeto de opções",
+      "body": [
+        "Quando um parâmetro é desestruturado, o tipo anota-se a seguir ao padrão inteiro, com os dois pontos depois da chaveta de fecho. Dentro das chavetas está sintaxe de JavaScript, não de tipos, e é por isso que escrever nome: string lá dentro não anota coisa nenhuma: renomeia a variável nome para string. Com strict ligado, o compilador apanha esse engano porque o parâmetro fica sem tipo.",
+        "Os valores por omissão continuam a escrever-se dentro do padrão, junto de cada propriedade, e comportam-se como nos parâmetros normais: a propriedade fica com o tipo sem undefined dentro da função, mesmo que a interface a declare opcional. É esta combinação que dá o padrão mais usado na prática, o objeto de opções: uma interface com todas as propriedades opcionais, um destructuring com valores por omissão para cada uma, e um objeto vazio como valor por omissão do parâmetro inteiro.",
+        "O objeto vazio no fim é a peça que quase toda a gente esquece da primeira vez. Sem ele, o objeto de opções continua obrigatório e o compilador recusa a chamada que só passa os argumentos essenciais, que é precisamente a chamada mais comum."
+      ],
+      "code": "// O tipo anota-se depois do padrão inteiro, nunca dentro dele\nfunction apresentar({ nome, idade }: { nome: string; idade: number }): string {\n  return `${nome} tem ${idade}`;\n}\nconsole.log(apresentar({ nome: \"Ana\", idade: 30 })); // \"Ana tem 30\"\n\n// @ts-expect-error isto renomeia nome para string e deixa-o com tipo implícito\nfunction enganosa({ nome: string }) {\n  return string;\n}\n\ninterface Opcoes {\n  readonly recursivo?: boolean;\n  readonly profundidade?: number;\n  readonly ignorar?: readonly string[];\n}\n\n// O padrão mais usado na prática: valores por omissão dentro do destructuring\n// e um = {} no fim, para o próprio objeto poder ser omitido\nfunction percorrer(\n  raiz: string,\n  { recursivo = true, profundidade = 3, ignorar = [] }: Opcoes = {},\n): string {\n  return `${raiz} ${recursivo} ${profundidade} ${ignorar.length}`;\n}\n\nconsole.log(percorrer(\"/src\")); // \"/src true 3 0\"\nconsole.log(percorrer(\"/src\", { profundidade: 1 })); // \"/src true 1 0\"\nconsole.log(percorrer(\"/src\", { ignorar: [\"dist\"] })); // \"/src true 3 1\"\n\nconsole.log(enganosa({ nome: \"Ana\" }));",
+      "callout_kind": "PRATICAR",
+      "callout_text": "Pegue numa função sua com quatro ou mais parâmetros, em que os últimos são acessórios, e converta-os num objeto de opções com valores por omissão. Compare as duas chamadas lado a lado e repare em quantos argumentos posicionais deixaram de precisar de ser contados.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🧷",
+          "text": "O tipo vem depois do padrão, nunca dentro dele"
+        },
+        {
+          "icon": "⚙️",
+          "text": "Defaults no destructuring removem o undefined"
+        },
+        {
+          "icon": "🫙",
+          "text": "O = {} final torna o objeto de opções dispensável"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "A mesma função, das duas maneiras",
+      "difficulty": "Iniciante",
+      "statement": "Escreva duas funções que produzem etiquetas. A primeira, etiquetaOpcional, recebe um texto obrigatório e um prefixo opcional com ponto de interrogação, e devolve o texto sem alterações quando o prefixo não é passado. A segunda, etiquetaPorOmissao, recebe o mesmo texto e um prefixo com o valor por omissão de um cardinal, sem anotar o tipo do prefixo. Chame as duas sem o segundo argumento e chame a segunda passando undefined explícito, confirmando nos comentários o que cada chamada devolve.",
+      "hint": "Na primeira função vai precisar de comparar o prefixo com undefined antes de o usar, porque o seu tipo é string | undefined. Na segunda não precisa de verificação nenhuma.",
+      "solution_code": "function etiquetaOpcional(texto: string, prefixo?: string): string {\n  if (prefixo === undefined) {\n    return texto;\n  }\n  return `${prefixo}${texto}`;\n}\n\nfunction etiquetaPorOmissao(texto: string, prefixo = \"#\"): string {\n  return `${prefixo}${texto}`;\n}\n\nconsole.log(etiquetaOpcional(\"typescript\")); // \"typescript\"\nconsole.log(etiquetaOpcional(\"typescript\", \"@\")); // \"@typescript\"\nconsole.log(etiquetaPorOmissao(\"typescript\")); // \"#typescript\"\nconsole.log(etiquetaPorOmissao(\"typescript\", undefined)); // \"#typescript\"",
+      "solution_explanation": "Na primeira função o ponto de interrogação obriga a tratar o caso em que o prefixo não chegou, e o compilador não deixa concatenar sem essa verificação. Na segunda, o valor por omissão dá ao parâmetro o tipo string, inferido do valor, e o corpo fica com uma única linha. A chamada com undefined explícito confirma que o valor por omissão dispara na mesma, porque o JavaScript não distingue um argumento em falta de um argumento undefined."
+    },
+    {
+      "title": "Máximo e caminhos com rest",
+      "difficulty": "Intermedio",
+      "statement": "Escreva uma função maiorDe que aceite qualquer número de argumentos numéricos e devolva o maior deles, devolvendo undefined quando não recebe nenhum. Escreva depois uma função juntarCaminho que receba uma base obrigatória e qualquer número de partes adicionais, unindo tudo com barras e devolvendo apenas a base quando não há partes. Demonstre também que consegue passar um array já existente com o operador de espalhamento.",
+      "hint": "Anote o rest com o tipo do array, não com o tipo do elemento. Um reduce sem valor inicial usa o primeiro elemento como acumulador, o que exige tratar o array vazio antes.",
+      "solution_code": "function maiorDe(...valores: number[]): number | undefined {\n  if (valores.length === 0) {\n    return undefined;\n  }\n  return valores.reduce((maior, valor) => (valor > maior ? valor : maior));\n}\n\nfunction juntarCaminho(base: string, ...partes: string[]): string {\n  if (partes.length === 0) {\n    return base;\n  }\n  return `${base}/${partes.join(\"/\")}`;\n}\n\nconsole.log(maiorDe(3, 9, 4)); // 9\nconsole.log(maiorDe()); // undefined\n\nconst extras: number[] = [12, 7];\nconsole.log(maiorDe(...extras)); // 12\n\nconsole.log(juntarCaminho(\"/src\")); // \"/src\"\nconsole.log(juntarCaminho(\"/src\", \"app\", \"main.ts\")); // \"/src/app/main.ts\"",
+      "solution_explanation": "O tipo de retorno number | undefined obriga quem chama a tratar o caso da lista vazia, que existe sempre que se usa um rest. Em juntarCaminho o rest vem depois de um parâmetro obrigatório, que é a única posição possível para ele. O espalhamento na chamada funciona porque um rest aceita qualquer número de argumentos, ao contrário de uma lista de parâmetros fixos."
+    },
+    {
+      "title": "Um objeto de opções com valores por omissão",
+      "difficulty": "Intermedio",
+      "statement": "Defina uma interface OpcoesFormato com três propriedades, todas opcionais: maiusculas do tipo boolean, largura do tipo number e preenchimento do tipo string. Escreva uma função formatar que receba um texto obrigatório e, como segundo parâmetro, um objeto dessas opções desestruturado, com valores por omissão para as três propriedades e com o próprio objeto dispensável. A função devolve o texto, opcionalmente em maiúsculas, preenchido à direita até à largura pedida. Chame-a sem opções, com apenas uma opção e com duas.",
+      "hint": "O segundo parâmetro tem duas partes: os valores por omissão vão dentro das chavetas, e a anotação de tipo mais o objeto vazio vão depois delas. Sem esse objeto vazio, a chamada só com o texto é rejeitada.",
+      "solution_code": "interface OpcoesFormato {\n  readonly maiusculas?: boolean;\n  readonly largura?: number;\n  readonly preenchimento?: string;\n}\n\nfunction formatar(\n  texto: string,\n  {\n    maiusculas = false,\n    largura = 10,\n    preenchimento = \".\",\n  }: OpcoesFormato = {},\n): string {\n  const base = maiusculas ? texto.toUpperCase() : texto;\n  return base.padEnd(largura, preenchimento);\n}\n\nconsole.log(formatar(\"ola\")); // \"ola.......\"\nconsole.log(formatar(\"ola\", { maiusculas: true })); // \"OLA.......\"\nconsole.log(formatar(\"ola\", { largura: 5, preenchimento: \"-\" })); // \"ola--\"\nconsole.log(formatar(\"ola\", { largura: 2 })); // \"ola\"",
+      "solution_explanation": "Os valores por omissão dentro do destructuring fazem com que as três variáveis tenham tipos sem undefined, apesar de a interface as declarar opcionais, e por isso o corpo usa-as diretamente. O objeto vazio a seguir à anotação é o que permite chamar a função apenas com o texto. Com este padrão, acrescentar uma quarta opção no futuro não parte nenhuma das chamadas existentes."
+    },
+    {
+      "title": "Assinaturas variádicas com tuplas",
+      "difficulty": "Avancado",
+      "statement": "Defina um tipo Nivel com os literais info, aviso e erro. Escreva uma função registarEvento cujos parâmetros sejam declarados como um rest tipado com uma tupla, exigindo um nível, uma mensagem e depois qualquer número de detalhes adicionais, e que devolva o nível em maiúsculas entre parênteses retos, seguido da mensagem e dos detalhes entre parênteses quando existam. Escreva depois formatarData, também com rest tipado por tupla, com dia e mês obrigatórios e ano opcional com valor por omissão aplicado no destructuring. Demonstre com o comentário de erro esperado que uma chamada só com o nível é rejeitada e que um nível inexistente também é. Termine passando uma tupla com o operador de espalhamento.",
+      "hint": "Uma tupla que termina com um rest exige os elementos fixos do início e aceita zero ou mais no fim. Os valores por omissão aplicam-se ao desestruturar a tupla dentro da função, e não na própria assinatura.",
+      "solution_code": "type Nivel = \"info\" | \"aviso\" | \"erro\";\n\nfunction registarEvento(\n  ...args: [nivel: Nivel, mensagem: string, ...detalhes: string[]]\n): string {\n  const [nivel, mensagem, ...detalhes] = args;\n  const cauda = detalhes.length > 0 ? ` (${detalhes.join(\"; \")})` : \"\";\n  return `[${nivel.toUpperCase()}] ${mensagem}${cauda}`;\n}\n\nfunction formatarData(\n  ...args: [dia: number, mes: number, ano?: number]\n): string {\n  const [dia, mes, ano = 2026] = args;\n  const dd = String(dia).padStart(2, \"0\");\n  const mm = String(mes).padStart(2, \"0\");\n  return `${dd}/${mm}/${ano}`;\n}\n\nconsole.log(registarEvento(\"info\", \"arrancou\")); // \"[INFO] arrancou\"\nconsole.log(registarEvento(\"erro\", \"falhou\", \"código 500\", \"a repetir\"));\n// \"[ERRO] falhou (código 500; a repetir)\"\n\n// @ts-expect-error a tupla exige pelo menos o nível e a mensagem\nregistarEvento(\"aviso\");\n\n// @ts-expect-error \"debug\" não pertence ao tipo Nivel\nregistarEvento(\"debug\", \"teste\");\n\nconsole.log(formatarData(3, 7)); // \"03/07/2026\"\nconsole.log(formatarData(3, 7, 1999)); // \"03/07/1999\"\n\nconst entrada: [Nivel, string, string] = [\"aviso\", \"disco cheio\", \"95%\"];\nconsole.log(registarEvento(...entrada)); // \"[AVISO] disco cheio (95%)\"",
+      "solution_explanation": "A tupla no rest exprime numa só linha o que uma lista de parâmetros normal também exprimiria, mas torna a assinatura um tipo que se pode nomear e reutilizar. O rest final da tupla é o que garante o mínimo de dois argumentos, coisa que um simples array de strings nunca conseguiria exigir. O valor por omissão do ano aplica-se ao desestruturar a tupla, e o espalhamento da constante tipada encaixa posição a posição porque o compilador conhece o comprimento e os tipos."
+    }
+  ],
+  "summary": [
+    "O ponto de interrogação torna o argumento dispensável e junta undefined ao tipo dentro da função.",
+    "Um valor por omissão infere o tipo, dispensa a anotação e garante que o parâmetro nunca é undefined no corpo.",
+    "Passar undefined explícito dispara o valor por omissão, mas não satisfaz um parâmetro obrigatório.",
+    "A ordem a seguir é obrigatórios, depois com valor por omissão, depois opcionais.",
+    "Um rest anota-se com o tipo do array, aceita zero ou mais argumentos e tem de ser o último parâmetro.",
+    "Um rest tipado por tupla fixa número, ordem e tipos, e permite exigir pelo menos um argumento."
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 03",
+  "next_label": "Aula 03 → Tipos de Função, Callbacks e this"
+}

@@ -1,0 +1,273 @@
+{
+  "module_num": "09",
+  "module_title": "Módulos, tsconfig e Declarações",
+  "module_dir": "09-Modulos-tsconfig-e-Declaracoes",
+  "lesson_num": "03",
+  "lesson_slug": "O-Modo-strict",
+  "kind": "aula",
+  "title": "O Modo strict, opção a opção",
+  "filename_base": "03-O-Modo-strict",
+  "subtitle": "As oito flags que o --strict liga em conjunto, uma a uma, e o que cada uma apanha.",
+  "objectives_label": "Nesta aula vai aprender:",
+  "objectives": [
+    "Nomear e explicar cada uma das oito opções que o --strict liga em conjunto",
+    "Distinguir noImplicitAny (tipos que faltam) de strictNullChecks (valores que faltam)",
+    "Medir a diferença entre contravariância e a exceção bivariante dos métodos em strictFunctionTypes",
+    "Ligar strictPropertyInitialization às parameter properties do Módulo 08",
+    "Explicar por que o padrão (erro as Error).message usado até aqui existe por causa de useUnknownInCatchVariables",
+    "Perceber que a maioria destas flags só afeta o compilador, mas alwaysStrict também muda o JavaScript emitido"
+  ],
+  "sections": [
+    {
+      "heading": "noImplicitAny: o fim do any silencioso",
+      "body": [
+        "Desde o Módulo 01 que este curso passa por parâmetros, variáveis e retornos tipados sem nunca explicar o que aconteceria sem eles. A resposta é noImplicitAny: sempre que o compilador não consegue inferir um tipo sozinho e não há anotação nenhuma, em vez de assumir any em silêncio, é erro de compilação.",
+        "É a mais antiga das oito opções: já existia como flag independente antes de o --strict ser criado, e continua a ser a primeira coisa que a maioria dos projetos liga ao migrar de JavaScript para TypeScript.",
+        "Sem noImplicitAny, um parâmetro sem tipo fica com any por omissão: compila sempre, mas perde toda a verificação dentro da função — foi confirmado a correr o mesmo ficheiro com --noImplicitAny false, o compilador aceita o parâmetro sem tipo sem qualquer aviso."
+      ],
+      "code": "// @ts-expect-error - parâmetro sem tipo e sem valor por omissão: o TypeScript\n// não tem como inferir nada, noImplicitAny torna isto um erro em vez de any\nfunction dobro(x) {\n  return x * 2;\n}\n\nfunction dobroTipado(x: number): number {\n  return x * 2;\n}\nconsole.log(dobroTipado(4)); // 8",
+      "callout_kind": "NOTA",
+      "callout_text": "noImplicitAny só reage a tipos que o compilador não consegue inferir sozinho. Um parâmetro com valor por omissão (x = 0) já tem tipo inferido e não é apanhado por esta flag.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🚫",
+          "text": "Sem tipo inferível: erro, não any silencioso"
+        },
+        {
+          "icon": "🏛️",
+          "text": "A mais antiga das oito, já existia antes do --strict"
+        }
+      ]
+    },
+    {
+      "heading": "strictNullChecks: null e undefined deixam de ser universais",
+      "body": [
+        "Em JavaScript (e em TypeScript sem esta opção), null e undefined são valores válidos para qualquer tipo: uma variável string pode ser null sem o compilador se importar. strictNullChecks retira-os do domínio de todos os tipos, exceto do próprio any e de unknown.",
+        "A partir daqui, um valor que pode faltar tem de o dizer explicitamente no tipo (string | null, string | undefined), e o compilador obriga a tratar esse caso antes de usar o valor como se estivesse sempre presente — exatamente o narrowing praticado desde o Módulo 04.",
+        "Foi confirmado a compilar o mesmo código com --strictNullChecks false: atribuir null a uma variável declarada como string passa a compilar sem qualquer erro."
+      ],
+      "code": "// @ts-expect-error - null só é atribuível a string quando strictNullChecks está desligado\nlet nome: string = null;\n\n// com strictNullChecks, um valor que pode faltar tem de o dizer explicitamente no tipo\nfunction tamanho(texto: string | null): number {\n  if (texto === null) {\n    return 0;\n  }\n  return texto.length;\n}\nconsole.log(tamanho(\"ola\")); // 3\nconsole.log(tamanho(null)); // 0",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Sem strictNullChecks, quase todos os tipos escritos no curso até agora aceitariam null e undefined sem avisar. É esta flag que torna o narrowing contra null realmente obrigatório, não só uma boa prática.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🕳️",
+          "text": "null e undefined deixam de pertencer a todos os tipos"
+        },
+        {
+          "icon": "🔍",
+          "text": "É a base que torna o narrowing do Módulo 04 obrigatório"
+        }
+      ]
+    },
+    {
+      "heading": "strictFunctionTypes: contravariância, exceto em métodos",
+      "body": [
+        "Um tipo de função como (a: Animal) => void é mais permissivo do que (a: Cao) => void: o primeiro aceita qualquer Animal, o segundo só aceita Cao. strictFunctionTypes verifica os parâmetros de tipos de função por contravariância — uma função que só sabe lidar com Cao não pode substituir uma que promete lidar com qualquer Animal, porque podia ser chamada com um Gato.",
+        "Medido no compilador instalado: esta verificação mais rigorosa só se aplica a um tipo de função escrito como propriedade (processar: (a: Animal) => void). Escrito com sintaxe de método (processar(a: Animal): void), o mesmo membro continua bivariante — o compilador aceita a mesma substituição insegura, uma exceção histórica mantida por compatibilidade com padrões antigos de bibliotecas.",
+        "A insegurança da exceção bivariante não é teórica: no exemplo ao lado, chamar o método com um Animal que não é Cao não dá erro de compilação nenhum, só acede em runtime a uma propriedade (raca) que esse objeto não tem."
+      ],
+      "code": "class Animal {\n  nome: string = \"animal\";\n}\nclass Cao extends Animal {\n  raca: string = \"vira-lata\";\n}\n\n// propriedade cujo valor é um tipo de função: comparada por contravariância\ninterface ComPropriedade {\n  processar: (a: Animal) => void;\n}\n\n// mesma forma, mas escrita com sintaxe de método: comparada por bivariância,\n// uma exceção histórica mantida por compatibilidade com padrões antigos\ninterface ComMetodo {\n  processar(a: Animal): void;\n}\n\nconst processaCao = (c: Cao): void => {\n  console.log(c.raca);\n};\n\nconst viaPropriedade: ComPropriedade = {\n  // @ts-expect-error - contravariante: uma função que só aceita Cao não pode\n  // substituir uma que promete aceitar qualquer Animal\n  processar: processaCao,\n};\n\nconst viaMetodo: ComMetodo = {\n  // sintaxe de método: bivariante, o compilador aceita mesmo sendo inseguro\n  processar: processaCao,\n};\n\n// a insegurança fica visível em runtime: chamar com um Animal que não é Cao\n// não lança erro nenhum, só acede a uma propriedade que não existe\nviaMetodo.processar(new Animal()); // undefined",
+      "callout_kind": "ATENCAO",
+      "callout_text": "Comportamento confirmado no compilador: a mesma assinatura de função é verificada de forma diferente consoante a sintaxe. Um type alias ou uma propriedade usam contravariância estrita; um método de interface ou classe fica bivariante mesmo com strictFunctionTypes ligado.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🔽",
+          "text": "Parâmetros de função verificados por contravariância"
+        },
+        {
+          "icon": "⚖️",
+          "text": "Exceção medida: métodos continuam bivariantes"
+        }
+      ]
+    },
+    {
+      "heading": "strictBindCallApply: bind, call e apply deixam de ser cegos",
+      "body": [
+        "Sem esta opção, o tipo Function trata bind, call e apply de forma muito permissiva: aceitam praticamente quaisquer argumentos, porque o compilador não sabe qual é a assinatura da função concreta em causa.",
+        "Com strictBindCallApply, os três métodos passam a ser verificados contra a assinatura real da função a que pertencem: o número e o tipo dos argumentos de call e bind, e o array de argumentos de apply, têm de bater certo com os parâmetros declarados.",
+        "Foi confirmado a compilar o mesmo ficheiro com --strictBindCallApply false: as três chamadas com argumentos incompatíveis do exemplo passam a compilar sem qualquer erro."
+      ],
+      "code": "function saudar(nome: string, vezes: number): string {\n  return `${nome}, `.repeat(vezes);\n}\n\nconsole.log(saudar.call(null, \"Ana\", 2)); // Ana, Ana,\n\n// @ts-expect-error - o segundo argumento tem de ser number, não string\nsaudar.call(null, \"Ana\", \"duas\");\n\nconst saudarBruno = saudar.bind(null, \"Bruno\");\nconsole.log(saudarBruno(3)); // Bruno, Bruno, Bruno,\n\n// @ts-expect-error - bind também verifica os argumentos parciais contra a assinatura real\nsaudar.bind(null, 123);\n\nconsole.log(saudar.apply(null, [\"Carla\", 1])); // Carla,\n\n// @ts-expect-error - apply verifica que o array de argumentos bate certo com os parâmetros\nsaudar.apply(null, [\"Carla\", \"um\"]);",
+      "callout_kind": "DICA",
+      "callout_text": "bind devolve uma nova função já com os argumentos fixados tipados corretamente: saudarBruno só aceita o parâmetro vezes que sobrou por preencher.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🎯",
+          "text": "call, bind e apply verificados contra a assinatura real"
+        },
+        {
+          "icon": "🧩",
+          "text": "bind devolve uma função já tipada com o que sobra"
+        }
+      ]
+    },
+    {
+      "heading": "strictPropertyInitialization: todo o campo tem de nascer com valor",
+      "body": [
+        "Uma classe promete, no seu tipo, que cada campo tem o tipo declarado — nunca undefined, a não ser que o próprio tipo o inclua. strictPropertyInitialization verifica que essa promessa é cumprida: todo o campo tem de ser inicializado na própria declaração, atribuído no construtor, marcado com ! (definite assignment assertion) para prometer uma inicialização feita fora do construtor, ou tipado como opcional (campo?: tipo, que já inclui undefined).",
+        "É aqui que as parameter properties do Módulo 08 se encaixam: ao escrever o modificador diretamente no parâmetro do construtor (constructor(public total: number)), o campo é declarado e inicializado na própria assinatura, na mesma linha — nunca há como esquecer a inicialização, porque não existe um passo separado para esquecer.",
+        "Foi confirmado a compilar o mesmo ficheiro com --strictPropertyInitialization false: o campo referencia, declarado mas nunca inicializado, passa a compilar sem qualquer erro."
+      ],
+      "code": "class Encomenda {\n  // @ts-expect-error - campo declarado mas nunca inicializado, nem no campo nem no construtor\n  referencia: string;\n\n  // válido: inicializado na própria declaração\n  estado: string = \"pendente\";\n\n  // válido: inicializado no construtor\n  total: number;\n\n  // válido: definite assignment assertion (!) promete que será inicializado antes de usar\n  transportadora!: string;\n\n  // válido: opcional, undefined faz parte do tipo\n  notas?: string;\n\n  constructor(total: number) {\n    this.total = total;\n  }\n}\n\nconst e = new Encomenda(50);\nconsole.log(e.estado, e.total); // pendente 50\n\n// classe equivalente com parameter properties (Módulo 08): o campo é inicializado\n// na própria assinatura do construtor, por isso nunca há erro de inicialização\nclass EncomendaComParameterProperty {\n  constructor(\n    public total: number,\n    public estado: string = \"pendente\"\n  ) {}\n}\n\nconst e2 = new EncomendaComParameterProperty(75);\nconsole.log(e2.estado, e2.total); // pendente 75",
+      "callout_kind": "DICA",
+      "callout_text": "Um campo marcado com ! (definite assignment) desliga a verificação só para esse campo: usar com moderação, porque é uma promessa não verificada de que algo o inicializa antes da primeira leitura.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "🌱",
+          "text": "Todo o campo nasce com valor, ou promete tê-lo"
+        },
+        {
+          "icon": "🏗️",
+          "text": "Parameter properties (Módulo 08) resolvem isto de graça"
+        }
+      ]
+    },
+    {
+      "heading": "noImplicitThis: this também precisa de tipo",
+      "body": [
+        "Dentro de uma função solta (não um método de objeto literal, nem uma arrow function, nem um método de classe), o valor de this depende de como a função é chamada — pode ser o objeto à esquerda do ponto, undefined, ou outra coisa qualquer. Sem informação nenhuma, o compilador não tem como inferir o tipo de this.",
+        "noImplicitThis torna esse caso um erro em vez de assumir any. A correção passa por declarar this como o primeiro parâmetro da função, com o seu próprio tipo — um parâmetro especial que nunca é passado na chamada, só usado pelo compilador para verificar o corpo da função e as chamadas feitas a ela.",
+        "Repare-se que este exemplo é diferente de um método definido dentro de um objeto literal: aí o compilador já consegue inferir o tipo de this a partir do próprio objeto, sem precisar de anotação — noImplicitThis só reage quando não há nenhuma pista disponível."
+      ],
+      "code": "function obterValor() {\n  // @ts-expect-error - this não tem um tipo que o compilador consiga inferir aqui\n  return this.valor;\n}\n\n// com o parâmetro this explícito como primeiro parâmetro (nunca passado na chamada),\n// o compilador passa a verificar o acesso\nfunction obterValorTipado(this: { valor: number }) {\n  return this.valor;\n}\n\nconst contador = { valor: 10, obterValorTipado };\nconsole.log(contador.obterValorTipado()); // 10",
+      "callout_kind": "NOTA",
+      "callout_text": "O parâmetro this só existe em tempo de compilação: desaparece do JavaScript emitido e nunca é passado como argumento real numa chamada.",
+      "table_headers": [],
+      "table_rows": [],
+      "slide_bullets": [
+        {
+          "icon": "❓",
+          "text": "this sem pista nenhuma deixa de ser any silencioso"
+        },
+        {
+          "icon": "📌",
+          "text": "this: TipoDoObjeto como primeiro parâmetro tipa o acesso"
+        }
+      ]
+    },
+    {
+      "heading": "alwaysStrict e useUnknownInCatchVariables: duas flags que não são bem sobre tipos",
+      "body": [
+        "alwaysStrict obriga o compilador a tratar todo o código como já estando no modo estrito do próprio JavaScript, e a emitir a diretiva use strict nos ficheiros que a precisam. Medido no compilador instalado: num ficheiro com import ou export — o caso de praticamente todo o código real, e de todo o código deste curso desde a Aula 01 — o JavaScript já é sempre estrito por especificação do próprio ECMAScript, com ou sem alwaysStrict, e o compilador nunca emite use strict porque não é preciso. A flag só muda alguma coisa num ficheiro sem import nem export nenhum, tratado como script solto: aí, medido com --alwaysStrict false, a diretiva use strict desaparece do JavaScript gerado e o código volta a correr em modo não-estrito, onde por exemplo escrever numa propriedade só de leitura falha em silêncio em vez de lançar erro.",
+        "useUnknownInCatchVariables, desde o TypeScript 4.4, muda o tipo da variável de um catch de any para unknown. É o motivo, nunca explicado até agora, por que este curso escreve repetidamente (erro as Error).message dentro de um catch: como o tipo real de tudo o que pode ser lançado com throw não está garantido — pode não ser sequer um Error —, o compilador obriga a confirmar o tipo antes de aceder a qualquer propriedade, com uma asserção de tipo ou com narrowing (if (erro instanceof Error)).",
+        "Medido com --useUnknownInCatchVariables false: aceder diretamente a erro.message dentro do catch, sem qualquer confirmação de tipo, volta a compilar sem erro — exatamente o comportamento que o padrão usado no resto do curso evita."
+      ],
+      "code": "// alwaysStrict garante que o código corre sempre em modo estrito do próprio\n// JavaScript: escrever numa propriedade congelada lança TypeError em vez de\n// falhar em silêncio. Como este bloco (como qualquer ficheiro com import ou\n// export) já é um módulo ES, e módulos são sempre estritos por especificação,\n// o efeito prático aqui está garantido de qualquer forma - alwaysStrict\n// importa sobretudo em scripts sem import/export nenhum.\ninterface Config {\n  modo: string;\n}\nconst config: Config = Object.freeze({ modo: \"producao\" });\ntry {\n  (config as { modo: string }).modo = \"debug\";\n} catch (erro) {\n  console.log(\"erro:\", (erro as Error).message);\n}\nconsole.log(config.modo); // producao\n\n// useUnknownInCatchVariables (desde o TypeScript 4.4): a variável do catch\n// tem tipo unknown, não any - obriga a confirmar o tipo antes de a usar\nfunction processar(valor: number): number {\n  if (valor < 0) {\n    throw new Error(\"valor negativo\");\n  }\n  return valor * 2;\n}\n\ntry {\n  processar(-1);\n} catch (erroProcessamento) {\n  // @ts-expect-error - erroProcessamento é unknown, .message não existe em unknown\n  console.log(erroProcessamento.message);\n}\n\ntry {\n  processar(-1);\n} catch (erroProcessamento) {\n  // o padrão já usado em todo o curso desde aqui: asserção de tipo\n  console.log((erroProcessamento as Error).message); // valor negativo\n}",
+      "callout_kind": "ATENCAO",
+      "callout_text": "As oito opções do strict, resumidas.",
+      "table_headers": [
+        "Opção",
+        "O que faz",
+        "Desde"
+      ],
+      "table_rows": [
+        [
+          "noImplicitAny",
+          "Obriga a anotar parâmetros e variáveis sem tipo inferível, em vez de assumir any",
+          "Anterior ao --strict (2.3)"
+        ],
+        [
+          "strictNullChecks",
+          "Retira null e undefined do domínio de todos os tipos, salvo indicação explícita",
+          "TypeScript 2.0"
+        ],
+        [
+          "strictFunctionTypes",
+          "Verifica parâmetros de função por contravariância, exceto em métodos (bivariantes)",
+          "TypeScript 2.6"
+        ],
+        [
+          "strictBindCallApply",
+          "Tipa bind, call e apply contra a assinatura real da função",
+          "TypeScript 3.2"
+        ],
+        [
+          "strictPropertyInitialization",
+          "Exige que todo o campo de uma classe seja inicializado, tenha ! ou seja opcional",
+          "TypeScript 2.7"
+        ],
+        [
+          "noImplicitThis",
+          "Obriga a tipar this quando o compilador não o consegue inferir sozinho",
+          "TypeScript 2.0"
+        ],
+        [
+          "alwaysStrict",
+          "Trata o ficheiro como sempre estrito e emite use strict quando é preciso",
+          "TypeScript 2.3"
+        ],
+        [
+          "useUnknownInCatchVariables",
+          "Dá tipo unknown à variável de um catch, em vez de any",
+          "TypeScript 4.4"
+        ]
+      ],
+      "slide_bullets": [
+        {
+          "icon": "🔒",
+          "text": "alwaysStrict: redundante em módulos, decisivo em scripts soltos"
+        },
+        {
+          "icon": "🎣",
+          "text": "catch(erro): unknown explica o (erro as Error).message do curso"
+        }
+      ]
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Sem any implícito",
+      "difficulty": "Iniciante",
+      "statement": "Existe uma função somarPrecos que recebe um parâmetro precos sem tipo nenhum e devolve a soma de um array de valores, usando reduce. Escreva a versão corrigida, com o parâmetro tipado como number[] e o retorno tipado como number, de forma a compilar sob --strict.",
+      "hint": "noImplicitAny só rejeita parâmetros e variáveis sem tipo que o compilador não consiga inferir sozinho; basta anotar o parâmetro com o tipo do array.",
+      "solution_code": "function somarPrecos(precos: number[]): number {\n  return precos.reduce((total, preco) => total + preco, 0);\n}\n\nconsole.log(somarPrecos([10, 20, 30])); // 60",
+      "solution_explanation": "Com precos: number[], o compilador infere automaticamente os tipos de total e preco dentro do reduce, sem precisar de mais anotações. O retorno number confirma o que a função promete."
+    },
+    {
+      "title": "Três formas de inicializar um campo",
+      "difficulty": "Intermedio",
+      "statement": "Crie uma classe Utilizador com quatro campos: id (number, atribuído no construtor), nome (string, com valor por omissão \"anónimo\" na própria declaração), sessaoAtual (string, só preenchida mais tarde por um método iniciarSessao, nunca no construtor) e apelido (string opcional, pode nunca ser definido). A classe tem de compilar sob strictPropertyInitialization.",
+      "hint": "Cada campo pede uma técnica diferente: inicializador na declaração, atribuição no construtor, ! de definite assignment para o que só é preenchido depois, ou ? de opcional — todas válidas para strictPropertyInitialization, cada uma promete algo diferente ao compilador.",
+      "solution_code": "class Utilizador {\n  id: number;\n  nome: string = \"anónimo\";\n  sessaoAtual!: string;\n  apelido?: string;\n\n  constructor(id: number) {\n    this.id = id;\n  }\n\n  iniciarSessao(token: string): void {\n    this.sessaoAtual = token;\n  }\n}\n\nconst u = new Utilizador(1);\nu.iniciarSessao(\"abc123\");\nconsole.log(u.id, u.nome, u.sessaoAtual); // 1 anónimo abc123",
+      "solution_explanation": "id é atribuído no construtor, nome tem valor por omissão na declaração, sessaoAtual usa ! porque só iniciarSessao o preenche, e apelido é opcional. As quatro técnicas satisfazem strictPropertyInitialization de formas diferentes."
+    },
+    {
+      "title": "Contravariância na prática",
+      "difficulty": "Avancado",
+      "statement": "Defina uma classe Forma (com campo tipo: string) e uma subclasse Circulo (que acrescenta raio: number). Defina duas interfaces com um membro processar que recebe uma Forma e não devolve nada: ProcessadorPropriedade (processar como propriedade de tipo função) e ProcessadorMetodo (processar como método). Escreva uma função que só aceita Circulo como parâmetro e tente atribuí-la a um objeto de cada interface, confirmando com @ts-expect-error qual das duas o compilador rejeita.",
+      "hint": "Só a versão com sintaxe de propriedade é verificada por contravariância; a versão com sintaxe de método é a exceção bivariante medida nesta aula.",
+      "solution_code": "class Forma {\n  tipo: string = \"forma\";\n}\nclass Circulo extends Forma {\n  raio: number = 1;\n}\n\ninterface ProcessadorPropriedade {\n  processar: (f: Forma) => void;\n}\ninterface ProcessadorMetodo {\n  processar(f: Forma): void;\n}\n\nconst processaCirculo = (c: Circulo): void => {\n  console.log(c.raio);\n};\n\nconst p1: ProcessadorPropriedade = {\n  // @ts-expect-error - contravariante: só aceita Circulo, não serve para qualquer Forma\n  processar: processaCirculo,\n};\n\nconst p2: ProcessadorMetodo = {\n  // sintaxe de método: exceção bivariante, o compilador aceita\n  processar: processaCirculo,\n};\n\nconsole.log(typeof p2.processar); // function",
+      "solution_explanation": "processaCirculo só sabe lidar com Circulo, por isso não pode substituir um processar que promete aceitar qualquer Forma. Em ProcessadorPropriedade isso é rejeitado (contravariância); em ProcessadorMetodo, a mesma atribuição é aceite pela exceção bivariante da sintaxe de método."
+    },
+    {
+      "title": "Erro tipado, chamada tipada",
+      "difficulty": "Avancado",
+      "statement": "Escreva uma função validarIdade(idade: number): void que lança um Error se idade for negativa e, caso contrário, apenas regista a idade. Chame-a dentro de um try/catch usando call para a invocar com um valor numérico inválido (idade negativa), tratando a variável do catch como unknown e confirmando o tipo com instanceof Error antes de aceder a .message. De seguida, force com @ts-expect-error uma chamada a essa mesma função via call com um argumento do tipo errado.",
+      "hint": "call verifica os argumentos contra a assinatura real da função graças a strictBindCallApply; o catch obriga a confirmar o tipo por causa de useUnknownInCatchVariables, mesmo que o erro tenha sido lançado com throw new Error(...).",
+      "solution_code": "function validarIdade(idade: number): void {\n  if (idade < 0) {\n    throw new Error(\"idade não pode ser negativa\");\n  }\n  console.log(`idade válida: ${idade}`);\n}\n\ntry {\n  validarIdade.call(null, -5);\n} catch (erro) {\n  if (erro instanceof Error) {\n    console.log(\"erro:\", erro.message); // erro: idade não pode ser negativa\n  }\n}\n\n// @ts-expect-error - call verifica o tipo do argumento contra a assinatura real\nvalidarIdade.call(null, \"vinte\");",
+      "solution_explanation": "validarIdade.call(null, -5) lança um Error apanhado no catch, onde instanceof Error confirma o tipo antes de ler .message. A última chamada, com uma string em vez de number, só é aceite pelo compilador com @ts-expect-error — é exatamente o que strictBindCallApply passou a verificar."
+    }
+  ],
+  "summary": [
+    "O --strict deste curso sempre foi a soma de oito opções independentes: noImplicitAny, strictNullChecks, strictFunctionTypes, strictBindCallApply, strictPropertyInitialization, noImplicitThis, alwaysStrict e useUnknownInCatchVariables",
+    "noImplicitAny e strictNullChecks cobrem o essencial: tipos que faltam (any silencioso) e valores que faltam (null/undefined fora de qualquer tipo)",
+    "strictFunctionTypes verifica parâmetros de função por contravariância, mas métodos de classe e de interface ficam bivariantes por uma exceção histórica, medida nesta aula",
+    "strictPropertyInitialization obriga todo o campo de uma classe a nascer com valor; as parameter properties do Módulo 08 resolvem isto ao inicializar o campo na própria assinatura do construtor",
+    "alwaysStrict só muda alguma coisa em ficheiros sem import/export: um módulo ES já é sempre estrito por especificação, com ou sem a flag",
+    "useUnknownInCatchVariables (TypeScript 4.4) é o motivo por trás do (erro as Error).message usado em todo o curso: a variável de um catch tem tipo unknown, não any"
+  ],
+  "summary_label": "Resumo da Aula",
+  "closing_message": "Vamos continuar para a Aula 04",
+  "next_label": "Aula 04 → Declaration Files (.d.ts) e @types"
+}
