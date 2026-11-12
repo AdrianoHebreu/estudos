@@ -14,10 +14,11 @@ Isto **não é uma aplicação**: não há nada para instalar nem executar na ra
 | [`graphQL_studies`](graphQL_studies) | GraphQL, do primeiro pedido à produção (schema, resolvers, Apollo, paginação, erros, autorização, desempenho), com um servidor de estudo em Node | 00 a 14 | Markdown |
 | [`javascript_studies`](javascript_studies) | JavaScript de A a Z: linguagem, assincronismo, módulos, DOM, Proxy/Reflect, padrões de projeto e projeto final | 00 a 16 (65 aulas) | JSON |
 | [`python_studies`](python_studies) | Python de A a Z: fundamentos, estruturas de dados, POO, testes, Python idiomático, biblioteca padrão e quatro projetos por área | 00 a 14 | Markdown |
+| [`solution_architect_studies`](solution_architect_studies) | Solution Architect: requisitos, estilos de arquitetura, modelação, dados e integração, cloud, segurança, operação, DevOps, custos, migração e comunicação; preparação para o Azure AZ-305 com equivalências AWS | 00 a 17 | Markdown |
 | [`supabase_studies`](supabase_studies) | Supabase: Postgres, autenticação, Row Level Security, API, Storage, Realtime, Edge Functions e CLI | 00 a 13 | Markdown |
 | [`typescript_studies`](typescript_studies) | TypeScript de A a Z, do sistema de tipos aos genéricos e à migração de projetos reais | 00 a 14 (53 aulas) | JSON |
 
-**Ordem sugerida:** os cursos são cumulativos em alguns pontos. O de TypeScript assume que já fizeste o de JavaScript e não volta a ensinar a linguagem base. O de Python, o de GraphQL e o de Supabase são independentes. O de Git e o de Claude Code/Codex servem de apoio a qualquer um dos outros.
+**Ordem sugerida:** os cursos são cumulativos em alguns pontos. O de TypeScript assume que já fizeste o de JavaScript e não volta a ensinar a linguagem base. O de Python, o de GraphQL e o de Supabase são independentes. O de Solution Architect é para quem passa de developer a arquiteto e assume experiência de desenvolvimento em qualquer linguagem. O de Git e o de Claude Code/Codex servem de apoio a qualquer um dos outros.
 
 ## Como cada curso está organizado
 
@@ -42,7 +43,7 @@ Os `.docx` e `.pptx` **não se editam à mão**: são produzidos por scripts Pyt
 
 | Cursos | Onde está o conteúdo | Gerador |
 |---|---|---|
-| `graphQL_studies`, `supabase_studies`, `codex_studies`, `python_studies` | Um `.md` ao lado do `.docx`/`.pptx`, em cada pasta de módulo | `tools/build_course_artifacts.py` |
+| `graphQL_studies`, `supabase_studies`, `codex_studies`, `python_studies`, `solution_architect_studies` | Um `.md` ao lado do `.docx`/`.pptx`, em cada pasta de módulo | `tools/build_course_artifacts.py` |
 | `javascript_studies`, `typescript_studies` | JSON em `content-source/<módulo>/` | `tools/build_lesson.py` |
 | `claude_code_studies`, `git_studies` | Não há fonte guardada: só existem os documentos | n/a |
 
@@ -76,9 +77,9 @@ Se um `.docx` estiver aberto no Word, essa geração falha nesse ficheiro (está
 ## Ficheiros de apoio ao trabalho
 
 - [`CLAUDE.md`](CLAUDE.md): instruções para o Claude Code ao trabalhar neste repositório (estrutura, comandos e regras).
-- `ESTADO-DO-PROJETO.md` (em `graphQL_studies`, `python_studies`, `supabase_studies` e `typescript_studies`): ficheiro de passagem de testemunho de cada curso, com o plano por etapas, os comandos exatos e os erros já cometidos.
+- `ESTADO-DO-PROJETO.md` (em `graphQL_studies`, `python_studies`, `solution_architect_studies`, `supabase_studies` e `typescript_studies`): ficheiro de passagem de testemunho de cada curso, com o plano por etapas, os comandos exatos e os erros já cometidos.
 - [`.gitignore`](.gitignore): exclui `node_modules`, `__pycache__`, ambientes virtuais, ficheiros temporários do Office e as imagens de QA do Codex (`codex_studies/.qa/rendered/`).
 
 ## Estado
 
-Os oito cursos estão completos. O de Python é o mais recente e inclui o módulo 14 de projetos por área.
+Os nove cursos estão completos. O de Solution Architect é o mais recente: 18 módulos, com caso fio condutor e projeto final.
