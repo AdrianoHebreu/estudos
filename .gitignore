@@ -26,3 +26,6 @@ codex_studies/.qa/rendered/
 Thumbs.db
 .vscode/
 .idea/
+
+# Rascunhos de trabalho dos cursos (apagados antes de gerar os Office)
+_rascunho/

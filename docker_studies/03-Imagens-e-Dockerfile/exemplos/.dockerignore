@@ -1,0 +1,8 @@
+# Nada disto precisa de entrar na imagem
+.git
+.venv
+__pycache__/
+*.pyc
+.env
+Dockerfile*
+.dockerignore

@@ -1,0 +1,26 @@
+# MongoDB 8 para estudo: um servidor, dados num volume nomeado.
+# Arranque:  MONGO_PORT=31010 docker compose -p est-mg01 up -d --wait
+# (no PowerShell:  $env:MONGO_PORT=31010; docker compose -p est-mg01 up -d --wait)
+services:
+  mongo:
+    image: mongo:8
+    ports:
+      # só o teu computador consegue ligar-se (127.0.0.1)
+      - "127.0.0.1:${MONGO_PORT:-27017}:27017"
+    volumes:
+      # volume nomeado: sobrevive a "docker compose down"
+      - dados:/data/db
+      # a imagem também declara /data/configdb como volume; nomeá-lo evita um volume anónimo
+      - config:/data/configdb
+      # ficheiros JSON da loja, só de leitura, para o mongoimport
+      - ./loja_json:/dados-loja:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval \"db.adminCommand('ping').ok\" | grep -q 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+volumes:
+  dados:
+  config:

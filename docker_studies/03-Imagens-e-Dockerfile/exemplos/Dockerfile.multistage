@@ -1,0 +1,14 @@
+# Fase 1: "builder" instala as dependências (aqui poderias ter compiladores)
+FROM python:3.13 AS builder
+WORKDIR /build
+COPY requirements.txt .
+RUN pip install --no-cache-dir --prefix=/instalado -r requirements.txt
+
+# Fase 2: imagem final, só com o necessário
+FROM python:3.13-slim
+WORKDIR /app
+COPY --from=builder /instalado /usr/local
+COPY app.py .
+ENV PORT=8000
+USER nobody
+CMD ["python", "app.py"]

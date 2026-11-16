@@ -1,0 +1,6 @@
+FROM python:3.13-slim
+WORKDIR /app
+COPY app.py .
+ENV PORT=8000
+# Forma shell: o Docker executa  /bin/sh -c "python app.py && echo terminou"
+CMD python app.py && echo terminou

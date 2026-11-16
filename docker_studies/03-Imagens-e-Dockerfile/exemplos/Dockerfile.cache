@@ -1,0 +1,8 @@
+FROM python:3.13-slim
+WORKDIR /app
+# 1) O que muda raramente (dependências) vem primeiro
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+# 2) O que muda muitas vezes (o teu código) vem por último
+COPY app.py .
+CMD ["python", "app.py"]

@@ -1,0 +1,5 @@
+# Cria a pasta de dados com o dono certo ANTES de ela ser montada
+FROM est-dk06-tarefas:1.0
+USER root
+RUN mkdir /dados && chown app:app /dados
+USER app

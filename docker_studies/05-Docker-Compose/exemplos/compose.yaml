@@ -1,0 +1,55 @@
+# Serviço de tarefas + PostgreSQL 17. Projeto: docker compose -p est-dk05 ...
+services:
+  api:
+    build: .
+    image: est-dk05-tarefas:1.0
+    ports:
+      - "${API_PORT:-30050}:8000"
+    env_file:
+      - app.env
+    environment:
+      PORT: "8000"
+      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend
+
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?define POSTGRES_PASSWORD no ficheiro .env}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - dados:/var/lib/postgresql/data
+    healthcheck:
+      # -h 127.0.0.1 força TCP: durante a inicialização o servidor temporário só aceita o socket Unix
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    networks:
+      - backend
+
+  psql:
+    image: postgres:17
+    profiles: ["ferramentas"]
+    entrypoint: ["psql", "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}"]
+    volumes:
+      # a imagem declara VOLUME em /var/lib/postgresql/data: o tmpfs evita um volume anónimo
+      - type: tmpfs
+        target: /var/lib/postgresql/data
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend
+
+volumes:
+  dados:
+
+networks:
+  backend:

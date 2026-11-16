@@ -1,0 +1,15 @@
+# Lido automaticamente a seguir ao compose.yaml (desenvolvimento).
+services:
+  api:
+    environment:
+      MENSAGEM: "override de desenvolvimento"
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./app.py
+          target: /app/app.py
+        - action: rebuild
+          path: ./requirements.txt
+  db:
+    ports:
+      - "127.0.0.1:30051:5432"

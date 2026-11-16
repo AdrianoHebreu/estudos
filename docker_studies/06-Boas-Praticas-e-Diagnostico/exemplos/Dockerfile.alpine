@@ -1,0 +1,7 @@
+FROM python:3.13-alpine
+RUN addgroup -S -g 10001 app && adduser -S -u 10001 -G app -H app
+WORKDIR /app
+COPY --chown=app:app app.py .
+ENV PORT=8000
+USER app
+CMD ["python", "app.py"]

@@ -1,0 +1,72 @@
+[
+  {
+    "id": 1,
+    "nome": "Romance Policial",
+    "categoria_id": 1,
+    "preco": 12.9,
+    "stock": 40
+  },
+  {
+    "id": 2,
+    "nome": "Livro de Receitas",
+    "categoria_id": 1,
+    "preco": 18.5,
+    "stock": 25
+  },
+  {
+    "id": 3,
+    "nome": "Atlas Mundial",
+    "categoria_id": 1,
+    "preco": 29.99,
+    "stock": 10
+  },
+  {
+    "id": 4,
+    "nome": "Auscultadores Bluetooth",
+    "categoria_id": 2,
+    "preco": 49.9,
+    "stock": 30
+  },
+  {
+    "id": 5,
+    "nome": "Carregador USB-C",
+    "categoria_id": 2,
+    "preco": 14.9,
+    "stock": 100
+  },
+  {
+    "id": 6,
+    "nome": "Teclado Mecânico",
+    "categoria_id": 2,
+    "preco": 79.0,
+    "stock": 0
+  },
+  {
+    "id": 7,
+    "nome": "Candeeiro de Mesa",
+    "categoria_id": 3,
+    "preco": 22.0,
+    "stock": 15
+  },
+  {
+    "id": 8,
+    "nome": "Conjunto de Panelas",
+    "categoria_id": 3,
+    "preco": 89.9,
+    "stock": 8
+  },
+  {
+    "id": 9,
+    "nome": "Manta de Sofá",
+    "categoria_id": 3,
+    "preco": 34.5,
+    "stock": 20
+  },
+  {
+    "id": 10,
+    "nome": "Caneca de Cerâmica",
+    "categoria_id": 3,
+    "preco": 6.5,
+    "stock": 200
+  }
+]

@@ -1,0 +1,9 @@
+# Uso explícito: docker compose -f compose.yaml -f compose.prod.yaml up -d
+# (com -f, o compose.override.yaml NÃO é lido)
+services:
+  api:
+    restart: unless-stopped
+    environment:
+      MENSAGEM: "produção"
+  db:
+    restart: unless-stopped

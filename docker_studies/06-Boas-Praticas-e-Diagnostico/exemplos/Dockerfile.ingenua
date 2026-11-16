@@ -1,0 +1,7 @@
+# Versão ingénua: o que NÃO fazer (tag solta, root, segredo em ENV)
+FROM python:3.13-slim
+WORKDIR /app
+COPY . .
+ENV PORT=8000
+ENV API_TOKEN=valor-ficticio-so-para-estudo
+CMD ["python", "app.py"]

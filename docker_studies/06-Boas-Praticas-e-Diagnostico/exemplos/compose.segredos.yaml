@@ -1,0 +1,29 @@
+name: est-dk06
+services:
+  tarefas:
+    image: est-dk06-tarefas:1.0
+    ports:
+      - "127.0.0.1:30061:8000"
+    secrets:
+      - api_token
+    environment:
+      # Só o CAMINHO do segredo vai para o ambiente, nunca o valor
+      API_TOKEN_FILE: /run/secrets/api_token
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 128m
+    cpus: 0.5
+    pids_limit: 100
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "3"
+secrets:
+  api_token:
+    file: ./segredos/api_token.txt

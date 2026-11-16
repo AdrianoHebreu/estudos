@@ -1,0 +1,46 @@
+# MongoDB 8 com autenticação ligada (um nó, sem replica set).
+# Arranque (as palavras-passe vêm do teu terminal, não ficam neste ficheiro):
+#   export MONGO_ROOT_PASSWORD='...' MONGO_LEITOR_PASSWORD='...' MONGO_APP_PASSWORD='...'
+#   docker compose -p est-mg07 -f compose-auth.yml up -d
+# Limpeza:   docker compose -p est-mg07 -f compose-auth.yml down -v
+services:
+  mongo:
+    image: mongo:8
+    container_name: est-mg07-auth
+    ports:
+      - "127.0.0.1:31070:27017"
+    environment:
+      # a imagem lê o conteúdo destes ficheiros (variáveis terminadas em _FILE)
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD_FILE: /run/secrets/root_password
+    secrets:
+      - root_password
+      - app_password
+      - leitor_password
+    volumes:
+      - dados-auth:/data/db
+      # corre só na primeira inicialização (quando /data/db está vazio)
+      - ./01_criar_utilizadores.js:/docker-entrypoint-initdb.d/01_criar_utilizadores.js:ro
+      # os scripts deste módulo, para os correres com mongosh dentro do contentor
+      - ./:/exemplos:ro
+      # onde guardamos as cópias de segurança (volume nomeado)
+      - copias:/copias
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval \"db.adminCommand('ping').ok\" | grep -q 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+secrets:
+  # cada segredo vem de uma variável de ambiente do teu terminal
+  root_password:
+    environment: MONGO_ROOT_PASSWORD
+  app_password:
+    environment: MONGO_APP_PASSWORD
+  leitor_password:
+    environment: MONGO_LEITOR_PASSWORD
+
+volumes:
+  dados-auth:
+  copias:

@@ -1,0 +1,74 @@
+[
+  {
+    "id": 1,
+    "nome": "Ana Ribeiro",
+    "email": "ana.ribeiro@exemplo.pt",
+    "cidade": "Lisboa",
+    "data_registo": {
+      "$date": "2024-01-15T00:00:00Z"
+    }
+  },
+  {
+    "id": 2,
+    "nome": "Bruno Costa",
+    "email": "bruno.costa@exemplo.pt",
+    "cidade": "Porto",
+    "data_registo": {
+      "$date": "2024-02-03T00:00:00Z"
+    }
+  },
+  {
+    "id": 3,
+    "nome": "Carla Mendes",
+    "email": "carla.mendes@exemplo.pt",
+    "cidade": "Braga",
+    "data_registo": {
+      "$date": "2024-03-21T00:00:00Z"
+    }
+  },
+  {
+    "id": 4,
+    "nome": "Diogo Pires",
+    "email": "diogo.pires@exemplo.pt",
+    "cidade": "Lisboa",
+    "data_registo": {
+      "$date": "2024-05-09T00:00:00Z"
+    }
+  },
+  {
+    "id": 5,
+    "nome": "Eva Martins",
+    "email": "eva.martins@exemplo.pt",
+    "cidade": "Coimbra",
+    "data_registo": {
+      "$date": "2024-06-30T00:00:00Z"
+    }
+  },
+  {
+    "id": 6,
+    "nome": "Filipe Lopes",
+    "email": "filipe.lopes@exemplo.pt",
+    "cidade": "Porto",
+    "data_registo": {
+      "$date": "2024-08-12T00:00:00Z"
+    }
+  },
+  {
+    "id": 7,
+    "nome": "Graça Nunes",
+    "email": "graca.nunes@exemplo.pt",
+    "cidade": "Faro",
+    "data_registo": {
+      "$date": "2024-10-01T00:00:00Z"
+    }
+  },
+  {
+    "id": 8,
+    "nome": "Hugo Teixeira",
+    "email": null,
+    "cidade": "Lisboa",
+    "data_registo": {
+      "$date": "2024-11-20T00:00:00Z"
+    }
+  }
+]

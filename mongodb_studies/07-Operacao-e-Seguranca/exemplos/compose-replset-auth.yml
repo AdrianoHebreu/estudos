@@ -1,0 +1,71 @@
+# Replica set de 3 nós com autenticação (MongoDB 8, imagem mongo:8).
+# Com autenticação ligada, os membros autenticam-se uns aos outros com um keyFile.
+# Preparação (o keyFile e as palavras-passe ficam fora deste ficheiro e fora do Git):
+#   export KEYFILE_PATH="$HOME/segredos/est-mg07.key"
+#   mkdir -p "$(dirname "$KEYFILE_PATH")" && openssl rand -base64 756 > "$KEYFILE_PATH"
+#   export MONGO_ROOT_PASSWORD='...'
+# Arranque:  docker compose -p est-mg07 -f compose-replset-auth.yml up -d
+# Limpeza:   docker compose -p est-mg07 -f compose-replset-auth.yml down -v
+x-mongo: &mongo
+  image: mongo:8
+  # O mongod exige que o keyFile pertença ao utilizador mongodb e tenha permissões 400:
+  # copiamos o segredo montado para /tmp e ajustamos, antes de entregar ao entrypoint da imagem.
+  entrypoint:
+    - bash
+    - -c
+    - >-
+      cp /run/secrets/keyfile /tmp/keyfile && chown mongodb:mongodb /tmp/keyfile && chmod 400 /tmp/keyfile &&
+      exec docker-entrypoint.sh mongod --replSet rs0 --keyFile /tmp/keyfile --bind_ip_all --wiredTigerCacheSizeGB 0.25
+  secrets:
+    - keyfile
+  healthcheck:
+    test: ["CMD-SHELL", "mongosh --quiet --eval \"db.adminCommand('ping').ok\" | grep -q 1"]
+    interval: 5s
+    timeout: 5s
+    retries: 12
+    start_period: 10s
+
+services:
+  mongo1:
+    <<: *mongo
+    container_name: est-mg07-mongo1
+    ports: ["127.0.0.1:31071:27017"]
+    environment:
+      # o utilizador root é criado só no primeiro nó; os outros copiam-no na sincronização inicial
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+    volumes: ["dados1:/data/db"]
+  mongo2:
+    <<: *mongo
+    container_name: est-mg07-mongo2
+    ports: ["127.0.0.1:31072:27017"]
+    volumes: ["dados2:/data/db"]
+  mongo3:
+    <<: *mongo
+    container_name: est-mg07-mongo3
+    ports: ["127.0.0.1:31073:27017"]
+    volumes: ["dados3:/data/db"]
+
+  # Contentor de uma só execução: junta os três nós no replica set e termina.
+  iniciar:
+    image: mongo:8
+    container_name: est-mg07-iniciar
+    restart: "no"
+    depends_on:
+      mongo1: { condition: service_healthy }
+      mongo2: { condition: service_healthy }
+      mongo3: { condition: service_healthy }
+    environment:
+      MONGO_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+    volumes:
+      - ./04_iniciar_replica_set.js:/iniciar.js:ro
+    entrypoint: ["bash", "-c", "mongosh --quiet \"mongodb://admin:$$MONGO_ROOT_PASSWORD@mongo1:27017/?authSource=admin\" /iniciar.js"]
+
+secrets:
+  keyfile:
+    file: ${KEYFILE_PATH}
+
+volumes:
+  dados1:
+  dados2:
+  dados3:
