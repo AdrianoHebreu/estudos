@@ -1,0 +1,5 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. OLA-COL7.
+       PROCEDURE DIVISION.
+      DISPLAY "Ola, mundo!".
+           STOP RUN.

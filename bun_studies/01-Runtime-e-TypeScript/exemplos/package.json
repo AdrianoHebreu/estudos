@@ -1,0 +1,16 @@
+{
+    "name": "exemplos-modulo-01",
+    "private": true,
+    "imports": {
+        "#preco": "./src/lib/preco.ts"
+    },
+    "scripts": {
+        "ola": "bun run 01-ola.ts",
+        "ola:args": "bun run 09-argv.ts Livros 5",
+        "sem-args": "bun run 09-argv.ts",
+        "predobro": "echo [pre] a preparar",
+        "dobro": "echo [dobro] a executar",
+        "postdobro": "echo [post] a limpar",
+        "ambiente": "echo NODE_ENV=$NODE_ENV e npm_lifecycle_event=$npm_lifecycle_event"
+    }
+}

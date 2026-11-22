@@ -1,0 +1,6 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. ERRO-RODAPE.
+       PROCEDURE DIVISION.
+       PRINCIPAL.
+           DISPLAY "ola".
+           STOP RUN

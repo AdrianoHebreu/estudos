@@ -1,0 +1,14 @@
+# Só opções específicas do Bun; o resto vive no package.json e no tsconfig.json.
+preload = ["./preload.ts"]
+
+[define]
+"process.env.LOJA_VERSAO" = "'2026.1'"
+
+[loader]
+".tpl" = "text"
+
+[console]
+depth = 4
+
+[env]
+file = false

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>API da loja - documentação</title>
+    <!-- versão fixa + SRI: o browser recusa o ficheiro se o conteúdo mudar -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.35.1/swagger-ui.css"
+      integrity="sha384-WlYgdmXYOOBWL5apwjDEZwN+U3HmXSSu5R6V5aGxEcf7z+KuRNwBhoxKVN1i3D5I"
+      crossorigin="anonymous"
+    />
+  </head>
+  <body>
+    <div id="swagger-ui"></div>
+    <script
+      src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.35.1/swagger-ui-bundle.js"
+      integrity="sha384-J5eKRXKO1KzUTPkO0GRmGH2WEYUg6SSZlufilxvTwI6nmhLumjNWFMby3QQnyobZ"
+      crossorigin="anonymous"
+    ></script>
+    <script>
+      window.ui = SwaggerUIBundle({ url: "/openapi.json", dom_id: "#swagger-ui" });
+    </script>
+  </body>
+</html>

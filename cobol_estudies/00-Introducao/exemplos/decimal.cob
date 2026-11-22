@@ -1,0 +1,11 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. DECIMAL.
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+       01  A      PIC 9V99 VALUE 0.10.
+       01  B      PIC 9V99 VALUE 0.20.
+       01  SOMA   PIC 9V99.
+       PROCEDURE DIVISION.
+           ADD A B GIVING SOMA.
+           DISPLAY A " + " B " = " SOMA.
+           STOP RUN.

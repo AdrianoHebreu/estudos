@@ -1,0 +1,10 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. ERRO-COL73.
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+       01  WS-NOME                PIC X(20)  VALUE "Ana Ribeiro".
+       PROCEDURE DIVISION.
+       PRINCIPAL.
+           DISPLAY WS-NOME
+                                                                    EXTRAFORA.
+           STOP RUN.

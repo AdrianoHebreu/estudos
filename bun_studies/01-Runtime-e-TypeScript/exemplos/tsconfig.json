@@ -1,0 +1,11 @@
+{
+    "compilerOptions": {
+        "jsx": "react",
+        "jsxFactory": "h",
+        "jsxFragmentFactory": "Fragment",
+        "paths": {
+            "@loja/*": ["./src/lib/*"],
+            "@dados": ["./src/catalogo/index.ts"]
+        }
+    }
+}

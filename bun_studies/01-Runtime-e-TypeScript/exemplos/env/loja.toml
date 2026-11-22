@@ -1,0 +1,18 @@
+# Configuração da loja que não é segredo: vai para o repositório.
+nome = "Loja Estudo"
+
+[envio]
+gratis_acima_de = 50
+custo = 3.9
+
+[[categorias]]
+id = 1
+nome = "Livros"
+
+[[categorias]]
+id = 2
+nome = "Eletrónica"
+
+[[categorias]]
+id = 3
+nome = "Casa"

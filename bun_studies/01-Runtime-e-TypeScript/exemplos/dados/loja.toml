@@ -1,0 +1,16 @@
+# Configuração da loja
+nome = "Loja Estudo"
+moeda = "EUR"
+iva = 0.23
+
+[envio]
+gratis_acima_de = 50
+transportadoras = ["CTT", "DPD"]
+
+[[horario]]
+dia = "seg-sex"
+abre = "09:00"
+
+[[horario]]
+dia = "sab"
+abre = "10:00"

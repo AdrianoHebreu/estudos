@@ -1,0 +1,3 @@
+# Correr DENTRO desta pasta: bun test ./uso.ts
+[test]
+preload = ["./preload.ts"]

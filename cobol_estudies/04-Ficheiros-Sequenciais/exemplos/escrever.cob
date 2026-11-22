@@ -1,0 +1,19 @@
+      *> ESCREVER.COB - WRITE em LINE SEQUENTIAL e espacos finais
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. ESCREVER.
+       ENVIRONMENT DIVISION.
+       INPUT-OUTPUT SECTION.
+       FILE-CONTROL.
+           SELECT F-SAIDA ASSIGN TO "saida.dat"
+               ORGANIZATION IS LINE SEQUENTIAL.
+       DATA DIVISION.
+       FILE SECTION.
+       FD  F-SAIDA.
+       01  REG-SAIDA               PIC X(17).
+       PROCEDURE DIVISION.
+       PRINCIPAL.
+           OPEN OUTPUT F-SAIDA
+           MOVE "01Livros" TO REG-SAIDA
+           WRITE REG-SAIDA
+           CLOSE F-SAIDA
+           STOP RUN.

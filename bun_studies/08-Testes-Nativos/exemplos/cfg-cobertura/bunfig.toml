@@ -1,0 +1,8 @@
+# Correr DENTRO desta pasta: bun test ../09-servidor.test.ts   (o bunfig.toml lê-se a partir da pasta atual)
+[test]
+coverage = true
+coverageReporter = ["text", "lcov"]
+coverageDir = "saida"
+coverageSkipTestFiles = true
+# o limite aplica-se a CADA ficheiro (1.4.0), não ao total
+coverageThreshold = { lines = 0.85, functions = 0.85 }
