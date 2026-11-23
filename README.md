@@ -92,4 +92,4 @@ Se um `.docx` estiver aberto no Word, essa geração falha nesse ficheiro (está
 
 ## Estado
 
-Os quinze cursos estão completos. O mais recente é o de SAP Integration Suite, com laboratórios guiados no SAP e exemplos verificados localmente.
+Os quinze cursos estão completos. O mais recente é o de SAP Integration Suite, baseado na documentação oficial da SAP, com laboratórios guiados que ainda falta validar no tenant.

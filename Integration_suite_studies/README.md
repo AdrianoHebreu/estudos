@@ -65,3 +65,7 @@ Edita as aulas Markdown na pasta de cada módulo. O gerador é o mesmo usado em 
     python tools/build_course_artifacts.py --only 02,12
 
 Consulta também o [estado do projeto](ESTADO-DO-PROJETO.md).
+
+## Fonte e licença
+
+O conteúdo dos módulos 00 e 02 a 12 resume a documentação oficial da SAP, em português e com exemplos próprios. Texto-base: [SAP-docs/btp-integration-suite](https://github.com/SAP-docs/btp-integration-suite) (CC-BY 4.0). Cada secção indica se é Documentado, Observado ou Por testar.

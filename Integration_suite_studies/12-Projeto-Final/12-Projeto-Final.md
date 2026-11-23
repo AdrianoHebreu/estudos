@@ -1,8 +1,26 @@
 # Projeto final da Casa Nova Distribuição
 
-Constrói uma integração de encomendas entre um portal, o SAP Integration Suite e um ERP simulado. A encomenda é confirmada pelo serviço que a regista. Uma notificação de stock pode seguir em separado para Azure. Vais entregar o desenho, uma prova do percurso local e, quando tiveres acesso, a prova de execução no tenant.
+Constrói uma integração de encomendas entre um portal, o SAP Integration Suite e um ERP simulado. A encomenda é confirmada pelo serviço que a regista. Uma notificação de stock pode seguir em separado para Azure. Vais entregar o desenho, uma prova do percurso local e, quando tiveres acesso, a prova de execução no tenant. O projeto junta o que aprendeste nos módulos 01 a 11.
 
-## Contrato e responsabilidades
+**NOTA:** o simulador local (Bun, porta 8765) e os casos de teste vêm do curso. As partes no tenant são «por testar»: confirma-as no teu ecrã e marca na grelha o que foi demonstrado, o que ficou desenhado e o que ficou por verificar. Não declares como demonstrado o que não correste.
+
+## Requisitos
+
+| Código | Requisito | Módulos de apoio |
+|---|---|---|
+| R1 | O portal envia a encomenda e recebe uma confirmação ou um erro claro | 01, 03 |
+| R2 | A entrada é validada e normalizada (referência, SKU, quantidade) antes de chegar ao ERP | 02 |
+| R3 | Repetir a mesma encomenda não duplica o efeito; o mesmo identificador com conteúdo diferente é recusado | 04 |
+| R4 | O cliente com resposta perdida consegue consultar o resultado pela referência | 04, 05 |
+| R5 | Segredos, URLs e aliases ficam fora do desenho, por ambiente | 03, 06 |
+| R6 | Cada execução pode ser pesquisada pela referência e há alerta para falhas | 06 |
+| R7 | A notificação de stock segue em separado, com chave, confirmação e retoma | 07, 11 |
+| R8 | Os tipos de dados do contrato estão documentados e mapeados (e, se aplicável, um parceiro B2B) | 08 |
+| R9 | O caso de uso tem decisão registada: Open Connectors, adaptador nativo ou HTTP | 09 |
+| R10 | Há uma proposta de migração ou retirada da interface antiga equivalente | 10 |
+| R11 | Existe plano para trocar o simulador por S/4HANA e para falhas de Azure ou IA | 11 |
+
+## Desenho
 
 | Componente | Responsabilidade | Identificador |
 |---|---|---|
@@ -11,7 +29,18 @@ Constrói uma integração de encomendas entre um portal, o SAP Integration Suit
 | ERP simulado | Guardar e deduplicar | externalId e erpId |
 | Serviço de stock | Consumir confirmação em separado | Identificador de evento |
 
-O portal envia um objeto com `orderId`, `sku` e `quantity`. A referência segue o padrão CN seguido de hífen e até doze algarismos. O SKU normalizado admite letras ASCII, algarismos e hífen, até 32 caracteres. A quantidade é um inteiro positivo até 2147483647. O ERP simulado aceita uma linha, recebe a referência como `externalId` e devolve `erpId`.
+Fluxo pretendido, em texto:
+
+    Portal --HTTPS--> iFlow (validar, normalizar) --HTTP--> ERP simulado (guardar)
+                          |                                      |
+                          |<------- confirmação com erpId -------|
+                          +--(depois da confirmação)--> evento de stock --> consumidor
+
+Decisões a registar no desenho, com uma linha de justificação cada: forma de autenticação do portal, tempo-limite do percurso, o que o iFlow devolve ao portal (apenas os campos do contrato de resposta), onde ficam os registos e a correlação, e quem recebe o alerta. Define um tempo-limite para o percurso inteiro e mantém uma consulta por referência para o caso em que o cliente não sabe se a escrita ocorreu.
+
+## Contrato e responsabilidades
+
+O portal envia um objeto com orderId, sku e quantity. A referência segue o padrão CN seguido de hífen e até doze algarismos. O SKU normalizado admite letras ASCII, algarismos e hífen, até 32 caracteres. A quantidade é um inteiro positivo até 2147483647. O ERP simulado aceita uma linha, recebe a referência como externalId e devolve erpId.
 
     Entrada do portal
     {"orderId":"CN-1001","sku":" c-01 ","quantity":2}
@@ -22,21 +51,21 @@ O portal envia um objeto com `orderId`, `sku` e `quantity`. A referência segue 
     Resposta de negócio
     {"externalId":"CN-1001","erpId":"ERP-1001","status":"accepted"}
 
-O simulador devolve também `items` no corpo. O iFlow pode apresentar ao portal apenas os campos do contrato de resposta. Define um tempo-limite para o percurso inteiro e mantém uma consulta por referência para o caso em que o cliente não sabe se a escrita ocorreu.
+O simulador devolve também items no corpo. O iFlow pode apresentar ao portal apenas os campos do contrato de resposta.
 
 ## Construir o percurso local
 
-1. Executa os testes Groovy no módulo 02 e compara o resultado de `NormalizarEncomenda.groovy` com `exemplos/pedido.json`.
-2. Abre um terminal PowerShell em `12-Projeto-Final/exemplos` e executa `bun run erp.ts`. O simulador escuta apenas no endereço local e mantém registos em memória durante a execução.
+1. Executa os testes Groovy no módulo 02 e compara o resultado de NormalizarEncomenda.groovy com exemplos/pedido.json.
+2. Abre um terminal PowerShell em 12-Projeto-Final/exemplos e executa bun run erp.ts. O simulador escuta apenas no endereço local e mantém registos em memória durante a execução.
 3. Num segundo terminal, na mesma pasta, envia o pedido com o comando abaixo. Confirma o 201, o cabeçalho Location e a referência ERP.
 4. Repete o mesmo pedido e confirma o 200 com o mesmo resultado. Altera a quantidade no corpo de uma cópia local do ficheiro e confirma o 409. Usa a consulta abaixo para confirmar que o original ficou gravado.
-5. Corre `bun test erp.test.ts`. Os testes arrancam serviços em portas efémeras e verificam também rejeição de quantidade inválida e falha transitória antes da escrita. Termina o servidor manual com Ctrl+C quando acabares.
+5. Corre bun test erp.test.ts. Os testes arrancam serviços em portas efémeras e verificam também rejeição de quantidade inválida e falha transitória antes da escrita. Termina o servidor manual com Ctrl+C quando acabares.
 
     curl.exe -i -H 'Content-Type: application/json' `
       --data-binary '@pedido.json' http://127.0.0.1:8765/orders
     curl.exe -i http://127.0.0.1:8765/orders/CN-1001
 
-## Casos de aceitação
+## Critérios de aceitação
 
 | Caso | Resultado esperado | Evidência |
 |---|---|---|
@@ -47,17 +76,30 @@ O simulador devolve também `items` no corpo. O iFlow pode apresentar ao portal 
 | Destino indisponível antes da escrita | 503 e indicação de espera | Consulta sem registo e nova tentativa |
 | Resposta perdida após escrever | Consultar por referência | Ensaio de desenho e reconciliação |
 
-Para reproduzir o 503 manualmente com uma chave ainda livre, envia o cabeçalho de laboratório `X-Lab-Fail: before-write` e depois envia o mesmo pedido sem esse cabeçalho. O cabeçalho serve os testes do simulador. Em produção, um cliente não controla o modo de falha de um sistema.
+Para reproduzir o 503 manualmente com uma chave ainda livre, envia o cabeçalho de laboratório X-Lab-Fail com o valor before-write e depois envia o mesmo pedido sem esse cabeçalho. O cabeçalho serve os testes do simulador. Em produção, um cliente não controla o modo de falha de um sistema.
 
 ## Implementar no tenant
 
-1. Cria o pacote Casa Nova e um iFlow de teste com HTTPS Sender. Documenta o caminho de entrada e a autenticação de laboratório.
-2. Adiciona a normalização Groovy do módulo 02. Liga Request Reply a um HTTP Receiver para um destino HTTPS de teste autorizado. Configura URL e alias por ambiente.
-3. Define os estados de retorno e o tratamento de exceções. Conforme o perfil e configuração, um erro HTTP do recetor pode virar exceção. Testa explicitamente o 409 e evita traduzi-lo em sucesso.
+1. Cria o pacote Casa Nova e um iFlow de teste com HTTPS Sender (módulo 01 e 03). Documenta o caminho de entrada e a autenticação de laboratório.
+2. Adiciona a normalização Groovy do módulo 02. Liga Request Reply a um HTTP Receiver para um destino HTTPS de teste autorizado. Configura URL e alias por ambiente (módulo 06).
+3. Define os estados de retorno e o tratamento de exceções (módulo 04). Conforme o perfil e configuração, um erro HTTP do recetor pode virar exceção. Testa explicitamente o 409 e evita traduzi-lo em sucesso.
 4. Publica, chama como cliente autorizado e liga a referência do pedido ao registo da mensagem. Executa os casos aplicáveis e guarda os resultados saneados.
-5. Para o desenho Azure, propõe um evento estável e uma fila ou tópico para stock. Num sistema persistente, usa uma forma fiável de emitir após a confirmação do ERP, como uma outbox onde exista controlo da transação. Descreve a ação quando o processamento da notificação falhar.
+5. Para o desenho Azure, propõe um evento estável e uma fila ou tópico para stock (módulos 07 e 11). Num sistema persistente, usa uma forma fiável de emitir após a confirmação do ERP, como uma outbox onde exista controlo da transação. Descreve a ação quando o processamento da notificação falhar.
 
-**NOTA:** O simulador incluído é local. Para validar o percurso SAP até ao destino, precisas de um serviço de teste acessível ao runtime e dos controlos de acesso do ambiente. Mantém o laboratório local se não tiveres esse acesso.
+**NOTA:** o simulador incluído é local. Para validar o percurso SAP até ao destino, precisas de um serviço de teste acessível ao runtime e dos controlos de acesso do ambiente. Mantém o laboratório local se não tiveres esse acesso.
+
+## Plano de entrega
+
+| Fase | O que fazes | O que entregas |
+|---|---|---|
+| 1. Contrato | Fechas campos, formatos e códigos de resposta | Contrato escrito com exemplos |
+| 2. Percurso local | Corres o simulador e os testes, com os seis casos | Registo dos resultados e do comando usado |
+| 3. Desenho do fluxo | Mapa do iFlow, correlação, tratamento de erros, resposta perdida | Diagrama e tabela de decisões |
+| 4. Tenant | Implementas e publicas, ou marcas o que fica desenhado | Execuções saneadas e perfil usado |
+| 5. Extensões | Notificação de stock, decisão sobre conector, plano de migração e de S/4HANA | Uma página por extensão |
+| 6. Revisão | Preenches a grelha com a evidência | Grelha completa |
+
+Entrega por esta ordem. Se o tempo faltar, fecha as fases 1 a 3 e a grelha antes de avançares para o tenant: um desenho honesto vale mais do que um fluxo sem provas.
 
 ## Grelha de avaliação
 
@@ -73,12 +115,22 @@ Marca cada critério como demonstrado, desenhado ou por verificar. Anexa uma evi
 8. Operação tem pesquisa, sinal de alerta e responsável.
 9. Notificação tem chave, política de confirmação e retoma.
 
+Como ler cada nível:
+
+| Nível | O que significa | Evidência mínima |
+|---|---|---|
+| Demonstrado | Correste o caso e o resultado bate com o esperado | Resposta, registo ou captura saneada |
+| Desenhado | Descreveste a solução, mas não a correste | Diagrama ou texto com a decisão e o motivo |
+| Por verificar | Falta acesso ou tempo | Nota do que falta e de quem a pode fechar |
+
 ## Exercícios
 
-Entrega o exercício 34. Junta as evidências locais, o desenho do fluxo e a grelha. Se fizeste deploy, acrescenta o identificador saneado de execução e indica o perfil usado.
+**PRATICAR:** entrega o exercício 34 no módulo 13. Junta as evidências locais, o desenho do fluxo e a grelha. Se fizeste deploy, acrescenta o identificador saneado de execução e indica o perfil usado.
 
 ## Fontes oficiais
 
 - [Design and Deploy Your First Integration Flow](https://developers.sap.com/tutorials/cp-starter-integration-cpi-design-iflow)
 - [Define Idempotent Process Call](https://help.sap.com/docs/cloud-integration/sap-cloud-integration/define-idempotent-process-call)
 - [Asynchronous Messaging Options](https://learn.microsoft.com/en-us/azure/architecture/guide/technology-choices/messaging)
+
+Texto-base: SAP-docs/btp-integration-suite (CC-BY 4.0)

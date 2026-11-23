@@ -1,6 +1,6 @@
 # Estado do projeto: Mini-Curso de SAP Integration Suite
 
-**Estado (2026-11-23): curso completo e verificado ao nível da estrutura e dos links; profundidade a melhorar.** Módulos 00 a 15 em Markdown, Word e PowerPoint, com 34 exercícios e soluções e um projeto final. O índice e os comandos dos exemplos estão no [README](README.md).
+**Estado (2026-11-23): curso completo, aprofundado a partir da documentação oficial da SAP e com os links verificados; falta validar os laboratórios no tenant.** Módulos 00 a 15 em Markdown, Word e PowerPoint, com 34 exercícios e soluções e um projeto final. O índice e os comandos dos exemplos estão no [README](README.md).
 
 ## 1. Resumo
 
@@ -14,20 +14,20 @@
 
 | Módulo | Tema | Linhas | Exercícios |
 |---|---|---|---|
-| 00 | Introdução | 58 | n/a |
-| 01 | Cloud Integration e mensagens | 59 | 1 a 3 |
-| 02 | Transformações e Groovy | 88 | 4 a 6 |
-| 03 | Conectividade e adaptadores | 49 | 7 a 9 |
-| 04 | Padrões e erros | 59 | 10 a 12 |
-| 05 | API Management | 47 | 13 a 15 |
-| 06 | Segurança, monitorização e entrega | 55 | 16 a 18 |
-| 07 | Eventos | 52 | 19 a 21 |
-| 08 | B2B (Integration Advisor) | 49 | 22 a 24 |
-| 09 | Open Connectors | 45 | 25 a 27 |
-| 10 | Modernização e migração | 43 | 28 a 30 |
-| 11 | S/4HANA, Azure e IA | 48 | 31 a 33 |
-| 12 | Projeto final | 84 | 34 |
-| 13 a 15 | Exercícios, consulta rápida e gabarito | 78, 39 e 79 | n/a |
+| 00 | Introdução | 119 | n/a |
+| 01 | Cloud Integration e mensagens | 164 | 1 a 3 |
+| 02 | Transformações e Groovy | 212 | 4 a 6 |
+| 03 | Conectividade e adaptadores | 183 | 7 a 9 |
+| 04 | Padrões e erros | 163 | 10 a 12 |
+| 05 | API Management | 209 | 13 a 15 |
+| 06 | Segurança, monitorização e entrega | 228 | 16 a 18 |
+| 07 | Eventos | 200 | 19 a 21 |
+| 08 | B2B (Integration Advisor) | 195 | 22 a 24 |
+| 09 | Open Connectors | 182 | 25 a 27 |
+| 10 | Modernização e migração | 193 | 28 a 30 |
+| 11 | S/4HANA, Azure e IA | 207 | 31 a 33 |
+| 12 | Projeto final | 136 | 34 |
+| 13 a 15 | Exercícios, consulta rápida e gabarito | 226, 39 e 288 | n/a |
 
 ## 3. O que foi verificado
 
@@ -38,16 +38,17 @@
 
 ## 4. Limites conhecidos
 
-- **Profundidade:** aulas de 39 a 88 linhas (nos outros cursos, 220 a 340). Exercícios e soluções telegráficos, sem níveis.
-- **Módulos 03 a 11:** sobretudo conceptuais, sem conteúdo verificado no tenant. O que se pode verificar no trial (Router, tratamento de erros, API Management, B2B, Modernize) depende de o utilizador construir e exportar os fluxos.
-- A documentação da SAP muda depressa: reverificar os links e os nomes de passos periodicamente.
+- **Origem do conteúdo (módulos 00 e 02 a 12):** resumo da documentação oficial SAP em Markdown (repositório `SAP-docs/btp-integration-suite`, CC-BY 4.0, lido localmente), com cada secção rotulada **Documentado** (com o ficheiro-fonte), **Observado** (só o módulo 01, no tenant) ou **Por testar**. Cinco afirmações (limites do keystore, filas e spool do Event Mesh, expiração do nível Trace, retry do webhook e Max. Messages per Poll) foram confirmadas contra a fonte e as 55 fontes citadas existem.
+- **Nenhum laboratório dos módulos 02 a 11 foi executado no tenant**, nem o Groovy novo (marcado «não executado nesta revisão»). Disponibilidade de API Management e Event Mesh no trial: por testar.
+- **Cobertura fraca na documentação local:** Open Connectors (09: instâncias, elementos e transformações não estão na doc lida), migração Neo para Cloud Foundry do Cloud Integration (10), Logic Apps, Functions e Monitor do Azure (11, tratados como HTTPS genérico). O módulo 04 regista uma contradição da documentação sobre o Router dentro do Exception Subprocess.
+- **Módulo 14 (consulta rápida):** não foi alargado (39 linhas).
+- A documentação da SAP muda depressa: reverificar os links e os nomes dos passos periodicamente.
 
-## 5. Como melhorar (método que funciona e custa pouco)
+## 5. Como fechar as lacunas (método que funciona e custa pouco)
 
-1. **O utilizador constrói e exporta** um fluxo por tema (zip) e/ou envia o resultado do monitor em texto.
-2. O agente lê o `.iflw` e os scripts e escreve a aula sobre o que existe, com a navegação real do tenant (menus, separadores, nomes de campos) e exercícios com níveis e resultado esperado.
-3. Começar pelos módulos 00 a 02 (ver o exemplo de melhoria no módulo 01) e escalar módulo a módulo, no máximo 3 agentes de cada vez.
-4. Antes de gerar: `lint`, procurar carateres de controlo, apagar `_rascunho/` e regenerar só os módulos alterados (`--only`).
+1. **O utilizador constrói e exporta** um fluxo por tema (zip) e/ou envia o resultado do monitor em texto. Prioridade: um iFlow com Router ou Splitter e o erro no monitor (04), um proxy de API Management (05), uma MIG do Integration Advisor (08), e um iFlow com adaptador Open Connectors (09).
+2. O agente lê o `.iflw` e os scripts e passa o rótulo de «Por testar» para «Observado», com a navegação real do tenant.
+3. Antes de gerar: `lint`, procurar carateres de controlo, apagar `_rascunho/` e regenerar só os módulos alterados (`--only`). No máximo 3 agentes de cada vez.
 
 ## 6. Regras
 
