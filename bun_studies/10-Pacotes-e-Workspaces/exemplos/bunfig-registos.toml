@@ -1,0 +1,8 @@
+# SÓ PARA LER: registos privados e com âmbito. Os valores são fictícios; os segredos vêm do ambiente.
+[install]
+# registo por omissão (o do npm)
+registry = "https://registry.npmjs.org"
+
+# pacotes @empresa vêm de um registo privado; $NPM_TOKEN é lido da variável de ambiente
+[install.scopes]
+"@empresa" = { token = "$NPM_TOKEN", url = "https://registo.exemplo.invalid/" }

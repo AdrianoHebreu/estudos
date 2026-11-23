@@ -1,0 +1,4 @@
+nome = "Loja do Curso"
+iva = 0.23
+[envio]
+gratis_acima_de = 50

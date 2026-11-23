@@ -1,0 +1,12 @@
+diff --git a/index.js b/index.js
+index 27f19b757f7c1186b92c405a213bf0dd9b6cbe95..be89fcb4ddb7deb4bd7d4161a26ccdcb105054cf 100644
+--- a/index.js
++++ b/index.js
+@@ -12,6 +12,7 @@ module.exports = function(num) {
+     return num - num === 0;
+   }
+   if (typeof num === 'string' && num.trim() !== '') {
++    num = num.replace(",", "."); // PATCH: aceita vírgula decimal
+     return Number.isFinite ? Number.isFinite(+num) : isFinite(+num);
+   }
+   return false;

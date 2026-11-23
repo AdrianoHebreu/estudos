@@ -1,0 +1,12 @@
+# Configuração de instalação "defensiva" (copia para bunfig.toml na raiz do projeto).
+[install]
+# ignora versões publicadas há menos de 3 dias (em segundos): dá tempo a que um pacote malicioso seja retirado
+minimumReleaseAge = 259200
+# exceções: o nome isenta todas as versões; nome@versão só essa versão
+minimumReleaseAgeExcludes = []
+# nunca corre scripts de ciclo de vida do projeto (os das dependências já não correm por omissão)
+ignoreScripts = true
+
+# cache própria do projeto (em vez de ~/.bun/install/cache)
+[install.cache]
+dir = "./.cache-bun"

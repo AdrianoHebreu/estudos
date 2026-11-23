@@ -1,0 +1,16 @@
+{
+  "name": "loja-monorepo",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "catalog": {
+    "ms": "^2.1.3"
+  },
+  "catalogs": {
+    "ferramentas": {
+      "kleur": "^4.1.5"
+    }
+  },
+  "scripts": {
+    "ola": "echo raiz: ola"
+  }
+}

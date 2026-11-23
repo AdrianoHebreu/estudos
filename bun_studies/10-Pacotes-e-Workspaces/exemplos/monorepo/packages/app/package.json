@@ -1,0 +1,13 @@
+{
+  "name": "@loja/app",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@loja/core": "workspace:*",
+    "kleur": "catalog:ferramentas"
+  },
+  "scripts": {
+    "build": "echo [app] a compilar",
+    "start": "bun src/main.ts"
+  }
+}

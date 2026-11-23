@@ -1,0 +1,5 @@
+{
+  "name": "@loja/utils",
+  "version": "0.1.0",
+  "scripts": { "build": "echo [utils] a compilar" }
+}

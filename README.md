@@ -8,7 +8,7 @@ Isto **não é uma aplicação**: não há nada para instalar nem executar na ra
 
 | Pasta | Tema | Módulos | Fonte do conteúdo |
 |---|---|---|---|
-| [`bun_studies`](bun_studies) | Bun: as funcionalidades nativas do runtime sem bibliotecas npm (ficheiros, servidor HTTP com OpenAPI e Swagger, SQLite, PostgreSQL, MySQL, Redis, S3, testes, bundler). **Em curso**: módulos 00 a 08 escritos | 00 a 15 (planeado) | Markdown |
+| [`bun_studies`](bun_studies) | Bun: as funcionalidades nativas do runtime sem bibliotecas npm (ficheiros, servidor HTTP com OpenAPI e Swagger, SQLite, PostgreSQL, MySQL, Redis, S3, testes, bundler). | 00 a 15 | Markdown |
 | [`claude_code_studies`](claude_code_studies) | Claude Code, a ferramenta de linha de comandos da Anthropic: comandos, permissões, `CLAUDE.md`, subagentes, skills, hooks, MCP e modo headless | 00 a 12 | Só `.docx`/`.pptx` |
 | [`codex_studies`](codex_studies) | Codex CLI: instalação, modelos e esforço de raciocínio, comandos, configuração, permissões, Git, automação e integrações | 00 a 13 | Markdown |
 | [`cobol_estudies`](cobol_estudies) | COBOL com GnuCOBOL em Docker: estrutura, dados e PICTURE, ficheiros sequenciais e indexados, relatórios, subprogramas, depuração e integração com sistemas atuais | 00 a 13 | Markdown |
@@ -91,4 +91,4 @@ Se um `.docx` estiver aberto no Word, essa geração falha nesse ficheiro (está
 
 ## Estado
 
-Doze dos catorze cursos estão completos. O de Bun está a meio (módulos 00 a 08 escritos; ver o `ESTADO-DO-PROJETO.md` desse curso). Os mais recentes são os de Bun, COBOL, Docker, SQL (dialetos), MongoDB (com Docker Compose) e Solution Architect.
+Os catorze cursos estão completos. Os mais recentes são os de Bun, COBOL, Docker, SQL (dialetos), MongoDB (com Docker Compose) e Solution Architect.

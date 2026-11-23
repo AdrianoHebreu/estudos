@@ -1,0 +1,9 @@
+{
+  "name": "pacote-com-gancho",
+  "version": "1.0.0",
+  "description": "Pacote de estudo: o postinstall só escreve um ficheiro de texto",
+  "main": "index.js",
+  "scripts": {
+    "postinstall": "node marca.js"
+  }
+}

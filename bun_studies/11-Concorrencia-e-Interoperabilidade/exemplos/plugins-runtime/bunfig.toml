@@ -1,0 +1,2 @@
+# O preload corre antes do código da aplicação, em "bun run" e em "bun test"
+preload = ["./registar.ts"]
