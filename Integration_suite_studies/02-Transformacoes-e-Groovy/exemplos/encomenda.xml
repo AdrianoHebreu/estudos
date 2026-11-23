@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Encomenda id="CN-1001">
+  <Item sku="C-01" quantidade="2"/>
+  <Item sku="C-02" quantidade="1"/>
+</Encomenda>

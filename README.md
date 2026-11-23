@@ -15,6 +15,7 @@ Isto **não é uma aplicação**: não há nada para instalar nem executar na ra
 | [`docker_studies`](docker_studies) | Docker: contentores, imagens e Dockerfile, redes e volumes, Compose, segurança, diagnóstico e um projeto final | 00 a 10 | Markdown |
 | [`git_studies`](git_studies) | Git, dos fundamentos aos conflitos, ao trabalho em equipa e ao Git avançado | 00 a 13 | Só `.docx`/`.pptx` |
 | [`graphQL_studies`](graphQL_studies) | GraphQL, do primeiro pedido à produção (schema, resolvers, Apollo, paginação, erros, autorização, desempenho), com um servidor de estudo em Node | 00 a 14 | Markdown |
+| [`Integration_suite_studies`](Integration_suite_studies) | SAP Integration Suite: iFlows, Groovy, APIs, eventos, B2B, migração e projeto de integração com ERP simulado | 00 a 15 | Markdown |
 | [`javascript_studies`](javascript_studies) | JavaScript de A a Z: linguagem, assincronismo, módulos, DOM, Proxy/Reflect, padrões de projeto e projeto final | 00 a 16 (65 aulas) | JSON |
 | [`mongodb_studies`](mongodb_studies) | MongoDB com Docker Compose e Python: documentos, CRUD, modelação, agregações, índices, transações, segurança e replica set | 00 a 11 | Markdown |
 | [`python_studies`](python_studies) | Python de A a Z: fundamentos, estruturas de dados, POO, testes, Python idiomático, biblioteca padrão e quatro projetos por área | 00 a 14 | Markdown |
@@ -48,7 +49,7 @@ Os `.docx` e `.pptx` **não se editam à mão**: são produzidos por scripts Pyt
 
 | Cursos | Onde está o conteúdo | Gerador |
 |---|---|---|
-| `graphQL_studies`, `supabase_studies`, `codex_studies`, `python_studies`, `solution_architect_studies`, `docker_studies`, `mongodb_studies`, `sql_database_studies`, `cobol_estudies`, `bun_studies` | Um `.md` ao lado do `.docx`/`.pptx`, em cada pasta de módulo | `tools/build_course_artifacts.py` |
+| `graphQL_studies`, `supabase_studies`, `codex_studies`, `python_studies`, `solution_architect_studies`, `docker_studies`, `mongodb_studies`, `sql_database_studies`, `cobol_estudies`, `bun_studies`, `Integration_suite_studies` | Um `.md` ao lado do `.docx`/`.pptx`, em cada pasta de módulo | `tools/build_course_artifacts.py` |
 | `javascript_studies`, `typescript_studies` | JSON em `content-source/<módulo>/` | `tools/build_lesson.py` |
 | `claude_code_studies`, `git_studies` | Não há fonte guardada: só existem os documentos | n/a |
 
@@ -91,4 +92,4 @@ Se um `.docx` estiver aberto no Word, essa geração falha nesse ficheiro (está
 
 ## Estado
 
-Os catorze cursos estão completos. Os mais recentes são os de Bun, COBOL, Docker, SQL (dialetos), MongoDB (com Docker Compose) e Solution Architect.
+Os quinze cursos estão completos. O mais recente é o de SAP Integration Suite, com laboratórios guiados no SAP e exemplos verificados localmente.

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `C:\temp\Sites\studies` is not an application. It is a collection of independent **study courses written in European Portuguese** (pt-PT, "tu" form, never "você"). Each top-level folder is one course, and each course is a set of numbered module folders (`00-Introducao`, `01-...`, ...). Every lesson is delivered as a `.docx` (full reference) plus a companion `.pptx` (visual summary). The root is a single Git repository (remote `https://github.com/AdrianoHebreu/estudos.git`, branch `main`) that holds every course; the root `.gitignore` excludes `node_modules`, `__pycache__`, `.venv`, Office lock files and `codex_studies/.qa/rendered/`. There is no test suite and no linter at the root. The "build" is generating Office files.
 
-Courses: `bun_studies`, `claude_code_studies`, `codex_studies`, `cobol_estudies`, `docker_studies`, `git_studies`, `graphQL_studies`, `javascript_studies`, `mongodb_studies`, `python_studies`, `solution_architect_studies`, `sql_database_studies`, `supabase_studies`, `typescript_studies`.
+Courses: `bun_studies`, `claude_code_studies`, `codex_studies`, `cobol_estudies`, `docker_studies`, `git_studies`, `graphQL_studies`, `Integration_suite_studies`, `javascript_studies`, `mongodb_studies`, `python_studies`, `solution_architect_studies`, `sql_database_studies`, `supabase_studies`, `typescript_studies`.
 
 ## Core rule: Office files are generated, never edited by hand
 
@@ -15,7 +15,7 @@ The `.docx`/`.pptx` files are build outputs and are overwritten on the next gene
 | Course | Source of truth | Generator |
 |---|---|---|
 | `typescript_studies`, `javascript_studies` | `content-source/<module>/<file>.json` | `tools/build_lesson.py` |
-| `graphQL_studies`, `supabase_studies`, `codex_studies`, `python_studies`, `solution_architect_studies`, `docker_studies`, `mongodb_studies`, `sql_database_studies`, `cobol_estudies`, `bun_studies` | a `.md` next to the `.docx`/`.pptx` in each module folder | `tools/build_course_artifacts.py` |
+| `graphQL_studies`, `supabase_studies`, `codex_studies`, `python_studies`, `solution_architect_studies`, `docker_studies`, `mongodb_studies`, `sql_database_studies`, `cobol_estudies`, `bun_studies`, `Integration_suite_studies` | a `.md` next to the `.docx`/`.pptx` in each module folder | `tools/build_course_artifacts.py` |
 | `claude_code_studies`, `git_studies` | none kept. Only `.docx`/`.pptx` exist, with no `tools/` | n/a |
 
 Each `tools/` folder carries its own copy of `docbuilder.py`, `pptxbuilder.py` and `style.py`, copied and adapted from course to course. They are not shared, so a fix in one course does not propagate. Requires Python with `python-docx` and `python-pptx`.
@@ -24,7 +24,7 @@ Each `tools/` folder carries its own copy of `docbuilder.py`, `pptxbuilder.py` a
 
 Use `python` (not `python3`). Run `export PYTHONIOENCODING=utf-8` first, or accented output breaks. Run from inside the course folder.
 
-Markdown-based courses (graphQL, supabase, codex, python, solution_architect, docker, mongodb, sql, cobol, bun):
+Markdown-based courses (graphQL, supabase, codex, python, solution_architect, docker, mongodb, sql, cobol, bun, Integration Suite):
 ```
 python tools/build_course_artifacts.py                  # all modules
 python tools/build_course_artifacts.py --only 02,03     # selected modules (matched on the first 2 chars of the .md filename)
