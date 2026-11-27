@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roteiro de Inglês de 12 Semanas</title>
+<style>
+:root {
+  --bg: #f6f7f9; --card: #ffffff; --ink: #1c2230; --muted: #5b6577; --line: #dfe3ea;
+  --accent: #1f5fd1; --accent-ink: #ffffff; --ok: #1a7f4b; --ok-bg: #e4f5ec; --warn-bg: #fff4d6;
+  --code-bg: #eef1f6;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161d; --card: #1a202a; --ink: #e8ecf3; --muted: #9aa5b8; --line: #2b3342;
+    --accent: #6ea0ff; --accent-ink: #0d1117; --ok: #5bd18d; --ok-bg: #173325; --warn-bg: #3a3116;
+    --code-bg: #232b38;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161d; --card: #1a202a; --ink: #e8ecf3; --muted: #9aa5b8; --line: #2b3342;
+  --accent: #6ea0ff; --accent-ink: #0d1117; --ok: #5bd18d; --ok-bg: #173325; --warn-bg: #3a3116;
+  --code-bg: #232b38;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+a { color: var(--accent); }
+button { font: inherit; color: inherit; cursor: pointer; }
+.wrap { max-width: 1100px; margin: 0 auto; padding: 0 16px 48px; }
+header.top { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); padding: 12px 0; }
+.top-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+h1 { font-size: 1.25rem; margin: 0; flex: 1 1 240px; }
+.pct { font-size: 1.5rem; font-weight: 700; min-width: 4ch; text-align: right; }
+.bar { height: 12px; background: var(--line); border-radius: 999px; overflow: hidden; margin-top: 8px; }
+.bar > span { display: block; height: 100%; background: var(--ok); width: 0; transition: width .25s; }
+.sub { color: var(--muted); font-size: .9rem; margin-top: 4px; }
+.tools { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 6px 10px; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.weeks { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; margin: 16px 0; }
+.wk { text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.wk[aria-current="true"] { outline: 2px solid var(--accent); }
+.wk .n { font-size: .8rem; color: var(--muted); }
+.wk .t { font-weight: 600; }
+.wk .p { font-size: .8rem; color: var(--muted); }
+.mini { height: 6px; background: var(--line); border-radius: 999px; overflow: hidden; margin-top: 6px; }
+.mini > span { display: block; height: 100%; background: var(--ok); }
+section.panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+section.panel h2 { margin: 0 0 4px; font-size: 1.2rem; }
+section.panel h3 { margin: 18px 0 6px; font-size: 1rem; }
+.meta { color: var(--muted); font-size: .9rem; }
+.grid2 { display: grid; grid-template-columns: 1fr; gap: 12px; }
+@media (min-width: 800px) { .grid2 { grid-template-columns: 1fr 1fr; } }
+ul.plain { margin: 6px 0; padding-left: 20px; }
+.days { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 8px; }
+.day { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.day.done { background: var(--ok-bg); }
+.day input[type=checkbox] { width: 22px; height: 22px; margin-top: 2px; flex: none; }
+.day button.open { flex: 1; text-align: left; background: none; border: 0; padding: 0; }
+.day .dt { font-weight: 600; }
+.day .dm { color: var(--muted); font-size: .85rem; }
+.detail { margin-top: 8px; padding: 10px 12px; border-left: 4px solid var(--accent); background: var(--code-bg); border-radius: 0 8px 8px 0; }
+.detail ol { margin: 6px 0 0; padding-left: 20px; }
+pre.prompt { white-space: pre-wrap; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px; margin: 8px 0 4px; font: .85rem/1.4 ui-monospace, Consolas, monospace; }
+.vocab-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
+.vocab-tools input[type=search] { flex: 1 1 180px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink); font: inherit; }
+table.v { width: 100%; border-collapse: collapse; font-size: .92rem; }
+table.v th, table.v td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.v td.pt.hide span { filter: blur(6px); cursor: pointer; user-select: none; }
+.res { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.res:last-child { border-bottom: 0; }
+.nolink { font-weight: 600; }
+.note { background: var(--warn-bg); border-radius: 8px; padding: 8px 10px; font-size: .9rem; margin: 8px 0; }
+.sr { position: absolute; left: -9999px; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <div class="top-row">
+    <h1>Roteiro de Inglês de 12 Semanas</h1>
+    <div class="tools">
+      <button class="btn" id="tema" type="button" aria-label="Alternar tema claro ou escuro">Tema</button>
+      <button class="btn" id="exp" type="button">Exportar progresso</button>
+      <button class="btn" id="imp" type="button">Importar</button>
+      <button class="btn" id="rst" type="button">Repor</button>
+    </div>
+    <div class="pct" id="pct" aria-live="polite">0%</div>
+  </div>
+  <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="barra"><span id="barraFill"></span></div>
+  <div class="sub" id="sub"></div>
+</div></header>
+<main class="wrap">
+  <p class="note" id="aviso" hidden></p>
+  <div class="weeks" id="semanas" role="list"></div>
+  <div id="painel"></div>
+</main>
+<script id="dados" type="application/json">/*DADOS*/</script>
+<script>
+(function () {
+  "use strict";
+  var SEMANAS = JSON.parse(document.getElementById("dados").textContent);
+  var KEY = "roteiro-ingles-12-semanas-v1";
+  var mem = { done: {}, week: 1 };
+  var storageOk = true;
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) { var o = JSON.parse(raw); if (o && o.done) { mem = o; } }
+    } catch (e) { storageOk = false; }
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch (e) { storageOk = false; showAviso(); }
+  }
+  function showAviso() {
+    var a = document.getElementById("aviso");
+    if (!storageOk) { a.hidden = false; a.textContent = "O browser não deixa guardar o progresso neste ficheiro. Usa Exportar progresso para guardares uma cópia antes de fechar."; }
+  }
+
+  function el(tag, attrs, children) {
+    var n = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) {
+      if (k === "text") n.textContent = attrs[k];
+      else if (k === "class") n.className = attrs[k];
+      else n.setAttribute(k, attrs[k]);
+    });
+    (children || []).forEach(function (c) { if (c) n.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+    return n;
+  }
+  function dayKey(w, d) { return "s" + w + "d" + d; }
+  function isDone(w, d) { return !!mem.done[dayKey(w, d)]; }
+  function weekCount(w) { var c = 0; for (var d = 1; d <= 7; d++) if (isDone(w, d)) c++; return c; }
+  function total() { var c = 0; SEMANAS.forEach(function (s) { c += weekCount(s.week); }); return c; }
+  function totalDays() { return SEMANAS.length * 7; }
+
+  function updateTop() {
+    var t = total(), all = totalDays(), p = all ? Math.round(t * 100 / all) : 0;
+    document.getElementById("pct").textContent = p + "%";
+    document.getElementById("barraFill").style.width = p + "%";
+    document.getElementById("barra").setAttribute("aria-valuenow", String(p));
+    document.getElementById("sub").textContent = t + " de " + all + " dias concluídos";
+  }
+
+  function renderWeeks() {
+    var box = document.getElementById("semanas");
+    box.textContent = "";
+    SEMANAS.forEach(function (s) {
+      var c = weekCount(s.week);
+      var b = el("button", { type: "button", class: "wk", role: "listitem" }, [
+        el("div", { class: "n", text: "Semana " + s.week + " · módulo " + s.module }),
+        el("div", { class: "t", text: s.theme_en }),
+        el("div", { class: "p", text: s.theme_pt + " · " + c + "/7" }),
+        el("div", { class: "mini" }, [el("span", { style: "width:" + Math.round(c * 100 / 7) + "%" })])
+      ]);
+      if (mem.week === s.week) b.setAttribute("aria-current", "true");
+      b.addEventListener("click", function () { mem.week = s.week; save(); render(); window.scrollTo({ top: document.getElementById("painel").offsetTop - 80, behavior: "smooth" }); });
+      box.appendChild(b);
+    });
+  }
+
+  function copyText(txt, btn) {
+    function ok() { var old = btn.textContent; btn.textContent = "Copiado"; setTimeout(function () { btn.textContent = old; }, 1200); }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok, function () { fallback(); });
+    else fallback();
+    function fallback() {
+      var t = el("textarea", { class: "sr" }); t.value = txt; document.body.appendChild(t); t.select();
+      try { document.execCommand("copy"); ok(); } catch (e) { btn.textContent = "Seleciona e copia"; }
+      document.body.removeChild(t);
+    }
+  }
+
+  function download(name, text) {
+    var blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 500);
+  }
+
+  var openDay = {};
+
+  function renderPanel() {
+    var s = SEMANAS.filter(function (x) { return x.week === mem.week; })[0] || SEMANAS[0];
+    var box = document.getElementById("painel");
+    box.textContent = "";
+    var p = el("section", { class: "panel", "aria-label": "Semana " + s.week }, []);
+    p.appendChild(el("h2", { text: "Semana " + s.week + ": " + s.theme_en }));
+    p.appendChild(el("div", { class: "meta", text: s.theme_pt + " · módulo do curso: " + s.module }));
+    p.appendChild(el("p", { text: s.goal_pt }));
+
+    p.appendChild(el("h3", { text: "Os 7 dias (clica num dia para ver o plano)" }));
+    var ul = el("ul", { class: "days" }, []);
+    s.days.forEach(function (d) {
+      var key = dayKey(s.week, d.day);
+      var cb = el("input", { type: "checkbox", "aria-label": "Dia " + d.day + " concluído" });
+      cb.checked = isDone(s.week, d.day);
+      var open = el("button", { type: "button", class: "open", "aria-expanded": openDay[key] ? "true" : "false" }, [
+        el("div", { class: "dt", text: "Dia " + d.day + ": " + d.title }),
+        el("div", { class: "dm", text: d.minutes + " min · " + d.resource })
+      ]);
+      var li = el("li", {}, []);
+      var row = el("div", { class: "day" + (cb.checked ? " done" : "") }, [cb, open]);
+      li.appendChild(row);
+      var det = el("div", { class: "detail" }, []);
+      det.hidden = !openDay[key];
+      det.appendChild(el("div", { text: "Hoje vais estudar: " + d.title }));
+      det.appendChild(el("div", { class: "meta", text: "Recurso: " + d.resource + " · Duração: " + d.minutes + " minutos" }));
+      var ol = el("ol", {}, d.steps_pt.map(function (t) { return el("li", { text: t }); }));
+      det.appendChild(ol);
+      if (d.ai_prompt) {
+        det.appendChild(el("div", { class: "meta", text: "Pedido para um assistente de IA (copia e cola):" }));
+        det.appendChild(el("pre", { class: "prompt", text: d.ai_prompt }));
+        var cp = el("button", { type: "button", class: "btn", text: "Copiar pedido" });
+        cp.addEventListener("click", function () { copyText(d.ai_prompt, cp); });
+        det.appendChild(cp);
+      }
+      li.appendChild(det);
+      open.addEventListener("click", function () {
+        openDay[key] = !openDay[key];
+        det.hidden = !openDay[key];
+        open.setAttribute("aria-expanded", openDay[key] ? "true" : "false");
+      });
+      cb.addEventListener("change", function () {
+        if (cb.checked) mem.done[key] = 1; else delete mem.done[key];
+        save(); row.className = "day" + (cb.checked ? " done" : ""); updateTop(); renderWeeks();
+      });
+      ul.appendChild(li);
+    });
+    p.appendChild(ul);
+
+    var g = el("div", { class: "grid2" }, []);
+    var gram = el("div", {}, [
+      el("h3", { text: "Gramática: " + s.grammar.topic }),
+      el("p", { text: s.grammar.explain_pt }),
+      el("ul", { class: "plain" }, s.grammar.examples.map(function (e) { return el("li", { text: e }); }))
+    ]);
+    var test = el("div", {}, [
+      el("h3", { text: "Autoavaliação (dia 7)" }),
+      el("ul", { class: "plain" }, s.week_test_pt.map(function (e) { return el("li", { text: e }); }))
+    ]);
+    g.appendChild(gram); g.appendChild(test);
+    p.appendChild(g);
+
+    p.appendChild(el("h3", { text: "Recursos desta semana" }));
+    s.resources.forEach(function (r) {
+      var head = r.url ? el("a", { href: r.url, target: "_blank", rel: "noopener noreferrer", text: r.name }) : el("span", { class: "nolink", text: r.name });
+      p.appendChild(el("div", { class: "res" }, [head, el("div", { class: "meta", text: r.use_pt })]));
+    });
+
+    var g2 = el("div", { class: "grid2" }, []);
+    g2.appendChild(el("div", {}, [el("h3", { text: "Barril de conteúdos" }), el("ul", { class: "plain" }, s.barrel_pt.map(function (e) { return el("li", { text: e }); }))]));
+    g2.appendChild(el("div", {}, [el("h3", { text: "Imersão nos tempos mortos e micro-hábitos" }), el("ul", { class: "plain" }, s.immersion_pt.map(function (e) { return el("li", { text: e }); }))]));
+    p.appendChild(g2);
+
+    p.appendChild(el("h3", { text: "Vocabulário (" + s.vocab.length + " palavras)" }));
+    var tools = el("div", { class: "vocab-tools" }, []);
+    var q = el("input", { type: "search", placeholder: "Filtrar", "aria-label": "Filtrar vocabulário" });
+    var hideLbl = el("label", {}, [el("input", { type: "checkbox", id: "hidept" }), " Esconder tradução (clica para ver)"]);
+    var exp = el("button", { type: "button", class: "btn", text: "Exportar para o Anki (TSV)" });
+    tools.appendChild(q); tools.appendChild(hideLbl); tools.appendChild(exp);
+    p.appendChild(tools);
+    var tbl = el("table", { class: "v" }, []);
+    tbl.appendChild(el("thead", {}, [el("tr", {}, [el("th", { text: "English" }), el("th", { text: "Português" }), el("th", { text: "Exemplo" })])]));
+    var tb = el("tbody", {}, []);
+    var rows = s.vocab.map(function (v) {
+      var tdpt = el("td", { class: "pt" }, [el("span", { text: v.pt })]);
+      tdpt.addEventListener("click", function () { tdpt.classList.remove("hide"); });
+      var tr = el("tr", {}, [el("td", { text: v.en }), tdpt, el("td", { text: v.ex })]);
+      tb.appendChild(tr);
+      return { tr: tr, td: tdpt, text: (v.en + " " + v.pt).toLowerCase() };
+    });
+    tbl.appendChild(tb);
+    p.appendChild(tbl);
+    q.addEventListener("input", function () {
+      var t = q.value.trim().toLowerCase();
+      rows.forEach(function (r) { r.tr.hidden = t && r.text.indexOf(t) < 0; });
+    });
+    hideLbl.firstChild.addEventListener("change", function (e) {
+      rows.forEach(function (r) { if (e.target.checked) r.td.classList.add("hide"); else r.td.classList.remove("hide"); });
+    });
+    exp.addEventListener("click", function () {
+      var out = s.vocab.map(function (v) { return [v.en, v.pt, v.ex].join("\t"); }).join("\n") + "\n";
+      download("semana-" + s.week + "-vocabulario.tsv", out);
+    });
+    box.appendChild(p);
+  }
+
+  function render() { updateTop(); renderWeeks(); renderPanel(); showAviso(); }
+
+  document.getElementById("exp").addEventListener("click", function () { download("progresso-roteiro-ingles.json", JSON.stringify(mem)); });
+  document.getElementById("imp").addEventListener("click", function () {
+    var i = el("input", { type: "file", accept: "application/json,.json" });
+    i.addEventListener("change", function () {
+      var f = i.files && i.files[0]; if (!f) return;
+      var r = new FileReader();
+      r.onload = function () {
+        try { var o = JSON.parse(String(r.result)); if (o && o.done && typeof o.done === "object") { mem = { done: o.done, week: o.week || 1 }; save(); render(); } }
+        catch (e) { alert("Ficheiro inválido."); }
+      };
+      r.readAsText(f);
+    });
+    i.click();
+  });
+  document.getElementById("rst").addEventListener("click", function () {
+    if (confirm("Apagar todo o progresso deste roteiro?")) { mem = { done: {}, week: 1 }; save(); render(); }
+  });
+  document.getElementById("tema").addEventListener("click", function () {
+    var r = document.documentElement, cur = r.getAttribute("data-theme");
+    var next = cur === "dark" ? "light" : cur === "light" ? "dark" : (window.matchMedia("(prefers-color-scheme: dark)").matches ? "light" : "dark");
+    r.setAttribute("data-theme", next);
+  });
+
+  load();
+  if (!SEMANAS.some(function (s) { return s.week === mem.week; })) mem.week = SEMANAS[0].week;
+  render();
+})();
+</script>
+</body>
+</html>

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `C:\temp\Sites\studies` is not an application. It is a collection of independent **study courses written in European Portuguese** (pt-PT, "tu" form, never "você"). Each top-level folder is one course, and each course is a set of numbered module folders (`00-Introducao`, `01-...`, ...). Every lesson is delivered as a `.docx` (full reference) plus a companion `.pptx` (visual summary). The root is a single Git repository (remote `https://github.com/AdrianoHebreu/estudos.git`, branch `main`) that holds every course; the root `.gitignore` excludes `node_modules`, `__pycache__`, `.venv`, Office lock files and `codex_studies/.qa/rendered/`. There is no test suite and no linter at the root. The "build" is generating Office files.
 
-Courses: `bun_studies`, `claude_code_studies`, `codex_studies`, `cobol_estudies`, `docker_studies`, `git_studies`, `graphQL_studies`, `Integration_suite_studies`, `javascript_studies`, `mongodb_studies`, `python_studies`, `solution_architect_studies`, `sql_database_studies`, `supabase_studies`, `typescript_studies`.
+Courses: `bun_studies`, `claude_code_studies`, `codex_studies`, `cobol_estudies`, `docker_studies`, `english_studies`, `git_studies`, `graphQL_studies`, `Integration_suite_studies`, `javascript_studies`, `mongodb_studies`, `python_studies`, `solution_architect_studies`, `sql_database_studies`, `supabase_studies`, `typescript_studies`.
 
 ## Core rule: Office files are generated, never edited by hand
 
@@ -15,7 +15,7 @@ The `.docx`/`.pptx` files are build outputs and are overwritten on the next gene
 | Course | Source of truth | Generator |
 |---|---|---|
 | `typescript_studies`, `javascript_studies` | `content-source/<module>/<file>.json` | `tools/build_lesson.py` |
-| `graphQL_studies`, `supabase_studies`, `codex_studies`, `python_studies`, `solution_architect_studies`, `docker_studies`, `mongodb_studies`, `sql_database_studies`, `cobol_estudies`, `bun_studies`, `Integration_suite_studies` | a `.md` next to the `.docx`/`.pptx` in each module folder | `tools/build_course_artifacts.py` |
+| `graphQL_studies`, `supabase_studies`, `codex_studies`, `python_studies`, `solution_architect_studies`, `docker_studies`, `mongodb_studies`, `sql_database_studies`, `cobol_estudies`, `bun_studies`, `Integration_suite_studies`, `english_studies` | a `.md` next to the `.docx`/`.pptx` in each module folder | `tools/build_course_artifacts.py` |
 | `claude_code_studies`, `git_studies` | none kept. Only `.docx`/`.pptx` exist, with no `tools/` | n/a |
 
 Each `tools/` folder carries its own copy of `docbuilder.py`, `pptxbuilder.py` and `style.py`, copied and adapted from course to course. They are not shared, so a fix in one course does not propagate. Requires Python with `python-docx` and `python-pptx`.
@@ -24,7 +24,7 @@ Each `tools/` folder carries its own copy of `docbuilder.py`, `pptxbuilder.py` a
 
 Use `python` (not `python3`). Run `export PYTHONIOENCODING=utf-8` first, or accented output breaks. Run from inside the course folder.
 
-Markdown-based courses (graphQL, supabase, codex, python, solution_architect, docker, mongodb, sql, cobol, bun, Integration Suite):
+Markdown-based courses (graphQL, supabase, codex, python, solution_architect, docker, mongodb, sql, cobol, bun, Integration Suite, english):
 ```
 python tools/build_course_artifacts.py                  # all modules
 python tools/build_course_artifacts.py --only 02,03     # selected modules (matched on the first 2 chars of the .md filename)
@@ -56,6 +56,7 @@ Other helper tools: `build_gabarito.py` (assembles the answer-key module from ev
 - Docker safety when testing course examples: use only resources with an `est-` prefix, never run `prune`, never touch the user's `sqlserver` container or `supabase_*`/`db-mssql-snapshot_*` volumes, and remove everything created (use named volumes and `docker rm -v`). Host ports 1433 and 3306 belong to the user's own services.
 - `cobol_estudies` (the folder name is the user's spelling): examples are GnuCOBOL 3.2.0 programs run in Docker. The `Dockerfile` in `00-Introducao/ambiente/` builds the image `est-cb-gnucobol:estudo` (remove it afterwards). COBOL fixed format loses text after column 72 silently and treats `D` in column 7 as a debug line, so keep code within columns 8 to 72. Data files in `exemplos/` are inputs, not build output.
 - `bun_studies`: examples run with Bun 1.4.0 on Windows and use no npm packages; never leave `node_modules`, `bun.lock`, `.sqlite` or generated files in the course folder. When agents run servers, give each its own port range, and **never kill processes by name or filter** (the user has their own bun/node processes): only by the PID the agent launched.
+- `english_studies` (English for pt-PT speakers, A1 to A2): lessons in Portuguese with English examples, British IPA, no code to execute; modules 00 to 14 complete. Exercises and solutions live only in modules 12 and 14 (assembled from per-module blocks; lessons just point to module 12). `Roteiro-12-Semanas/roteiro.html` is a generated, self-contained page: source data in `tools/roteiro/semanas.json`, template `tools/roteiro/template.html`, build with `python tools/roteiro/build_roteiro.py`. Do not edit the HTML by hand. Read its `ESTADO-DO-PROJETO.md` before extending.
 - `typescript_studies` has a `package.json` (devDependency `typescript`) used to validate code samples. `node_modules` is ignored by the generators.
 - `codex_studies/.qa/` has helpers to render the Office files for visual QA (`render_office_qa.ps1`).
 

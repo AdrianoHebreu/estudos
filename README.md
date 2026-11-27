@@ -13,6 +13,7 @@ Isto **não é uma aplicação**: não há nada para instalar nem executar na ra
 | [`codex_studies`](codex_studies) | Codex CLI: instalação, modelos e esforço de raciocínio, comandos, configuração, permissões, Git, automação e integrações | 00 a 13 | Markdown |
 | [`cobol_estudies`](cobol_estudies) | COBOL com GnuCOBOL em Docker: estrutura, dados e PICTURE, ficheiros sequenciais e indexados, relatórios, subprogramas, depuração e integração com sistemas atuais | 00 a 13 | Markdown |
 | [`docker_studies`](docker_studies) | Docker: contentores, imagens e Dockerfile, redes e volumes, Compose, segurança, diagnóstico e um projeto final | 00 a 10 | Markdown |
+| [`english_studies`](english_studies) | Inglês do A1 ao A2 e além, para falantes de português, com plano de imersão em casa: sons e ortografia, gramática base e inglês real com roteiro interativo de 12 semanas | 00 a 14 | Markdown |
 | [`git_studies`](git_studies) | Git, dos fundamentos aos conflitos, ao trabalho em equipa e ao Git avançado | 00 a 13 | Só `.docx`/`.pptx` |
 | [`graphQL_studies`](graphQL_studies) | GraphQL, do primeiro pedido à produção (schema, resolvers, Apollo, paginação, erros, autorização, desempenho), com um servidor de estudo em Node | 00 a 14 | Markdown |
 | [`Integration_suite_studies`](Integration_suite_studies) | SAP Integration Suite: iFlows, Groovy, APIs, eventos, B2B, migração e projeto de integração com ERP simulado | 00 a 15 | Markdown |
@@ -49,7 +50,7 @@ Os `.docx` e `.pptx` **não se editam à mão**: são produzidos por scripts Pyt
 
 | Cursos | Onde está o conteúdo | Gerador |
 |---|---|---|
-| `graphQL_studies`, `supabase_studies`, `codex_studies`, `python_studies`, `solution_architect_studies`, `docker_studies`, `mongodb_studies`, `sql_database_studies`, `cobol_estudies`, `bun_studies`, `Integration_suite_studies` | Um `.md` ao lado do `.docx`/`.pptx`, em cada pasta de módulo | `tools/build_course_artifacts.py` |
+| `graphQL_studies`, `supabase_studies`, `codex_studies`, `python_studies`, `solution_architect_studies`, `docker_studies`, `mongodb_studies`, `sql_database_studies`, `cobol_estudies`, `bun_studies`, `Integration_suite_studies`, `english_studies` | Um `.md` ao lado do `.docx`/`.pptx`, em cada pasta de módulo | `tools/build_course_artifacts.py` |
 | `javascript_studies`, `typescript_studies` | JSON em `content-source/<módulo>/` | `tools/build_lesson.py` |
 | `claude_code_studies`, `git_studies` | Não há fonte guardada: só existem os documentos | n/a |
 
@@ -92,4 +93,4 @@ Se um `.docx` estiver aberto no Word, essa geração falha nesse ficheiro (está
 
 ## Estado
 
-Os quinze cursos estão completos. O mais recente é o de SAP Integration Suite, baseado na documentação oficial da SAP, com laboratórios guiados que ainda falta validar no tenant.
+Os quinze cursos estão completos. O mais recente é o de inglês (`english_studies`), com um roteiro interativo de 12 semanas. O de SAP Integration Suite foi aprofundado a partir da documentação oficial da SAP e ainda falta validar os laboratórios no tenant.
